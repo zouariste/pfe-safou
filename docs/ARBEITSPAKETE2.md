@@ -199,7 +199,7 @@ public class AdminAuditLogDTO {
 ```java
 package com.cisternino.domain.interfaces;
 
-import entities.domain.de.uni_passau.fim.se2.AdminAuditLogDTO;
+import com.cisternino.domain.entities.AdminAuditLogDTO;
 import java.util.List;
 import java.util.UUID;
 
@@ -215,7 +215,7 @@ public interface AdminAuditLogRepository {
 ```java
 package com.cisternino.infrastructure.persistence.mapper;
 
-import entities.domain.de.uni_passau.fim.se2.AdminAuditLogDTO;
+import com.cisternino.domain.entities.AdminAuditLogDTO;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 
@@ -252,9 +252,9 @@ public class AdminAuditLogRowMapper implements RowMapper<AdminAuditLogDTO> {
 ```java
 package com.cisternino.infrastructure.persistence.dao;
 
-import entities.domain.de.uni_passau.fim.se2.AdminAuditLogDTO;
-import interfaces.domain.de.uni_passau.fim.se2.AdminAuditLogRepository;
-import mapper.persistence.infrastructure.de.uni_passau.fim.se2.AdminAuditLogRowMapper;
+import com.cisternino.domain.entities.AdminAuditLogDTO;
+import com.cisternino.domain.interfaces.AdminAuditLogRepository;
+import com.cisternino.infrastructure.persistence.mapper.AdminAuditLogRowMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -326,8 +326,8 @@ public class PostgreAdminAuditLogDao implements AdminAuditLogRepository {
 ```java
 package com.cisternino.application.service;
 
-import entities.domain.de.uni_passau.fim.se2.AdminAuditLogDTO;
-import interfaces.domain.de.uni_passau.fim.se2.AdminAuditLogRepository;
+import com.cisternino.domain.entities.AdminAuditLogDTO;
+import com.cisternino.domain.interfaces.AdminAuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -525,7 +525,7 @@ public interface ResearchDataReader {
 ```java
 package com.cisternino.infrastructure.persistence.dao;
 
-import interfaces.domain.de.uni_passau.fim.se2.ResearchDataReader;
+import com.cisternino.domain.interfaces.ResearchDataReader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -614,8 +614,8 @@ public class PostgreResearchDataDao implements ResearchDataReader {
 ```java
 package com.cisternino.application.service;
 
-import util.application.de.uni_passau.fim.se2.CsvWriter;
-import interfaces.domain.de.uni_passau.fim.se2.ResearchDataReader;
+import com.cisternino.application.util.CsvWriter;
+import com.cisternino.domain.interfaces.ResearchDataReader;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -783,7 +783,7 @@ public interface DatabaseDumpExecutor {
 ```java
 package com.cisternino.infrastructure.persistence.dao;
 
-import interfaces.domain.de.uni_passau.fim.se2.DatabaseDumpExecutor;
+import com.cisternino.domain.interfaces.DatabaseDumpExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -897,9 +897,9 @@ public class PgDumpExecutor implements DatabaseDumpExecutor {
 ```java
 package com.cisternino.application.service;
 
-import entities.domain.de.uni_passau.fim.se2.AdminAuditLogDTO;
-import interfaces.domain.de.uni_passau.fim.se2.DatabaseDumpExecutor;
-import interfaces.domain.de.uni_passau.fim.se2.DatabaseDumpExecutor.DumpException;
+import com.cisternino.domain.entities.AdminAuditLogDTO;
+import com.cisternino.domain.interfaces.DatabaseDumpExecutor;
+import com.cisternino.domain.interfaces.DatabaseDumpExecutor.DumpException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -998,13 +998,13 @@ public class AdminAuditLogResponseDTO {
 ```java
 package com.cisternino.api;
 
-import dto.api.de.uni_passau.fim.se2.AdminAuditLogResponseDTO;
-import service.application.de.uni_passau.fim.se2.AdminAuditService;
-import service.application.de.uni_passau.fim.se2.BackupService;
-import service.application.de.uni_passau.fim.se2.BackupService.BackupBusyException;
-import service.application.de.uni_passau.fim.se2.ResearchExportService;
-import entities.domain.de.uni_passau.fim.se2.AdminAuditLogDTO;
-import interfaces.domain.de.uni_passau.fim.se2.DatabaseDumpExecutor.DumpException;
+import com.cisternino.api.dto.AdminAuditLogResponseDTO;
+import com.cisternino.application.service.AdminAuditService;
+import com.cisternino.application.service.BackupService;
+import com.cisternino.application.service.BackupService.BackupBusyException;
+import com.cisternino.application.service.ResearchExportService;
+import com.cisternino.domain.entities.AdminAuditLogDTO;
+import com.cisternino.domain.interfaces.DatabaseDumpExecutor.DumpException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
