@@ -1,10 +1,34 @@
-package com.cisternino.application.service;
+/*
+ * Copyright (C) 2026 CodeOwl contributors
+ *
+ * This file is part of CodeOwl.
+ *
+ * CodeOwl is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * CodeOwl is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with CodeOwl. If not, see <http://www.gnu.org/licenses/>.
+ */
+package de.uni_passau.fim.se2.application.service;
 
-import com.cisternino.application.events.SequenceGeneratedEvent;
-import com.cisternino.domain.entities.*;
+import de.uni_passau.fim.se2.application.events.SequenceGeneratedEvent;
+import de.uni_passau.fim.se2.domain.entities.*;
 
-import com.cisternino.domain.exceptions.DomainValidationException;
-import com.cisternino.domain.interfaces.*;
+import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.*;
+import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
+import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
+import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;

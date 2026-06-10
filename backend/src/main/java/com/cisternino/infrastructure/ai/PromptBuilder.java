@@ -1,6 +1,6 @@
 package com.cisternino.infrastructure.ai;
 
-import com.cisternino.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.*;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.*;
 import org.springframework.stereotype.*;

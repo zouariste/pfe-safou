@@ -1,8 +1,8 @@
 package com.cisternino.infrastructure.ai;
 
-import com.cisternino.application.service.*;
-import com.cisternino.domain.entities.*;
-import com.cisternino.domain.interfaces.*;
+import de.uni_passau.fim.se2.application.service.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.interfaces.*;
 import com.fasterxml.jackson.databind.*;
 
 import java.io.*;

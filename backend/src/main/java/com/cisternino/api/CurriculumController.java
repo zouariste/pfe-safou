@@ -1,9 +1,31 @@
-package com.cisternino.api;
+/*
+ * Copyright (C) 2026 CodeOwl contributors
+ *
+ * This file is part of CodeOwl.
+ *
+ * CodeOwl is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * CodeOwl is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with CodeOwl. If not, see <http://www.gnu.org/licenses/>.
+ */
+package de.uni_passau.fim.se2.api;
 
-import com.cisternino.application.service.CurriculumGenerationService;
-import com.cisternino.application.service.OwnershipService;
-import com.cisternino.application.service.TaskPersistenceService;
-import com.cisternino.domain.entities.*;
+import de.uni_passau.fim.se2.application.service.CurriculumGenerationService;
+import de.uni_passau.fim.se2.application.service.OwnershipService;
+import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
+import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
+import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import lombok.*;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;

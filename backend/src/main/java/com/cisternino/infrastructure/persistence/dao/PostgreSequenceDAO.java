@@ -1,9 +1,9 @@
 package com.cisternino.infrastructure.persistence.dao;
 
-import com.cisternino.domain.entities.*;
-import com.cisternino.domain.exceptions.*;
-import com.cisternino.domain.interfaces.*;
-import com.cisternino.infrastructure.persistence.mapper.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.exceptions.*;
+import de.uni_passau.fim.se2.domain.interfaces.*;
+import de.uni_passau.fim.se2.infrastructure.persistence.mapper.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.postgresql.util.PGobject;

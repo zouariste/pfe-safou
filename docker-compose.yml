@@ -66,59 +66,5 @@ services:
       timeout: 3s
       retries: 3
 
-  snippet-ingest:
-    # ENTWEDER eigenes Image benutzen …
-    # image: snippet-ingest:latest
-    # … ODER lokal bauen:
-    build:
-      context: ./snippet-ingest
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      PGHOST: db
-      PGPORT: "5432"
-      PGUSER: postgres
-      PGPASSWORD: postgres
-      PGDATABASE: codeowl
-      SNIPPET_VERSION: "2"   # RQ5 nutzt v=2
-    # Nur nötig, wenn du lokale Ordner als Quelle nutzt:
-    volumes:
-      #- ./local/mdn:/mnt/mdn:ro
-      - ./snippet-ingest/repos.txt:/app/repos.txt:ro  
-      # Optional: SSH-Keys für git@… Repos
-      # - ~/.ssh:/root/.ssh:ro
-    # ENTRYPOINT ist schon im Dockerfile gesetzt -> hier nicht nötig
-    # command kannst du beim Run überschreiben, siehe unten
-    profiles: ["manual"]   # startet NICHT automatisch bei `up`
-    restart: "no"
-  # 🧩 Neuer Analyse-Container
-  analysis:
-    build:
-      context: ./codeowl_analysis
-    container_name: codeowl-analysis
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      PYTHONUNBUFFERED: 1
-    volumes:
-      - ./codeowl_analysis/plots:/app/plots   # Plots auf Host verfügbar
-    profiles: ["manual"]   # ← nur manuell starten
-    command: ["python", "analysis.py"]
-  analysis2:
-    build:
-      context: ./codeowl_analysis
-    container_name: codeowl-analysis2
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:        
-      PYTHONUNBUFFERED: 1
-    volumes:
-      - ./codeowl_analysis/plots2:/app/plots   # separater Ordner für Plots von analysis2
-    profiles: ["manual"]
-    command: ["python", "analysis2.py"]
-    
 volumes:
   db_data:

@@ -1,10 +1,36 @@
-package com.cisternino.application.service;
+/*
+ * Copyright (C) 2026 CodeOwl contributors
+ *
+ * This file is part of CodeOwl.
+ *
+ * CodeOwl is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * CodeOwl is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with CodeOwl. If not, see <http://www.gnu.org/licenses/>.
+ */
+package de.uni_passau.fim.se2.application.service;
 
-import com.cisternino.application.mapper.TaskSequenceMapper;
-import com.cisternino.domain.entities.*;
-import com.cisternino.domain.interfaces.*;
-import com.cisternino.infrastructure.ai.openai.OpenAiClient;
-import com.cisternino.domain.exceptions.GenerationException;
+import de.uni_passau.fim.se2.application.mapper.TaskSequenceMapper;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.interfaces.*;
+import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
+import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
+import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
+import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.interfaces.ConceptCurriculumTopicRepository;
+import de.uni_passau.fim.se2.domain.interfaces.CurriculumCodeExampleRepository;
+import de.uni_passau.fim.se2.domain.interfaces.CurriculumTopicRepository;
+import de.uni_passau.fim.se2.infrastructure.ai.openai.OpenAiClient;
+import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
