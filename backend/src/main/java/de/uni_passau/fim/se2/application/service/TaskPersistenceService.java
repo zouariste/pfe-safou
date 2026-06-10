@@ -19,13 +19,13 @@
 package de.uni_passau.fim.se2.application.service;
 
 import de.uni_passau.fim.se2.application.events.SequenceGeneratedEvent;
-import com.cisternino.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.*;
 
 import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import com.cisternino.domain.interfaces.*;
+import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;

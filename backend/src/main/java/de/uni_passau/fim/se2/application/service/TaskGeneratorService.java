@@ -18,10 +18,10 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import com.cisternino.domain.entities.*;
-import com.cisternino.domain.exceptions.*;
-import com.cisternino.domain.strategy.*;
-import com.cisternino.infrastructure.ai.openai.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.exceptions.*;
+import de.uni_passau.fim.se2.domain.strategy.*;
+import de.uni_passau.fim.se2.infrastructure.ai.openai.*;
 import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.GenerationException;

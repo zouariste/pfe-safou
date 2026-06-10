@@ -18,11 +18,11 @@
  */
 package de.uni_passau.fim.se2.api;
 
-import com.cisternino.api.dto.*;
-import com.cisternino.application.service.*;
-import com.cisternino.domain.entities.*;
-import com.cisternino.domain.exceptions.*;
-import com.cisternino.domain.interfaces.*;
+import de.uni_passau.fim.se2.api.dto.*;
+import de.uni_passau.fim.se2.application.service.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.exceptions.*;
+import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.api.dto.AuthResponse;
 import de.uni_passau.fim.se2.api.dto.LoginRequest;
 import de.uni_passau.fim.se2.api.dto.PasswordResetConfirmRequest;

@@ -18,7 +18,7 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai.openai;
 
-import com.cisternino.application.service.*;
+import de.uni_passau.fim.se2.application.service.*;
 import de.uni_passau.fim.se2.application.service.CodeSanitizerService;
 import de.uni_passau.fim.se2.domain.model.ConceptCatalog;
 import de.uni_passau.fim.se2.infrastructure.ai.AiProps;

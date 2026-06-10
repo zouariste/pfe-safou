@@ -18,8 +18,8 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import com.cisternino.domain.exceptions.*;
-import com.cisternino.domain.strategy.*;
+import de.uni_passau.fim.se2.domain.exceptions.*;
+import de.uni_passau.fim.se2.domain.strategy.*;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.strategy.CodeAndConceptStrategy;
 import de.uni_passau.fim.se2.domain.strategy.CodeOnlyStrategy;

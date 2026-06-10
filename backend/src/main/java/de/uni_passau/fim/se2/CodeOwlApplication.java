@@ -23,7 +23,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.*;
 
 @SpringBootApplication
-@ConfigurationPropertiesScan("com.cisternino")
+@ConfigurationPropertiesScan("de.uni_passau.fim.se2")
 public class CodeOwlApplication {
     public static void main(String[] args) {
         SpringApplication.run(CodeOwlApplication.class, args);

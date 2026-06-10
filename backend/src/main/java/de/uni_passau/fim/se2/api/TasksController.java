@@ -20,8 +20,8 @@ package de.uni_passau.fim.se2.api;
 
 import de.uni_passau.fim.se2.api.dto.ManualTaskRequest;
 import de.uni_passau.fim.se2.api.dto.TaskEditRequest;
-import com.cisternino.application.service.*;
-import com.cisternino.domain.entities.*;
+import de.uni_passau.fim.se2.application.service.*;
+import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.application.service.FeedbackLogService;
 import de.uni_passau.fim.se2.application.service.ManualTaskService;
 import de.uni_passau.fim.se2.application.service.OwnershipService;

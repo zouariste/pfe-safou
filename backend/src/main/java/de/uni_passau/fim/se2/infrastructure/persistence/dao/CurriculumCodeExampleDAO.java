@@ -18,9 +18,9 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import com.cisternino.domain.entities.*;
-import com.cisternino.domain.interfaces.*;
-import com.cisternino.infrastructure.persistence.mapper.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.interfaces.*;
+import de.uni_passau.fim.se2.infrastructure.persistence.mapper.*;
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
 import de.uni_passau.fim.se2.domain.interfaces.CurriculumCodeExampleRepository;
 import de.uni_passau.fim.se2.infrastructure.persistence.mapper.CurriculumCodeExampleRowMapper;

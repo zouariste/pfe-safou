@@ -18,9 +18,9 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai.claude;
 
-import com.cisternino.application.service.*;
-import com.cisternino.domain.entities.*;
-import com.cisternino.infrastructure.ai.*;
+import de.uni_passau.fim.se2.application.service.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.infrastructure.ai.*;
 import com.fasterxml.jackson.databind.*;
 import de.uni_passau.fim.se2.application.service.CodeSanitizerService;
 import de.uni_passau.fim.se2.domain.entities.SolveContract;

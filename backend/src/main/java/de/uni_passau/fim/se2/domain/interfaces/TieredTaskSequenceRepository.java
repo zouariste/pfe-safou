@@ -18,8 +18,8 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import com.cisternino.domain.entities.*;
-import com.cisternino.domain.exceptions.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.exceptions.*;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceConceptDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;

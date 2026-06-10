@@ -18,7 +18,7 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai;
 
-import com.cisternino.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.*;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.*;
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;

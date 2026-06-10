@@ -18,8 +18,8 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import com.cisternino.domain.entities.*;
-import com.cisternino.domain.interfaces.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceTaskDTO;

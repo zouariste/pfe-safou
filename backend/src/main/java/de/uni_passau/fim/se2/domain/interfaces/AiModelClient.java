@@ -18,7 +18,7 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import com.cisternino.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.*;
 import com.fasterxml.jackson.databind.*;
 import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
 import de.uni_passau.fim.se2.domain.entities.SolveContract;

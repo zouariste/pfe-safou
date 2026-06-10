@@ -21,7 +21,7 @@ package de.uni_passau.fim.se2.api;
 import de.uni_passau.fim.se2.application.service.CurriculumGenerationService;
 import de.uni_passau.fim.se2.application.service.OwnershipService;
 import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
-import com.cisternino.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
 import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
 import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;

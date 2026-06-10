@@ -18,9 +18,9 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import com.cisternino.domain.entities.*;
-import com.cisternino.domain.exceptions.*;
-import com.cisternino.domain.interfaces.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.exceptions.*;
+import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;

@@ -18,12 +18,12 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import com.cisternino.domain.entities.*;
-import com.cisternino.domain.interfaces.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.interfaces.*;
 
 import java.util.*;
 
-import com.cisternino.infrastructure.persistence.mapper.*;
+import de.uni_passau.fim.se2.infrastructure.persistence.mapper.*;
 import de.uni_passau.fim.se2.domain.entities.VersionDTO;
 import de.uni_passau.fim.se2.domain.interfaces.VersionRepository;
 import de.uni_passau.fim.se2.infrastructure.persistence.mapper.VersionRowMapper;

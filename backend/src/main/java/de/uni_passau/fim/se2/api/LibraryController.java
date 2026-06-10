@@ -18,14 +18,14 @@
  */
 package de.uni_passau.fim.se2.api;
 
-import com.cisternino.api.dto.*;
-import com.cisternino.application.service.*;
+import de.uni_passau.fim.se2.api.dto.*;
+import de.uni_passau.fim.se2.application.service.*;
 import de.uni_passau.fim.se2.api.dto.LibraryItemDTO;
 import de.uni_passau.fim.se2.api.dto.LibrarySearchResponse;
 import de.uni_passau.fim.se2.application.service.OwnershipService;
 import de.uni_passau.fim.se2.application.service.SequenceSearchService;
 import de.uni_passau.fim.se2.application.service.SequenceSearchService.*;
-import com.cisternino.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.application.service.SequenceTagService;
 import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
 import de.uni_passau.fim.se2.application.service.WorksheetService;

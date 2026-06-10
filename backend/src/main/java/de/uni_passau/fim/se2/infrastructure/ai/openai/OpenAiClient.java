@@ -18,9 +18,9 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai.openai;
 
-import com.cisternino.application.service.*;
-import com.cisternino.domain.entities.*;
-import com.cisternino.domain.interfaces.*;
+import de.uni_passau.fim.se2.application.service.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.application.service.CodeSanitizerService;
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
 import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
@@ -28,7 +28,7 @@ import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
 import de.uni_passau.fim.se2.domain.entities.OpenAiModel;
 import de.uni_passau.fim.se2.domain.entities.SolveContract;
 import de.uni_passau.fim.se2.domain.model.ConceptCatalog;
-import com.cisternino.infrastructure.ai.*;
+import de.uni_passau.fim.se2.infrastructure.ai.*;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.*;
 import de.uni_passau.fim.se2.infrastructure.ai.AbstractAiClient;

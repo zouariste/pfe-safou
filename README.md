@@ -1,93 +1,226 @@
 # CodeOwl
 
+CodeOwl is a full-stack educational platform for **generating and solving Parsons
+programming problems**. Teachers describe what they want to teach, and an LLM
+generates tiered task sequences that students solve in an interactive
+drag-and-drop puzzle format. The platform aligns generated tasks with the
+Bavarian *LehrplanPLUS* computer-science curriculum and collects fine-grained
+interaction data for research.
 
+> A Parsons problem presents the lines of a correct program in scrambled order;
+> the learner reconstructs the program by putting the lines back in the right
+> sequence. CodeOwl extends this with **tiered difficulty** (multiple tiers per
+> task), **distractors** (plausible wrong lines), and **automated hints**.
 
-## Getting started
+---
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Features
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+- **AI task generation** — generate whole task sequences from a topic, a piece
+  of code, a set of concepts, or any combination, via a pluggable provider layer
+  (OpenAI / GPT by default).
+- **Tiered Parsons puzzles** — each task can offer several difficulty tiers;
+  students solve them in a drag-and-drop interface.
+- **Worksheets & library** — group sequences into worksheets, browse a shared
+  library with full-text search, and deep-copy other teachers' worksheets to
+  adapt them without touching the original.
+- **Classes, roles & accounts** — `ADMIN`, `TEACHER` and `STUDENT` roles with
+  JWT auth and Argon2 password hashing. Teachers create student accounts inside a
+  class; students onboard via a one-time link (no self-registration needed).
+- **Curriculum alignment** — tasks can be tied to topics of the Bavarian
+  *LehrplanPLUS* (Gymnasium, Informatik), seeded into the database.
+- **Automated hints** — static analysis (Ruff for Python, SpotBugs / javac for
+  Java) drives contextual hints on a student's current attempt.
+- **Internationalisation** — German/English UI (`react-i18next`) and a
+  `targetLanguage` setting that controls the language of generated problem
+  statements and comments.
+- **Research logging** — fine-grained learning events and feedback logs, with
+  admin tooling for database backup and research export.
 
-## Add your files
+---
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## Architecture
+
+CodeOwl runs as three core containers orchestrated by Docker Compose:
+
+| Service    | Tech                                             | Port (host) |
+|------------|--------------------------------------------------|-------------|
+| `db`       | PostgreSQL 17                                    | `5432`      |
+| `backend`  | Spring Boot 3.3 (Java 21), Spring JDBC           | `8080`      |
+| `frontend` | React 19 + TypeScript + Vite, served by nginx    | `5175`      |
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.infosun.fim.uni-passau.de/se2/research/codeowl.git
-git branch -M main
-git push -uf origin main
+            ┌────────────┐      /codeowl/api/      ┌───────────┐      JDBC      ┌──────────┐
+  browser ──▶  frontend   ├────── (nginx proxy) ────▶  backend   ├──────────────▶    db     │
+            │  (nginx)   │                          │ (Spring)  │                │ (Postgres)│
+            └────────────┘                          └─────┬─────┘                └──────────┘
+                                                          │ HTTPS
+                                                    ┌─────▼─────┐
+                                                    │  OpenAI   │
+                                                    └───────────┘
 ```
 
-## Integrate with your tools
+The backend additionally shells out to **Ruff**, **SpotBugs**, **javac** and
+**pg_dump** at runtime (all installed in the backend image) for hints and
+database backups.
 
-* [Set up project integrations](https://gitlab.infosun.fim.uni-passau.de/se2/research/codeowl/-/settings/integrations)
+---
 
-## Collaborate with your team
+## Prerequisites
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+- **Docker** and **Docker Compose** (v2) — the recommended way to run CodeOwl.
+- An **OpenAI API key** — required for task generation.
 
-## Test and Deploy
+For local development outside Docker you additionally need:
 
-Use the built-in continuous integration in GitLab.
+- **JDK 21** (the backend ships a Maven wrapper, `./mvnw`)
+- **Node.js 20+** and npm
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+---
 
-***
+## Quick start (Docker Compose)
 
-# Editing this README
+```bash
+# 1. Clone the repository
+git clone <repository-url> codeowl
+cd codeowl
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+# 2. Create your environment file and add your OpenAI key
+cp .env.example .env
+#   then edit .env and set OPENAI_API_KEY (and JWT_SECRET for anything non-local)
 
-## Suggestions for a good README
+# 3. Build and start the stack
+docker compose up --build
+```
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Once the containers are healthy:
 
-## Name
-Choose a self-explaining name for your project.
+- **Frontend:** http://localhost:5175/codeowl/
+- **Backend API:** http://localhost:8080/api/
+- **API docs (Swagger UI):** http://localhost:8080/swagger-ui.html
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+The database is initialised automatically on first start from the SQL files in
+[`db/init/`](db/init) (schema + seed dump, curriculum seed, and migrations) and
+persisted in the `db_data` volume. To start from a clean database, remove the
+volume:
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```bash
+docker compose down -v
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+> **Frontend base path:** by default the app is built for the `/codeowl/` base
+> path (matching the production deployment), so the local URL includes that
+> prefix. To serve it at the web root instead, set `VITE_BASE_PATH=/` in your
+> `.env` before building.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+---
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+## Configuration
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+All configuration is environment-driven. The variables below are consumed by
+`docker-compose.yml`; set them in your `.env` file. See
+[`.env.example`](.env.example) for a ready-to-copy template.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+### Backend
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+| Variable                | Required | Default                     | Description                                                                 |
+|-------------------------|----------|-----------------------------|-----------------------------------------------------------------------------|
+| `OPENAI_API_KEY`        | **yes**  | —                           | OpenAI API key for generation, concept detection, tagging and hints.        |
+| `JWT_SECRET`            | prod     | dev fallback                | HS256 signing secret. **Must** be ≥ 256 bits; override for any deployment.  |
+| `APP_BASE_URL`          | no       | `http://localhost:5175`     | Public frontend URL; used to build links in outgoing e-mails.               |
+| `CORS_ALLOWED_ORIGINS`  | no       | `*`                         | Comma-separated allowed origins. Tighten for production.                     |
+| `ROOT_ADMIN_EMAIL`      | no       | *(empty)*                   | E-mail granted the `ADMIN` role on startup.¹                                |
+| `MAIL_HOST`             | no       | *(empty)*                   | SMTP host. If empty, e-mails are logged to the console instead of sent.     |
+| `MAIL_PORT`             | no       | `587`                       | SMTP port.                                                                  |
+| `MAIL_USERNAME`         | no       | *(empty)*                   | SMTP username.                                                              |
+| `MAIL_PASSWORD`         | no       | *(empty)*                   | SMTP password.                                                              |
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+The datasource (`SPRING_DATASOURCE_*`) and `SPRING_PROFILES_ACTIVE` are wired up
+by `docker-compose.yml` and normally need no changes.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+¹ `ROOT_ADMIN_EMAIL` is read by the backend but is **not** passed through in the
+default `docker-compose.yml`. To use it under Docker, add it to the `backend`
+service's `environment:` block.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+### Frontend (build-time)
+
+These are Vite build arguments, applied when the frontend image is built.
+
+| Variable             | Default          | Description                                                        |
+|----------------------|------------------|--------------------------------------------------------------------|
+| `VITE_BASE_PATH`     | `/codeowl/`      | Base path the SPA is served under. Set to `/` for the web root.    |
+| `VITE_API_BASE_URL`  | `/codeowl/api`   | Base URL the frontend uses for API calls (proxied by nginx).       |
+
+### Other application settings
+
+A number of defaults live in
+[`backend/src/main/resources/application.yml`](backend/src/main/resources/application.yml)
+and can be overridden via environment variables or by editing the file, e.g. the
+default AI provider/model (`ai.defaultProvider`, `ai.openai.defaultModel`),
+generation limits (`app.generation.maxAttempts`, `app.generation.maxLocPerTask`),
+and which evaluation runners are enabled (`codeowl.*`).
+
+---
+
+## Local development
+
+Run the database in Docker and the two apps natively for fast iteration.
+
+```bash
+# Database only
+docker compose up db
+```
+
+**Backend** (Spring Boot, port 8080):
+
+```bash
+cd backend
+export OPENAI_API_KEY=sk-...
+export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/codeowl
+export SPRING_DATASOURCE_USERNAME=postgres
+export SPRING_DATASOURCE_PASSWORD=postgres
+./mvnw spring-boot:run
+```
+
+**Frontend** (Vite dev server, port 5173):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+For a dev setup that talks to a remote backend, the Vite config supports a proxy
+via `VITE_DEV_PROXY_TARGET` (and optional `VITE_DEV_PROXY_REWRITE_TO`) — see
+[`frontend/vite.config.ts`](frontend/vite.config.ts).
+
+---
+
+## Project structure
+
+```
+codeowl/
+├── backend/            # Spring Boot 3.3 / Java 21 (package de.uni_passau.fim.se2)
+│   ├── src/main/java/  # API controllers, services, domain, persistence, AI clients
+│   ├── src/main/resources/
+│   │   ├── application.yml
+│   │   ├── PromptStuff/ # LLM prompt templates
+│   │   └── concepts/    # concept catalog & alias mapping
+│   └── Dockerfile
+├── frontend/           # React 19 + TypeScript + Vite, served by nginx
+│   ├── src/
+│   ├── nginx.conf
+│   └── Dockerfile
+├── db/init/            # SQL run on first DB start (schema, seed, migrations)
+├── docker-compose.yml
+└── README.md
+```
+
+---
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+A `LICENSE` file will be provided with the public release. The source files
+currently carry GNU General Public License v3.0 headers.
+
+Developed at the Chair of Software Engineering II, University of Passau by Luca Cisternino.

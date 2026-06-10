@@ -18,10 +18,10 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai;
 
-import com.cisternino.domain.interfaces.*;
-import com.cisternino.infrastructure.ai.claude.*;
-import com.cisternino.infrastructure.ai.gemini.*;
-import com.cisternino.infrastructure.ai.openai.*;
+import de.uni_passau.fim.se2.domain.interfaces.*;
+import de.uni_passau.fim.se2.infrastructure.ai.claude.*;
+import de.uni_passau.fim.se2.infrastructure.ai.gemini.*;
+import de.uni_passau.fim.se2.infrastructure.ai.openai.*;
 import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
 import de.uni_passau.fim.se2.infrastructure.ai.claude.ClaudeClient;
 import de.uni_passau.fim.se2.infrastructure.ai.gemini.GeminiClient;

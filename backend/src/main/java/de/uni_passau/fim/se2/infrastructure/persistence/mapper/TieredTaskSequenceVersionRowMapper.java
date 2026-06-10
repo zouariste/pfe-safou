@@ -20,7 +20,7 @@ package de.uni_passau.fim.se2.infrastructure.persistence.mapper;
 
 import java.sql.ResultSet;
 
-import com.cisternino.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceVersionDTO;
 import org.springframework.jdbc.core.RowMapper;
 import java.sql.SQLException;
