@@ -941,6 +941,7 @@
    var addToggleableElements = function(widget) {
       for (var i = 0; i < widget.modified_lines.length; i++) {
         widget.modified_lines[i]._addToggles();
+        widget.modified_lines[i]._addBlanks(); // AP30: render $$blank:…$$ as inline inputs
       }
       // toggleable elements are only enabled for unit tests
       if (!widget.options.unittests && !widget.options.vartests) { return; }
@@ -985,6 +986,7 @@
     this.code = "";
     this.indent = 0;
     this._toggles = [];
+    this._blanks = []; // AP30: fill-in-the-gap inputs ($$blank:…$$)
     // AP16: Interchangeable group metadata
     this.groupName = null;  // e.g. "base_1", "vars"
     this.groupType = null;  // "group" | "swap" | null
@@ -1062,6 +1064,61 @@
     if (index < 0 || index >= this._toggles.length) { return undefined; }
     return this._toggles[index].textContent;
   };
+
+  // AP30: Fill-in-the-Gaps. Parses $$blank:<expected>$$ / $$blank:<expected>|<mode>$$
+  // markers (mode ∈ {exact, trim, ci}, default "trim") into inline <input> fields.
+  // Renders from this.code (raw) — like _addToggles — so Prettify token-splitting
+  // cannot break marker detection. jQuery UI sortable's default `cancel` selector
+  // excludes inputs, so typing into a gap does not start a drag.
+  ParsonsCodeline.prototype._addBlanks = function() {
+    var blankRegexp = /\$\$blank(?::((?:(?!\$\$).)*))?\$\$/g;
+    this._blanks = [];
+    if (!blankRegexp.test(this.code)) { return; }
+    blankRegexp.lastIndex = 0;
+    var that = this;
+    var html = this.code;
+
+    // Re-apply toggle spans first so a line using both composes (mirrors _addToggles).
+    var toggleRegexp = new RegExp("\\$\\$toggle(" + this.widget.options.toggleSeparator + ".*?)?\\$\\$", "g");
+    var toggles = html.match(toggleRegexp);
+    if (toggles) {
+      for (var t = 0; t < toggles.length; t++) {
+        var opts = toggles[t].substring(10, toggles[t].length - 2).split(this.widget.options.toggleSeparator);
+        html = html.replace(toggles[t], "<span class='jsparson-toggle' data-jsp-options='" +
+                 JSON.stringify(opts).replace("<", "&lt;") + "'></span>");
+      }
+    }
+
+    var specs = [];
+    html = html.replace(blankRegexp, function(match, inner) {
+      var expected = null, mode = "trim";
+      if (inner != null && inner.length > 0) {
+        expected = inner;
+        var sep = expected.lastIndexOf("|");
+        if (sep >= 0) {
+          var m = expected.substring(sep + 1);
+          if (m === "exact" || m === "trim" || m === "ci") { mode = m; expected = expected.substring(0, sep); }
+        }
+      }
+      var idx = specs.length;
+      specs.push({ expected: expected, mode: mode });
+      var size = expected != null ? Math.max(3, expected.length) : 6;
+      return "<input type='text' class='jsparson-blank' data-blank-index='" + idx +
+             "' size='" + size + "' autocomplete='off' autocorrect='off' " +
+             "autocapitalize='off' spellcheck='false' aria-label='fill in the gap' />";
+    });
+
+    this.elem().html(html);
+    this.elem().find(".jsparson-blank").each(function(index, item) {
+      that._blanks.push({ el: item, expected: specs[index].expected, mode: specs[index].mode });
+    });
+  };
+
+  // AP30: number of gap inputs in this line
+  ParsonsCodeline.prototype.blankCount = function() {
+    return this._blanks ? this._blanks.length : 0;
+  };
+
   // expose the type for testing, extending etc
   window.ParsonsCodeline = ParsonsCodeline;
 

@@ -4,6 +4,7 @@ import com.cisternino.api.dto.ManualTaskRequest;
 import com.cisternino.domain.entities.TaskDTO;
 import com.cisternino.domain.entities.TieredTaskSequenceDTO;
 import com.cisternino.domain.exceptions.DomainValidationException;
+import com.cisternino.application.util.GapMarkers;
 import com.cisternino.domain.interfaces.CodeAnalyzer;
 import com.cisternino.domain.interfaces.CodeAnalyzer.ComplexityResult;
 import org.slf4j.Logger;
@@ -62,8 +63,13 @@ public class ManualTaskService {
             // No comment-sanitizing — in manual mode the teacher decides what stays
             String code = tier.getSolution().trim();
 
+            // AP30: gap markers ($$blank:…$$) live inline in the solution. Strip them to the
+            // expected value before code analysis so metrics run on syntactically valid code;
+            // the persisted solution keeps the markers for the Parsons renderer.
+            String analyzableCode = GapMarkers.strip(code);
+
             // Compute complexity metrics via CodeAnalyzer (AP26: all 9 languages)
-            ComplexityResult metrics = codeAnalyzer.computeComplexity(code, language);
+            ComplexityResult metrics = codeAnalyzer.computeComplexity(analyzableCode, language);
 
             TaskDTO task = TaskDTO.builder()
                     .id(UUID.randomUUID())

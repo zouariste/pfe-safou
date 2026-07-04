@@ -5,6 +5,7 @@ import com.cisternino.domain.entities.TaskDTO;
 import com.cisternino.domain.interfaces.HintUsageRepository;
 import com.cisternino.domain.interfaces.TaskRepository;
 import com.cisternino.application.service.OwnershipService;
+import com.cisternino.application.util.GapMarkers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -122,7 +123,7 @@ public class HintService {
         // 5. Detect whether student has placed enough blocks in the solution area.
         //    The correct block count is approximated from non-empty lines in the solution.
         //    The student's effective count excludes distractors they accidentally placed.
-        int correctBlockCount = countSolutionBlocks(task.getSolution());
+        int correctBlockCount = countSolutionBlocks(GapMarkers.strip(task.getSolution())); // AP30: ignore gap markers
         int studentNonDistractorCount = blockOrder.size() - distractorBlockIndices.size();
         boolean tooFewBlocks = correctBlockCount > 0 && studentNonDistractorCount < correctBlockCount;
         if (tooFewBlocks) {
@@ -138,7 +139,7 @@ public class HintService {
             hintText = hintGenerator.generate(blockFindings, language, distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount);
         } else if (hintLevel == 2) {
             hintText = hintGenerator.generate(blockFindings, language, distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount);
-            explanation = hintExplainer.explain(blockFindings, assembly.code(), task.getSolution(), language,
+            explanation = hintExplainer.explain(blockFindings, assembly.code(), GapMarkers.strip(task.getSolution()), language,
                     distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount);
         }
 

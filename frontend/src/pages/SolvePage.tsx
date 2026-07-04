@@ -19,6 +19,20 @@ declare global {
     }
 }
 
+/**
+ * AP30: client-side evaluation of a fill-in-the-gap input.
+ * When `expected` is null the gap is not auto-graded (always neutral/correct).
+ * mode ∈ {exact, trim, ci}; default handling done by the caller.
+ */
+function checkBlank(value: string, expected: string | null, mode: string): boolean {
+    if (expected == null) return true;
+    let a = value;
+    let b = expected;
+    if (mode === "trim" || mode === "ci") { a = a.trim(); b = b.trim(); }
+    if (mode === "ci") { a = a.toLowerCase(); b = b.toLowerCase(); }
+    return a === b;
+}
+
 export default function SolvePage() {
     const { t } = useTranslation();
     const location = useLocation();
@@ -504,6 +518,43 @@ export default function SolvePage() {
                     line.isCorrect = true;
                     el.classList.add("line-correct");
                     el.style.backgroundColor = "rgba(144, 238, 144, 0.4)";
+                }
+            });
+
+            // AP30: evaluate fill-in-the-gap inputs. A solution line is only fully correct
+            // when its position/indent AND all its gap values are correct.
+            (this.modified_lines ?? []).forEach((line: any) => {
+                const blanks = line._blanks ?? [];
+                if (!blanks.length) return;
+                const jqEl = line.elem ? line.elem() : null;
+                const el: HTMLElement | null = jqEl ? (jqEl[0] ?? jqEl.get?.(0) ?? null) : null;
+                const isInSolution = solutionBlockIds.has(line.id);
+                let allGapsCorrect = true;
+                blanks.forEach((b: any, gi: number) => {
+                    const input = b.el as HTMLInputElement;
+                    if (!input) return;
+                    const val = input.value ?? "";
+                    const ok = checkBlank(val, b.expected, b.mode ?? "trim");
+                    input.classList.remove("blank-correct", "blank-incorrect");
+                    if (isInSolution && val.length > 0) {
+                        input.classList.add(ok ? "blank-correct" : "blank-incorrect");
+                    }
+                    if (b.expected != null && !ok) allGapsCorrect = false;
+                    if (isInSolution && val.length > 0 && task?.id) {
+                        logEvent(task.id, ok ? "gap_correct" : "gap_incorrect", {
+                            lineId: line.id,
+                            gapIndex: gi,
+                            value: val,
+                            expected: b.expected,
+                            mode: b.mode ?? "trim",
+                        }, task.sequenceId, task.tierLevel);
+                    }
+                });
+                if (isInSolution && !allGapsCorrect && el) {
+                    line.isCorrect = false;
+                    el.classList.remove("line-correct", "line-warning");
+                    el.classList.add("line-incorrect");
+                    el.style.backgroundColor = "rgba(255, 99, 71, 0.4)";
                 }
             });
 

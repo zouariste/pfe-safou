@@ -1,9 +1,38 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { usePageTitle } from "../hooks/usePageTitle";
 import "bootstrap/dist/css/bootstrap.min.css";
+
+// AP30: inline gap marker $$blank:<expected>[|<mode>]$$
+const GAP_RE_SRC = "\\$\\$blank(?::((?:(?!\\$\\$).)*))?\\$\\$";
+
+/** Renders a preview line, showing `$$blank:…$$` markers as gap chips. */
+function renderGapLine(line: string): React.ReactNode {
+    const re = new RegExp(GAP_RE_SRC, "g");
+    const parts: React.ReactNode[] = [];
+    let last = 0;
+    let m: RegExpExecArray | null;
+    let k = 0;
+    while ((m = re.exec(line)) !== null) {
+        if (m.index > last) parts.push(line.substring(last, m.index));
+        const inner = m[1] ?? "";
+        let exp = inner;
+        const sep = inner.lastIndexOf("|");
+        if (sep >= 0 && ["exact", "trim", "ci"].includes(inner.substring(sep + 1))) {
+            exp = inner.substring(0, sep);
+        }
+        parts.push(
+            <span key={`g${k++}`} className="badge text-bg-warning fw-normal" style={{ fontFamily: "monospace" }}>
+                {exp || "▁▁▁"}
+            </span>
+        );
+        last = m.index + m[0].length;
+    }
+    if (last < line.length) parts.push(line.substring(last));
+    return parts.length ? <>{parts}</> : line;
+}
 
 /* ────────────────────────────────────────────────────────────── */
 /*  Types                                                        */
@@ -44,6 +73,10 @@ export default function ManualTaskCreator() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [previewLines, setPreviewLines] = useState<string[]>([]);
+
+    // AP30: fill-in-the-gaps controls
+    const codeTaRef = useRef<HTMLTextAreaElement>(null);
+    const [gapMode, setGapMode] = useState<"trim" | "exact" | "ci">("trim");
 
     // ── Derived ─────────────────────────────────────────────
     const conceptTokens = concepts
@@ -138,6 +171,34 @@ export default function ManualTaskCreator() {
     };
 
     const currentTier = tiers[activeTier] ?? tiers[0];
+
+    // ── AP30: wrap the current textarea selection in a $$blank:…$$ marker ──
+    const markSelectionAsGap = () => {
+        const ta = codeTaRef.current;
+        if (!ta) return;
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const val = currentTier.solution;
+        if (start == null || end == null || start === end) {
+            setError("Bitte zuerst Text innerhalb einer Code-Zeile markieren, um eine Lücke zu setzen.");
+            return;
+        }
+        const selected = val.substring(start, end);
+        if (selected.includes("\n")) {
+            setError("Eine Lücke darf nur innerhalb einer einzelnen Zeile liegen.");
+            return;
+        }
+        const marker = "$$blank:" + selected + (gapMode === "trim" ? "" : "|" + gapMode) + "$$";
+        const newVal = val.substring(0, start) + marker + val.substring(end);
+        updateTier(activeTier, "solution", newVal);
+        refreshPreview(newVal);
+        setError(null);
+        requestAnimationFrame(() => {
+            ta.focus();
+            const pos = start + marker.length;
+            ta.selectionStart = ta.selectionEnd = pos;
+        });
+    };
 
     // ── Render ──────────────────────────────────────────────
     return (
@@ -325,7 +386,36 @@ export default function ManualTaskCreator() {
                                     <label className="form-label fw-semibold">
                                         {t("manual.codeSolution")}
                                     </label>
+
+                                    {/* AP30: Fill-in-the-Gaps toolbar */}
+                                    <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-warning"
+                                            onClick={markSelectionAsGap}
+                                            title="Markierten Text in der Code-Zeile als Freitext-Lücke setzen"
+                                        >
+                                            <i className="bi bi-input-cursor-text me-1"></i>
+                                            Auswahl als Lücke
+                                        </button>
+                                        <select
+                                            className="form-select form-select-sm"
+                                            style={{ width: "auto" }}
+                                            value={gapMode}
+                                            onChange={(e) => setGapMode(e.target.value as "trim" | "exact" | "ci")}
+                                            title="Vergleichsmodus für neue Lücken"
+                                        >
+                                            <option value="trim">trim (Standard)</option>
+                                            <option value="exact">exact</option>
+                                            <option value="ci">case-insensitive</option>
+                                        </select>
+                                        <small className="text-muted">
+                                            Text markieren → „Auswahl als Lücke". Mehrere Lücken pro Zeile möglich.
+                                        </small>
+                                    </div>
+
                                     <textarea
+                                        ref={codeTaRef}
                                         className="form-control font-monospace"
                                         rows={12}
                                         value={currentTier.solution}
@@ -465,7 +555,7 @@ export default function ManualTaskCreator() {
                                                                 overflowX: "auto",
                                                             }}
                                                         >
-                                                            {line.trim()}
+                                                            {renderGapLine(line.trim())}
                                                         </div>
                                                     );
                                                 })}
