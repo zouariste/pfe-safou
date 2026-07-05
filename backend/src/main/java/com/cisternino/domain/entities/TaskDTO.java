@@ -128,4 +128,13 @@ public class TaskDTO {
      */
     private String contextAfter;
 
+    /**
+     * AP31: JSON string with the inline-split plan (fragment decomposition of selected lines).
+     * Format: {"splits":[{"lineIndex":4,"fragments":["int i = 0;","i < arr.length;","i++"],
+     *          "prefix":"for (","suffix":") {","distractors":[{"text":"i <= arr.length;","type":"OFF_BY_ONE"}]}]}
+     * NULL when no split lines are defined. Fragment distractors are intentionally visible
+     * (no answer-stripping on delivery).
+     */
+    private String splitPlan;
+
 }

@@ -144,6 +144,7 @@
     "createWorksheetBtn": "Create worksheet",
     "worksheetNameRequired": "Please enter a name.",
     "contextModeEnabled": "Context mode — longer code with scaffolding (Beta)",
+    "splitEnabled": "Generate inline-split blocks (Beta)",
     "advancedOptions": "Advanced Options",
     "blacklist": "Blacklist (forbidden constructs)",
     "blacklistPlaceholder": "e.g. recursion, lambda, ternary",
@@ -633,7 +634,29 @@
     "saving": "Saving...",
     "emptyError": "Problem statement and code must not be empty.",
     "ratingError": "Please provide a rating between 1 and 5.",
-    "errorSaving": "Error saving."
+    "errorSaving": "Error saving.",
+    "gapButton": "Mark selection as gap",
+    "gapButtonTitle": "Mark the selected text in the code line as a free-text gap",
+    "gapModeTitle": "Comparison mode for new gaps",
+    "gapHint": "Select text → “Mark selection as gap”. Multiple gaps per line are possible.",
+    "gapSelectHint": "Please first select text within a code line to create a gap.",
+    "gapSingleLine": "A gap may only span within a single line.",
+    "gapPreview": "Gap preview"
+  },
+
+  "splitEditor": {
+    "title": "Inline split (AP31)",
+    "help": "Pick a line → click between characters to set cut points (2–4 fragments). Optional fragment distractor.",
+    "fragments": "{{count}} frag.",
+    "edit": "Edit",
+    "split": "Split",
+    "toggleCut": "Toggle cut point",
+    "distractor": "Distractor",
+    "distractorPlaceholder": "optional, e.g. i <= arr.length;",
+    "invalid": "2–4 non-empty fragments required.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "enterCodeFirst": "Enter code first."
   },
 
   "curriculum": {
@@ -650,6 +673,8 @@
     "targetLanguage": "Task language",
     "tierCount": "Number of tiers",
     "distractors": "Distractors",
+    "contextMode": "Context mode — fuller code with scaffolding (Beta)",
+    "split": "Generate inline-split blocks (Beta)",
     "advancedOptions": "Advanced options",
     "backToTopics": "Back to overview",
     "grade": "Grade {{level}}",

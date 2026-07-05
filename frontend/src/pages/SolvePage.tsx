@@ -3,6 +3,7 @@ import {useEffect, useMemo, useRef, useState} from "react";
 import {useNavigate, useParams} from "react-router-dom";
 import {api} from "../lib/api.ts";
 import type {Task} from "../types/models.ts";
+import {parseSplitPlan} from "../types/models.ts";
 import $ from "jquery";
 import {usePageTitle} from "../hooks/usePageTitle.ts";
 import { useLocation } from "react-router-dom";
@@ -15,7 +16,7 @@ import DOMPurify from "dompurify";
 declare global {
     interface Window {
         ParsonsWidget?: any;
-        prettyPrint?: () => void;
+        prettyPrint?: (whenDone?: () => void) => void;
     }
 }
 
@@ -211,6 +212,7 @@ export default function SolvePage() {
                     distractorPlan: data.distractorPlan ?? null,
                     contextBefore: data.contextBefore ?? null,
                     contextAfter: data.contextAfter ?? null,
+                    splitPlan: data.splitPlan ?? null, // AP31 — required for inline-split rendering
                 };
                 PersistentLogger.logWithContext("SolvePage", "debug", "Mapped Task object:", JSON.stringify(t));
                 PersistentLogger.logWithContext("SolvePage", "debug", "AP22 context fields — before:", t.contextBefore ? "present (" + t.contextBefore.split("\n").length + " lines)" : "null", "after:", t.contextAfter ? "present (" + t.contextAfter.split("\n").length + " lines)" : "null");
@@ -571,10 +573,52 @@ export default function SolvePage() {
                 }
             });
 
-            // AP30 fix: a wrong/empty required gap vetoes the overall "solved" verdict.
+            // AP31: evaluate inline-split lines. A split line is fully correct only when its
+            // block position AND its fragment order are correct ("UND"-Urteil). Mirrors gaps.
+            let anySplitIncorrect = false;
+            (this.modified_lines ?? []).forEach((line: any) => {
+                if (!line?.isSplitLine || !line.isSplitLine()) return;
+                const jqEl = line.elem ? line.elem() : null;
+                const el: HTMLElement | null = jqEl ? (jqEl[0] ?? jqEl.get?.(0) ?? null) : null;
+                const isInSolution = solutionBlockIds.has(line.id);
+                const order = line._split.currentOrder();
+                const canonical = line._split.canonical as string[];
+                const ok = line.splitCorrect();
+
+                if (el) {
+                    const slotEls = el.querySelectorAll(".split-slot");
+                    slotEls.forEach((s) => s.classList.remove("split-correct", "split-incorrect"));
+                    if (isInSolution) {
+                        order.forEach((o: any, i: number) => {
+                            if (!o) return;
+                            const good = !o.distractor && o.text === canonical[i];
+                            slotEls[i]?.classList.add(good ? "split-correct" : "split-incorrect");
+                        });
+                    }
+                }
+
+                if (isInSolution && !ok) {
+                    anySplitIncorrect = true;
+                    line.isCorrect = false;
+                    if (el) {
+                        el.classList.remove("line-correct", "line-warning");
+                        el.classList.add("line-incorrect");
+                        el.style.backgroundColor = "rgba(255, 99, 71, 0.4)";
+                    }
+                }
+                if (isInSolution && task?.id) {
+                    logEvent(task.id, ok ? "split_line_correct" : "split_line_incorrect", {
+                        lineId: line.id,
+                        order: order.map((o: any) => (o ? o.text : null)),
+                        expected: canonical,
+                    }, task.sequenceId, task.tierLevel);
+                }
+            });
+
+            // AP30/AP31: a wrong gap OR a wrong split vetoes the overall "solved" verdict.
             // _lastSuccess (read by the Feedback handler) is otherwise position-only, and
             // js-parsons' own `correct` class on the solution list must be retracted too.
-            if (anyGapIncorrect) {
+            if (anyGapIncorrect || anySplitIncorrect) {
                 (this as any)._lastSuccess = false;
                 ul?.classList.remove("correct");
             }
@@ -675,7 +719,32 @@ export default function SolvePage() {
         if (targetUl) observer.observe(targetUl, observerOpts);
         if (sourceUl) observer.observe(sourceUl, observerOpts);
 
-        window.prettyPrint?.();
+        // AP31: render inline-split lines AFTER prettify finishes so the rebuilt DOM and its
+        // click handlers survive (prettify re-tokenizes .prettyprint blocks — see gap note above).
+        const wireSplitLines = () => {
+            const plan = parseSplitPlan(task.splitPlan ?? null);
+            if (!plan?.splits?.length) return;
+            const onSplitChange = () => {
+                setHintsUnlocked(false);
+                if (task?.id) {
+                    logEvent(task.id, "fragment_placed", {}, task.sequenceId, task.tierLevel);
+                }
+            };
+            plan.splits.forEach((entry) => {
+                const reconstructed = ((entry.prefix ?? "") + (entry.fragments ?? []).join("") + (entry.suffix ?? "")).trim();
+                const line = (widget.modified_lines ?? []).find((l: any) =>
+                    l && !l._split && typeof l.code === "string" && l.code.trim() === reconstructed);
+                if (line && typeof line._renderSplit === "function") {
+                    line._renderSplit(entry, onSplitChange);
+                }
+            });
+        };
+        if (window.prettyPrint) {
+            window.prettyPrint(wireSplitLines);
+        } else {
+            wireSplitLines();
+        }
+
         return () => {
             document.removeEventListener("input", gapClearHandler);
             widgetRef.current = null;

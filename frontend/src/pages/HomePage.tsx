@@ -18,6 +18,7 @@ export default function HomePage() {
     const [concepts, setConcepts] = useState("");
     const [distractorsEnabled, setDistractorsEnabled] = useState(false);
     const [contextModeEnabled, setContextModeEnabled] = useState(false);
+    const [splitEnabled, setSplitEnabled] = useState(false); // AP31
     // AP20: Generation Constraints
     const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
     const [blacklist, setBlacklist] = useState("");
@@ -101,6 +102,7 @@ export default function HomePage() {
         payload.targetLanguage = targetLanguage;
         payload.distractorsEnabled = distractorsEnabled;
         payload.contextModeEnabled = contextModeEnabled;
+        payload.splitEnabled = splitEnabled; // AP31
 
         // AP20: Attach constraints if any are set
         const blTokens = blacklist.split(",").map(s => s.trim()).filter(Boolean);
@@ -291,6 +293,21 @@ export default function HomePage() {
                                     />
                                     <label className="form-check-label" htmlFor="contextModeToggle">
                                         {t("home.contextModeEnabled")}
+                                        <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
+                                    </label>
+                                </div>
+
+                                {/* AP31: Inline-split toggle (Beta) */}
+                                <div className="form-check form-switch mt-2 mb-0">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id="splitToggle"
+                                        checked={splitEnabled}
+                                        onChange={(e) => setSplitEnabled(e.target.checked)}
+                                    />
+                                    <label className="form-check-label" htmlFor="splitToggle">
+                                        {t("home.splitEnabled", "Generate inline-split blocks")}
                                         <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                     </label>
                                 </div>

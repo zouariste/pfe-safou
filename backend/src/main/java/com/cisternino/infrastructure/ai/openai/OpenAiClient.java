@@ -496,6 +496,25 @@ public class OpenAiClient extends AbstractAiClient {
     }
 
     /**
+     * AP31: Generates an inline-split plan for a solved task. Returns the raw split_plan JSON
+     * (object with a "splits" array) for downstream validation, or {@code null}.
+     */
+    @Override
+    public String generateSplitPlan(String solutionCode, String language,
+                                    String taskStatement, int tierLevel)
+            throws IOException, InterruptedException {
+        logger.debug("Generating split plan for tier {} task", tierLevel);
+        ObjectNode json = promptBuilder.buildSplitPlanRequest(solutionCode, language, taskStatement, tierLevel);
+        attachModel(json, defaultModel);
+        HttpResponse<String> response = sendRequest(json);
+        JsonNode parsed = parseResponse(response);
+        if (parsed == null || !parsed.has("splits") || !parsed.get("splits").isArray()) {
+            return null;
+        }
+        return parsed.toString();
+    }
+
+    /**
      * Returns the programming language of the given code snippet,
      * using the default OpenAI model configured in {@code application.yml}.
      *

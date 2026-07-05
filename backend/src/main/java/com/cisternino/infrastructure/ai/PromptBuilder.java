@@ -1042,6 +1042,61 @@ public class PromptBuilder {
         return rf;
     }
 
+    /**
+     * AP31: Builds the request for inline-split generation. Given a solved task, asks the model
+     * to pick ONE syntactically complex line and decompose it into 2–4 draggable fragments that
+     * are EXACT contiguous substrings (so prefix + concat(fragments) + suffix reconstruct the
+     * line verbatim), optionally with an OFF_BY_ONE fragment distractor.
+     */
+    public ObjectNode buildSplitPlanRequest(final String solutionCode,
+                                            final String language,
+                                            final String taskStatement,
+                                            final int tierLevel) {
+        ObjectNode json = mapper.createObjectNode();
+        ArrayNode messages = mapper.createArrayNode();
+
+        String systemPrompt = """
+            You are CodeOwl (Split Expert). For Parsons problems you decompose ONE syntactically \
+            complex line (e.g. a for-loop header or a compound condition) into 2–4 inline fragments \
+            that students re-order in slots.
+
+            HARD RULES:
+            1. Pick at most ONE line — the most instructive complex line. If none is suitable, return {"splits": []}.
+            2. lineIndex is the 0-based index of that line in the solution EXACTLY as given below \
+               (split on newlines; count every line including braces).
+            3. fragments must be 2–4 EXACT, contiguous substrings of the line body. Concatenating \
+               prefix + fragments (in order, no separator) + suffix MUST reproduce the line \
+               character-for-character, including all spaces. Preserve leading indentation inside prefix.
+            4. prefix/suffix are fixed, non-draggable display text (may be empty strings).
+            5. Optionally add ONE fragment distractor of type OFF_BY_ONE (e.g. "i <= n;" for "i < n;").
+            6. Do NOT include gap markers, #distractor, #swap or #group.""";
+
+        messages.add(mapper.createObjectNode().put("role", "system").put("content", systemPrompt));
+
+        String userPrompt = """
+            TASK CONTEXT:
+            Language: %s
+            Task: %s
+            Tier: %d
+            Solution (lineIndex = 0-based line number):
+            \"\"\"
+            %s
+            \"\"\"
+
+            OUTPUT:
+            Return ONLY a JSON object of this exact shape:
+            {"splits":[{"lineIndex":<int>,"fragments":["...","..."],"prefix":"...","suffix":"...",\
+            "distractors":[{"text":"...","type":"OFF_BY_ONE"}]}]}
+            Use an empty array {"splits": []} if no line is suitable.""".formatted(
+                language, taskStatement, tierLevel, solutionCode);
+
+        messages.add(mapper.createObjectNode().put("role", "user").put("content", userPrompt));
+
+        json.set("messages", messages);
+        json.set("response_format", mapper.createObjectNode().put("type", "json_object"));
+        return json;
+    }
+
     private static String composeSimpleSolveContract(final String task, final String language) {
         StringBuilder sb = new StringBuilder();
         sb.append("CONTRACT (simple)\n");

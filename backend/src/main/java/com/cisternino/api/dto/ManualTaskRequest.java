@@ -1,5 +1,6 @@
 package com.cisternino.api.dto;
 
+import com.cisternino.domain.entities.SplitPlan;
 import lombok.*;
 
 import java.util.List;
@@ -36,5 +37,10 @@ public class ManualTaskRequest {
         private String statement;
         /** The code solution (the lines that become Parsons blocks). */
         private String solution;
+        /**
+         * AP31: optional inline-split entries for this tier (one per split line).
+         * Each must reconstruct its solution line (prefix + join(fragments) + suffix).
+         */
+        private List<SplitPlan.SplitEntry> splits;
     }
 }
