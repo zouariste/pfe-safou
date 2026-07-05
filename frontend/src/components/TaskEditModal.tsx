@@ -3,6 +3,7 @@ import { Modal, Button, Form } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { useEventTracker } from "../hooks/useEventTracker";
+import { makeGapMarker, renderGapLine, hasGapMarker, type GapMode } from "../lib/gapMarkers";
 
 interface TaskEditModalProps {
     taskId: string;
@@ -44,6 +45,35 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
     const [adjustmentRating, setAdjustmentRating] = useState<number>(3);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // AP30: fill-in-the-gaps tooling for the code field (mirrors ManualTaskCreator)
+    const codeTaRef = useRef<HTMLTextAreaElement>(null);
+    const [gapMode, setGapMode] = useState<GapMode>("trim");
+
+    const markSelectionAsGap = () => {
+        const ta = codeTaRef.current;
+        if (!ta) return;
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        if (start == null || end == null || start === end) {
+            setError(t("taskEdit.gapSelectHint", "Bitte zuerst Text innerhalb einer Code-Zeile markieren, um eine Lücke zu setzen."));
+            return;
+        }
+        const selected = code.substring(start, end);
+        if (selected.includes("\n")) {
+            setError(t("taskEdit.gapSingleLine", "Eine Lücke darf nur innerhalb einer einzelnen Zeile liegen."));
+            return;
+        }
+        const marker = makeGapMarker(selected, gapMode);
+        const newVal = code.substring(0, start) + marker + code.substring(end);
+        setCode(newVal);
+        setError(null);
+        requestAnimationFrame(() => {
+            ta.focus();
+            const pos = start + marker.length;
+            ta.selectionStart = ta.selectionEnd = pos;
+        });
+    };
 
     // AP14: Teacher edit tracking
     const { logEvent } = useEventTracker();
@@ -132,7 +162,36 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
                 <Form.Group className="mb-3">
                     <Form.Label>{t("taskEdit.code")}</Form.Label>
+
+                    {/* AP30: Fill-in-the-Gaps toolbar */}
+                    <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-warning"
+                            onClick={markSelectionAsGap}
+                            title={t("taskEdit.gapButtonTitle", "Markierten Text in der Code-Zeile als Freitext-Lücke setzen")}
+                        >
+                            <i className="bi bi-input-cursor-text me-1"></i>
+                            {t("taskEdit.gapButton", "Auswahl als Lücke")}
+                        </button>
+                        <select
+                            className="form-select form-select-sm"
+                            style={{ width: "auto" }}
+                            value={gapMode}
+                            onChange={(e) => setGapMode(e.target.value as GapMode)}
+                            title={t("taskEdit.gapModeTitle", "Vergleichsmodus für neue Lücken")}
+                        >
+                            <option value="trim">trim (Standard)</option>
+                            <option value="exact">exact</option>
+                            <option value="ci">case-insensitive</option>
+                        </select>
+                        <small className="text-muted">
+                            {t("taskEdit.gapHint", "Text markieren → „Auswahl als Lücke“. Mehrere Lücken pro Zeile möglich.")}
+                        </small>
+                    </div>
+
                     <Form.Control
+                        ref={codeTaRef}
                         as="textarea"
                         rows={10}
                         value={code}
@@ -145,6 +204,21 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
                         <code>#group:NAME_N</code> — {t("taskEdit.swapGroup")}{" "}
                         {t("taskEdit.swapFixed")}
                     </Form.Text>
+
+                    {/* AP30: gap preview — lines containing $$blank$$ markers, rendered as chips */}
+                    {hasGapMarker(code) && (
+                        <div className="mt-2 p-2 rounded border bg-light">
+                            <div className="small text-muted mb-1">
+                                <i className="bi bi-eye me-1"></i>
+                                {t("taskEdit.gapPreview", "Lücken-Vorschau")}
+                            </div>
+                            <div className="font-monospace small">
+                                {code.split("\n").filter((l) => hasGapMarker(l)).map((l, i) => (
+                                    <div key={i} style={{ whiteSpace: "pre-wrap" }}>{renderGapLine(l)}</div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </Form.Group>
 
                 {/* AP15: Distractor editing */}

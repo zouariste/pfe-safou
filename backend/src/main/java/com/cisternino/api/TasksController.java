@@ -3,6 +3,7 @@ package com.cisternino.api;
 import com.cisternino.api.dto.ManualTaskRequest;
 import com.cisternino.api.dto.TaskEditRequest;
 import com.cisternino.application.service.*;
+import com.cisternino.application.util.GapMarkers;
 import com.cisternino.domain.entities.*;
 import com.cisternino.domain.interfaces.TaskOriginalRepository;
 import com.fasterxml.jackson.annotation.*;
@@ -311,10 +312,12 @@ public class TasksController {
         // Determine language from sequence
         TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(task.getSequenceId());
         String lang = seq != null ? seq.getProgrammingLanguage() : "python";
-        int loc = (int) task.getSolution().lines().count();
+        // AP30: resolve $$blank:…$$ gap markers to real code before generating distractors
+        String solutionCode = GapMarkers.strip(task.getSolution());
+        int loc = (int) solutionCode.lines().count();
 
         String distractors = taskEnricher.generateDistractorsForTask(
-                task.getSolution(), lang, task.getStatement(),
+                solutionCode, lang, task.getStatement(),
                 task.getTierLevel(), task.getDistractorPlan(), loc);
 
         if (distractors != null) {
@@ -344,9 +347,11 @@ public class TasksController {
                 if (task.getDistractors() != null && !task.getDistractors().isBlank()) continue;
                 if (task.getSolution() == null || task.getSolution().isBlank()) continue;
 
-                int loc = (int) task.getSolution().lines().count();
+                // AP30: resolve gap markers before generating distractors
+                String solutionCode = GapMarkers.strip(task.getSolution());
+                int loc = (int) solutionCode.lines().count();
                 String distractors = taskEnricher.generateDistractorsForTask(
-                        task.getSolution(), lang, task.getStatement(),
+                        solutionCode, lang, task.getStatement(),
                         task.getTierLevel(), task.getDistractorPlan(), loc);
 
                 if (distractors != null) {

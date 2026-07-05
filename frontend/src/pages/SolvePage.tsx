@@ -19,6 +19,20 @@ declare global {
     }
 }
 
+/**
+ * AP30: client-side evaluation of a fill-in-the-gap input.
+ * When `expected` is null the gap is not auto-graded (always neutral/correct).
+ * mode ∈ {exact, trim, ci}; default handling done by the caller.
+ */
+function checkBlank(value: string, expected: string | null, mode: string): boolean {
+    if (expected == null) return true;
+    let a = value;
+    let b = expected;
+    if (mode === "trim" || mode === "ci") { a = a.trim(); b = b.trim(); }
+    if (mode === "ci") { a = a.toLowerCase(); b = b.toLowerCase(); }
+    return a === b;
+}
+
 export default function SolvePage() {
     const { t } = useTranslation();
     const location = useLocation();
@@ -507,8 +521,78 @@ export default function SolvePage() {
                 }
             });
 
+            // AP30: evaluate fill-in-the-gap inputs. A solution line is only fully correct
+            // when its position/indent AND all its gap values are correct. A wrong (or empty)
+            // required gap must ALSO veto the overall success verdict below — otherwise a
+            // perfectly ordered puzzle reports "solved" while a gap value is still wrong.
+            let anyGapIncorrect = false;
+            (this.modified_lines ?? []).forEach((line: any) => {
+                const blanks = line._blanks ?? [];
+                if (!blanks.length) return;
+                const jqEl = line.elem ? line.elem() : null;
+                const el: HTMLElement | null = jqEl ? (jqEl[0] ?? jqEl.get?.(0) ?? null) : null;
+                // AP30 fix: window.prettyPrint() re-renders each block's innerHTML AFTER
+                // _addBlanks captured its <input> nodes, so line._blanks[].el is a detached
+                // node whose .value is always "". Read the CURRENT field from the live line
+                // element instead (matched by order); fall back to the stored ref.
+                const liveInputs = el
+                    ? (Array.from(el.querySelectorAll("input.jsparson-blank")) as HTMLInputElement[])
+                    : [];
+                const isInSolution = solutionBlockIds.has(line.id);
+                let allGapsCorrect = true;
+                blanks.forEach((b: any, gi: number) => {
+                    const input = (liveInputs[gi] ?? b.el) as HTMLInputElement;
+                    if (!input) return;
+                    const val = input.value ?? "";
+                    const ok = checkBlank(val, b.expected, b.mode ?? "trim");
+                    input.classList.remove("blank-correct", "blank-incorrect");
+                    if (isInSolution && val.length > 0) {
+                        input.classList.add(ok ? "blank-correct" : "blank-incorrect");
+                    }
+                    if (b.expected != null && !ok) allGapsCorrect = false;
+                    if (isInSolution && val.length > 0 && task?.id) {
+                        logEvent(task.id, ok ? "gap_correct" : "gap_incorrect", {
+                            lineId: line.id,
+                            gapIndex: gi,
+                            value: val,
+                            expected: b.expected,
+                            mode: b.mode ?? "trim",
+                        }, task.sequenceId, task.tierLevel);
+                    }
+                });
+                if (isInSolution && !allGapsCorrect) {
+                    anyGapIncorrect = true;
+                    line.isCorrect = false;
+                    if (el) {
+                        el.classList.remove("line-correct", "line-warning");
+                        el.classList.add("line-incorrect");
+                        el.style.backgroundColor = "rgba(255, 99, 71, 0.4)";
+                    }
+                }
+            });
+
+            // AP30 fix: a wrong/empty required gap vetoes the overall "solved" verdict.
+            // _lastSuccess (read by the Feedback handler) is otherwise position-only, and
+            // js-parsons' own `correct` class on the solution list must be retracted too.
+            if (anyGapIncorrect) {
+                (this as any)._lastSuccess = false;
+                ul?.classList.remove("correct");
+            }
+
             return feedback;
         };
+
+        // AP30 fix: clear a gap's stale correct/incorrect styling the moment the learner
+        // edits it, so a corrected field responds immediately. Delegated on document because
+        // window.prettyPrint() re-creates the input nodes (see gap grading above), which would
+        // strand a listener bound to a specific node.
+        const gapClearHandler = (e: Event) => {
+            const tgt = e.target as HTMLElement | null;
+            if (tgt && tgt.classList?.contains("jsparson-blank")) {
+                tgt.classList.remove("blank-correct", "blank-incorrect");
+            }
+        };
+        document.addEventListener("input", gapClearHandler);
 
         // Lock hints + track move counters whenever blocks are moved
         const targetUl = document.getElementById("ul-jsparsons-target");
@@ -593,6 +677,7 @@ export default function SolvePage() {
 
         window.prettyPrint?.();
         return () => {
+            document.removeEventListener("input", gapClearHandler);
             widgetRef.current = null;
         };
     }, [task?.solution]);

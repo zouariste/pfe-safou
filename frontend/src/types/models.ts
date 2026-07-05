@@ -1,7 +1,16 @@
 
+/**
+ * AP30 (Fill-in-the-Gaps) matching mode for a gap. Gaps are encoded inline in
+ * `Task.solution` as `$$blank:<expected>$$` or `$$blank:<expected>|<mode>$$`
+ * (default `trim`). parsons.js renders them as inline inputs; evaluation is client-side.
+ * No separate DB column — the markers live inside `solution`.
+ */
+export type GapMatchMode = "exact" | "trim" | "ci";
+
 export type Task = {
     id: string;
     statement: string;
+    /** Parsons solution lines. May contain inline `$$blank:…$$` gap markers (AP30). */
     solution: string;
     tierLevel: number;
     cyclomaticComplexity: number;
