@@ -3,36 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { renderGapLine, makeGapMarker, type GapMode } from "../lib/gapMarkers";
 import "bootstrap/dist/css/bootstrap.min.css";
-
-// AP30: inline gap marker $$blank:<expected>[|<mode>]$$
-const GAP_RE_SRC = "\\$\\$blank(?::((?:(?!\\$\\$).)*))?\\$\\$";
-
-/** Renders a preview line, showing `$$blank:…$$` markers as gap chips. */
-function renderGapLine(line: string): React.ReactNode {
-    const re = new RegExp(GAP_RE_SRC, "g");
-    const parts: React.ReactNode[] = [];
-    let last = 0;
-    let m: RegExpExecArray | null;
-    let k = 0;
-    while ((m = re.exec(line)) !== null) {
-        if (m.index > last) parts.push(line.substring(last, m.index));
-        const inner = m[1] ?? "";
-        let exp = inner;
-        const sep = inner.lastIndexOf("|");
-        if (sep >= 0 && ["exact", "trim", "ci"].includes(inner.substring(sep + 1))) {
-            exp = inner.substring(0, sep);
-        }
-        parts.push(
-            <span key={`g${k++}`} className="badge text-bg-warning fw-normal" style={{ fontFamily: "monospace" }}>
-                {exp || "▁▁▁"}
-            </span>
-        );
-        last = m.index + m[0].length;
-    }
-    if (last < line.length) parts.push(line.substring(last));
-    return parts.length ? <>{parts}</> : line;
-}
 
 /* ────────────────────────────────────────────────────────────── */
 /*  Types                                                        */
@@ -76,7 +48,7 @@ export default function ManualTaskCreator() {
 
     // AP30: fill-in-the-gaps controls
     const codeTaRef = useRef<HTMLTextAreaElement>(null);
-    const [gapMode, setGapMode] = useState<"trim" | "exact" | "ci">("trim");
+    const [gapMode, setGapMode] = useState<GapMode>("trim");
 
     // ── Derived ─────────────────────────────────────────────
     const conceptTokens = concepts
@@ -188,7 +160,7 @@ export default function ManualTaskCreator() {
             setError("Eine Lücke darf nur innerhalb einer einzelnen Zeile liegen.");
             return;
         }
-        const marker = "$$blank:" + selected + (gapMode === "trim" ? "" : "|" + gapMode) + "$$";
+        const marker = makeGapMarker(selected, gapMode);
         const newVal = val.substring(0, start) + marker + val.substring(end);
         updateTier(activeTier, "solution", newVal);
         refreshPreview(newVal);
