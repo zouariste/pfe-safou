@@ -91,7 +91,7 @@ public class TaskGeneratorService {
                                           final boolean contextModeEnabled,
                                           final GenerationConstraints constraints) throws IOException, InterruptedException {
         return tryGenerate(taskDescription, concepts, language, codeSnippet, targetLanguage,
-                           distractorsEnabled, contextModeEnabled, constraints, 3);
+                           distractorsEnabled, contextModeEnabled, constraints, 3, false);
     }
 
     /** AP21: tier-count-aware tryGenerate */
@@ -103,6 +103,20 @@ public class TaskGeneratorService {
                                           final boolean contextModeEnabled,
                                           final GenerationConstraints constraints,
                                           final int tierCount) throws IOException, InterruptedException {
+        return tryGenerate(taskDescription, concepts, language, codeSnippet, targetLanguage,
+                           distractorsEnabled, contextModeEnabled, constraints, tierCount, false);
+    }
+
+    /** AP31: split-aware tryGenerate */
+    public TieredTaskSequenceDTO tryGenerate(final String taskDescription, final List<String> concepts,
+                                          final String language,
+                                          final String codeSnippet,
+                                          final String targetLanguage,
+                                          final boolean distractorsEnabled,
+                                          final boolean contextModeEnabled,
+                                          final GenerationConstraints constraints,
+                                          final int tierCount,
+                                          final boolean splitEnabled) throws IOException, InterruptedException {
 
         logger.debug("Generating task sequence for language: {}, concepts: {}, targetLanguage: {}, distractors: {}, context: {}, constraints: {}, tierCount: {}",
                      language, concepts, targetLanguage, distractorsEnabled, contextModeEnabled,
@@ -118,7 +132,7 @@ public class TaskGeneratorService {
         if (constraints != null) rawSequence.setConstraints(constraints);
         logger.debug("Generated raw sequence with {} tasks", rawSequence.getTasks().size());
 
-        TieredTaskSequenceDTO enrichedSequence = taskEnricher.enrichWithSolutions(rawSequence, distractorsEnabled, contextModeEnabled);
+        TieredTaskSequenceDTO enrichedSequence = taskEnricher.enrichWithSolutions(rawSequence, distractorsEnabled, contextModeEnabled, splitEnabled);
         logger.debug("Enriched sequence with solutions");
 
         enrichedSequence.setStrategyName(strategy.getClass().getSimpleName());
@@ -153,17 +167,18 @@ public class TaskGeneratorService {
                                                    final GenerationConstraints constraints)
             throws IOException, InterruptedException {
         return generate(taskDescription, concepts, language, codeSnippet, ownerId, targetLanguage,
-                        distractorsEnabled, contextModeEnabled, constraints, 3);
+                        distractorsEnabled, contextModeEnabled, constraints, 3, false);
     }
 
-    /** AP21: tier-count-aware generate with retry loop */
+    /** AP21/AP31: tier-count- and split-aware generate with retry loop */
     public TieredTaskSequenceDTO generate(final String taskDescription, final List<String> concepts,
                                                    final String language, final String codeSnippet,
                                                    final UUID ownerId, final String targetLanguage,
                                                    final boolean distractorsEnabled,
                                                    final boolean contextModeEnabled,
                                                    final GenerationConstraints constraints,
-                                                   final int tierCount)
+                                                   final int tierCount,
+                                                   final boolean splitEnabled)
             throws IOException, InterruptedException {
 
         IOException ioEx = null;
@@ -179,7 +194,7 @@ public class TaskGeneratorService {
                 logger.info("Attempt {}/{} for task generation (tierCount={})", attempt, maxAttempts, tierCount);
 
                 TieredTaskSequenceDTO seq = tryGenerate(taskDescription, concepts, language, codeSnippet,
-                        targetLanguage, distractorsEnabled, contextModeEnabled, constraints, tierCount);
+                        targetLanguage, distractorsEnabled, contextModeEnabled, constraints, tierCount, splitEnabled);
 
                 SequenceValidator.validateLocLimit(seq, effectiveMaxLoc);
 

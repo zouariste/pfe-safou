@@ -144,6 +144,7 @@
     "createWorksheetBtn": "Arbeitsblatt erstellen",
     "worksheetNameRequired": "Bitte gib einen Namen ein.",
     "contextModeEnabled": "Kontext-Modus — längerer Code mit Gerüst (Beta)",
+    "splitEnabled": "Inline-Split-Blöcke generieren (Beta)",
     "advancedOptions": "Erweiterte Optionen",
     "blacklist": "Blacklist (verbotene Konstrukte)",
     "blacklistPlaceholder": "z.B. recursion, lambda, ternary",
@@ -633,7 +634,29 @@
     "saving": "Speichern...",
     "emptyError": "Aufgabenstellung und Code dürfen nicht leer sein.",
     "ratingError": "Bitte eine Bewertung zwischen 1 und 5 angeben.",
-    "errorSaving": "Fehler beim Speichern."
+    "errorSaving": "Fehler beim Speichern.",
+    "gapButton": "Auswahl als Lücke",
+    "gapButtonTitle": "Markierten Text in der Code-Zeile als Freitext-Lücke setzen",
+    "gapModeTitle": "Vergleichsmodus für neue Lücken",
+    "gapHint": "Text markieren → „Auswahl als Lücke“. Mehrere Lücken pro Zeile möglich.",
+    "gapSelectHint": "Bitte zuerst Text innerhalb einer Code-Zeile markieren, um eine Lücke zu setzen.",
+    "gapSingleLine": "Eine Lücke darf nur innerhalb einer einzelnen Zeile liegen.",
+    "gapPreview": "Lücken-Vorschau"
+  },
+
+  "splitEditor": {
+    "title": "Inline-Split (AP31)",
+    "help": "Zeile wählen → Trennpunkte per Klick zwischen den Zeichen setzen (2–4 Fragmente). Optionaler Fragment-Distraktor.",
+    "fragments": "{{count}} Frag.",
+    "edit": "Bearbeiten",
+    "split": "Split",
+    "toggleCut": "Trennpunkt umschalten",
+    "distractor": "Distraktor",
+    "distractorPlaceholder": "optional, z. B. i <= arr.length;",
+    "invalid": "2–4 nicht-leere Fragmente nötig.",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "enterCodeFirst": "Erst Code eingeben."
   },
 
   "curriculum": {
@@ -650,6 +673,8 @@
     "targetLanguage": "Aufgabensprache",
     "tierCount": "Anzahl Stufen",
     "distractors": "Distraktoren",
+    "contextMode": "Kontext-Modus — vollständigerer Code mit Gerüst (Beta)",
+    "split": "Inline-Split-Blöcke generieren (Beta)",
     "advancedOptions": "Erweiterte Optionen",
     "backToTopics": "Zurück zur Übersicht",
     "grade": "Jgst. {{level}}",

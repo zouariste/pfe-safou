@@ -38,6 +38,8 @@ export default function CurriculumPage() {
     const [targetLanguage, setTargetLanguage] = useState("de");
     const [tierCount, setTierCount] = useState(3);
     const [distractorsEnabled, setDistractorsEnabled] = useState(false);
+    const [contextModeEnabled, setContextModeEnabled] = useState(false); // AP22
+    const [splitEnabled, setSplitEnabled] = useState(false); // AP31
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [blacklist, setBlacklist] = useState("");
     const [whitelist, setWhitelist] = useState("");
@@ -99,6 +101,8 @@ export default function CurriculumPage() {
                 targetLanguage,
                 tierCount,
                 distractorsEnabled,
+                contextModeEnabled, // AP22
+                splitEnabled,       // AP31
             };
             if (blacklist.trim()) payload.blacklist = blacklist.split(",").map(s => s.trim()).filter(Boolean);
             if (whitelist.trim()) payload.whitelist = whitelist.split(",").map(s => s.trim()).filter(Boolean);
@@ -325,6 +329,36 @@ export default function CurriculumPage() {
                                     />
                                     <label className="form-check-label" htmlFor="distractorsCheck">
                                         {t("curriculum.distractors")}
+                                    </label>
+                                </div>
+
+                                {/* AP22: Context mode toggle (Beta) */}
+                                <div className="form-check mb-3">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id="curriculumContextModeCheck"
+                                        checked={contextModeEnabled}
+                                        onChange={e => setContextModeEnabled(e.target.checked)}
+                                    />
+                                    <label className="form-check-label" htmlFor="curriculumContextModeCheck">
+                                        {t("curriculum.contextMode", "Context mode (fuller code with scaffolding)")}
+                                        <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
+                                    </label>
+                                </div>
+
+                                {/* AP31: Inline-split toggle (Beta) */}
+                                <div className="form-check mb-3">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id="curriculumSplitCheck"
+                                        checked={splitEnabled}
+                                        onChange={e => setSplitEnabled(e.target.checked)}
+                                    />
+                                    <label className="form-check-label" htmlFor="curriculumSplitCheck">
+                                        {t("curriculum.split", "Generate inline-split blocks")}
+                                        <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                     </label>
                                 </div>
 

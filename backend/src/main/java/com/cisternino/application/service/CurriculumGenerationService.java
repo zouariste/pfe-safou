@@ -52,6 +52,7 @@ public class CurriculumGenerationService {
      */
     public TieredTaskSequenceDTO generate(UUID topicId, String language, String targetLanguage,
                                           int tierCount, boolean distractorsEnabled,
+                                          boolean contextModeEnabled, boolean splitEnabled,
                                           GenerationConstraints constraints, UUID ownerId)
             throws IOException, InterruptedException {
 
@@ -88,7 +89,8 @@ public class CurriculumGenerationService {
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 return tryGenerateOnce(topic, topicId, examples, concepts, language, targetLanguage,
-                                       tierCount, distractorsEnabled, constraints, ownerId);
+                                       tierCount, distractorsEnabled, contextModeEnabled, splitEnabled,
+                                       constraints, ownerId);
             } catch (IOException | RuntimeException e) {
                 lastError = e;
                 logger.warn("Curriculum generation attempt {}/{} failed: {}", attempt, maxAttempts, e.getMessage());
@@ -113,6 +115,7 @@ public class CurriculumGenerationService {
                                                   List<String> concepts, String language,
                                                   String targetLanguage, int tierCount,
                                                   boolean distractorsEnabled,
+                                                  boolean contextModeEnabled, boolean splitEnabled,
                                                   GenerationConstraints constraints, UUID ownerId)
             throws IOException, InterruptedException {
         // Generate via OpenAI with curriculum-specific prompt
@@ -130,8 +133,9 @@ public class CurriculumGenerationService {
         sequence.setConstraints(constraints);
         sequence.setCurriculumTopicId(topicId);
 
-        // Enrich tasks (complexity analysis, distractors, etc.)
-        TieredTaskSequenceDTO enriched = taskEnricher.enrichWithSolutions(sequence, distractorsEnabled);
+        // Enrich tasks (complexity analysis, distractors, AP22 context, AP31 splits)
+        TieredTaskSequenceDTO enriched = taskEnricher.enrichWithSolutions(
+                sequence, distractorsEnabled, contextModeEnabled, splitEnabled);
         // Preserve metadata that enrichWithSolutions does not copy
         enriched.setOwnerId(ownerId);
         enriched.setVersionId(versionId);

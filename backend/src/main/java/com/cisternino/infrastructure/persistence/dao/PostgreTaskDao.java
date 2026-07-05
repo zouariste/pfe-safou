@@ -42,7 +42,7 @@ public class PostgreTaskDao implements TaskRepository {
                                 t.sequence_id, t.lines_of_code, t.distinct_identifier_count,
                                 t.maximal_nesting_depth, t.method_call_count, t.distractors,
                                 t.distractor_plan, t.distractors_enabled,
-                                t.context_before, t.context_after,
+                                t.context_before, t.context_after, t.split_plan,
                                 s.programming_language
                          FROM tasks t
                          JOIN tiered_task_sequences s ON s.id = t.sequence_id
@@ -68,6 +68,7 @@ public class PostgreTaskDao implements TaskRepository {
             target.setDistractorsEnabled(result.isDistractorsEnabled());
             target.setContextBefore(result.getContextBefore());
             target.setContextAfter(result.getContextAfter());
+            target.setSplitPlan(result.getSplitPlan()); // AP31
             target.setProgrammingLanguage(result.getProgrammingLanguage());
         }
     }
@@ -92,7 +93,7 @@ public class PostgreTaskDao implements TaskRepository {
                                 sequence_id, lines_of_code, distinct_identifier_count,
                                 maximal_nesting_depth, method_call_count, distractors,
                                 distractor_plan, distractors_enabled,
-                                context_before, context_after
+                                context_before, context_after, split_plan
                          FROM tasks
                          WHERE sequence_id = ?
                          ORDER BY tier_level, id
@@ -119,9 +120,9 @@ public class PostgreTaskDao implements TaskRepository {
                              id, statement, solution, tier_level, cyclomatic_complexity,
                              sequence_id, lines_of_code, distinct_identifier_count,
                              maximal_nesting_depth, method_call_count, distractors, distractor_plan,
-                             context_before, context_after
+                             context_before, context_after, split_plan
                          )
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?::jsonb)
                      """;
 
         UUID id = UUID.randomUUID();
@@ -140,7 +141,8 @@ public class PostgreTaskDao implements TaskRepository {
                     task.getDistractors(),
                     task.getDistractorPlan(),
                     task.getContextBefore(),
-                    task.getContextAfter()
+                    task.getContextAfter(),
+                    task.getSplitPlan() // AP31
         );
 
         task.setId(id);
@@ -162,9 +164,9 @@ public class PostgreTaskDao implements TaskRepository {
                              id, statement, solution, tier_level, cyclomatic_complexity,
                              sequence_id, lines_of_code, distinct_identifier_count,
                              maximal_nesting_depth, method_call_count, distractors, distractor_plan,
-                             context_before, context_after
+                             context_before, context_after, split_plan
                          )
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                      """;
 
         jdbc.batchUpdate(sql, tasks, tasks.size(), (ps, task) -> {
@@ -189,6 +191,12 @@ public class PostgreTaskDao implements TaskRepository {
             }
             ps.setString(13, task.getContextBefore());
             ps.setString(14, task.getContextAfter());
+            try {
+                ps.setObject(15, createJsonbObject(task.getSplitPlan())); // AP31
+            } catch (Exception e) {
+                log.error("Failed to set split_plan as jsonb", e);
+                ps.setNull(15, java.sql.Types.OTHER);
+            }
             task.setId(id);
         });
     }
@@ -288,6 +296,19 @@ public class PostgreTaskDao implements TaskRepository {
         }
         String sql = "UPDATE tasks SET distractors_enabled = ? WHERE id = ?";
         int updated = jdbc.update(sql, enabled, taskId);
+        if (updated != 1) {
+            throw new DomainValidationException("Task not found: " + taskId);
+        }
+    }
+
+    @Override
+    public void updateSplitPlan(UUID taskId, String splitPlanJson) {
+        if (taskId == null) {
+            throw new DomainValidationException("Task ID cannot be null");
+        }
+        // split_plan is JSONB — cast the text (or SQL NULL) so a null clears the plan.
+        String sql = "UPDATE tasks SET split_plan = ?::jsonb WHERE id = ?";
+        int updated = jdbc.update(sql, splitPlanJson, taskId);
         if (updated != 1) {
             throw new DomainValidationException("Task not found: " + taskId);
         }

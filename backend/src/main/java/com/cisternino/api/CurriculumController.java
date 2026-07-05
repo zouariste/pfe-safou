@@ -89,6 +89,8 @@ public class CurriculumController {
             TieredTaskSequenceDTO seq = curriculumService.generate(
                     topicId, language, targetLanguage, tierCount,
                     request.isDistractorsEnabled(),
+                    request.isContextModeEnabled(),
+                    request.isSplitEnabled(),
                     constraints.hasAny() ? constraints : null,
                     currentUserId);
 
@@ -115,6 +117,10 @@ public class CurriculumController {
         private String targetLanguage = "de";
         private int tierCount = 3;
         private boolean distractorsEnabled;
+        /** AP22: Opt-in context mode (Beta) for longer code with scaffolding. Default false. */
+        private boolean contextModeEnabled;
+        /** AP31: Opt-in inline-split generation for complex lines. Default false. */
+        private boolean splitEnabled;
 
         // AP20: Generation Constraints
         private List<String> blacklist;

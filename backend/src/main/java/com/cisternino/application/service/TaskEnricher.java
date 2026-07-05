@@ -5,6 +5,7 @@ import com.cisternino.domain.exceptions.*;
 import com.cisternino.domain.interfaces.*;
 import com.cisternino.domain.interfaces.CodeAnalyzer.ComplexityResult;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -37,6 +38,7 @@ import java.time.LocalDateTime;
 public final class TaskEnricher {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskEnricher.class);
+    private static final ObjectMapper MAPPER = new ObjectMapper(); // AP31: split_plan (de)serialization
 
     private final AiModelClient client;
     private final InterchangeableAnnotator interchangeableAnnotator;
@@ -91,8 +93,19 @@ public final class TaskEnricher {
     public TieredTaskSequenceDTO enrichWithSolutions(final TieredTaskSequenceDTO incompleteSequence,
                                                      final boolean distractorsEnabled,
                                                      final boolean contextModeEnabled) {
-        logger.trace("Enriching task sequence with solutions (distractors={}, context={}): {}",
-                distractorsEnabled, contextModeEnabled, incompleteSequence);
+        return enrichWithSolutions(incompleteSequence, distractorsEnabled, contextModeEnabled, false);
+    }
+
+    /**
+     * AP31: additionally generates inline-split plans (post-solve, validated against the
+     * final puzzle; invalid or failed splits are dropped — fail-open).
+     */
+    public TieredTaskSequenceDTO enrichWithSolutions(final TieredTaskSequenceDTO incompleteSequence,
+                                                     final boolean distractorsEnabled,
+                                                     final boolean contextModeEnabled,
+                                                     final boolean splitEnabled) {
+        logger.trace("Enriching task sequence with solutions (distractors={}, context={}, split={}): {}",
+                distractorsEnabled, contextModeEnabled, splitEnabled, incompleteSequence);
 
         final String lang = incompleteSequence.getProgrammingLanguage();
         final UUID sequenceId = incompleteSequence.getId();
@@ -103,7 +116,7 @@ public final class TaskEnricher {
         // because CompletableFuture.join() is called in list-order.
         List<CompletableFuture<TaskDTO>> futures = incompleteSequence.getTasks().stream()
                 .map(task -> CompletableFuture.supplyAsync(
-                        () -> enrichSingleTask(task, lang, sequenceId, contextModeEnabled, distractorsEnabled),
+                        () -> enrichSingleTask(task, lang, sequenceId, contextModeEnabled, distractorsEnabled, splitEnabled),
                         enrichmentExecutor))
                 .toList();
 
@@ -142,7 +155,8 @@ public final class TaskEnricher {
      * so they can run concurrently.
      */
     private TaskDTO enrichSingleTask(TaskDTO task, String lang, UUID sequenceId,
-                                     boolean contextModeEnabled, boolean distractorsEnabled) {
+                                     boolean contextModeEnabled, boolean distractorsEnabled,
+                                     boolean splitEnabled) {
         // Add task identifier to MDC so parallel log lines remain traceable.
         String previousMdc = MDC.get("taskId");
         MDC.put("taskId", task.getId() != null ? task.getId().toString() : "new");
@@ -215,6 +229,12 @@ public final class TaskEnricher {
                         contextAfter != null ? contextAfter.split("\n").length : 0);
             }
 
+            // AP31: post-solve inline-split generation (opt-in), validated against the final
+            // puzzle. Fail-open: any failure or reconstruction mismatch yields no splits.
+            String splitPlanJson = splitEnabled
+                    ? generateSplitPlanForTask(finalPuzzle, lang, task.getStatement(), task.getTierLevel())
+                    : null;
+
             return TaskDTO.builder()
                     .id(UUID.randomUUID())
                     .statement(task.getStatement())
@@ -230,6 +250,7 @@ public final class TaskEnricher {
                     .distractors(distractors)
                     .contextBefore(contextBefore)
                     .contextAfter(contextAfter)
+                    .splitPlan(splitPlanJson)
                     .build();
         } catch (GenerationException ge) {
             throw ge;
@@ -295,6 +316,34 @@ public final class TaskEnricher {
 
         } catch (Exception e) {
             logger.warn("Distractor generation failed for task '{}', continuing without distractors: {}",
+                         taskStatement, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * AP31: Generates an inline-split plan for a single (already solved) task via the LLM,
+     * then validates it against the solution. Returns the validated split_plan JSON, or
+     * {@code null} on any failure / reconstruction mismatch (fail-open).
+     */
+    public String generateSplitPlanForTask(String solutionCode, String language,
+                                           String taskStatement, int tierLevel) {
+        try {
+            String raw = client.generateSplitPlan(solutionCode, language, taskStatement, tierLevel);
+            if (raw == null || raw.isBlank()) {
+                return null;
+            }
+            SplitPlan plan = MAPPER.readValue(raw, SplitPlan.class);
+            if (plan.getSplits() == null || plan.getSplits().isEmpty()) {
+                return null;
+            }
+            if (!SequenceValidator.isValidSplitPlan(plan, solutionCode)) {
+                logger.warn("Generated split plan failed reconstruction check (tier {}); dropping.", tierLevel);
+                return null;
+            }
+            return MAPPER.writeValueAsString(plan);
+        } catch (Exception e) {
+            logger.warn("Split generation failed for task '{}', continuing without splits: {}",
                          taskStatement, e.getMessage());
             return null;
         }

@@ -1119,6 +1119,99 @@
     return this._blanks ? this._blanks.length : 0;
   };
 
+  // AP31: Inline-Split-Blocks. Renders this line as fixed prefix + inline slots + fixed
+  // suffix, with a tray of draggable/clickable fragment chips (incl. distractors). Uses
+  // click-to-place: click a tray chip to fill the next empty slot; click a filled slot to
+  // return its chip. MUST be called AFTER window.prettyPrint() so the rebuilt innerHTML and
+  // its handlers are not orphaned by a later prettify pass (see the $$blank$$ note above).
+  //
+  // entry: { fragments:[…2-4], prefix?, suffix?, distractors?:[{text,type}] }
+  // onChange: optional callback(kind) where kind ∈ {"placed","returned"}.
+  ParsonsCodeline.prototype._renderSplit = function(entry, onChange) {
+    if (!entry || !entry.fragments || entry.fragments.length < 2) { return; }
+    var fragments = entry.fragments.slice();
+    var prefix = entry.prefix || "";
+    var suffix = entry.suffix || "";
+    var distractors = (entry.distractors || []).map(function (d) { return d.text; });
+
+    var $li = this.elem();
+    $li.addClass("split-line").empty();
+    if (prefix) { $li.append($("<span class='split-fixed'></span>").text(prefix)); }
+    var $slots = $("<span class='split-slots'></span>");
+    for (var i = 0; i < fragments.length; i++) {
+      $slots.append($("<span class='split-slot' data-slot='" + i + "'></span>"));
+    }
+    $li.append($slots);
+    if (suffix) { $li.append($("<span class='split-fixed'></span>").text(suffix)); }
+    var $tray = $("<span class='split-tray'></span>");
+    $li.append($tray);
+
+    // Pool = canonical fragments + distractors, shuffled (Fisher–Yates).
+    var pool = fragments.map(function (t) { return { text: t, distractor: false }; })
+      .concat(distractors.map(function (t) { return { text: t, distractor: true }; }));
+    for (var j = pool.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var tmp = pool[j]; pool[j] = pool[k]; pool[k] = tmp;
+    }
+
+    function makeChip(item) {
+      var $chip = $("<span class='split-frag'></span>")
+        .text(item.text)
+        .attr("data-distractor", item.distractor ? "1" : "0");
+      bindTray($chip);
+      return $chip;
+    }
+    function bindTray($chip) {
+      $chip.off("click").on("click", function (e) {
+        e.stopPropagation();
+        var $empty = $slots.children(".split-slot").not(".filled").first();
+        if (!$empty.length) { return; }
+        $empty.append($chip.detach()).addClass("filled");
+        bindSlot($chip, $empty);
+        if (onChange) { onChange("placed"); }
+      });
+    }
+    function bindSlot($chip, $slot) {
+      $chip.off("click").on("click", function (e) {
+        e.stopPropagation();
+        $tray.append($chip.detach());
+        $slot.removeClass("filled");
+        bindTray($chip);
+        if (onChange) { onChange("returned"); }
+      });
+    }
+    pool.forEach(function (item) { $tray.append(makeChip(item)); });
+
+    this._split = {
+      canonical: fragments,
+      // Reads the current slot contents left→right (null for empty slots).
+      currentOrder: function () {
+        return $slots.children(".split-slot").map(function () {
+          var $c = $(this).children(".split-frag").first();
+          return $c.length ? { text: $c.text(), distractor: $c.attr("data-distractor") === "1" } : null;
+        }).get();
+      }
+    };
+  };
+
+  // AP31: true iff every slot holds the canonical fragment in order (no distractor, no gap).
+  // Non-split lines return true (they don't constrain the verdict).
+  ParsonsCodeline.prototype.splitCorrect = function() {
+    if (!this._split) { return true; }
+    var order = this._split.currentOrder();
+    var canon = this._split.canonical;
+    if (order.length !== canon.length) { return false; }
+    for (var i = 0; i < order.length; i++) {
+      if (!order[i] || order[i].distractor || order[i].text !== canon[i]) { return false; }
+    }
+    return true;
+  };
+
+  // AP31: true if this line is a split line (has an active split UI).
+  ParsonsCodeline.prototype.isSplitLine = function() {
+    return !!this._split;
+  };
+
   // expose the type for testing, extending etc
   window.ParsonsCodeline = ParsonsCodeline;
 
