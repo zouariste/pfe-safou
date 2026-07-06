@@ -18,6 +18,10 @@ DO NOT:
 - Introduce constructs absent from all seeds unless the tier explicitly requires escalation AND the construct is age-appropriate per the grade calibration below.
 - Use constructs from LATER grades (e.g., no recursion in Jgst. 9 tasks, no inheritance in Jgst. 9 tasks).
 
+SEED METADATA (when present on an example):
+- "Difficulty" (e.g. easy/medium/hard): use it to place the seed on your tier ladder — anchor your tiers relative to the seed's stated difficulty rather than guessing.
+- "Didactic notes from the teacher": the teacher's pedagogical intent for this topic. Honor them — let them steer the framing, the misconceptions to target, and what to emphasize. They outrank your stylistic guesses.
+
 ═══════════════════════════════════════════════
 GRADE-LEVEL CALIBRATION (LehrplanPLUS Bayern)
 ═══════════════════════════════════════════════

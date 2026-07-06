@@ -1,5 +1,6 @@
 package com.cisternino.api;
 
+import com.cisternino.application.service.CurriculumExampleAdminService;
 import com.cisternino.application.service.CurriculumGenerationService;
 import com.cisternino.application.service.OwnershipService;
 import com.cisternino.application.service.TaskPersistenceService;
@@ -20,6 +21,7 @@ public class CurriculumController {
     private final CurriculumGenerationService curriculumService;
     private final TaskPersistenceService taskPersistenceService;
     private final OwnershipService ownershipService;
+    private final CurriculumExampleAdminService exampleAdminService;
 
     /**
      * Get all top-level curriculum topics (Jahrgangsstufen).
@@ -107,6 +109,65 @@ public class CurriculumController {
             // No seed code examples available yet for this topic
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                     .body(Map.of("error", "no_examples", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * AP32 admin: create a curated code example under a topic.
+     * Allowed: Admin only.
+     */
+    @PostMapping("/topics/{topicId}/examples")
+    public ResponseEntity<?> createExample(@PathVariable UUID topicId,
+                                           @RequestBody CurriculumCodeExampleDTO body) {
+        requireAdmin();
+        body.setTopicId(topicId);
+        try {
+            CurriculumCodeExampleDTO created = exampleAdminService.create(body);
+            var location = java.net.URI.create("/api/curriculum/examples/" + created.getId());
+            return ResponseEntity.created(location).body(created);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * AP32 admin: update a curated code example. The topic assignment is immutable.
+     * Allowed: Admin only.
+     */
+    @PutMapping("/examples/{exampleId}")
+    public ResponseEntity<?> updateExample(@PathVariable UUID exampleId,
+                                           @RequestBody CurriculumCodeExampleDTO body) {
+        requireAdmin();
+        try {
+            return ResponseEntity.ok(exampleAdminService.update(exampleId, body));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * AP32 admin: delete a curated code example.
+     * Allowed: Admin only.
+     */
+    @DeleteMapping("/examples/{exampleId}")
+    public ResponseEntity<?> deleteExample(@PathVariable UUID exampleId) {
+        requireAdmin();
+        try {
+            exampleAdminService.delete(exampleId);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+        }
+    }
+
+    /** Curriculum examples are shared curriculum assets — only admins may manage them. */
+    private void requireAdmin() {
+        if (!ownershipService.isAdmin()) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Only admins may manage curriculum examples.");
         }
     }
 

@@ -23,7 +23,7 @@ function topicLabel(topic: CurriculumTopic): string {
 
 export default function CurriculumPage() {
     const { t } = useTranslation();
-    const { isLoggedIn, isStudent } = useAuth();
+    const { isLoggedIn, isStudent, isAdmin } = useAuth();
     const navigate = useNavigate();
 
     // Topic tree state
@@ -81,11 +81,91 @@ export default function CurriculumPage() {
 
     const selectTopic = async (topic: CurriculumTopic) => {
         setSelectedTopic(topic);
+        setExampleForm(null);
         try {
             const res = await api.get<CurriculumCodeExample[]>(`/curriculum/topics/${topic.id}/examples`);
             setExamples(res.data);
         } catch {
             setError(t("curriculum.errorLoading"));
+        }
+    };
+
+    // ── AP32 admin: manage curated examples (admin-only) ────────────────
+    interface ExampleForm {
+        id?: string;
+        title: string;
+        language: string;
+        code: string;
+        problemStatement: string;
+        difficulty: string;
+        notes: string;
+    }
+    const [exampleForm, setExampleForm] = useState<ExampleForm | null>(null);
+    const [savingExample, setSavingExample] = useState(false);
+    const [exampleError, setExampleError] = useState("");
+
+    const refreshExamples = async () => {
+        if (!selectedTopic) return;
+        try {
+            const res = await api.get<CurriculumCodeExample[]>(`/curriculum/topics/${selectedTopic.id}/examples`);
+            setExamples(res.data);
+        } catch {
+            setError(t("curriculum.errorLoading"));
+        }
+    };
+
+    const openNewExample = () => {
+        setExampleError("");
+        setExampleForm({ title: "", language: language || "java", code: "", problemStatement: "", difficulty: "medium", notes: "" });
+    };
+
+    const openEditExample = (ex: CurriculumCodeExample) => {
+        setExampleError("");
+        setExampleForm({
+            id: ex.id,
+            title: ex.title,
+            language: ex.language,
+            code: ex.code,
+            problemStatement: ex.problemStatement ?? "",
+            difficulty: ex.difficulty ?? "medium",
+            notes: ex.notes ?? "",
+        });
+    };
+
+    const saveExample = async () => {
+        if (!exampleForm || !selectedTopic) return;
+        setSavingExample(true);
+        setExampleError("");
+        const payload = {
+            title: exampleForm.title,
+            language: exampleForm.language,
+            code: exampleForm.code,
+            problemStatement: exampleForm.problemStatement,
+            difficulty: exampleForm.difficulty,
+            notes: exampleForm.notes,
+        };
+        try {
+            if (exampleForm.id) {
+                await api.put(`/curriculum/examples/${exampleForm.id}`, payload);
+            } else {
+                await api.post(`/curriculum/topics/${selectedTopic.id}/examples`, payload);
+            }
+            setExampleForm(null);
+            await refreshExamples();
+        } catch (e: any) {
+            setExampleError(e.response?.data?.message || t("curriculum.exampleSaveError"));
+        } finally {
+            setSavingExample(false);
+        }
+    };
+
+    const deleteExample = async (ex: CurriculumCodeExample) => {
+        if (!window.confirm(t("curriculum.deleteExampleConfirm"))) return;
+        try {
+            await api.delete(`/curriculum/examples/${ex.id}`);
+            await refreshExamples();
+        } catch {
+            setError(t("curriculum.exampleDeleteError"));
         }
     };
 
@@ -112,7 +192,13 @@ export default function CurriculumPage() {
             const res = await api.post(`/curriculum/topics/${selectedTopic.id}/generate`, payload);
             navigate(`/sequence/${res.data.id}`);
         } catch (e: any) {
-            setError(e.response?.data?.message || e.response?.data?.error || t("curriculum.errorGenerating"));
+            // AP32: a topic without curated seed examples returns 422 { error: "no_examples" }.
+            // Show the internationalized message rather than the raw backend text.
+            if (e.response?.data?.error === "no_examples") {
+                setError(t("curriculum.topicNotAvailable", "Das wurde noch nicht eingepflegt und ist deshalb noch nicht verfügbar"));
+            } else {
+                setError(e.response?.data?.message || e.response?.data?.error || t("curriculum.errorGenerating"));
+            }
         } finally {
             setGenerating(false);
         }
@@ -238,11 +324,16 @@ export default function CurriculumPage() {
                 <div>
                     {/* Code examples preview */}
                     <div className="card mb-4 border-0 shadow-sm">
-                        <div className="card-header bg-light">
+                        <div className="card-header bg-light d-flex align-items-center justify-content-between">
                             <h6 className="mb-0">
                                 <i className="bi bi-code-square me-2"></i>
                                 {t("curriculum.examples", { count: examples.length })}
                             </h6>
+                            {isAdmin && !exampleForm && (
+                                <button className="btn btn-sm btn-outline-primary" onClick={openNewExample}>
+                                    <i className="bi bi-plus-lg me-1"></i>{t("curriculum.addExample")}
+                                </button>
+                            )}
                         </div>
                         <div className="card-body">
                             {examples.length === 0 ? (
@@ -267,6 +358,16 @@ export default function CurriculumPage() {
                                             </h2>
                                             <div id={`ex-${idx}`} className="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
                                                 <div className="accordion-body">
+                                                    {isAdmin && (
+                                                        <div className="d-flex gap-2 mb-2">
+                                                            <button className="btn btn-sm btn-outline-secondary" onClick={() => openEditExample(ex)}>
+                                                                <i className="bi bi-pencil me-1"></i>{t("curriculum.editExample")}
+                                                            </button>
+                                                            <button className="btn btn-sm btn-outline-danger" onClick={() => deleteExample(ex)}>
+                                                                <i className="bi bi-trash me-1"></i>{t("curriculum.deleteExample")}
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                     {ex.problemStatement && (
                                                         <p className="text-muted small mb-2">{ex.problemStatement}</p>
                                                     )}
@@ -277,6 +378,62 @@ export default function CurriculumPage() {
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            )}
+
+                            {isAdmin && exampleForm && (
+                                <div className="border rounded p-3 mt-3 bg-light">
+                                    <h6 className="mb-3">
+                                        <i className="bi bi-pencil-square me-2"></i>
+                                        {exampleForm.id ? t("curriculum.editExample") : t("curriculum.addExample")}
+                                    </h6>
+                                    {exampleError && <div className="alert alert-danger py-2">{exampleError}</div>}
+                                    <div className="row g-2">
+                                        <div className="col-md-6">
+                                            <label className="form-label small fw-semibold">{t("curriculum.exampleTitle")}</label>
+                                            <input className="form-control form-control-sm" value={exampleForm.title}
+                                                onChange={e => setExampleForm({ ...exampleForm, title: e.target.value })} />
+                                        </div>
+                                        <div className="col-md-3">
+                                            <label className="form-label small fw-semibold">{t("curriculum.exampleLanguage")}</label>
+                                            <input className="form-control form-control-sm" value={exampleForm.language}
+                                                onChange={e => setExampleForm({ ...exampleForm, language: e.target.value })} />
+                                        </div>
+                                        <div className="col-md-3">
+                                            <label className="form-label small fw-semibold">{t("curriculum.exampleDifficulty")}</label>
+                                            <select className="form-select form-select-sm" value={exampleForm.difficulty}
+                                                onChange={e => setExampleForm({ ...exampleForm, difficulty: e.target.value })}>
+                                                <option value="easy">{t("curriculum.diffEasy")}</option>
+                                                <option value="medium">{t("curriculum.diffMedium")}</option>
+                                                <option value="hard">{t("curriculum.diffHard")}</option>
+                                            </select>
+                                        </div>
+                                        <div className="col-12">
+                                            <label className="form-label small fw-semibold">{t("curriculum.exampleProblem")}</label>
+                                            <textarea className="form-control form-control-sm" rows={2} value={exampleForm.problemStatement}
+                                                onChange={e => setExampleForm({ ...exampleForm, problemStatement: e.target.value })} />
+                                        </div>
+                                        <div className="col-12">
+                                            <label className="form-label small fw-semibold">{t("curriculum.exampleCode")}</label>
+                                            <textarea className="form-control form-control-sm font-monospace" rows={10} spellCheck={false}
+                                                style={{ fontSize: "0.85rem" }} value={exampleForm.code}
+                                                onChange={e => setExampleForm({ ...exampleForm, code: e.target.value })} />
+                                        </div>
+                                        <div className="col-12">
+                                            <label className="form-label small fw-semibold">{t("curriculum.exampleNotes")}</label>
+                                            <textarea className="form-control form-control-sm" rows={2} value={exampleForm.notes}
+                                                onChange={e => setExampleForm({ ...exampleForm, notes: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="d-flex gap-2 mt-3">
+                                        <button className="btn btn-sm btn-primary" onClick={saveExample} disabled={savingExample}>
+                                            {savingExample && <span className="spinner-border spinner-border-sm me-1" role="status" />}
+                                            {t("curriculum.exampleSave")}
+                                        </button>
+                                        <button className="btn btn-sm btn-outline-secondary" onClick={() => setExampleForm(null)} disabled={savingExample}>
+                                            {t("curriculum.exampleCancel")}
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
