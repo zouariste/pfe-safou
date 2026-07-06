@@ -1243,15 +1243,22 @@ public class PromptBuilder {
                          .put("role", "system")
                          .put("content", identityLoader.load("SequenceCurriculum")));
 
-        // Build seed examples block
+        // Build seed examples block (AP32: few-shot). A topic without curated examples is
+        // rejected upstream (CurriculumGenerationService throws), so the list is non-empty here.
         StringBuilder seedBlock = new StringBuilder();
         for (int i = 0; i < examples.size(); i++) {
             var ex = examples.get(i);
             seedBlock.append("--- Example %d: \"%s\" ---\n".formatted(i + 1, ex.getTitle()));
             seedBlock.append("Language: %s\n".formatted(ex.getLanguage()));
+            if (ex.getDifficulty() != null && !ex.getDifficulty().isBlank()) {
+                seedBlock.append("Difficulty: %s\n".formatted(ex.getDifficulty()));
+            }
             seedBlock.append("Code:\n%s\n".formatted(ex.getCode()));
             if (ex.getProblemStatement() != null && !ex.getProblemStatement().isBlank()) {
                 seedBlock.append("Description: %s\n".formatted(ex.getProblemStatement()));
+            }
+            if (ex.getNotes() != null && !ex.getNotes().isBlank()) {
+                seedBlock.append("Didactic notes from the teacher: %s\n".formatted(ex.getNotes()));
             }
             seedBlock.append("\n");
         }

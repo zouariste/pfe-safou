@@ -65,7 +65,14 @@ public class CurriculumGenerationService {
             examples = exampleRepo.findByTopicId(topicId);
         }
         if (examples.isEmpty()) {
-            throw new IllegalStateException("No code examples found for curriculum topic: " + topic.getName());
+            // AP32: a topic without curated seed examples is treated as "not yet available".
+            // The controller maps this to a 422 { error: "no_examples" } which the frontend
+            // renders via the i18n key `curriculum.noExamples`. The literal below is the
+            // German source string / fallback.
+            logger.warn("No curated seed examples for topic '{}' — curriculum generation unavailable.",
+                    topic.getName());
+            throw new IllegalStateException(
+                    "Das wurde noch nicht eingepflegt und ist deshalb noch nicht verfügbar");
         }
         // Limit to 3 seed examples
         if (examples.size() > 3) {
