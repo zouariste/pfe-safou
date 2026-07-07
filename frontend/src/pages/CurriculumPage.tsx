@@ -519,6 +519,24 @@ export default function CurriculumPage() {
                                     </label>
                                 </div>
 
+                                {/* Free-text field — write any info about the desired task.
+                                    Flows to the backend as additionalContext → prompt "TEACHER INSTRUCTIONS". */}
+                                <div className="mb-3">
+                                    <label className="form-label fw-semibold" htmlFor="curriculumFreeText">
+                                        <i className="bi bi-chat-left-text me-2"></i>
+                                        {t("curriculum.freeText")}
+                                    </label>
+                                    <textarea
+                                        id="curriculumFreeText"
+                                        className="form-control"
+                                        rows={3}
+                                        value={additionalContext}
+                                        onChange={e => setAdditionalContext(e.target.value)}
+                                        placeholder={t("curriculum.freeTextPlaceholder")}
+                                    />
+                                    <div className="form-text">{t("curriculum.freeTextHint")}</div>
+                                </div>
+
                                 {/* Advanced options toggle */}
                                 <div className="mb-3">
                                     <button
@@ -558,16 +576,6 @@ export default function CurriculumPage() {
                                                 <option value="moderate">{t("home.slopeModerate")}</option>
                                                 <option value="steep">{t("home.slopeSteep")}</option>
                                             </select>
-                                        </div>
-                                        <div>
-                                            <label className="form-label small fw-semibold">{t("home.additionalContext")}</label>
-                                            <textarea
-                                                className="form-control form-control-sm"
-                                                rows={2}
-                                                value={additionalContext}
-                                                onChange={e => setAdditionalContext(e.target.value)}
-                                                placeholder={t("home.additionalContextPlaceholder")}
-                                            />
                                         </div>
                                     </div>
                                 )}

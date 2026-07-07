@@ -1,5 +1,6 @@
 package com.cisternino.application.service.analysis;
 
+import com.cisternino.application.util.GapMarkers;
 import com.cisternino.domain.entities.TaskChangeAnalysisDTO;
 import com.cisternino.domain.entities.TaskDTO;
 import com.cisternino.domain.entities.TaskOriginalDTO;
@@ -76,8 +77,17 @@ public class ChangeAnalysisService {
 
         String origText = safe(original.getOriginalProblemStatement());
         String currText = safe(current.getStatement());
-        String origCode = safe(original.getOriginalCode());
-        String currCode = safe(current.getSolution());
+
+        // Presentation-only overlays must NOT register as a code change:
+        //   • Gaps ($$blank:…$$) live inline in the solution — strip them to their expected
+        //     value on both sides so wrapping existing tokens as fill-in gaps scores NONE.
+        //   • Context blocks (context_before/after) and inline-split plans (split_plan) live
+        //     in dedicated DB columns and are never part of the solution string compared here,
+        //     so they already don't count — no normalisation needed for them.
+        // #group/#swap interchangeable markers are intentionally left in: changing the accepted
+        // ordering/grouping of a puzzle IS a real change and must still be counted.
+        String origCode = GapMarkers.strip(safe(original.getOriginalCode()));
+        String currCode = GapMarkers.strip(safe(current.getSolution()));
 
         // 3. Text-level syntactic analysis
         double textLevenshtein = syntacticAnalyzer.levenshteinRatio(origText, currText);
