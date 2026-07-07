@@ -45,7 +45,10 @@ public class LearningEventService {
             "teacher_edit_cancelled",
             // AP15: Distractor analytics
             "distractor_placed",
-            "distractor_removed"
+            "distractor_removed",
+            // AP31: Inline-split fragment analytics
+            "fragment_placed",
+            "split_distractor_placed"
     );
 
     /**

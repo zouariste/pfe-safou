@@ -1068,7 +1068,8 @@ public class PromptBuilder {
                prefix + fragments (in order, no separator) + suffix MUST reproduce the line \
                character-for-character, including all spaces. Preserve leading indentation inside prefix.
             4. prefix/suffix are fixed, non-draggable display text (may be empty strings).
-            5. Optionally add ONE fragment distractor of type OFF_BY_ONE (e.g. "i <= n;" for "i < n;").
+            5. Do NOT add any distractors here — split distractors are generated in a separate, \
+               split-aware pass. Emit fragments/prefix/suffix only.
             6. Do NOT include gap markers, #distractor, #swap or #group.""";
 
         messages.add(mapper.createObjectNode().put("role", "system").put("content", systemPrompt));
@@ -1085,10 +1086,69 @@ public class PromptBuilder {
 
             OUTPUT:
             Return ONLY a JSON object of this exact shape:
-            {"splits":[{"lineIndex":<int>,"fragments":["...","..."],"prefix":"...","suffix":"...",\
-            "distractors":[{"text":"...","type":"OFF_BY_ONE"}]}]}
+            {"splits":[{"lineIndex":<int>,"fragments":["...","..."],"prefix":"...","suffix":"..."}]}
             Use an empty array {"splits": []} if no line is suitable.""".formatted(
                 language, taskStatement, tierLevel, solutionCode);
+
+        messages.add(mapper.createObjectNode().put("role", "user").put("content", userPrompt));
+
+        json.set("messages", messages);
+        json.set("response_format", mapper.createObjectNode().put("type", "json_object"));
+        return json;
+    }
+
+    /**
+     * AP31 (second pass): asks for ONE fragment-level distractor that fits a single slot of an
+     * already-decided split. The model sees the exact fragments, so its wrong fragment matches one
+     * slot's shape instead of spanning the whole line.
+     */
+    public ObjectNode buildSplitDistractorRequest(final List<String> fragments,
+                                                  final String prefix, final String suffix,
+                                                  final String language, final String taskStatement,
+                                                  final int tierLevel) {
+        ObjectNode json = mapper.createObjectNode();
+        ArrayNode messages = mapper.createArrayNode();
+
+        String systemPrompt = """
+            You are CodeOwl (Split-Distractor Expert). A Parsons line was ALREADY split into ordered \
+            fragments (each fragment is one draggable slot). Produce ONE wrong chip a student might \
+            plausibly reach for. Choose ONE of two kinds:
+
+            A) FITTING (harder): a drop-in alternative for EXACTLY ONE fragment — same role and similar \
+               shape/length, so it competes for that single slot. Set fragmentIndex to its 0-based \
+               position. type in {OFF_BY_ONE (< vs <=, bounds), LOGIC_FLIP (&&/||, ==/!=), \
+               VARIABLE_MISMATCH (wrong but existing identifier), BOUNDARY_IDENTITY (wrong init/base value)}.
+
+            B) WRONG_SHAPE (easier): a plausible-looking block that spans several fragments or reshapes \
+               the line, so it obviously cannot fit the per-slot structure once the slots are visible. \
+               Set type = WRONG_SHAPE and fragmentIndex = -1.
+
+            RULES:
+            1. Either kind must be genuinely WRONG (changes behaviour), not a cosmetic re-spelling of a correct fragment.
+            2. Difficulty guide: lower tiers suit WRONG_SHAPE (easier, obvious); higher tiers suit a \
+               FITTING distractor (harder). Guidance only — pick whatever is most instructive here.
+            3. If nothing instructive applies, decline by returning {"text": ""}.
+            4. Output JSON only — no #distractor/#swap/#group, no markdown.""";
+
+        messages.add(mapper.createObjectNode().put("role", "system").put("content", systemPrompt));
+
+        StringBuilder fragList = new StringBuilder();
+        for (int i = 0; i < fragments.size(); i++) {
+            fragList.append("[").append(i).append("] \"").append(fragments.get(i)).append("\"\n");
+        }
+
+        String userPrompt = """
+            Language: %s
+            Task: %s
+            Tier: %d
+            Fixed prefix (not draggable): "%s"
+            Fixed suffix (not draggable): "%s"
+            Fragments (0-based; each is one slot):
+            %s
+            Return ONLY: {"fragmentIndex":<0-based int, or -1 for WRONG_SHAPE>,"text":"<wrong chip>","type":"<TYPE>"}
+            Decline with {"text": ""} if nothing instructive applies.""".formatted(
+                language, taskStatement, tierLevel,
+                prefix == null ? "" : prefix, suffix == null ? "" : suffix, fragList.toString());
 
         messages.add(mapper.createObjectNode().put("role", "user").put("content", userPrompt));
 
@@ -1288,6 +1348,8 @@ public class PromptBuilder {
 
             %s
             %s
+
+            Output (STRICT): For each task, the top-level "statement" MUST equal contract.taskStatement exactly (byte-for-byte identical) — write the student-facing statement, then copy it verbatim into taskStatement.
 
             Generate %d tasks (tiers 1–%d) as specified. %s
             """.formatted(
