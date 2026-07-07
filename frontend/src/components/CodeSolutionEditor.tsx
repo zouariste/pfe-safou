@@ -249,6 +249,34 @@ export default function CodeSolutionEditor({
                                             </button>
                                         )}
                                     </div>
+                                    {/* AP31: read-only view of a generated/saved split so teachers can
+                                        actually see its fragments + distractor (the inline editor below
+                                        can't represent generated prefix/suffix splits). */}
+                                    {existing && !editing && (
+                                        <div className="mt-1 d-flex flex-wrap gap-1 align-items-center">
+                                            {existing.prefix && <span className="text-muted small font-monospace">{existing.prefix}</span>}
+                                            {existing.fragments.map((f, fi) => (
+                                                <span key={fi} className="badge text-bg-warning font-monospace">{f === "" ? "∅" : f}</span>
+                                            ))}
+                                            {existing.suffix && <span className="text-muted small font-monospace">{existing.suffix}</span>}
+                                            {(existing.distractors ?? []).length > 0 && (
+                                                <span className="text-muted small ms-1">{t("splitEditor.distractor", "Distraktor")}:</span>
+                                            )}
+                                            {(existing.distractors ?? []).map((d, di) => (
+                                                <span key={"d" + di} className="badge text-bg-danger font-monospace" title={d.type ?? "distractor"}>
+                                                    {d.text}
+                                                </span>
+                                            ))}
+                                            {(existing.distractors ?? []).length > 0 && (
+                                                <button type="button" className="btn btn-sm btn-outline-danger py-0 px-1"
+                                                    title={t("splitEditor.removeDistractor", "Distraktor entfernen")}
+                                                    onClick={() => onSplitsChange((splits ?? []).map((s) =>
+                                                        s.lineIndex === li ? { ...s, distractors: [] } : s))}>
+                                                    <i className="bi bi-x-circle me-1"></i>{t("splitEditor.removeDistractor", "Distraktor entfernen")}
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                     {editing && (
                                         <div className="mt-2 p-2 bg-light rounded">
                                             <div className="mb-2" style={{ fontFamily: "monospace", fontSize: "0.95rem", lineHeight: 2.2 }}>

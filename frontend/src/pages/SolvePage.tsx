@@ -724,17 +724,27 @@ export default function SolvePage() {
         const wireSplitLines = () => {
             const plan = parseSplitPlan(task.splitPlan ?? null);
             if (!plan?.splits?.length) return;
-            const onSplitChange = () => {
-                setHintsUnlocked(false);
-                if (task?.id) {
-                    logEvent(task.id, "fragment_placed", {}, task.sequenceId, task.tierLevel);
-                }
-            };
             plan.splits.forEach((entry) => {
                 const reconstructed = ((entry.prefix ?? "") + (entry.fragments ?? []).join("") + (entry.suffix ?? "")).trim();
                 const line = (widget.modified_lines ?? []).find((l: any) =>
                     l && !l._split && typeof l.code === "string" && l.code.trim() === reconstructed);
                 if (line && typeof line._renderSplit === "function") {
+                    // AP31: per-line handler so we can also detect when a split-distractor
+                    // (a chip with data-distractor="1") is dragged into a slot.
+                    let prevDistractorsInSlots = 0;
+                    const onSplitChange = () => {
+                        setHintsUnlocked(false);
+                        if (!task?.id) return;
+                        logEvent(task.id, "fragment_placed", {}, task.sequenceId, task.tierLevel);
+                        try {
+                            const order = line._split?.currentOrder?.() ?? [];
+                            const distractorsInSlots = order.filter((s: any) => s && s.distractor).length;
+                            if (distractorsInSlots > prevDistractorsInSlots) {
+                                logEvent(task.id, "split_distractor_placed", {}, task.sequenceId, task.tierLevel);
+                            }
+                            prevDistractorsInSlots = distractorsInSlots;
+                        } catch { /* non-fatal analytics */ }
+                    };
                     line._renderSplit(entry, onSplitChange);
                 }
             });

@@ -515,6 +515,31 @@ public class OpenAiClient extends AbstractAiClient {
     }
 
     /**
+     * AP31: Second pass — generates ONE split-aware fragment distractor. Returns the raw distractor
+     * JSON ({@code {"fragmentIndex":..,"text":..,"type":..}}) or {@code null} if the model declines.
+     */
+    @Override
+    public String generateSplitDistractor(List<String> fragments, String prefix, String suffix,
+                                          String language, String taskStatement, int tierLevel)
+            throws IOException, InterruptedException {
+        if (fragments == null || fragments.size() < 2) {
+            return null;
+        }
+        logger.debug("Generating split distractor for tier {} task ({} fragments)", tierLevel, fragments.size());
+        ObjectNode json = promptBuilder.buildSplitDistractorRequest(
+                fragments, prefix, suffix, language, taskStatement, tierLevel);
+        attachModel(json, defaultModel);
+        HttpResponse<String> response = sendRequest(json);
+        JsonNode parsed = parseResponse(response);
+        // Accept a FITTING distractor (fragmentIndex >= 0) or a WRONG_SHAPE block (fragmentIndex -1);
+        // a blank text is the model's "decline" signal.
+        if (parsed == null || !parsed.hasNonNull("text") || parsed.get("text").asText().isBlank()) {
+            return null;
+        }
+        return parsed.toString();
+    }
+
+    /**
      * Returns the programming language of the given code snippet,
      * using the default OpenAI model configured in {@code application.yml}.
      *

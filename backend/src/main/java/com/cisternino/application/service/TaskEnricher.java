@@ -232,7 +232,7 @@ public final class TaskEnricher {
             // AP31: post-solve inline-split generation (opt-in), validated against the final
             // puzzle. Fail-open: any failure or reconstruction mismatch yields no splits.
             String splitPlanJson = splitEnabled
-                    ? generateSplitPlanForTask(finalPuzzle, lang, task.getStatement(), task.getTierLevel())
+                    ? generateSplitPlanForTask(finalPuzzle, lang, task.getStatement(), task.getTierLevel(), distractorsEnabled)
                     : null;
 
             return TaskDTO.builder()
@@ -327,7 +327,8 @@ public final class TaskEnricher {
      * {@code null} on any failure / reconstruction mismatch (fail-open).
      */
     public String generateSplitPlanForTask(String solutionCode, String language,
-                                           String taskStatement, int tierLevel) {
+                                           String taskStatement, int tierLevel,
+                                           boolean distractorsEnabled) {
         try {
             String raw = client.generateSplitPlan(solutionCode, language, taskStatement, tierLevel);
             if (raw == null || raw.isBlank()) {
@@ -337,15 +338,90 @@ public final class TaskEnricher {
             if (plan.getSplits() == null || plan.getSplits().isEmpty()) {
                 return null;
             }
+            // AP31: LLMs often miscount the 0-based lineIndex on longer solutions (esp. Tier 3), which
+            // makes an otherwise-perfect split fail the exact-reconstruction check and get dropped. If
+            // the fragments reconstruct exactly ONE line, snap the index to that line before validating.
+            repairSplitLineIndices(plan, solutionCode);
             if (!SequenceValidator.isValidSplitPlan(plan, solutionCode)) {
                 logger.warn("Generated split plan failed reconstruction check (tier {}); dropping.", tierLevel);
                 return null;
+            }
+            // AP31: split distractors are generated in a SECOND, split-aware pass so the wrong
+            // fragment is a drop-in for one slot. Independent of the split itself; added only when
+            // distractors are enabled AND the tier warrants a trap (Tier 1 stays distractor-free).
+            boolean allowSplitDistractor = distractorsEnabled && tierLevel >= 2;
+            for (SplitPlan.SplitEntry entry : plan.getSplits()) {
+                entry.setDistractors(allowSplitDistractor
+                        ? generateSplitDistractorFor(entry, language, taskStatement, tierLevel)
+                        : null);
             }
             return MAPPER.writeValueAsString(plan);
         } catch (Exception e) {
             logger.warn("Split generation failed for task '{}', continuing without splits: {}",
                          taskStatement, e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * AP31: Second pass — asks the model for ONE fragment-level distractor that fits a single slot,
+     * given the fragments already chosen for this split. Fail-open: returns {@code null} on any issue.
+     */
+    private java.util.List<SplitPlan.SplitDistractor> generateSplitDistractorFor(
+            SplitPlan.SplitEntry entry, String language, String taskStatement, int tierLevel) {
+        try {
+            String raw = client.generateSplitDistractor(entry.getFragments(), entry.getPrefix(),
+                    entry.getSuffix(), language, taskStatement, tierLevel);
+            if (raw == null || raw.isBlank()) {
+                return null;
+            }
+            SplitPlan.SplitDistractor d = MAPPER.readValue(raw, SplitPlan.SplitDistractor.class);
+            if (d == null || d.getText() == null || d.getText().isBlank()) {
+                return null;
+            }
+            if (d.getType() == null || d.getType().isBlank()) {
+                d.setType("OFF_BY_ONE");
+            }
+            return java.util.List.of(d);
+        } catch (Exception e) {
+            logger.warn("Split-distractor generation failed (tier {}): {}", tierLevel, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * AP31: LLMs frequently miscount the 0-based {@code lineIndex} on longer solutions (Tier 3),
+     * so an otherwise-correct split fails the exact-reconstruction check. When a split's
+     * {@code prefix + fragments + suffix} reconstructs exactly ONE solution line, snap its
+     * lineIndex to that line. Ambiguous or non-matching splits are left for validation to drop.
+     */
+    private static void repairSplitLineIndices(SplitPlan plan, String solution) {
+        if (plan == null || plan.getSplits() == null) {
+            return;
+        }
+        String[] lines = (solution == null ? "" : solution.replace("\r\n", "\n")).split("\n", -1);
+        for (SplitPlan.SplitEntry s : plan.getSplits()) {
+            List<String> frags = s.getFragments();
+            if (frags == null || frags.isEmpty()) {
+                continue;
+            }
+            String prefix = s.getPrefix() == null ? "" : s.getPrefix();
+            String suffix = s.getSuffix() == null ? "" : s.getSuffix();
+            String reconstructed = prefix + String.join("", frags) + suffix;
+            int idx = s.getLineIndex();
+            if (idx >= 0 && idx < lines.length && reconstructed.equals(lines[idx])) {
+                continue; // already correct
+            }
+            int match = -1;
+            for (int j = 0; j < lines.length; j++) {
+                if (reconstructed.equals(lines[j])) {
+                    if (match >= 0) { match = -1; break; } // ambiguous — don't guess
+                    match = j;
+                }
+            }
+            if (match >= 0) {
+                s.setLineIndex(match);
+            }
         }
     }
 }

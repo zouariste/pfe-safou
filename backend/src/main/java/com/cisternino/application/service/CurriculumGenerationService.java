@@ -150,6 +150,16 @@ public class CurriculumGenerationService {
         enriched.setCurriculumTopicId(topicId);
         enriched.setTargetLanguage(targetLanguage);
         enriched.setTierCount(tierCount);
+        // AP19/AP32: a curriculum sequence is anchored on curated seed examples rather than
+        // a single input snippet, so the mapper leaves codeSnippet null. Persist the first
+        // non-blank seed example's code as the sequence's representative snippet, otherwise
+        // TaskPersistenceService.validateSequence rejects it ("code snippet must not be empty").
+        String seedSnippet = examples.stream()
+                .map(CurriculumCodeExampleDTO::getCode)
+                .filter(code -> code != null && !code.isBlank())
+                .findFirst()
+                .orElse(examples.get(0).getCode());
+        enriched.setCodeSnippet(seedSnippet);
         return enriched;
     }
 

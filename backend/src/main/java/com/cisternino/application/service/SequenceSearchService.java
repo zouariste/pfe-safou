@@ -371,7 +371,7 @@ public class SequenceSearchService {
                 WITH source_tags AS (
                     SELECT tag_name FROM sequence_tags WHERE sequence_id = ?
                 ),
-                overlaps AS (
+                tag_overlaps AS (
                     SELECT sg.sequence_id,
                            COUNT(*) AS overlap_count,
                            SUM(CASE sg.source
@@ -408,7 +408,7 @@ public class SequenceSearchService {
         sql.append("""
                        ov.overlap_count,
                        ov.weighted_overlap
-                  FROM overlaps ov
+                  FROM tag_overlaps ov
                   JOIN tiered_task_sequences s ON s.id = ov.sequence_id
               LEFT JOIN tiered_task_sequences src ON src.id = ?
               ORDER BY ov.weighted_overlap DESC,
