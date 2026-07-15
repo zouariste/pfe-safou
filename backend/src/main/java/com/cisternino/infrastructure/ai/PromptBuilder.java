@@ -1042,6 +1042,121 @@ public class PromptBuilder {
         return rf;
     }
 
+    /**
+     * AP31: Builds the request for inline-split generation. Given a solved task, asks the model
+     * to pick ONE syntactically complex line and decompose it into 2–4 draggable fragments that
+     * are EXACT contiguous substrings (so prefix + concat(fragments) + suffix reconstruct the
+     * line verbatim), optionally with an OFF_BY_ONE fragment distractor.
+     */
+    public ObjectNode buildSplitPlanRequest(final String solutionCode,
+                                            final String language,
+                                            final String taskStatement,
+                                            final int tierLevel) {
+        ObjectNode json = mapper.createObjectNode();
+        ArrayNode messages = mapper.createArrayNode();
+
+        String systemPrompt = """
+            You are CodeOwl (Split Expert). For Parsons problems you decompose ONE syntactically \
+            complex line (e.g. a for-loop header or a compound condition) into 2–4 inline fragments \
+            that students re-order in slots.
+
+            HARD RULES:
+            1. Pick at most ONE line — the most instructive complex line. If none is suitable, return {"splits": []}.
+            2. lineIndex is the 0-based index of that line in the solution EXACTLY as given below \
+               (split on newlines; count every line including braces).
+            3. fragments must be 2–4 EXACT, contiguous substrings of the line body. Concatenating \
+               prefix + fragments (in order, no separator) + suffix MUST reproduce the line \
+               character-for-character, including all spaces. Preserve leading indentation inside prefix.
+            4. prefix/suffix are fixed, non-draggable display text (may be empty strings).
+            5. Do NOT add any distractors here — split distractors are generated in a separate, \
+               split-aware pass. Emit fragments/prefix/suffix only.
+            6. Do NOT include gap markers, #distractor, #swap or #group.""";
+
+        messages.add(mapper.createObjectNode().put("role", "system").put("content", systemPrompt));
+
+        String userPrompt = """
+            TASK CONTEXT:
+            Language: %s
+            Task: %s
+            Tier: %d
+            Solution (lineIndex = 0-based line number):
+            \"\"\"
+            %s
+            \"\"\"
+
+            OUTPUT:
+            Return ONLY a JSON object of this exact shape:
+            {"splits":[{"lineIndex":<int>,"fragments":["...","..."],"prefix":"...","suffix":"..."}]}
+            Use an empty array {"splits": []} if no line is suitable.""".formatted(
+                language, taskStatement, tierLevel, solutionCode);
+
+        messages.add(mapper.createObjectNode().put("role", "user").put("content", userPrompt));
+
+        json.set("messages", messages);
+        json.set("response_format", mapper.createObjectNode().put("type", "json_object"));
+        return json;
+    }
+
+    /**
+     * AP31 (second pass): asks for ONE fragment-level distractor that fits a single slot of an
+     * already-decided split. The model sees the exact fragments, so its wrong fragment matches one
+     * slot's shape instead of spanning the whole line.
+     */
+    public ObjectNode buildSplitDistractorRequest(final List<String> fragments,
+                                                  final String prefix, final String suffix,
+                                                  final String language, final String taskStatement,
+                                                  final int tierLevel) {
+        ObjectNode json = mapper.createObjectNode();
+        ArrayNode messages = mapper.createArrayNode();
+
+        String systemPrompt = """
+            You are CodeOwl (Split-Distractor Expert). A Parsons line was ALREADY split into ordered \
+            fragments (each fragment is one draggable slot). Produce ONE wrong chip a student might \
+            plausibly reach for. Choose ONE of two kinds:
+
+            A) FITTING (harder): a drop-in alternative for EXACTLY ONE fragment — same role and similar \
+               shape/length, so it competes for that single slot. Set fragmentIndex to its 0-based \
+               position. type in {OFF_BY_ONE (< vs <=, bounds), LOGIC_FLIP (&&/||, ==/!=), \
+               VARIABLE_MISMATCH (wrong but existing identifier), BOUNDARY_IDENTITY (wrong init/base value)}.
+
+            B) WRONG_SHAPE (easier): a plausible-looking block that spans several fragments or reshapes \
+               the line, so it obviously cannot fit the per-slot structure once the slots are visible. \
+               Set type = WRONG_SHAPE and fragmentIndex = -1.
+
+            RULES:
+            1. Either kind must be genuinely WRONG (changes behaviour), not a cosmetic re-spelling of a correct fragment.
+            2. Difficulty guide: lower tiers suit WRONG_SHAPE (easier, obvious); higher tiers suit a \
+               FITTING distractor (harder). Guidance only — pick whatever is most instructive here.
+            3. If nothing instructive applies, decline by returning {"text": ""}.
+            4. Output JSON only — no #distractor/#swap/#group, no markdown.""";
+
+        messages.add(mapper.createObjectNode().put("role", "system").put("content", systemPrompt));
+
+        StringBuilder fragList = new StringBuilder();
+        for (int i = 0; i < fragments.size(); i++) {
+            fragList.append("[").append(i).append("] \"").append(fragments.get(i)).append("\"\n");
+        }
+
+        String userPrompt = """
+            Language: %s
+            Task: %s
+            Tier: %d
+            Fixed prefix (not draggable): "%s"
+            Fixed suffix (not draggable): "%s"
+            Fragments (0-based; each is one slot):
+            %s
+            Return ONLY: {"fragmentIndex":<0-based int, or -1 for WRONG_SHAPE>,"text":"<wrong chip>","type":"<TYPE>"}
+            Decline with {"text": ""} if nothing instructive applies.""".formatted(
+                language, taskStatement, tierLevel,
+                prefix == null ? "" : prefix, suffix == null ? "" : suffix, fragList.toString());
+
+        messages.add(mapper.createObjectNode().put("role", "user").put("content", userPrompt));
+
+        json.set("messages", messages);
+        json.set("response_format", mapper.createObjectNode().put("type", "json_object"));
+        return json;
+    }
+
     private static String composeSimpleSolveContract(final String task, final String language) {
         StringBuilder sb = new StringBuilder();
         sb.append("CONTRACT (simple)\n");
@@ -1188,15 +1303,22 @@ public class PromptBuilder {
                          .put("role", "system")
                          .put("content", identityLoader.load("SequenceCurriculum")));
 
-        // Build seed examples block
+        // Build seed examples block (AP32: few-shot). A topic without curated examples is
+        // rejected upstream (CurriculumGenerationService throws), so the list is non-empty here.
         StringBuilder seedBlock = new StringBuilder();
         for (int i = 0; i < examples.size(); i++) {
             var ex = examples.get(i);
             seedBlock.append("--- Example %d: \"%s\" ---\n".formatted(i + 1, ex.getTitle()));
             seedBlock.append("Language: %s\n".formatted(ex.getLanguage()));
+            if (ex.getDifficulty() != null && !ex.getDifficulty().isBlank()) {
+                seedBlock.append("Difficulty: %s\n".formatted(ex.getDifficulty()));
+            }
             seedBlock.append("Code:\n%s\n".formatted(ex.getCode()));
             if (ex.getProblemStatement() != null && !ex.getProblemStatement().isBlank()) {
                 seedBlock.append("Description: %s\n".formatted(ex.getProblemStatement()));
+            }
+            if (ex.getNotes() != null && !ex.getNotes().isBlank()) {
+                seedBlock.append("Didactic notes from the teacher: %s\n".formatted(ex.getNotes()));
             }
             seedBlock.append("\n");
         }
@@ -1226,6 +1348,8 @@ public class PromptBuilder {
 
             %s
             %s
+
+            Output (STRICT): For each task, the top-level "statement" MUST equal contract.taskStatement exactly (byte-for-byte identical) — write the student-facing statement, then copy it verbatim into taskStatement.
 
             Generate %d tasks (tiers 1–%d) as specified. %s
             """.formatted(

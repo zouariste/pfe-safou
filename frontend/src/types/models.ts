@@ -1,7 +1,57 @@
 
+/**
+ * AP30 (Fill-in-the-Gaps) matching mode for a gap. Gaps are encoded inline in
+ * `Task.solution` as `$$blank:<expected>$$` or `$$blank:<expected>|<mode>$$`
+ * (default `trim`). parsons.js renders them as inline inputs; evaluation is client-side.
+ * No separate DB column — the markers live inside `solution`.
+ */
+export type GapMatchMode = "exact" | "trim" | "ci";
+
+/**
+ * AP31 (Inline-Split-Blocks). A split line is decomposed into 2–4 draggable fragments in
+ * inline slots, with optional fixed display `prefix`/`suffix` and fragment distractors.
+ * Canonical: `prefix + fragments.join("") + suffix === solution.split("\n")[lineIndex]`.
+ * Stored as a JSON string in `Task.splitPlan` (parse with {@link parseSplitPlan}).
+ */
+export interface SplitDistractor {
+    text: string;
+    /** Distractor taxonomy label (AP15), e.g. "OFF_BY_ONE". */
+    type?: string | null;
+}
+
+export interface SplitEntry {
+    /** 0-based index into `solution.split("\n")`. */
+    lineIndex: number;
+    /** 2–4 fragments in canonical order (exact contiguous substrings of the line body). */
+    fragments: string[];
+    /** Optional fixed display prefix (not draggable). */
+    prefix?: string | null;
+    /** Optional fixed display suffix (not draggable). */
+    suffix?: string | null;
+    /** Optional fragment distractors shown in the tray. */
+    distractors?: SplitDistractor[] | null;
+}
+
+export interface SplitPlan {
+    splits: SplitEntry[];
+}
+
+/** Safely parse `Task.splitPlan` (a JSON string) into a {@link SplitPlan}, or null. */
+export function parseSplitPlan(raw: string | null | undefined): SplitPlan | null {
+    if (!raw) return null;
+    try {
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+        if (parsed && Array.isArray(parsed.splits)) return parsed as SplitPlan;
+    } catch {
+        /* ignore malformed split_plan */
+    }
+    return null;
+}
+
 export type Task = {
     id: string;
     statement: string;
+    /** Parsons solution lines. May contain inline `$$blank:…$$` gap markers (AP30). */
     solution: string;
     tierLevel: number;
     cyclomaticComplexity: number;
@@ -17,6 +67,8 @@ export type Task = {
     contextBefore?: string | null;
     /** AP22: Read-only context lines displayed after the puzzle. */
     contextAfter?: string | null;
+    /** AP31: JSON string with the inline-split plan. Parse with `parseSplitPlan`. Null when none. */
+    splitPlan?: string | null;
 };
 
 /** AP20: Generation constraints for task sequences */

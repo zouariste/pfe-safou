@@ -523,6 +523,50 @@ public class OpenAiClient extends AbstractAiClient {
     }
 
     /**
+     * AP31: Generates an inline-split plan for a solved task. Returns the raw split_plan JSON
+     * (object with a "splits" array) for downstream validation, or {@code null}.
+     */
+    @Override
+    public String generateSplitPlan(String solutionCode, String language,
+                                    String taskStatement, int tierLevel)
+            throws IOException, InterruptedException {
+        logger.debug("Generating split plan for tier {} task", tierLevel);
+        ObjectNode json = promptBuilder.buildSplitPlanRequest(solutionCode, language, taskStatement, tierLevel);
+        attachModel(json, defaultModel);
+        HttpResponse<String> response = sendRequest(json);
+        JsonNode parsed = parseResponse(response);
+        if (parsed == null || !parsed.has("splits") || !parsed.get("splits").isArray()) {
+            return null;
+        }
+        return parsed.toString();
+    }
+
+    /**
+     * AP31: Second pass — generates ONE split-aware fragment distractor. Returns the raw distractor
+     * JSON ({@code {"fragmentIndex":..,"text":..,"type":..}}) or {@code null} if the model declines.
+     */
+    @Override
+    public String generateSplitDistractor(List<String> fragments, String prefix, String suffix,
+                                          String language, String taskStatement, int tierLevel)
+            throws IOException, InterruptedException {
+        if (fragments == null || fragments.size() < 2) {
+            return null;
+        }
+        logger.debug("Generating split distractor for tier {} task ({} fragments)", tierLevel, fragments.size());
+        ObjectNode json = promptBuilder.buildSplitDistractorRequest(
+                fragments, prefix, suffix, language, taskStatement, tierLevel);
+        attachModel(json, defaultModel);
+        HttpResponse<String> response = sendRequest(json);
+        JsonNode parsed = parseResponse(response);
+        // Accept a FITTING distractor (fragmentIndex >= 0) or a WRONG_SHAPE block (fragmentIndex -1);
+        // a blank text is the model's "decline" signal.
+        if (parsed == null || !parsed.hasNonNull("text") || parsed.get("text").asText().isBlank()) {
+            return null;
+        }
+        return parsed.toString();
+    }
+
+    /**
      * Returns the programming language of the given code snippet,
      * using the default OpenAI model configured in {@code application.yml}.
      *

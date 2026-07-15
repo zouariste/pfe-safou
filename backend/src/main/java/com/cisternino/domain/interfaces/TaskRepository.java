@@ -95,4 +95,12 @@ public interface TaskRepository {
      * When disabled, distractors are kept in DB but not delivered to students.
      */
     void updateDistractorsEnabled(UUID taskId, boolean enabled);
+
+    /**
+     * Updates only the split_plan (JSONB) column of an existing task (AP31).
+     *
+     * @param splitPlanJson serialized {@link com.cisternino.domain.entities.SplitPlan},
+     *                      or {@code null} to clear the plan.
+     */
+    void updateSplitPlan(UUID taskId, String splitPlanJson);
 }

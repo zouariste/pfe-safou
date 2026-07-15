@@ -1,6 +1,7 @@
 package com.cisternino.application.service;
 
 import com.cisternino.api.dto.TaskEditRequest;
+import com.cisternino.domain.entities.SplitPlan;
 import com.cisternino.domain.entities.TaskDTO;
 import com.cisternino.domain.entities.TaskOriginalDTO;
 import com.cisternino.domain.exceptions.DomainValidationException;
@@ -8,6 +9,8 @@ import com.cisternino.domain.interfaces.TaskOriginalRepository;
 import com.cisternino.domain.interfaces.TaskRepository;
 import com.cisternino.domain.interfaces.TieredTaskSequenceRepository;
 import com.cisternino.application.service.analysis.ChangeAnalysisService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -30,17 +33,20 @@ public class TaskEditService {
     private final TieredTaskSequenceRepository sequenceRepo;
     private final OwnershipService ownershipService;
     private final ChangeAnalysisService changeAnalysisService;
+    private final ObjectMapper objectMapper;
 
     public TaskEditService(TaskRepository taskRepo,
                            TaskOriginalRepository taskOriginalRepo,
                            TieredTaskSequenceRepository sequenceRepo,
                            OwnershipService ownershipService,
-                           ChangeAnalysisService changeAnalysisService) {
+                           ChangeAnalysisService changeAnalysisService,
+                           ObjectMapper objectMapper) {
         this.taskRepo = taskRepo;
         this.taskOriginalRepo = taskOriginalRepo;
         this.sequenceRepo = sequenceRepo;
         this.ownershipService = ownershipService;
         this.changeAnalysisService = changeAnalysisService;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -108,6 +114,13 @@ public class TaskEditService {
             taskRepo.updateDistractors(taskId, distractors);
         }
 
+        // AP31: Update the inline-split plan when provided. An empty list clears it;
+        // null leaves the existing plan untouched.
+        if (request.getSplits() != null) {
+            String splitPlanJson = buildSplitPlanJson(request.getSplits(), request.getCode());
+            taskRepo.updateSplitPlan(taskId, splitPlanJson);
+        }
+
         logger.info("Updated task {} (firstEdit={})", taskId, isFirstEdit);
 
         // 5. Run change analysis automatically
@@ -123,5 +136,25 @@ public class TaskEditService {
         updated.setId(taskId);
         taskRepo.loadById(updated);
         return updated;
+    }
+
+    /**
+     * AP31: Turns the edited split entries into a validated {@code split_plan} JSON string.
+     * Returns {@code null} when there are no splits (clearing the plan). Throws
+     * {@link DomainValidationException} if any split fails the reconstruction check against
+     * {@code solution}. Mirrors {@code ManualTaskService#buildSplitPlanJson}.
+     */
+    private String buildSplitPlanJson(java.util.List<SplitPlan.SplitEntry> splits, String solution) {
+        if (splits == null || splits.isEmpty()) {
+            return null;
+        }
+        SplitPlan plan = SplitPlan.builder().splits(splits).build();
+        SequenceValidator.validateSplitPlan(plan, solution);
+        try {
+            return objectMapper.writeValueAsString(plan);
+        } catch (JsonProcessingException e) {
+            logger.warn("Failed to serialize split_plan for task edit: {}", e.getMessage());
+            return null;
+        }
     }
 }

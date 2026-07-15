@@ -78,6 +78,7 @@ public class CurriculumGenerationService {
      */
     public TieredTaskSequenceDTO generate(UUID topicId, String language, String targetLanguage,
                                           int tierCount, boolean distractorsEnabled,
+                                          boolean contextModeEnabled, boolean splitEnabled,
                                           GenerationConstraints constraints, UUID ownerId)
             throws IOException, InterruptedException {
 
@@ -90,7 +91,14 @@ public class CurriculumGenerationService {
             examples = exampleRepo.findByTopicId(topicId);
         }
         if (examples.isEmpty()) {
-            throw new IllegalStateException("No code examples found for curriculum topic: " + topic.getName());
+            // AP32: a topic without curated seed examples is treated as "not yet available".
+            // The controller maps this to a 422 { error: "no_examples" } which the frontend
+            // renders via the i18n key `curriculum.noExamples`. The literal below is the
+            // German source string / fallback.
+            logger.warn("No curated seed examples for topic '{}' — curriculum generation unavailable.",
+                    topic.getName());
+            throw new IllegalStateException(
+                    "Das wurde noch nicht eingepflegt und ist deshalb noch nicht verfügbar");
         }
         // Limit to 3 seed examples
         if (examples.size() > 3) {
@@ -114,7 +122,8 @@ public class CurriculumGenerationService {
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 return tryGenerateOnce(topic, topicId, examples, concepts, language, targetLanguage,
-                                       tierCount, distractorsEnabled, constraints, ownerId);
+                                       tierCount, distractorsEnabled, contextModeEnabled, splitEnabled,
+                                       constraints, ownerId);
             } catch (IOException | RuntimeException e) {
                 lastError = e;
                 logger.warn("Curriculum generation attempt {}/{} failed: {}", attempt, maxAttempts, e.getMessage());
@@ -139,6 +148,7 @@ public class CurriculumGenerationService {
                                                   List<String> concepts, String language,
                                                   String targetLanguage, int tierCount,
                                                   boolean distractorsEnabled,
+                                                  boolean contextModeEnabled, boolean splitEnabled,
                                                   GenerationConstraints constraints, UUID ownerId)
             throws IOException, InterruptedException {
         // Generate via OpenAI with curriculum-specific prompt
@@ -156,8 +166,9 @@ public class CurriculumGenerationService {
         sequence.setConstraints(constraints);
         sequence.setCurriculumTopicId(topicId);
 
-        // Enrich tasks (complexity analysis, distractors, etc.)
-        TieredTaskSequenceDTO enriched = taskEnricher.enrichWithSolutions(sequence, distractorsEnabled);
+        // Enrich tasks (complexity analysis, distractors, AP22 context, AP31 splits)
+        TieredTaskSequenceDTO enriched = taskEnricher.enrichWithSolutions(
+                sequence, distractorsEnabled, contextModeEnabled, splitEnabled);
         // Preserve metadata that enrichWithSolutions does not copy
         enriched.setOwnerId(ownerId);
         enriched.setVersionId(versionId);
@@ -165,6 +176,16 @@ public class CurriculumGenerationService {
         enriched.setCurriculumTopicId(topicId);
         enriched.setTargetLanguage(targetLanguage);
         enriched.setTierCount(tierCount);
+        // AP19/AP32: a curriculum sequence is anchored on curated seed examples rather than
+        // a single input snippet, so the mapper leaves codeSnippet null. Persist the first
+        // non-blank seed example's code as the sequence's representative snippet, otherwise
+        // TaskPersistenceService.validateSequence rejects it ("code snippet must not be empty").
+        String seedSnippet = examples.stream()
+                .map(CurriculumCodeExampleDTO::getCode)
+                .filter(code -> code != null && !code.isBlank())
+                .findFirst()
+                .orElse(examples.get(0).getCode());
+        enriched.setCodeSnippet(seedSnippet);
         return enriched;
     }
 

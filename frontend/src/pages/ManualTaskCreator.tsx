@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { renderGapLine } from "../lib/gapMarkers";
+import CodeSolutionEditor from "../components/CodeSolutionEditor";
+import type { SplitEntry } from "../types/models";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 /* ────────────────────────────────────────────────────────────── */
@@ -13,12 +16,15 @@ interface TierEntry {
     tierLevel: number;
     statement: string;
     solution: string;
+    /** AP31: inline-split entries for this tier (one per split line). */
+    splits: SplitEntry[];
 }
 
 const EMPTY_TIER = (level: number): TierEntry => ({
     tierLevel: level,
     statement: "",
     solution: "",
+    splits: [],
 });
 
 /* ────────────────────────────────────────────────────────────── */
@@ -60,6 +66,11 @@ export default function ManualTaskCreator() {
         },
         []
     );
+
+    // AP31: replace the split entries of a tier
+    const setTierSplits = useCallback((index: number, splits: SplitEntry[]) => {
+        setTiers((prev) => prev.map((tier, i) => (i === index ? { ...tier, splits } : tier)));
+    }, []);
 
     const addTier = () => {
         if (tiers.length >= 3) return;
@@ -120,6 +131,11 @@ export default function ManualTaskCreator() {
                     tierLevel: t.tierLevel,
                     statement: t.statement.trim(),
                     solution: t.solution.trim(),
+                    // AP31: only send splits that still reconstruct their (trimmed) solution line
+                    splits: (t.splits ?? []).filter((s) => {
+                        const lines = t.solution.trim().split("\n");
+                        return s.lineIndex >= 0 && s.lineIndex < lines.length;
+                    }),
                 })),
             };
 
@@ -325,50 +341,18 @@ export default function ManualTaskCreator() {
                                     <label className="form-label fw-semibold">
                                         {t("manual.codeSolution")}
                                     </label>
-                                    <textarea
-                                        className="form-control font-monospace"
-                                        rows={12}
-                                        value={currentTier.solution}
-                                        onChange={(e) => {
-                                            updateTier(activeTier, "solution", e.target.value);
-                                            refreshPreview(e.target.value);
+                                    <CodeSolutionEditor
+                                        key={activeTier}
+                                        code={currentTier.solution}
+                                        onCodeChange={(val) => {
+                                            updateTier(activeTier, "solution", val);
+                                            refreshPreview(val);
                                         }}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Tab") {
-                                                e.preventDefault();
-                                                const ta = e.currentTarget;
-                                                const start = ta.selectionStart;
-                                                const end = ta.selectionEnd;
-                                                const spaces = "    "; // 4 spaces
-                                                const newVal =
-                                                    ta.value.substring(0, start) +
-                                                    spaces +
-                                                    ta.value.substring(end);
-                                                updateTier(activeTier, "solution", newVal);
-                                                refreshPreview(newVal);
-                                                // Restore cursor position after React re-render
-                                                requestAnimationFrame(() => {
-                                                    ta.selectionStart = ta.selectionEnd = start + spaces.length;
-                                                });
-                                            }
-                                        }}
+                                        splits={currentTier.splits}
+                                        onSplitsChange={(s) => setTierSplits(activeTier, s)}
+                                        onError={setError}
                                         placeholder={t("manual.codePlaceholder")}
-                                        required
-                                        style={{
-                                            fontSize: "0.875rem",
-                                            tabSize: 4,
-                                            lineHeight: 1.5,
-                                        }}
-                                        spellCheck={false}
                                     />
-                                    <div className="form-text d-flex justify-content-between">
-                                        <span>
-                                            {t("manual.nonEmptyLines", { count: currentTier.solution.split("\n").filter((l) => l.trim()).length })}
-                                        </span>
-                                        <span>
-                                            {t("manual.characters", { count: currentTier.solution.length })}
-                                        </span>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -465,7 +449,7 @@ export default function ManualTaskCreator() {
                                                                 overflowX: "auto",
                                                             }}
                                                         >
-                                                            {line.trim()}
+                                                            {renderGapLine(line.trim())}
                                                         </div>
                                                     );
                                                 })}

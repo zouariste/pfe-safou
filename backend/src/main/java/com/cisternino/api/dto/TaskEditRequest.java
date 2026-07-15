@@ -1,7 +1,10 @@
 package com.cisternino.api.dto;
 
+import com.cisternino.domain.entities.SplitPlan;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.List;
 
 /**
  * Request body for PUT /api/tasks/{taskId} (AP9).
@@ -20,4 +23,11 @@ public class TaskEditRequest {
 
     /** AP15: Optional distractor lines (newline-separated, each ending with #distractor). */
     private String distractors;
+
+    /**
+     * AP31: Optional inline-split entries. When non-null the split plan is replaced with
+     * these (an empty list clears it); when null the existing split plan is left untouched.
+     * Each entry must reconstruct its {@code code} line (prefix + join(fragments) + suffix).
+     */
+    private List<SplitPlan.SplitEntry> splits;
 }

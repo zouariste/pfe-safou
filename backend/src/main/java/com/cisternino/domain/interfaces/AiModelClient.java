@@ -146,6 +146,30 @@ public interface AiModelClient {
     }
 
     /**
+     * AP31: Generates an inline-split plan for a (solved) task — one complex line decomposed
+     * into 2–4 fragments with optional display prefix/suffix and fragment distractors.
+     *
+     * @return split_plan JSON string (object with a "splits" array), or {@code null}.
+     */
+    default String generateSplitPlan(String solutionCode, String language,
+                                     String taskStatement, int tierLevel)
+            throws IOException, InterruptedException {
+        return null;
+    }
+
+    /**
+     * AP31: Second pass — generates ONE fragment-level distractor for an already-decided split so the
+     * wrong fragment is a drop-in for a single slot (shape-matched to one of {@code fragments}).
+     *
+     * @return JSON {@code {"fragmentIndex":int,"text":"...","type":"..."}}, or {@code null} if none fits.
+     */
+    default String generateSplitDistractor(List<String> fragments, String prefix, String suffix,
+                                           String language, String taskStatement, int tierLevel)
+            throws IOException, InterruptedException {
+        return null;
+    }
+
+    /**
      * Generates a TieredTaskSequence with optional distractor planning (AP15).
      */
     default JsonNode generateTieredTaskSequence(final String taskDescription,

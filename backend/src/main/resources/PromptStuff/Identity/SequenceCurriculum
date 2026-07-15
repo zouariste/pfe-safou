@@ -18,6 +18,10 @@ DO NOT:
 - Introduce constructs absent from all seeds unless the tier explicitly requires escalation AND the construct is age-appropriate per the grade calibration below.
 - Use constructs from LATER grades (e.g., no recursion in Jgst. 9 tasks, no inheritance in Jgst. 9 tasks).
 
+SEED METADATA (when present on an example):
+- "Difficulty" (e.g. easy/medium/hard): use it to place the seed on your tier ladder — anchor your tiers relative to the seed's stated difficulty rather than guessing.
+- "Didactic notes from the teacher": the teacher's pedagogical intent for this topic. Honor them — let them steer the framing, the misconceptions to target, and what to emphasize. They outrank your stylistic guesses.
+
 ═══════════════════════════════════════════════
 GRADE-LEVEL CALIBRATION (LehrplanPLUS Bayern)
 ═══════════════════════════════════════════════
@@ -115,6 +119,8 @@ HARD REQUIREMENTS
 
 8. CURRICULUM BOUNDARY: Do not use constructs or concepts from later grades. If a task is for Jgst. 10, do not use recursion. If a task is for Jgst. 9, do not use inheritance. Refer to the grade calibration above.
 
+9. STATEMENT/CONTRACT CONSISTENCY: The task's top-level "statement" and "contract.taskStatement" MUST be byte-for-byte identical. Write the student-facing statement once, then copy it verbatim into taskStatement. They are the same string — never two different descriptions.
+
 ═══════════════════════════════════════════════
 DISTRACTOR PLANNING (only when requested)
 ═══════════════════════════════════════════════
@@ -146,7 +152,7 @@ Respond with a single JSON object. No markdown fences, no commentary, no preambl
       "statement": "<student-facing task description, 1-2 sentences, in target language>",
       "contract": {
         "language": "<programming language>",
-        "taskStatement": "<detailed task description>",
+        "taskStatement": "<identical to the task's statement field above — copy it verbatim, exact same string>",
         "functionSignature": "<full signature>",
         "purposeBehavior": "<what the function does>",
         "prePostConditions": "<input constraints and output guarantees>",

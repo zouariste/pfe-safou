@@ -42,6 +42,7 @@ public class CurriculumController {
     private final CurriculumGenerationService curriculumService;
     private final TaskPersistenceService taskPersistenceService;
     private final OwnershipService ownershipService;
+    private final CurriculumExampleAdminService exampleAdminService;
 
     /**
      * Get all top-level curriculum topics (Jahrgangsstufen).
@@ -111,6 +112,8 @@ public class CurriculumController {
             TieredTaskSequenceDTO seq = curriculumService.generate(
                     topicId, language, targetLanguage, tierCount,
                     request.isDistractorsEnabled(),
+                    request.isContextModeEnabled(),
+                    request.isSplitEnabled(),
                     constraints.hasAny() ? constraints : null,
                     currentUserId);
 
@@ -130,6 +133,65 @@ public class CurriculumController {
         }
     }
 
+    /**
+     * AP32 admin: create a curated code example under a topic.
+     * Allowed: Admin only.
+     */
+    @PostMapping("/topics/{topicId}/examples")
+    public ResponseEntity<?> createExample(@PathVariable UUID topicId,
+                                           @RequestBody CurriculumCodeExampleDTO body) {
+        requireAdmin();
+        body.setTopicId(topicId);
+        try {
+            CurriculumCodeExampleDTO created = exampleAdminService.create(body);
+            var location = java.net.URI.create("/api/curriculum/examples/" + created.getId());
+            return ResponseEntity.created(location).body(created);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * AP32 admin: update a curated code example. The topic assignment is immutable.
+     * Allowed: Admin only.
+     */
+    @PutMapping("/examples/{exampleId}")
+    public ResponseEntity<?> updateExample(@PathVariable UUID exampleId,
+                                           @RequestBody CurriculumCodeExampleDTO body) {
+        requireAdmin();
+        try {
+            return ResponseEntity.ok(exampleAdminService.update(exampleId, body));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * AP32 admin: delete a curated code example.
+     * Allowed: Admin only.
+     */
+    @DeleteMapping("/examples/{exampleId}")
+    public ResponseEntity<?> deleteExample(@PathVariable UUID exampleId) {
+        requireAdmin();
+        try {
+            exampleAdminService.delete(exampleId);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+        }
+    }
+
+    /** Curriculum examples are shared curriculum assets — only admins may manage them. */
+    private void requireAdmin() {
+        if (!ownershipService.isAdmin()) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Only admins may manage curriculum examples.");
+        }
+    }
+
     @Setter
     @Getter
     public static class CurriculumGenerateRequest {
@@ -137,6 +199,10 @@ public class CurriculumController {
         private String targetLanguage = "de";
         private int tierCount = 3;
         private boolean distractorsEnabled;
+        /** AP22: Opt-in context mode (Beta) for longer code with scaffolding. Default false. */
+        private boolean contextModeEnabled;
+        /** AP31: Opt-in inline-split generation for complex lines. Default false. */
+        private boolean splitEnabled;
 
         // AP20: Generation Constraints
         private List<String> blacklist;

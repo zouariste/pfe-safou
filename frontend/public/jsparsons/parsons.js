@@ -941,6 +941,7 @@
    var addToggleableElements = function(widget) {
       for (var i = 0; i < widget.modified_lines.length; i++) {
         widget.modified_lines[i]._addToggles();
+        widget.modified_lines[i]._addBlanks(); // AP30: render $$blank:…$$ as inline inputs
       }
       // toggleable elements are only enabled for unit tests
       if (!widget.options.unittests && !widget.options.vartests) { return; }
@@ -985,6 +986,7 @@
     this.code = "";
     this.indent = 0;
     this._toggles = [];
+    this._blanks = []; // AP30: fill-in-the-gap inputs ($$blank:…$$)
     // AP16: Interchangeable group metadata
     this.groupName = null;  // e.g. "base_1", "vars"
     this.groupType = null;  // "group" | "swap" | null
@@ -1062,6 +1064,154 @@
     if (index < 0 || index >= this._toggles.length) { return undefined; }
     return this._toggles[index].textContent;
   };
+
+  // AP30: Fill-in-the-Gaps. Parses $$blank:<expected>$$ / $$blank:<expected>|<mode>$$
+  // markers (mode ∈ {exact, trim, ci}, default "trim") into inline <input> fields.
+  // Renders from this.code (raw) — like _addToggles — so Prettify token-splitting
+  // cannot break marker detection. jQuery UI sortable's default `cancel` selector
+  // excludes inputs, so typing into a gap does not start a drag.
+  ParsonsCodeline.prototype._addBlanks = function() {
+    var blankRegexp = /\$\$blank(?::((?:(?!\$\$).)*))?\$\$/g;
+    this._blanks = [];
+    if (!blankRegexp.test(this.code)) { return; }
+    blankRegexp.lastIndex = 0;
+    var that = this;
+    var html = this.code;
+
+    // Re-apply toggle spans first so a line using both composes (mirrors _addToggles).
+    var toggleRegexp = new RegExp("\\$\\$toggle(" + this.widget.options.toggleSeparator + ".*?)?\\$\\$", "g");
+    var toggles = html.match(toggleRegexp);
+    if (toggles) {
+      for (var t = 0; t < toggles.length; t++) {
+        var opts = toggles[t].substring(10, toggles[t].length - 2).split(this.widget.options.toggleSeparator);
+        html = html.replace(toggles[t], "<span class='jsparson-toggle' data-jsp-options='" +
+                 JSON.stringify(opts).replace("<", "&lt;") + "'></span>");
+      }
+    }
+
+    var specs = [];
+    html = html.replace(blankRegexp, function(match, inner) {
+      var expected = null, mode = "trim";
+      if (inner != null && inner.length > 0) {
+        expected = inner;
+        var sep = expected.lastIndexOf("|");
+        if (sep >= 0) {
+          var m = expected.substring(sep + 1);
+          if (m === "exact" || m === "trim" || m === "ci") { mode = m; expected = expected.substring(0, sep); }
+        }
+      }
+      var idx = specs.length;
+      specs.push({ expected: expected, mode: mode });
+      var size = expected != null ? Math.max(3, expected.length) : 6;
+      return "<input type='text' class='jsparson-blank' data-blank-index='" + idx +
+             "' size='" + size + "' autocomplete='off' autocorrect='off' " +
+             "autocapitalize='off' spellcheck='false' aria-label='fill in the gap' />";
+    });
+
+    this.elem().html(html);
+    this.elem().find(".jsparson-blank").each(function(index, item) {
+      that._blanks.push({ el: item, expected: specs[index].expected, mode: specs[index].mode });
+    });
+  };
+
+  // AP30: number of gap inputs in this line
+  ParsonsCodeline.prototype.blankCount = function() {
+    return this._blanks ? this._blanks.length : 0;
+  };
+
+  // AP31: Inline-Split-Blocks. Renders this line as fixed prefix + inline slots + fixed
+  // suffix, with a tray of draggable/clickable fragment chips (incl. distractors). Uses
+  // click-to-place: click a tray chip to fill the next empty slot; click a filled slot to
+  // return its chip. MUST be called AFTER window.prettyPrint() so the rebuilt innerHTML and
+  // its handlers are not orphaned by a later prettify pass (see the $$blank$$ note above).
+  //
+  // entry: { fragments:[…2-4], prefix?, suffix?, distractors?:[{text,type}] }
+  // onChange: optional callback(kind) where kind ∈ {"placed","returned"}.
+  ParsonsCodeline.prototype._renderSplit = function(entry, onChange) {
+    if (!entry || !entry.fragments || entry.fragments.length < 2) { return; }
+    var fragments = entry.fragments.slice();
+    var prefix = entry.prefix || "";
+    var suffix = entry.suffix || "";
+    var distractors = (entry.distractors || []).map(function (d) { return d.text; });
+
+    var $li = this.elem();
+    $li.addClass("split-line").empty();
+    if (prefix) { $li.append($("<span class='split-fixed'></span>").text(prefix)); }
+    var $slots = $("<span class='split-slots'></span>");
+    for (var i = 0; i < fragments.length; i++) {
+      $slots.append($("<span class='split-slot' data-slot='" + i + "'></span>"));
+    }
+    $li.append($slots);
+    if (suffix) { $li.append($("<span class='split-fixed'></span>").text(suffix)); }
+    var $tray = $("<span class='split-tray'></span>");
+    $li.append($tray);
+
+    // Pool = canonical fragments + distractors, shuffled (Fisher–Yates).
+    var pool = fragments.map(function (t) { return { text: t, distractor: false }; })
+      .concat(distractors.map(function (t) { return { text: t, distractor: true }; }));
+    for (var j = pool.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var tmp = pool[j]; pool[j] = pool[k]; pool[k] = tmp;
+    }
+
+    function makeChip(item) {
+      var $chip = $("<span class='split-frag'></span>")
+        .text(item.text)
+        .attr("data-distractor", item.distractor ? "1" : "0");
+      bindTray($chip);
+      return $chip;
+    }
+    function bindTray($chip) {
+      $chip.off("click").on("click", function (e) {
+        e.stopPropagation();
+        var $empty = $slots.children(".split-slot").not(".filled").first();
+        if (!$empty.length) { return; }
+        $empty.append($chip.detach()).addClass("filled");
+        bindSlot($chip, $empty);
+        if (onChange) { onChange("placed"); }
+      });
+    }
+    function bindSlot($chip, $slot) {
+      $chip.off("click").on("click", function (e) {
+        e.stopPropagation();
+        $tray.append($chip.detach());
+        $slot.removeClass("filled");
+        bindTray($chip);
+        if (onChange) { onChange("returned"); }
+      });
+    }
+    pool.forEach(function (item) { $tray.append(makeChip(item)); });
+
+    this._split = {
+      canonical: fragments,
+      // Reads the current slot contents left→right (null for empty slots).
+      currentOrder: function () {
+        return $slots.children(".split-slot").map(function () {
+          var $c = $(this).children(".split-frag").first();
+          return $c.length ? { text: $c.text(), distractor: $c.attr("data-distractor") === "1" } : null;
+        }).get();
+      }
+    };
+  };
+
+  // AP31: true iff every slot holds the canonical fragment in order (no distractor, no gap).
+  // Non-split lines return true (they don't constrain the verdict).
+  ParsonsCodeline.prototype.splitCorrect = function() {
+    if (!this._split) { return true; }
+    var order = this._split.currentOrder();
+    var canon = this._split.canonical;
+    if (order.length !== canon.length) { return false; }
+    for (var i = 0; i < order.length; i++) {
+      if (!order[i] || order[i].distractor || order[i].text !== canon[i]) { return false; }
+    }
+    return true;
+  };
+
+  // AP31: true if this line is a split line (has an active split UI).
+  ParsonsCodeline.prototype.isSplitLine = function() {
+    return !!this._split;
+  };
+
   // expose the type for testing, extending etc
   window.ParsonsCodeline = ParsonsCodeline;
 

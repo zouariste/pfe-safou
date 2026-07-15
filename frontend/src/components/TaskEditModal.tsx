@@ -3,6 +3,8 @@ import { Modal, Button, Form } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { useEventTracker } from "../hooks/useEventTracker";
+import CodeSolutionEditor from "./CodeSolutionEditor";
+import { parseSplitPlan, type SplitEntry } from "../types/models";
 
 interface TaskEditModalProps {
     taskId: string;
@@ -14,7 +16,9 @@ interface TaskEditModalProps {
     initialDistractors?: string | null;
     /** AP15: JSON distractor plan from generation (read-only info). */
     distractorPlan?: string | null;
-    onSave: (updated: { statement: string; solution: string; distractors?: string | null }) => void;
+    /** AP31: Current inline-split plan (JSON string). Parsed with parseSplitPlan. */
+    initialSplitPlan?: string | null;
+    onSave: (updated: { statement: string; solution: string; distractors?: string | null; splitPlan?: string | null }) => void;
     onClose: () => void;
 }
 
@@ -34,6 +38,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
     isFirstEdit,
     initialDistractors,
     distractorPlan,
+    initialSplitPlan,
     onSave,
     onClose,
 }) => {
@@ -41,6 +46,8 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
     const [problemStatement, setProblemStatement] = useState(initialProblemStatement);
     const [code, setCode] = useState(initialCode);
     const [distractors, setDistractors] = useState(initialDistractors ?? "");
+    // AP31: inline-split plan, seeded from the task's existing split_plan.
+    const [splits, setSplits] = useState<SplitEntry[]>(() => parseSplitPlan(initialSplitPlan)?.splits ?? []);
     const [adjustmentRating, setAdjustmentRating] = useState<number>(3);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -71,6 +78,8 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
             const body: Record<string, unknown> = {
                 problemStatement: problemStatement,
                 code: code,
+                // AP31: authoritative split plan (empty array clears it server-side)
+                splits: splits,
             };
             // AP15: Include distractors in edit payload
             if (distractors !== (initialDistractors ?? "")) {
@@ -81,10 +90,12 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
             }
             const res = await api.put(`/tasks/${taskId}`, body);
             saveCountRef.current += 1;
+            const initialSplits = parseSplitPlan(initialSplitPlan)?.splits ?? [];
             const fieldsChanged: string[] = [];
             if (problemStatement !== initialProblemStatement) fieldsChanged.push("statement");
             if (code !== initialCode) fieldsChanged.push("code");
             if (distractors !== (initialDistractors ?? "")) fieldsChanged.push("distractors");
+            if (JSON.stringify(splits) !== JSON.stringify(initialSplits)) fieldsChanged.push("splitPlan");
             logEvent(taskId, "teacher_edit_saved", {
                 taskId,
                 editDurationMs: Date.now() - editStartRef.current,
@@ -95,6 +106,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 statement: res.data.statement,
                 solution: res.data.solution,
                 distractors: res.data.distractors ?? null,
+                splitPlan: res.data.splitPlan ?? null,
             });
         } catch (err: unknown) {
             const msg =
@@ -132,13 +144,18 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
                 <Form.Group className="mb-3">
                     <Form.Label>{t("taskEdit.code")}</Form.Label>
-                    <Form.Control
-                        as="textarea"
+
+                    {/* AP30 gaps + AP31 inline-split: shared with ManualTaskCreator */}
+                    <CodeSolutionEditor
+                        code={code}
+                        onCodeChange={setCode}
+                        splits={splits}
+                        onSplitsChange={setSplits}
                         rows={10}
-                        value={code}
-                        onChange={(e) => setCode(e.target.value)}
-                        style={{ fontFamily: "monospace", fontSize: "0.9rem" }}
+                        showGapPreview
+                        onError={setError}
                     />
+
                     <Form.Text className="text-muted" style={{ fontSize: "0.8rem" }}>
                         <strong>{t("taskEdit.swapHelp")}</strong>{" "}
                         <code>#swap:NAME</code> — {t("taskEdit.swapSingle")}{" "}

@@ -95,6 +95,9 @@ export default function SequencePage() {
                 distractors: tk.distractors ?? null,
                 distractorPlan: tk.distractorPlan ?? null,
                 distractorsEnabled: tk.distractorsEnabled !== false,
+                contextBefore: tk.contextBefore ?? null,
+                contextAfter: tk.contextAfter ?? null,
+                splitPlan: tk.splitPlan ?? null, // AP31 — needed so the edit modal can reopen with existing splits
             }))
             : [];
 
@@ -789,6 +792,7 @@ export default function SequencePage() {
                     initialCode={editingTask.solution}
                     initialDistractors={editingTask.distractors}
                     distractorPlan={editingTask.distractorPlan}
+                    initialSplitPlan={editingTask.splitPlan}
                     isFirstEdit={editIsFirstEdit}
                     onSave={handleEditSave}
                     onClose={() => setEditingTask(null)}

@@ -1,11 +1,15 @@
 package com.cisternino.application.service;
 
 import com.cisternino.api.dto.ManualTaskRequest;
+import com.cisternino.domain.entities.SplitPlan;
 import com.cisternino.domain.entities.TaskDTO;
 import com.cisternino.domain.entities.TieredTaskSequenceDTO;
 import com.cisternino.domain.exceptions.DomainValidationException;
+import com.cisternino.application.util.GapMarkers;
 import com.cisternino.domain.interfaces.CodeAnalyzer;
 import com.cisternino.domain.interfaces.CodeAnalyzer.ComplexityResult;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,11 +36,14 @@ public class ManualTaskService {
 
     private final TaskPersistenceService persistenceService;
     private final CodeAnalyzer codeAnalyzer;
+    private final ObjectMapper objectMapper;
 
     public ManualTaskService(TaskPersistenceService persistenceService,
-                             CodeAnalyzer codeAnalyzer) {
+                             CodeAnalyzer codeAnalyzer,
+                             ObjectMapper objectMapper) {
         this.persistenceService = persistenceService;
         this.codeAnalyzer = codeAnalyzer;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -62,8 +69,17 @@ public class ManualTaskService {
             // No comment-sanitizing — in manual mode the teacher decides what stays
             String code = tier.getSolution().trim();
 
+            // AP30: gap markers ($$blank:…$$) live inline in the solution. Strip them to the
+            // expected value before code analysis so metrics run on syntactically valid code;
+            // the persisted solution keeps the markers for the Parsons renderer.
+            String analyzableCode = GapMarkers.strip(code);
+
             // Compute complexity metrics via CodeAnalyzer (AP26: all 9 languages)
-            ComplexityResult metrics = codeAnalyzer.computeComplexity(code, language);
+            ComplexityResult metrics = codeAnalyzer.computeComplexity(analyzableCode, language);
+
+            // AP31: validate + serialize inline-split entries (reconstruction check against the raw
+            // solution lines — split markers are not part of the solution text).
+            String splitPlanJson = buildSplitPlanJson(tier.getSplits(), code, tier.getTierLevel());
 
             TaskDTO task = TaskDTO.builder()
                     .id(UUID.randomUUID())
@@ -76,6 +92,7 @@ public class ManualTaskService {
                     .methodCallCount(metrics.methodCallCount())
                     .distinctIdentifierCount(metrics.distinctIdentifierCount())
                     .sequenceId(sequenceId)
+                    .splitPlan(splitPlanJson)
                     .build();
 
             tasks.add(task);
@@ -103,6 +120,29 @@ public class ManualTaskService {
         logger.info("Manual sequence persisted: id={}", sequenceId);
 
         return sequence;
+    }
+
+    /**
+     * AP31: Turns the tier's split entries into a validated {@code split_plan} JSON string.
+     * Returns {@code null} when there are no splits. Throws {@link DomainValidationException}
+     * if any split fails the reconstruction check.
+     */
+    private String buildSplitPlanJson(List<SplitPlan.SplitEntry> splits, String solution, int tierLevel) {
+        if (splits == null || splits.isEmpty()) {
+            return null;
+        }
+        SplitPlan plan = SplitPlan.builder().splits(splits).build();
+        try {
+            SequenceValidator.validateSplitPlan(plan, solution);
+        } catch (DomainValidationException e) {
+            throw new DomainValidationException("Tier " + tierLevel + " split invalid: " + e.getMessage());
+        }
+        try {
+            return objectMapper.writeValueAsString(plan);
+        } catch (JsonProcessingException e) {
+            logger.warn("Failed to serialize split_plan for tier {}: {}", tierLevel, e.getMessage());
+            return null;
+        }
     }
 
     // ── Validation ──────────────────────────────────────────────

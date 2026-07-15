@@ -78,6 +78,7 @@ public class TasksController {
 
         boolean distractors = request.isDistractorsEnabled();
         boolean contextMode = request.isContextModeEnabled();
+        boolean splitEnabled = request.isSplitEnabled(); // AP31
 
         // AP20: Build GenerationConstraints from request fields
         GenerationConstraints constraints = GenerationConstraints.builder()
@@ -101,7 +102,8 @@ public class TasksController {
                 distractors,
                 contextMode,
                 constraints.hasAny() ? constraints : null,
-                tierCount
+                tierCount,
+                splitEnabled // AP31
         );
         var location = java.net.URI.create("/api/sequence/" + seq.getId());
         return ResponseEntity.created(location).body(seq);
@@ -341,10 +343,12 @@ public class TasksController {
         // Determine language from sequence
         TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(task.getSequenceId());
         String lang = seq != null ? seq.getProgrammingLanguage() : "python";
-        int loc = (int) task.getSolution().lines().count();
+        // AP30: resolve $$blank:…$$ gap markers to real code before generating distractors
+        String solutionCode = GapMarkers.strip(task.getSolution());
+        int loc = (int) solutionCode.lines().count();
 
         String distractors = taskEnricher.generateDistractorsForTask(
-                task.getSolution(), lang, task.getStatement(),
+                solutionCode, lang, task.getStatement(),
                 task.getTierLevel(), task.getDistractorPlan(), loc);
 
         if (distractors != null) {
@@ -374,9 +378,11 @@ public class TasksController {
                 if (task.getDistractors() != null && !task.getDistractors().isBlank()) continue;
                 if (task.getSolution() == null || task.getSolution().isBlank()) continue;
 
-                int loc = (int) task.getSolution().lines().count();
+                // AP30: resolve gap markers before generating distractors
+                String solutionCode = GapMarkers.strip(task.getSolution());
+                int loc = (int) solutionCode.lines().count();
                 String distractors = taskEnricher.generateDistractorsForTask(
-                        task.getSolution(), lang, task.getStatement(),
+                        solutionCode, lang, task.getStatement(),
                         task.getTierLevel(), task.getDistractorPlan(), loc);
 
                 if (distractors != null) {
@@ -407,6 +413,8 @@ public class TasksController {
         private boolean distractorsEnabled;
         /** AP22: Whether to enable context mode (Beta) for longer code with scaffolding. Default: false. */
         private boolean contextModeEnabled;
+        /** AP31: Whether to generate inline-split plans for complex lines. Default: false. */
+        private boolean splitEnabled;
 
         // ── AP20: Generation Constraints ─────────────────────
         /** Constructs that MUST NOT appear in generated code. */

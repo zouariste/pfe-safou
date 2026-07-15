@@ -3,6 +3,7 @@ import {useEffect, useMemo, useRef, useState} from "react";
 import {useNavigate, useParams} from "react-router-dom";
 import {api} from "../lib/api.ts";
 import type {Task} from "../types/models.ts";
+import {parseSplitPlan} from "../types/models.ts";
 import $ from "jquery";
 import {usePageTitle} from "../hooks/usePageTitle.ts";
 import { useLocation } from "react-router-dom";
@@ -15,8 +16,22 @@ import DOMPurify from "dompurify";
 declare global {
     interface Window {
         ParsonsWidget?: any;
-        prettyPrint?: () => void;
+        prettyPrint?: (whenDone?: () => void) => void;
     }
+}
+
+/**
+ * AP30: client-side evaluation of a fill-in-the-gap input.
+ * When `expected` is null the gap is not auto-graded (always neutral/correct).
+ * mode ∈ {exact, trim, ci}; default handling done by the caller.
+ */
+function checkBlank(value: string, expected: string | null, mode: string): boolean {
+    if (expected == null) return true;
+    let a = value;
+    let b = expected;
+    if (mode === "trim" || mode === "ci") { a = a.trim(); b = b.trim(); }
+    if (mode === "ci") { a = a.toLowerCase(); b = b.toLowerCase(); }
+    return a === b;
 }
 
 export default function SolvePage() {
@@ -197,6 +212,7 @@ export default function SolvePage() {
                     distractorPlan: data.distractorPlan ?? null,
                     contextBefore: data.contextBefore ?? null,
                     contextAfter: data.contextAfter ?? null,
+                    splitPlan: data.splitPlan ?? null, // AP31 — required for inline-split rendering
                 };
                 PersistentLogger.logWithContext("SolvePage", "debug", "Mapped Task object:", JSON.stringify(t));
                 PersistentLogger.logWithContext("SolvePage", "debug", "AP22 context fields — before:", t.contextBefore ? "present (" + t.contextBefore.split("\n").length + " lines)" : "null", "after:", t.contextAfter ? "present (" + t.contextAfter.split("\n").length + " lines)" : "null");
@@ -507,8 +523,120 @@ export default function SolvePage() {
                 }
             });
 
+            // AP30: evaluate fill-in-the-gap inputs. A solution line is only fully correct
+            // when its position/indent AND all its gap values are correct. A wrong (or empty)
+            // required gap must ALSO veto the overall success verdict below — otherwise a
+            // perfectly ordered puzzle reports "solved" while a gap value is still wrong.
+            let anyGapIncorrect = false;
+            (this.modified_lines ?? []).forEach((line: any) => {
+                const blanks = line._blanks ?? [];
+                if (!blanks.length) return;
+                const jqEl = line.elem ? line.elem() : null;
+                const el: HTMLElement | null = jqEl ? (jqEl[0] ?? jqEl.get?.(0) ?? null) : null;
+                // AP30 fix: window.prettyPrint() re-renders each block's innerHTML AFTER
+                // _addBlanks captured its <input> nodes, so line._blanks[].el is a detached
+                // node whose .value is always "". Read the CURRENT field from the live line
+                // element instead (matched by order); fall back to the stored ref.
+                const liveInputs = el
+                    ? (Array.from(el.querySelectorAll("input.jsparson-blank")) as HTMLInputElement[])
+                    : [];
+                const isInSolution = solutionBlockIds.has(line.id);
+                let allGapsCorrect = true;
+                blanks.forEach((b: any, gi: number) => {
+                    const input = (liveInputs[gi] ?? b.el) as HTMLInputElement;
+                    if (!input) return;
+                    const val = input.value ?? "";
+                    const ok = checkBlank(val, b.expected, b.mode ?? "trim");
+                    input.classList.remove("blank-correct", "blank-incorrect");
+                    if (isInSolution && val.length > 0) {
+                        input.classList.add(ok ? "blank-correct" : "blank-incorrect");
+                    }
+                    if (b.expected != null && !ok) allGapsCorrect = false;
+                    if (isInSolution && val.length > 0 && task?.id) {
+                        logEvent(task.id, ok ? "gap_correct" : "gap_incorrect", {
+                            lineId: line.id,
+                            gapIndex: gi,
+                            value: val,
+                            expected: b.expected,
+                            mode: b.mode ?? "trim",
+                        }, task.sequenceId, task.tierLevel);
+                    }
+                });
+                if (isInSolution && !allGapsCorrect) {
+                    anyGapIncorrect = true;
+                    line.isCorrect = false;
+                    if (el) {
+                        el.classList.remove("line-correct", "line-warning");
+                        el.classList.add("line-incorrect");
+                        el.style.backgroundColor = "rgba(255, 99, 71, 0.4)";
+                    }
+                }
+            });
+
+            // AP31: evaluate inline-split lines. A split line is fully correct only when its
+            // block position AND its fragment order are correct ("UND"-Urteil). Mirrors gaps.
+            let anySplitIncorrect = false;
+            (this.modified_lines ?? []).forEach((line: any) => {
+                if (!line?.isSplitLine || !line.isSplitLine()) return;
+                const jqEl = line.elem ? line.elem() : null;
+                const el: HTMLElement | null = jqEl ? (jqEl[0] ?? jqEl.get?.(0) ?? null) : null;
+                const isInSolution = solutionBlockIds.has(line.id);
+                const order = line._split.currentOrder();
+                const canonical = line._split.canonical as string[];
+                const ok = line.splitCorrect();
+
+                if (el) {
+                    const slotEls = el.querySelectorAll(".split-slot");
+                    slotEls.forEach((s) => s.classList.remove("split-correct", "split-incorrect"));
+                    if (isInSolution) {
+                        order.forEach((o: any, i: number) => {
+                            if (!o) return;
+                            const good = !o.distractor && o.text === canonical[i];
+                            slotEls[i]?.classList.add(good ? "split-correct" : "split-incorrect");
+                        });
+                    }
+                }
+
+                if (isInSolution && !ok) {
+                    anySplitIncorrect = true;
+                    line.isCorrect = false;
+                    if (el) {
+                        el.classList.remove("line-correct", "line-warning");
+                        el.classList.add("line-incorrect");
+                        el.style.backgroundColor = "rgba(255, 99, 71, 0.4)";
+                    }
+                }
+                if (isInSolution && task?.id) {
+                    logEvent(task.id, ok ? "split_line_correct" : "split_line_incorrect", {
+                        lineId: line.id,
+                        order: order.map((o: any) => (o ? o.text : null)),
+                        expected: canonical,
+                    }, task.sequenceId, task.tierLevel);
+                }
+            });
+
+            // AP30/AP31: a wrong gap OR a wrong split vetoes the overall "solved" verdict.
+            // _lastSuccess (read by the Feedback handler) is otherwise position-only, and
+            // js-parsons' own `correct` class on the solution list must be retracted too.
+            if (anyGapIncorrect || anySplitIncorrect) {
+                (this as any)._lastSuccess = false;
+                ul?.classList.remove("correct");
+            }
+
             return feedback;
         };
+
+        // AP30 fix: clear a gap's stale correct/incorrect styling the moment the learner
+        // edits it, so a corrected field responds immediately. Delegated on document because
+        // window.prettyPrint() re-creates the input nodes (see gap grading above), which would
+        // strand a listener bound to a specific node.
+        const gapClearHandler = (e: Event) => {
+            const tgt = e.target as HTMLElement | null;
+            if (tgt && tgt.classList?.contains("jsparson-blank")) {
+                tgt.classList.remove("blank-correct", "blank-incorrect");
+            }
+        };
+        document.addEventListener("input", gapClearHandler);
 
         // Lock hints + track move counters whenever blocks are moved
         const targetUl = document.getElementById("ul-jsparsons-target");
@@ -591,8 +719,44 @@ export default function SolvePage() {
         if (targetUl) observer.observe(targetUl, observerOpts);
         if (sourceUl) observer.observe(sourceUl, observerOpts);
 
-        window.prettyPrint?.();
+        // AP31: render inline-split lines AFTER prettify finishes so the rebuilt DOM and its
+        // click handlers survive (prettify re-tokenizes .prettyprint blocks — see gap note above).
+        const wireSplitLines = () => {
+            const plan = parseSplitPlan(task.splitPlan ?? null);
+            if (!plan?.splits?.length) return;
+            plan.splits.forEach((entry) => {
+                const reconstructed = ((entry.prefix ?? "") + (entry.fragments ?? []).join("") + (entry.suffix ?? "")).trim();
+                const line = (widget.modified_lines ?? []).find((l: any) =>
+                    l && !l._split && typeof l.code === "string" && l.code.trim() === reconstructed);
+                if (line && typeof line._renderSplit === "function") {
+                    // AP31: per-line handler so we can also detect when a split-distractor
+                    // (a chip with data-distractor="1") is dragged into a slot.
+                    let prevDistractorsInSlots = 0;
+                    const onSplitChange = () => {
+                        setHintsUnlocked(false);
+                        if (!task?.id) return;
+                        logEvent(task.id, "fragment_placed", {}, task.sequenceId, task.tierLevel);
+                        try {
+                            const order = line._split?.currentOrder?.() ?? [];
+                            const distractorsInSlots = order.filter((s: any) => s && s.distractor).length;
+                            if (distractorsInSlots > prevDistractorsInSlots) {
+                                logEvent(task.id, "split_distractor_placed", {}, task.sequenceId, task.tierLevel);
+                            }
+                            prevDistractorsInSlots = distractorsInSlots;
+                        } catch { /* non-fatal analytics */ }
+                    };
+                    line._renderSplit(entry, onSplitChange);
+                }
+            });
+        };
+        if (window.prettyPrint) {
+            window.prettyPrint(wireSplitLines);
+        } else {
+            wireSplitLines();
+        }
+
         return () => {
+            document.removeEventListener("input", gapClearHandler);
             widgetRef.current = null;
         };
     }, [task?.solution]);

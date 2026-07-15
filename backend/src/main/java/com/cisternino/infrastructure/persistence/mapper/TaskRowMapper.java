@@ -34,6 +34,7 @@ public class TaskRowMapper implements RowMapper<TaskDTO> {
         dto.setDistractorsEnabled(rs.getBoolean("distractors_enabled"));
         dto.setContextBefore(rs.getString("context_before"));
         dto.setContextAfter(rs.getString("context_after"));
+        dto.setSplitPlan(rs.getString("split_plan")); // AP31
 
         return dto;
     }
