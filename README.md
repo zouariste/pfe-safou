@@ -224,3 +224,21 @@ A `LICENSE` file will be provided with the public release. The source files
 currently carry GNU General Public License v3.0 headers.
 
 Developed at the Chair of Software Engineering II, University of Passau by Luca Cisternino.
+
+---
+
+## Citation
+
+If you use CodeOwl in your research, please cite:
+
+```bibtex
+@misc{cisternino2026codeowlautomaticgenerationtiered,
+      title={CodeOwl: Automatic Generation of Tiered Parsons Problems for Introductory Programming}, 
+      author={Luca Cisternino and Florian Obermüller and Gordon Fraser},
+      year={2026},
+      eprint={2607.12460},
+      archivePrefix={arXiv},
+      primaryClass={cs.SE},
+      url={https://arxiv.org/abs/2607.12460}, 
+}
+```
