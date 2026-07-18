@@ -3,7 +3,7 @@
 -- AP32 — Curated few-shot code examples ("Fewshot-Curriculum-Bibliothek")
 -- ════════════════════════════════════════════════════════════════════
 --
--- Source: "Markus Würdinger Beispiele für Referenzen" (4 BlueJ Java projects).
+-- Source: curated BlueJ reference examples (4 BlueJ Java projects).
 -- One row per project; `code` = all classes of the project concatenated.
 --
 -- Topic mapping:

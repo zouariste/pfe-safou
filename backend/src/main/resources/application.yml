@@ -62,9 +62,9 @@ logging:
     org.hibernate.type.descriptor.sql: WARN
     com.zaxxer.hikari: INFO
     # Your app packages
-    com.cisternino: INFO
+    de.uni_passau.fim.se2: INFO
     # If your OpenAI client was noisy at TRACE, force it to INFO
-    com.cisternino.infrastructure.ai.openai: INFO
+    de.uni_passau.fim.se2.infrastructure.ai.openai: INFO
   # Pattern (optional): uncomment if you want timestamps/thread/level aligned
   # pattern:
   #   console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
