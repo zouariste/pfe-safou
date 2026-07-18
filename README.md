@@ -220,8 +220,7 @@ codeowl/
 
 ## License
 
-A `LICENSE` file will be provided with the public release. The source files
-currently carry GNU General Public License v3.0 headers.
+CodeOwl is licensed under the GNU General Public License v3.0 — see [LICENSE](LICENSE).
 
 Developed at the Chair of Software Engineering II, University of Passau by Luca Cisternino.
 
