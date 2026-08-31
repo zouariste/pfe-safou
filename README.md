@@ -76,6 +76,11 @@ For local development outside Docker you additionally need:
 - **JDK 21** (the backend ships a Maven wrapper, `./mvnw`)
 - **Node.js 20+** and npm
 
+> **Windows:** the backend's code-analysis dependency (`java-tree-sitter`) only
+> ships native libraries for Linux and macOS, so `./mvnw spring-boot:run` cannot
+> start natively on Windows. Run the backend under **WSL2**, or via **Docker
+> Compose**, instead — see the note in [Local development](#local-development).
+
 ---
 
 ## Quick start (Docker Compose)
@@ -181,6 +186,23 @@ export SPRING_DATASOURCE_USERNAME=postgres
 export SPRING_DATASOURCE_PASSWORD=postgres
 ./mvnw spring-boot:run
 ```
+> **Windows:** `java-tree-sitter` (used for code analysis) has no native
+> Windows build — running `./mvnw spring-boot:run` directly will fail with
+> `TreeSitterException: ... not compiled for this platform`. Run the backend
+> under **WSL2** instead (Docker Compose also works, since the backend
+> container is Linux-based, but you lose devtools live-reload).
+>
+> **WSL2:** the `java-tree-sitter` native library is compiled against musl
+> libc, so it also fails to load on a stock Ubuntu/Debian WSL2 distro with
+> `UnsatisfiedLinkError: ...libc.musl-x86_64.so.1: cannot open shared object
+> file`. Install musl and symlink it under the expected name (the backend
+> Docker image does the same thing on startup — see `backend/Dockerfile`):
+> ```bash
+> sudo apt-get update
+> sudo apt-get install -y musl
+> sudo ln -sf /usr/lib/x86_64-linux-musl/libc.so /lib/libc.musl-x86_64.so.1
+> ```
+
 
 **Frontend** (Vite dev server, port 5173):
 
