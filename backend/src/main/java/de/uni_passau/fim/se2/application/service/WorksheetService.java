@@ -246,9 +246,8 @@ public class WorksheetService {
         if (isBlank(worksheet.getName())) {
             throw new DomainValidationException("Worksheet name must not be empty.");
         }
-        if (isBlank(worksheet.getDescription())) {
-            throw new DomainValidationException("Worksheet description must not be empty.");
-        }
+        // The description is optional: the create form labels it as such and the
+        // worksheets.description column is nullable with a '' default.
     }
 
     private void validateWorksheetId(WorksheetDTO worksheet) {

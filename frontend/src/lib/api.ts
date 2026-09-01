@@ -3,6 +3,31 @@ import axios from "axios";
 const baseURL = import.meta.env.VITE_API_BASE_URL || "/api";
 const uiBaseURL = import.meta.env.VITE_BASE_PATH || "/";
 
+/**
+ * Turns an Axios error into a string that is safe to render.
+ *
+ * The backend's GlobalExceptionHandler replies with an ApiErrorResponse object
+ * ({ error, message }). Putting that object straight into component state and
+ * rendering it throws "Objects are not valid as a React child", and since the
+ * app has no error boundary that unmounts the whole tree — a blank page instead
+ * of an error message.
+ */
+export function apiErrorMessage(err: unknown, fallback = "Unexpected error"): string {
+    const axiosError = err as { response?: { data?: unknown }; message?: string } | undefined;
+    const data = axiosError?.response?.data;
+
+    if (typeof data === "string" && data.trim()) return data;
+
+    if (data !== null && typeof data === "object") {
+        const { message, error } = data as { message?: string; error?: string };
+        if (error && message) return `${error}: ${message}`;
+        if (message) return message;
+        if (error) return error;
+    }
+
+    return axiosError?.message || fallback;
+}
+
 export const api = axios.create({
     baseURL,
     timeout: 120000,

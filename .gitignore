@@ -6,6 +6,7 @@
 # Maven build output
 target/
 *.class
+.m2/
 
 # IntelliJ IDEA
 .idea/
@@ -29,6 +30,7 @@ logs/
 # Generated reports
 htmlReport/
 htmlReport.zip
+junit.xml
 
 # Node / Frontend
 node_modules/

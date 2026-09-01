@@ -344,10 +344,6 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             problems.add("name missing");
         }
 
-        if (worksheet.getDescription() == null || worksheet.getDescription().isBlank()) {
-            problems.add("description missing");
-        }
-
         if (!problems.isEmpty()) {
             String msg = "Worksheet validation failed: " + String.join(", ", problems);
             log.warn("{} — worksheet={}", msg, worksheet);
