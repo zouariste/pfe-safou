@@ -41,7 +41,7 @@ export default function SolvePage() {
 
     const [language, setLanguage] = useState(langFromNav ?? "unknown");
     const lastFeedbackAtRef = useRef(0);
-    usePageTitle("Task Page | CodeOwl");
+    usePageTitle(t("solve.pageTitle"));
     const {taskId} = useParams<{ taskId: string }>();
 
     useEffect(() => {

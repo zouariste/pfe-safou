@@ -107,6 +107,7 @@
   },
 
   "home": {
+    "pageTitle": "CodeOwl - Generate Tiered Tasks",
     "distractorsEnabled": "Generate distractors (Parsons)",
     "title": "Code Owl",
     "subtitle": "Generate tiered Parsons puzzles. Faster differentiation for computer science education.",
@@ -167,6 +168,7 @@
   },
 
   "sequence": {
+    "pageTitle": "Sequence Page",
     "devTemplate": "DEV Template",
     "teacherBanner": "Teacher Mode",
     "copyLinkTitle": "Copies this sequence link",
@@ -219,6 +221,7 @@
   },
 
   "solve": {
+    "pageTitle": "Task Page | CodeOwl",
     "home": "Home",
     "backToSequence": "Back to Sequence",
     "copyFailed": "Copy failed",
@@ -281,6 +284,7 @@
   },
 
   "worksheet": {
+    "pageTitle": "Worksheet View",
     "copyLinkTitle": "Copies this worksheet link",
     "teacherMode": "Teacher View",
     "hideTeacherMode": "Hide Teacher View",
@@ -633,6 +637,7 @@
   },
 
   "manual": {
+    "pageTitle": "CodeOwl - Manual Task Creator",
     "title": "Manual Task Creator",
     "subtitle": "Create Parsons puzzle tasks from your own code — without AI generation.",
     "sequenceSettings": "Sequence Settings",

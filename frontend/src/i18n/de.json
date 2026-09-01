@@ -1,7 +1,7 @@
 {
   "nav": {
     "userManagement": "Userverwaltung",
-    "manualCreator": "Manual Creator",
+    "manualCreator": "Manueller Editor",
     "classes": "Klassen",
     "myClasses": "Meine Klassen",
     "logout": "Abmelden",
@@ -107,6 +107,7 @@
   },
 
   "home": {
+    "pageTitle": "CodeOwl – Gestufte Aufgaben generieren",
     "distractorsEnabled": "Distraktoren generieren (Parsons)",
     "title": "Code Owl",
     "subtitle": "Generiere gestufte Parsons-Aufgaben. Schnellere Differenzierung für den Informatikunterricht.",
@@ -167,6 +168,7 @@
   },
 
   "sequence": {
+    "pageTitle": "Sequenz-Seite",
     "devTemplate": "DEV-Vorlage",
     "teacherBanner": "Lehrer-Modus",
     "copyLinkTitle": "Kopiert den Link zu dieser Sequenz",
@@ -219,6 +221,7 @@
   },
 
   "solve": {
+    "pageTitle": "Aufgabe | CodeOwl",
     "home": "Home",
     "backToSequence": "Zurück zur Sequenz",
     "copyFailed": "Kopieren fehlgeschlagen",
@@ -281,6 +284,7 @@
   },
 
   "worksheet": {
+    "pageTitle": "Arbeitsblatt-Ansicht",
     "copyLinkTitle": "Kopiert den Link zu diesem Arbeitsblatt",
     "teacherMode": "Lehrer-Ansicht",
     "hideTeacherMode": "Lehrer-Ansicht ausblenden",
@@ -517,15 +521,15 @@
     "errorToggleTracking": "Fehler beim Umschalten des Trackings.",
     "trackingOn": "Fortschritt-Tracking aktiviert.",
     "trackingOff": "Fortschritt-Tracking deaktiviert.",
-    "worksheets": "Worksheets ({{count}})",
-    "assignWorksheet": "Worksheet zuweisen",
-    "worksheetUuidPlaceholder": "Worksheet-UUID eingeben",
+    "worksheets": "Arbeitsblätter ({{count}})",
+    "assignWorksheet": "Arbeitsblatt zuweisen",
+    "worksheetUuidPlaceholder": "Arbeitsblatt-UUID eingeben",
     "assignBtn": "Zuweisen",
-    "noWorksheets": "Noch keine Worksheets zugewiesen.",
-    "openWorksheet": "Worksheet öffnen",
+    "noWorksheets": "Noch keine Arbeitsblätter zugewiesen.",
+    "openWorksheet": "Arbeitsblatt öffnen",
     "removeAssignment": "Zuweisung entfernen",
-    "removeWorksheetConfirm": "Worksheet \"{{name}}\" wirklich von der Klasse entfernen?",
-    "worksheetAssigned": "Worksheet zugewiesen.",
+    "removeWorksheetConfirm": "Arbeitsblatt \"{{name}}\" wirklich von der Klasse entfernen?",
+    "worksheetAssigned": "Arbeitsblatt zugewiesen.",
     "errorAssigning": "Fehler beim Zuweisen.",
     "resetPassword": "Temporäres Passwort setzen",
     "resetPasswordTitle": "Temporäres Passwort setzen",
@@ -633,7 +637,8 @@
   },
 
   "manual": {
-    "title": "Manual Task Creator",
+    "pageTitle": "CodeOwl – Manueller Aufgaben-Editor",
+    "title": "Manueller Aufgaben-Editor",
     "subtitle": "Erstelle Parsons-Puzzle-Aufgaben aus deinem eigenen Code — ohne KI-Generierung.",
     "sequenceSettings": "Sequenz-Einstellungen",
     "programmingLanguage": "Programmiersprache *",

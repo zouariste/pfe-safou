@@ -9,7 +9,7 @@ import { usePageTitle } from "../hooks/usePageTitle.ts";
 
 export default function HomePage() {
     const { t } = useTranslation();
-    usePageTitle("CodeOwl - Generate Tiered Tasks");
+    usePageTitle(t("home.pageTitle"));
 
     const [codeSnippet, setCodeSnippet] = useState("");
     const [problemStatement, setProblemStatement] = useState("");

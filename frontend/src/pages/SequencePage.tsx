@@ -22,8 +22,8 @@ import type { ExportableSequence } from "../lib/export.ts";
 type LoadState = "idle" | "loading" | "ready" | "notfound" | "error";
 
 export default function SequencePage() {
-    usePageTitle("Sequence Page");
     const { t } = useTranslation();
+    usePageTitle(t("sequence.pageTitle"));
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 

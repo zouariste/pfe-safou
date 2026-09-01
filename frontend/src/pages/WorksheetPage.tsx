@@ -15,8 +15,8 @@ import {
 } from "../lib/export.ts";
 
 export default function WorksheetPage() {
-    usePageTitle("Worksheet View");
     const { t } = useTranslation();
+    usePageTitle(t("worksheet.pageTitle"));
     const { sheetId } = useParams<{ sheetId: string }>();
     const navigate = useNavigate();
     const location = useLocation();
