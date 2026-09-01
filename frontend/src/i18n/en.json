@@ -1,6 +1,7 @@
 {
   "nav": {
     "userManagement": "User Management",
+    "automaticCreator": "Automatic Creator",
     "manualCreator": "Manual Creator",
     "classes": "Classes",
     "myClasses": "My Classes",
@@ -13,7 +14,8 @@
     "curriculum": "Curriculum",
     "library": "Library",
     "libraryAdmin": "Tag Curation",
-    "databaseTools": "Database Tools"
+    "databaseTools": "Database Tools",
+    "worksheets": "Worksheets"
   },
 
   "library": {
@@ -478,6 +480,27 @@
     "emptyStudent": "You are not assigned to any class yet.",
     "emptyTeacher": "No classes yet. Create your first class!",
     "deleteClass": "Delete class"
+  },
+
+  "worksheets": {
+    "pageTitle": "CodeOwl – Worksheets",
+    "title": "Worksheet Management",
+    "newWorksheet": "New Worksheet",
+    "deleteConfirm": "Really delete this worksheet? All sequence links and class assignments will be removed.",
+    "errorLoading": "Error loading worksheets.",
+    "errorCreating": "Error creating worksheet.",
+    "errorDeleting": "Error deleting.",
+    "loading": "Loading...",
+    "createTitle": "Create new worksheet",
+    "name": "Name *",
+    "namePlaceholder": "e.g. Week 3 — Arrays & Loops",
+    "description": "Description",
+    "descPlaceholder": "Optional description...",
+    "creating": "Creating...",
+    "create": "Create",
+    "empty": "No worksheets yet. Create your first worksheet!",
+    "deleteWorksheet": "Delete worksheet",
+    "sequenceCount": "{{count}} sequence(s)"
   },
 
   "classDetail": {

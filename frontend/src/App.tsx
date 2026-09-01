@@ -18,6 +18,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import StudentOnboardingPage from "./pages/StudentOnboardingPage";
 import ProfilePage from "./pages/ProfilePage";
 import ClassesPage from "./pages/ClassesPage";
+import WorksheetsPage from "./pages/WorksheetsPage";
 import ClassDetailPage from "./pages/ClassDetailPage";
 import StudentClassesPage from "./pages/StudentClassesPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
@@ -43,6 +44,7 @@ function FloatingHelpButton() {
     const matchClasses    = useMatch("/classes");
     const matchClassDetail = useMatch("/classes/:id");
     const matchWorksheet  = useMatch("/worksheets/:sheetId");
+    const matchWorksheetsList = useMatch("/worksheets");
     const matchManual     = useMatch("/manual-create");
     const matchMyClasses  = useMatch("/my-classes");
     const matchAdminUsers = useMatch("/admin/users");
@@ -60,7 +62,7 @@ function FloatingHelpButton() {
         matchLibrary                      ? "library"       :
         matchCurriculum                   ? "curriculum"    :
         (matchClasses || matchClassDetail)? "classes"       :
-        matchWorksheet                    ? "worksheets"    :
+        (matchWorksheet || matchWorksheetsList) ? "worksheets" :
         matchManual                       ? "manual-create" :
         matchMyClasses                    ? "my-classes"    :
         (matchAdminUsers || matchAdminLib || matchAdminDb)? "admin" :
@@ -157,6 +159,10 @@ function Navbar() {
                                     <i className="bi bi-collection me-1"></i>
                                     {t("nav.library")}
                                 </Link>
+                                <Link to="/" className="btn btn-sm btn-outline-success">
+                                    <i className="bi bi-magic me-1"></i>
+                                    {t("nav.automaticCreator")}
+                                </Link>
                                 <Link to="/manual-create" className="btn btn-sm btn-outline-success">
                                     <i className="bi bi-pencil-square me-1"></i>
                                     {t("nav.manualCreator")}
@@ -168,6 +174,10 @@ function Navbar() {
                                 <Link to="/classes" className="btn btn-sm btn-outline-secondary">
                                     <i className="bi bi-people me-1"></i>
                                     {t("nav.classes")}
+                                </Link>
+                                <Link to="/worksheets" className="btn btn-sm btn-outline-secondary">
+                                    <i className="bi bi-journal-text me-1"></i>
+                                    {t("nav.worksheets")}
                                 </Link>
                             </>
                         )}
@@ -329,6 +339,7 @@ export default function App() {
                                 <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                                 <Route path="/classes" element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
                                 <Route path="/classes/:id" element={<ProtectedRoute><ClassDetailPage /></ProtectedRoute>} />
+                                <Route path="/worksheets" element={<ProtectedRoute><WorksheetsPage /></ProtectedRoute>} />
                                 <Route path="/my-classes" element={<ProtectedRoute><StudentClassesPage /></ProtectedRoute>} />
 
                                 {/* Admin routes */}

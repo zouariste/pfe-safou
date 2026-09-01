@@ -1,6 +1,7 @@
 {
   "nav": {
     "userManagement": "Userverwaltung",
+    "automaticCreator": "Automatischer Editor",
     "manualCreator": "Manueller Editor",
     "classes": "Klassen",
     "myClasses": "Meine Klassen",
@@ -13,7 +14,8 @@
     "curriculum": "Lehrplan",
     "library": "Bibliothek",
     "libraryAdmin": "Tag-Kuratierung",
-    "databaseTools": "Datenbank-Tools"
+    "databaseTools": "Datenbank-Tools",
+    "worksheets": "Arbeitsblätter"
   },
 
   "library": {
@@ -478,6 +480,27 @@
     "emptyStudent": "Du bist noch keiner Klasse zugeordnet.",
     "emptyTeacher": "Noch keine Klassen vorhanden. Erstelle deine erste Klasse!",
     "deleteClass": "Klasse löschen"
+  },
+
+  "worksheets": {
+    "pageTitle": "CodeOwl – Arbeitsblätter",
+    "title": "Arbeitsblattverwaltung",
+    "newWorksheet": "Neues Arbeitsblatt",
+    "deleteConfirm": "Arbeitsblatt wirklich löschen? Alle Sequenz-Verknüpfungen und Klassenzuweisungen werden entfernt.",
+    "errorLoading": "Fehler beim Laden der Arbeitsblätter.",
+    "errorCreating": "Fehler beim Erstellen des Arbeitsblatts.",
+    "errorDeleting": "Fehler beim Löschen.",
+    "loading": "Laden...",
+    "createTitle": "Neues Arbeitsblatt erstellen",
+    "name": "Name *",
+    "namePlaceholder": "z.B. Woche 3 — Arrays und Schleifen",
+    "description": "Beschreibung",
+    "descPlaceholder": "Optionale Beschreibung...",
+    "creating": "Erstelle...",
+    "create": "Erstellen",
+    "empty": "Noch keine Arbeitsblätter vorhanden. Erstelle dein erstes Arbeitsblatt!",
+    "deleteWorksheet": "Arbeitsblatt löschen",
+    "sequenceCount": "{{count}} Sequenz(en)"
   },
 
   "classDetail": {

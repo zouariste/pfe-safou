@@ -32,6 +32,7 @@ export default function WorksheetPage() {
     const [batchMode, setBatchMode] = useState(false);
     const [batchInput, setBatchInput] = useState("");
     const [copied, setCopied] = useState(false);
+    const [tipsVisible, setTipsVisible] = useState(true);
 
     // Role-based teacher view: show toggle for owners and admins
     const isOwnerOrAdmin = isLoggedIn && worksheet && user && (worksheet.ownerId === user.userId || isAdmin);
@@ -645,7 +646,7 @@ export default function WorksheetPage() {
                 </>
             )}
 
-            {teacherViewEnabled && (
+            {teacherViewEnabled && tipsVisible && (
                 <div
                     style={{
                         position: "fixed",
@@ -660,7 +661,16 @@ export default function WorksheetPage() {
                         zIndex: 1000,
                     }}
                 >
-                    <h6 className="fw-bold mb-2">{t("worksheet.tips")}</h6>
+                    <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <h6 className="fw-bold mb-0">{t("worksheet.tips")}</h6>
+                        <button
+                            type="button"
+                            className="btn-close"
+                            aria-label={t("common.close")}
+                            style={{ flexShrink: 0 }}
+                            onClick={() => setTipsVisible(false)}
+                        />
+                    </div>
                     <ul className="mb-0 small text-muted" style={{ lineHeight: 1.5 }}>
                         <li dangerouslySetInnerHTML={{ __html: t("worksheet.tip1") }} />
                         <li dangerouslySetInnerHTML={{ __html: t("worksheet.tip2") }} />
