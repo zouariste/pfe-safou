@@ -12,16 +12,20 @@ const uiBaseURL = import.meta.env.VITE_BASE_PATH || "/";
  * app has no error boundary that unmounts the whole tree — a blank page instead
  * of an error message.
  */
-export function apiErrorMessage(err: any, fallback = "Unexpected error"): string {
-    const data = err?.response?.data;
+export function apiErrorMessage(err: unknown, fallback = "Unexpected error"): string {
+    const axiosError = err as { response?: { data?: unknown }; message?: string } | undefined;
+    const data = axiosError?.response?.data;
+
     if (typeof data === "string" && data.trim()) return data;
-    if (data && typeof data === "object") {
+
+    if (data !== null && typeof data === "object") {
         const { message, error } = data as { message?: string; error?: string };
         if (error && message) return `${error}: ${message}`;
         if (message) return message;
         if (error) return error;
     }
-    return err?.message || fallback;
+
+    return axiosError?.message || fallback;
 }
 
 export const api = axios.create({
