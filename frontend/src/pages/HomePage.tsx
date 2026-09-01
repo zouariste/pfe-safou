@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { api } from "../lib/api.ts";
+import { api, apiErrorMessage } from "../lib/api.ts";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { SequenceView } from "../components/SequenceView.tsx";
 import type { TieredTaskSequence } from "../types/models.ts";
@@ -62,7 +62,7 @@ export default function HomePage() {
             setShowModal(false);
             navigate(`/worksheets/${data.id}`);
         } catch (err: any) {
-            setModalError(err?.response?.data ?? "Error creating worksheet");
+            setModalError(apiErrorMessage(err, "Error creating worksheet"));
         } finally {
             setCreating(false);
         }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api } from "../lib/api.ts";
+import { api, apiErrorMessage } from "../lib/api.ts";
 import type { Worksheet, ClassInfo } from "../types/models.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { ListGroup } from "react-bootstrap";
@@ -102,7 +102,7 @@ export default function WorksheetPage() {
             const { data } = await api.get(`/worksheets/${sheetId}`);
             setWorksheet(data);
         } catch (err: any) {
-            alert(err?.response?.data ?? "Error removing sequence.");
+            alert(apiErrorMessage(err, "Error removing sequence."));
         }
     }
 
@@ -237,7 +237,7 @@ export default function WorksheetPage() {
                 setShowModal(false);
                 setBatchInput("");
             } catch (err: any) {
-                setModalError(err?.response?.data ?? "Error adding sequences.");
+                setModalError(apiErrorMessage(err, "Error adding sequences."));
             } finally {
                 setAdding(false);
             }
@@ -255,7 +255,7 @@ export default function WorksheetPage() {
                 setShowModal(false);
                 setSequenceId("");
             } catch (err: any) {
-                setModalError(err?.response?.data ?? "Error adding sequence.");
+                setModalError(apiErrorMessage(err, "Error adding sequence."));
             } finally {
                 setAdding(false);
             }
@@ -265,7 +265,7 @@ export default function WorksheetPage() {
     useEffect(() => {
         api.get(`/worksheets/${sheetId}`)
             .then(({ data }) => setWorksheet(data))
-            .catch((err) => setError(err?.response?.data ?? err.message))
+            .catch((err) => setError(apiErrorMessage(err)))
             .finally(() => setLoading(false));
     }, [sheetId]);
 
