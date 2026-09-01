@@ -21,11 +21,47 @@ stages:          # List of stages for jobs, and their order of execution
   - test
   - deploy
 
-build-job:       # This job runs in the build stage, which runs first.
+frontend-build:  # tsc -b (typechecks src and tests) + vite production bundle.
   stage: build
+  image: node:22
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+    paths:
+      - frontend/.npm/
+  before_script:
+    - cd frontend
+    - npm ci --cache .npm --prefer-offline
   script:
-    - echo "Compiling the code..."
-    - echo "Compile complete."
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 week
+
+backend-build:   # Compiles and packages the Spring Boot jar via the Maven wrapper.
+  stage: build
+  image: eclipse-temurin:21-jdk   # Matches java.version in backend/pom.xml.
+  cache:
+    key:
+      files:
+        - backend/pom.xml
+    paths:
+      - backend/.m2/repository/
+  before_script:
+    - cd backend
+    # The repository is also worked on from Windows, where the executable bit on
+    # mvnw is easily lost; without this a stray mode change breaks every pipeline.
+    - chmod +x mvnw
+  script:
+    # Tests are skipped here on purpose: backend/src/test is still empty, and when
+    # it is not, they belong in the test stage rather than the build.
+    - ./mvnw -B -ntp -Dmaven.repo.local=.m2/repository package -DskipTests
+  artifacts:
+    paths:
+      - backend/target/*.jar
+    expire_in: 1 week
 
 frontend-test:   # Runs the vitest suite in frontend/.
   stage: test    # It only starts when the job in the build stage completes successfully.
