@@ -33,7 +33,7 @@ const EMPTY_TIER = (level: number): TierEntry => ({
 
 export default function ManualTaskCreator() {
     const { t } = useTranslation();
-    usePageTitle("CodeOwl - Manual Task Creator");
+    usePageTitle(t("manual.pageTitle"));
     const navigate = useNavigate();
 
     // ── Form state ──────────────────────────────────────────

@@ -15,8 +15,8 @@ import {
 } from "../lib/export.ts";
 
 export default function WorksheetPage() {
-    usePageTitle("Worksheet View");
     const { t } = useTranslation();
+    usePageTitle(t("worksheet.pageTitle"));
     const { sheetId } = useParams<{ sheetId: string }>();
     const navigate = useNavigate();
     const location = useLocation();
@@ -442,7 +442,7 @@ export default function WorksheetPage() {
                         copied ? "btn-success" : "btn-outline-secondary"
                     }`}
                     onClick={handleCopyLink}
-                    title="Copies this worksheet link"
+                    title={t("worksheet.copyLinkTitle")}
                 >
                     <i className="bi bi-link-45deg"></i>
                     {copied ? t("worksheet.copied") : t("worksheet.shareWorksheet")}

@@ -9,7 +9,7 @@ import { usePageTitle } from "../hooks/usePageTitle.ts";
 
 export default function HomePage() {
     const { t } = useTranslation();
-    usePageTitle("CodeOwl - Generate Tiered Tasks");
+    usePageTitle(t("home.pageTitle"));
 
     const [codeSnippet, setCodeSnippet] = useState("");
     const [problemStatement, setProblemStatement] = useState("");
@@ -277,7 +277,7 @@ export default function HomePage() {
                                         onChange={(e) => setDistractorsEnabled(e.target.checked)}
                                     />
                                     <label className="form-check-label" htmlFor="distractorsToggle">
-                                        {t("home.distractorsEnabled", "Generate distractors (Parsons)")}
+                                        {t("home.distractorsEnabled")}
                                         <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                     </label>
                                 </div>
