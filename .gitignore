@@ -29,6 +29,7 @@ logs/
 # Generated reports
 htmlReport/
 htmlReport.zip
+junit.xml
 
 # Node / Frontend
 node_modules/
