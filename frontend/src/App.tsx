@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, useLocation, useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import HomePage from "./pages/HomePage.tsx";
 import SolvePage from "./pages/SolvePage.tsx";
 import SequencePage from "./pages/SequencePage.tsx";
@@ -241,6 +243,59 @@ function AppFooter() {
     );
 }
 
+/**
+ * Catches render errors from the routed pages.
+ *
+ * Sits inside the router rather than around it, so a crashing page leaves the
+ * navbar and footer intact and the user can navigate away. Keying the reset on
+ * the pathname clears the error on navigation — otherwise the boundary would
+ * keep showing the fallback after the route had already changed.
+ */
+function RouteErrorBoundary({ children }: { children: ReactNode }) {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { t } = useTranslation();
+
+    return (
+        <ErrorBoundary
+            resetKey={location.pathname}
+            fallback={(error, reset) => (
+                <div className="container py-5" style={{ maxWidth: 720 }}>
+                    <div className="alert alert-danger">
+                        <h4 className="alert-heading">⚠️ {t("common.crashTitle")}</h4>
+                        <p>{t("common.crashBody")}</p>
+                        <details className="mb-3">
+                            <summary style={{ cursor: "pointer" }}>{t("common.crashDetails")}</summary>
+                            <pre
+                                className="mt-2 mb-0"
+                                style={{ whiteSpace: "pre-wrap", fontSize: "0.8rem" }}
+                            >
+                                {error.message}
+                            </pre>
+                        </details>
+                        <div className="d-flex gap-2 flex-wrap">
+                            <button className="btn btn-primary" onClick={reset}>
+                                {t("common.crashRetry")}
+                            </button>
+                            <button
+                                className="btn btn-outline-secondary"
+                                onClick={() => {
+                                    reset();
+                                    navigate("/");
+                                }}
+                            >
+                                {t("common.home")}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        >
+            {children}
+        </ErrorBoundary>
+    );
+}
+
 export default function App() {
     return (
         <BrowserRouter basename={import.meta.env.BASE_URL}>
@@ -249,42 +304,44 @@ export default function App() {
                     <Navbar />
 
                     <main className="flex-fill">
-                        <Routes>
-                            {/* Public routes */}
-                            <Route path="/" element={<HomePage />} />
-                            <Route path="/sequence/:id" element={<SequencePage />} />
-                            <Route path="/solve/:taskId" element={<SolvePage />} />
-                            <Route path="/worksheets/:sheetId" element={<WorksheetPage />} />
-                            <Route path="/help" element={<HelpPage />} />
-                            <Route path="/help/:context" element={<HelpPage />} />
+                        <RouteErrorBoundary>
+                            <Routes>
+                                {/* Public routes */}
+                                <Route path="/" element={<HomePage />} />
+                                <Route path="/sequence/:id" element={<SequencePage />} />
+                                <Route path="/solve/:taskId" element={<SolvePage />} />
+                                <Route path="/worksheets/:sheetId" element={<WorksheetPage />} />
+                                <Route path="/help" element={<HelpPage />} />
+                                <Route path="/help/:context" element={<HelpPage />} />
 
-                            {/* Temp-password change (accessible while logged in) */}
-                            <Route path="/change-password" element={<ChangePasswordPage />} />
+                                {/* Temp-password change (accessible while logged in) */}
+                                <Route path="/change-password" element={<ChangePasswordPage />} />
 
-                            {/* Auth routes */}
-                            <Route path="/login" element={<LoginPage />} />
-                            <Route path="/register" element={<RegisterPage />} />
-                            <Route path="/verify-email" element={<VerifyEmailPage />} />
-                            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                            <Route path="/reset-password" element={<ResetPasswordPage />} />
-                            <Route path="/student-onboarding" element={<StudentOnboardingPage />} />
+                                {/* Auth routes */}
+                                <Route path="/login" element={<LoginPage />} />
+                                <Route path="/register" element={<RegisterPage />} />
+                                <Route path="/verify-email" element={<VerifyEmailPage />} />
+                                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                                <Route path="/student-onboarding" element={<StudentOnboardingPage />} />
 
-                            {/* Protected routes */}
-                            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-                            <Route path="/classes" element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
-                            <Route path="/classes/:id" element={<ProtectedRoute><ClassDetailPage /></ProtectedRoute>} />
-                            <Route path="/my-classes" element={<ProtectedRoute><StudentClassesPage /></ProtectedRoute>} />
+                                {/* Protected routes */}
+                                <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                                <Route path="/classes" element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
+                                <Route path="/classes/:id" element={<ProtectedRoute><ClassDetailPage /></ProtectedRoute>} />
+                                <Route path="/my-classes" element={<ProtectedRoute><StudentClassesPage /></ProtectedRoute>} />
 
-                            {/* Admin routes */}
-                            <Route path="/admin/users" element={<ProtectedRoute requiredRole="ADMIN"><AdminUsersPage /></ProtectedRoute>} />
-                            <Route path="/admin/library" element={<ProtectedRoute requiredRole="ADMIN"><AdminLibraryPage /></ProtectedRoute>} />
-                            <Route path="/admin/database" element={<ProtectedRoute requiredRole="ADMIN"><AdminDatabasePage /></ProtectedRoute>} />
+                                {/* Admin routes */}
+                                <Route path="/admin/users" element={<ProtectedRoute requiredRole="ADMIN"><AdminUsersPage /></ProtectedRoute>} />
+                                <Route path="/admin/library" element={<ProtectedRoute requiredRole="ADMIN"><AdminLibraryPage /></ProtectedRoute>} />
+                                <Route path="/admin/database" element={<ProtectedRoute requiredRole="ADMIN"><AdminDatabasePage /></ProtectedRoute>} />
 
-                            {/* Teacher tools */}
-                            <Route path="/manual-create" element={<ProtectedRoute><ManualTaskCreator /></ProtectedRoute>} />
-                            <Route path="/curriculum" element={<ProtectedRoute><CurriculumPage /></ProtectedRoute>} />
-                            <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
-                        </Routes>
+                                {/* Teacher tools */}
+                                <Route path="/manual-create" element={<ProtectedRoute><ManualTaskCreator /></ProtectedRoute>} />
+                                <Route path="/curriculum" element={<ProtectedRoute><CurriculumPage /></ProtectedRoute>} />
+                                <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
+                            </Routes>
+                        </RouteErrorBoundary>
                     </main>
 
                     {/* Universal floating help button */}
