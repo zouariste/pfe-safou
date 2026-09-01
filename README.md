@@ -244,7 +244,7 @@ codeowl/
 
 CodeOwl is licensed under the GNU General Public License v3.0 — see [LICENSE](LICENSE).
 
-Developed at the Chair of Software Engineering II, University of Passau by Luca Cisternino.
+Developed at the Chair of Software Engineering II, University of Passau by Luca Cisternino and Florian Obermüller.
 
 ---
 
