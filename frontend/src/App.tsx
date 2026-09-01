@@ -107,7 +107,7 @@ function LanguageToggle() {
             onClick={toggle}
             title={current === "de" ? "Switch to English" : "Zu Deutsch wechseln"}
         >
-            {current === "de" ? "EN" : "DE"}
+            {current.toUpperCase()}
         </button>
     );
 }
