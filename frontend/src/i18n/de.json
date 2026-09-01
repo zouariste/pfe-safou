@@ -1,6 +1,7 @@
 {
   "nav": {
     "userManagement": "Userverwaltung",
+    "automaticCreator": "Automatischer Editor",
     "manualCreator": "Manueller Editor",
     "classes": "Klassen",
     "myClasses": "Meine Klassen",

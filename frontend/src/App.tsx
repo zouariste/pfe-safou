@@ -157,6 +157,10 @@ function Navbar() {
                                     <i className="bi bi-collection me-1"></i>
                                     {t("nav.library")}
                                 </Link>
+                                <Link to="/" className="btn btn-sm btn-outline-success">
+                                    <i className="bi bi-magic me-1"></i>
+                                    {t("nav.automaticCreator")}
+                                </Link>
                                 <Link to="/manual-create" className="btn btn-sm btn-outline-success">
                                     <i className="bi bi-pencil-square me-1"></i>
                                     {t("nav.manualCreator")}

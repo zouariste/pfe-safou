@@ -1,6 +1,7 @@
 {
   "nav": {
     "userManagement": "User Management",
+    "automaticCreator": "Automatic Creator",
     "manualCreator": "Manual Creator",
     "classes": "Classes",
     "myClasses": "My Classes",
