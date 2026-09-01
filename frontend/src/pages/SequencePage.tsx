@@ -287,7 +287,7 @@ export default function SequencePage() {
 
             {import.meta.env.DEV && isTemplate && (
                 <div style={{ marginBottom: 12, padding: 8, border: "1px dashed #bbb", borderRadius: 6 }}>
-                    🧪 <strong>DEV Template</strong>
+                    🧪 <strong>{t("sequence.devTemplate")}</strong>
                 </div>
             )}
 
@@ -313,7 +313,7 @@ export default function SequencePage() {
                         boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                     }}
                 >
-                    👩‍🏫 Teacher Mode
+                    👩‍🏫 {t("sequence.teacherBanner")}
                 </div>
             )}
 
@@ -324,7 +324,7 @@ export default function SequencePage() {
                         copied ? "btn-success" : "btn-outline-secondary"
                     }`}
                     onClick={handleCopyLink}
-                    title="Copies this sequence link"
+                    title={t("sequence.copyLinkTitle")}
                 >
                     <i className="bi bi-link-45deg"></i>
                     {copied ? t("sequence.copied") : t("sequence.shareSequence")}
@@ -692,7 +692,7 @@ export default function SequencePage() {
                                                                 const plan = JSON.parse(task.distractorPlan);
                                                                 return (
                                                                     <small className="text-muted d-block mb-2">
-                                                                        Typ: <code>{plan.type}</code> — {plan.rationale}
+                                                                        {t("sequence.typeLabel")} <code>{plan.type}</code> — {plan.rationale}
                                                                     </small>
                                                                 );
                                                             } catch { return null; }

@@ -219,7 +219,7 @@ export default function SolvePage() {
                 setTask(t);
             })
             .catch((err: any) => {
-                const msg = err?.response?.data?.message || err?.message || "Error during API-Request";
+                const msg = err?.response?.data?.message || err?.message || t("solve.apiError");
                 PersistentLogger.logWithContext("SolvePage", "error", "Task fetch failed:", msg);
                 setError(msg);
             })
@@ -372,10 +372,10 @@ export default function SolvePage() {
             // Fix: Initialisiere i18n direkt im Konstruktor
             i18n: {
                 en: {
-                    no_matching: t("solve.no_matching") || "No matching line found.",
-                    one_item_error: t("solve.one_item_error") || "Solution should have more than one item.",
-                    trash_label: t("solve.source") || "Available Blocks",
-                    solution_label: t("solve.target") || "Your Solution",
+                    no_matching: t("solve.no_matching"),
+                    one_item_error: t("solve.one_item_error"),
+                    trash_label: t("solve.source"),
+                    solution_label: t("solve.target"),
                 }
             },
 
@@ -397,7 +397,7 @@ export default function SolvePage() {
                                 .addClass("incorrectPosition")
                                 .css("border", "1px solid red")
                                 .css("background-color", "#ffbaba")
-                                .attr("title", "Indentation matters in Python — this line is incorrect.");
+                                .attr("title", t("solve.indentationWarning"));
                         });
                     }
 
@@ -418,9 +418,9 @@ export default function SolvePage() {
         // Fix: Zusätzliche Absicherung für die translations Property vor dem Init
         if (!widget.translations) {
             widget.translations = {
-                no_matching: "No matching line found.",
-                trash_label: "Available Blocks",
-                solution_label: "Your Solution"
+                no_matching: t("solve.no_matching"),
+                trash_label: t("solve.source"),
+                solution_label: t("solve.target")
             };
         }
 
@@ -845,7 +845,7 @@ export default function SolvePage() {
             });
 
             if (blockOrder.length === 0) {
-                setHintError("Ziehe zuerst einige Bloecke in den Loesungsbereich.");
+                setHintError(t("solve.hintDragFirst"));
                 return;
             }
 
@@ -882,7 +882,7 @@ export default function SolvePage() {
             }, task.sequenceId, task.tierLevel);
 
         } catch (err: any) {
-            const msg = err?.response?.data?.hintText || err?.response?.data?.message || err?.message || "Hint konnte nicht geladen werden.";
+            const msg = err?.response?.data?.hintText || err?.response?.data?.message || err?.message || t("solve.hintLoadFailed");
             setHintError(msg);
         } finally {
             setHintLoading(false);
@@ -892,7 +892,7 @@ export default function SolvePage() {
     if (!taskId) {
         return (
             <div className="container py-4">
-                <div className="alert alert-warning">No task Id specified.</div>
+                <div className="alert alert-warning">{t("solve.noTaskId")}</div>
                 <button className="btn btn-link" onClick={() => navigate("/")}>{t("solve.home")}</button>
             </div>
         );
@@ -938,20 +938,20 @@ export default function SolvePage() {
                         boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                     }}
                 >
-                    👩‍🏫 Teacher Mode — Model solutions are visible on the bottom right
+                    👩‍🏫 {t("solve.teacherBanner")}
                 </div>
             )}
 
             {loading && (
                 <div className="alert alert-info d-flex align-items-center gap-2">
                     <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"/>
-                    <div>Loading Task…</div>
+                    <div>{t("solve.loadingTask")}</div>
                 </div>
             )}
             {error && (
                 <div className="alert alert-danger d-flex align-items-start gap-2">
                     <span>⚠️</span>
-                    <div><strong>Error:</strong> {error}</div>
+                    <div><strong>{t("solve.errorLabel")}</strong> {error}</div>
                 </div>
             )}
             <button
@@ -959,19 +959,20 @@ export default function SolvePage() {
                     copied ? "btn-success" : "btn-outline-secondary"
                 }`}
                 onClick={handleCopyLink}
-                title="Copies this task link"
+                title={t("solve.copyLinkTitle")}
             >
                 <i className="bi bi-link-45deg"></i>
-                {copied ? "✓ Copied!" : "Share Task"}
+                {copied ? `✓ ${t("solve.copied")}` : t("solve.shareTask")}
             </button>
             {task && (
                 <>
                     <div className="card mb-3">
                         <div className="card-body">
-                            <b>Task:</b>
+                            <b>{t("solve.taskLabel")}</b>
                             <div className="mt-2" style={{whiteSpace: "pre-wrap"}}>{task.statement}</div>
-                            <div className="text-muted mt-2">Tier {task.tierLevel} ·
-                                Language {task.programmingLanguage}</div>
+                            <div className="text-muted mt-2">
+                                {t("solve.tierAndLanguage", { tier: task.tierLevel, language: task.programmingLanguage })}
+                            </div>
                             <div className="mt-2"></div>
                         </div>
                     </div>
@@ -1008,7 +1009,7 @@ export default function SolvePage() {
                                 fontSize: "0.9rem",
                             }}
                         >
-                            <h6 className="fw-bold mb-2">Source</h6>
+                            <h6 className="fw-bold mb-2">{t("solve.sourceHeading")}</h6>
                             <div
                                 id="jsparsons-source"
                                 className="sortable-code"
@@ -1036,7 +1037,7 @@ export default function SolvePage() {
                                 fontSize: "0.9rem",
                             }}
                         >
-                            <h6 className="fw-bold mb-2">Construct your solution here</h6>
+                            <h6 className="fw-bold mb-2">{t("solve.targetHeading")}</h6>
 
                             {/* AP22: Context before puzzle */}
                             {contextBefore.length > 0 && (
@@ -1110,7 +1111,7 @@ export default function SolvePage() {
 
                     <div className="mt-3 d-flex gap-2 flex-wrap align-items-center">
                         {/* AP17: Interaction mode toggle */}
-                        <div className="btn-group btn-group-sm me-2" role="group" aria-label="Interaction mode">
+                        <div className="btn-group btn-group-sm me-2" role="group" aria-label={t("solve.interactionMode")}>
                             <button
                                 type="button"
                                 className={`btn ${interactionMode === "drag" ? "btn-primary" : "btn-outline-secondary"}`}
@@ -1118,9 +1119,9 @@ export default function SolvePage() {
                                     setInteractionMode("drag");
                                     try { localStorage.setItem("codeowl_interaction_mode", "drag"); } catch {}
                                 }}
-                                title="Drag and drop blocks to reorder"
+                                title={t("solve.dragModeTitle")}
                             >
-                                &#x2725; Drag
+                                &#x2725; {t("solve.dragMode")}
                             </button>
                             <button
                                 type="button"
@@ -1129,9 +1130,9 @@ export default function SolvePage() {
                                     setInteractionMode("click");
                                     try { localStorage.setItem("codeowl_interaction_mode", "click"); } catch {}
                                 }}
-                                title="Click a block to select, then click where to place it. Arrow keys to reorder, Tab to move between zones."
+                                title={t("solve.clickModeTitle")}
                             >
-                                &#x1F446; Click
+                                &#x1F446; {t("solve.clickMode")}
                             </button>
                         </div>
                         <button
@@ -1164,7 +1165,7 @@ export default function SolvePage() {
                                 } catch { /* silent */ }
                             }}
                         >
-                            Shuffle lines
+                            {t("solve.shuffleLines")}
                         </button>
                         <button
                             className="btn btn-primary"
@@ -1443,7 +1444,7 @@ export default function SolvePage() {
                                 }
                             }}
                         >
-                            Feedback
+                            {t("solve.feedback")}
                         </button>
 
                         {/* AP13: Hint buttons (only if teacher enabled hints) */}
@@ -1456,14 +1457,14 @@ export default function SolvePage() {
                                 e.preventDefault();
                                 await requestHint(1);
                             }}
-                            title={hintsUnlocked ? "Zeigt dir, welche Bloecke problematisch sind" : "Klicke zuerst auf Feedback"}
+                            title={hintsUnlocked ? t("solve.hintTitle") : t("solve.feedbackFirst")}
                         >
                             {hintLoading ? (
                                 <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
                             ) : (
                                 <span className="me-1">💡</span>
                             )}
-                            Hint
+                            {t("solve.hint")}
                         </button>
                         <button
                             className="btn btn-outline-warning"
@@ -1472,14 +1473,14 @@ export default function SolvePage() {
                                 e.preventDefault();
                                 await requestHint(2);
                             }}
-                            title={hintsUnlocked ? "Detaillierte Erklaerung vom Tutor" : "Klicke zuerst auf Feedback"}
+                            title={hintsUnlocked ? t("solve.explainTitle") : t("solve.feedbackFirst")}
                         >
                             {hintLoading ? (
                                 <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
                             ) : (
                                 <span className="me-1">🧑‍🏫</span>
                             )}
-                            Erklaer es mir
+                            {t("solve.explain")}
                         </button>
                         </>
                         )}
@@ -1494,7 +1495,7 @@ export default function SolvePage() {
                     {/* AP13: Hint display area */}
                     {hintError && (
                         <div className="alert alert-danger mt-2">
-                            <strong>Hint-Fehler:</strong> {hintError}
+                            <strong>{t("solve.hintErrorLabel")}</strong> {hintError}
                         </div>
                     )}
                     {hintText && (
@@ -1510,7 +1511,7 @@ export default function SolvePage() {
                             <div className="d-flex align-items-start gap-2">
                                 <span style={{ fontSize: "1.5rem" }}>🧑‍🏫</span>
                                 <div>
-                                    <strong>Erklaerung:</strong>
+                                    <strong>{t("solve.explanationLabel")}</strong>
                                     <div className="mt-1" style={{ whiteSpace: "pre-wrap" }}>{hintExplanation}</div>
                                 </div>
                             </div>
@@ -1528,18 +1529,18 @@ export default function SolvePage() {
                             }}
                         >
                             <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>&#x2705;</div>
-                            <h3 className="fw-bold text-success mb-2">Richtig geloest!</h3>
+                            <h3 className="fw-bold text-success mb-2">{t("solve.solvedTitle")}</h3>
                             <p className="text-muted mb-2">
                                 {attemptCountRef.current === 1
-                                    ? "Beim ersten Versuch — hervorragend!"
-                                    : `In ${attemptCountRef.current} Versuchen geschafft.`}
+                                    ? t("solve.solvedFirstTry")
+                                    : t("solve.solvedAfterAttempts", { attempts: attemptCountRef.current })}
                             </p>
 
                             {/* Self-report inline */}
                             {showSelfReport && (
                                 <div className="mb-3">
                                     <p className="mb-2 fw-bold" style={{ fontSize: "0.95rem" }}>
-                                        Wie sicher bist du, dass du es beim naechsten Mal wieder koenntest?
+                                        {t("solve.selfReportQuestion")}
                                     </p>
                                     <div className="d-flex justify-content-center gap-3">
                                         {[1, 2, 3, 4, 5].map((v) => (
@@ -1563,7 +1564,7 @@ export default function SolvePage() {
                                             </button>
                                         ))}
                                     </div>
-                                    <small className="text-muted mt-1 d-block">1 = unsicher · 5 = sehr sicher</small>
+                                    <small className="text-muted mt-1 d-block">{t("solve.selfReportScale")}</small>
                                 </div>
                             )}
 
@@ -1577,21 +1578,21 @@ export default function SolvePage() {
                                             navigate(`/solve/${nextTaskId}`, { state: { lang: language } });
                                         }}
                                     >
-                                        Naechste Aufgabe &rarr;
+                                        {t("solve.nextTask")} &rarr;
                                     </button>
                                 )}
                                 <button
                                     className="btn btn-outline-secondary"
                                     onClick={() => setShowCompletionBanner(false)}
                                 >
-                                    Schliessen
+                                    {t("solve.close")}
                                 </button>
                                 {task?.sequenceId && (
                                     <button
                                         className="btn btn-outline-primary"
                                         onClick={() => navigate(`/sequence/${task.sequenceId}`)}
                                     >
-                                        Zur Uebersicht
+                                        {t("solve.toOverview")}
                                     </button>
                                 )}
                             </div>
@@ -1613,9 +1614,9 @@ export default function SolvePage() {
                                 zIndex: 1000,
                             }}
                         >
-                            <h6 className="fw-bold mb-2">👩‍🏫 Teacher Tools</h6>
+                            <h6 className="fw-bold mb-2">👩‍🏫 {t("solve.teacherTools")}</h6>
                             <details>
-                                <summary className="fw-semibold mb-1">Show model solution</summary>
+                                <summary className="fw-semibold mb-1">{t("solve.showModelSolution")}</summary>
                                 <pre
                                     className="bg-light p-2 rounded mt-2"
                                     style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem" }}

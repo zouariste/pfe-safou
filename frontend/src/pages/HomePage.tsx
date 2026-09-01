@@ -277,7 +277,7 @@ export default function HomePage() {
                                         onChange={(e) => setDistractorsEnabled(e.target.checked)}
                                     />
                                     <label className="form-check-label" htmlFor="distractorsToggle">
-                                        {t("home.distractorsEnabled", "Generate distractors (Parsons)")}
+                                        {t("home.distractorsEnabled")}
                                         <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                     </label>
                                 </div>

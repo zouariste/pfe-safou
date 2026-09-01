@@ -1,4 +1,5 @@
 import { Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import type { UserRole } from "../types/models";
 
@@ -8,13 +9,14 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+    const { t } = useTranslation();
     const { user, loading, isLoggedIn, mustChangePassword } = useAuth();
 
     if (loading) {
         return (
             <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
                 <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Laden...</span>
+                    <span className="visually-hidden">{t("common.loading")}</span>
                 </div>
             </div>
         );
@@ -32,8 +34,8 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     if (requiredRole && user?.role !== requiredRole) {
         return (
             <div className="container py-5 text-center">
-                <h3 className="text-danger mb-3">Zugriff verweigert</h3>
-                <p className="text-muted">Du hast nicht die erforderliche Berechtigung, um diese Seite anzuzeigen.</p>
+                <h3 className="text-danger mb-3">{t("common.accessDenied")}</h3>
+                <p className="text-muted">{t("common.accessDeniedBody")}</p>
                 <Navigate to="/" replace />
             </div>
         );

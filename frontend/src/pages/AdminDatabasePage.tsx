@@ -107,7 +107,7 @@ export default function AdminDatabasePage() {
                         type="button"
                         className="btn-close"
                         onClick={() => setError("")}
-                        aria-label="Close"
+                        aria-label={t("common.close")}
                     />
                 </div>
             )}

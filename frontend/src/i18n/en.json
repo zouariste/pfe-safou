@@ -107,6 +107,7 @@
   },
 
   "home": {
+    "distractorsEnabled": "Generate distractors (Parsons)",
     "title": "Code Owl",
     "subtitle": "Generate tiered Parsons puzzles. Faster differentiation for computer science education.",
     "codeSnippet": "Code Snippet",
@@ -166,6 +167,14 @@
   },
 
   "sequence": {
+    "devTemplate": "DEV Template",
+    "teacherBanner": "Teacher Mode",
+    "copyLinkTitle": "Copies this sequence link",
+    "typeLabel": "Type:",
+    "generatedTasks": "Generated Tasks",
+    "solveParsons": "Solve Parson's Problem",
+    "statementLabel": "Problem statement:",
+    "tierLabel": "Tier {{n}}",
     "title": "Tiered Task Sequence",
     "language": "Language",
     "libraryTags": "Library tags",
@@ -217,10 +226,62 @@
     "positionCorrectIndentWrong": "Correct position but wrong indentation (not graded).",
     "distractorBanner": "Careful — not all blocks are needed for the solution. Some blocks are distractors and should stay in the source area.",
     "contextBanner": "The grey code blocks above and below the puzzle area are fixed context — they are already in place. Arrange only the highlighted blocks.",
-    "contextLabel": "Context (read-only)"
+    "contextLabel": "Context (read-only)",
+    "noTaskId": "No task Id specified.",
+    "sourceHeading": "Source",
+    "targetHeading": "Construct your solution here",
+
+    "source": "Available Blocks",
+    "target": "Your Solution",
+    "no_matching": "No matching line found.",
+    "one_item_error": "Solution should have more than one item.",
+
+    "teacherBanner": "Teacher Mode — Model solutions are visible on the bottom right",
+    "teacherTools": "Teacher Tools",
+    "showModelSolution": "Show model solution",
+
+    "loadingTask": "Loading task…",
+    "errorLabel": "Error:",
+    "apiError": "Error during API request",
+
+    "copyLinkTitle": "Copies this task link",
+    "copied": "Copied!",
+    "shareTask": "Share Task",
+
+    "taskLabel": "Task:",
+    "tierAndLanguage": "Tier {{tier}} · Language {{language}}",
+
+    "interactionMode": "Interaction mode",
+    "dragMode": "Drag",
+    "dragModeTitle": "Drag and drop blocks to reorder",
+    "clickMode": "Click",
+    "clickModeTitle": "Click a block to select, then click where to place it. Arrow keys to reorder, Tab to move between zones.",
+
+    "shuffleLines": "Shuffle lines",
+    "feedback": "Feedback",
+
+    "hint": "Hint",
+    "hintTitle": "Shows you which blocks are problematic",
+    "explain": "Explain it to me",
+    "explainTitle": "Detailed explanation from the tutor",
+    "feedbackFirst": "Click Feedback first",
+    "hintErrorLabel": "Hint error:",
+    "explanationLabel": "Explanation:",
+    "hintDragFirst": "Drag some blocks into the solution area first.",
+    "hintLoadFailed": "Hint could not be loaded.",
+
+    "solvedTitle": "Solved correctly!",
+    "solvedFirstTry": "On the first attempt — excellent!",
+    "solvedAfterAttempts": "Done in {{attempts}} attempts.",
+    "selfReportQuestion": "How confident are you that you could do this again next time?",
+    "selfReportScale": "1 = unsure · 5 = very sure",
+    "nextTask": "Next Task",
+    "close": "Close",
+    "toOverview": "To Overview"
   },
 
   "worksheet": {
+    "copyLinkTitle": "Copies this worksheet link",
     "teacherMode": "Teacher View",
     "hideTeacherMode": "Hide Teacher View",
     "teacherBanner": "Teacher mode — worksheet editing and sequence management enabled",
@@ -616,6 +677,13 @@
   },
 
   "taskEdit": {
+    "distractors": "Distractors",
+    "distractorsPlaceholder": "One distractor per line, each ending with #distractor",
+    "distractorsHelp": "Each line must end with #distractor. Do not use #swap or #group on distractor lines.",
+    "distractorPlan": "Plan",
+    "gapModeTrim": "trim (default)",
+    "gapModeExact": "exact",
+    "gapModeCi": "case-insensitive",
     "title": "Edit Task",
     "statement": "Problem Statement",
     "code": "Code / Solution",
@@ -645,6 +713,7 @@
   },
 
   "splitEditor": {
+    "removeDistractor": "Remove distractor",
     "title": "Inline split (AP31)",
     "help": "Pick a line → click between characters to set cut points (2–4 fragments). Optional fragment distractor.",
     "fragments": "{{count}} frag.",
@@ -707,6 +776,8 @@
   },
 
   "common": {
+    "accessDenied": "Access denied",
+    "accessDeniedBody": "You do not have the required permission to view this page.",
     "loading": "Loading...",
     "error": "Error",
     "save": "Save",
@@ -759,5 +830,720 @@
     "mismatch": "The passwords do not match.",
     "tooShort": "The password must be at least 8 characters long.",
     "error": "Error changing password."
+  },
+
+  "help": {
+    "common": {
+      "pageTitle": "Help Page",
+      "back": "Back",
+      "learnMore": "Learn more",
+      "fullOverview": "View full help overview",
+      "notFound": "No help content available for this section.",
+      "adminOnly": "This page is only accessible to admins.",
+      "beta": "Beta"
+    },
+    "overview": {
+      "title": "CodeOwl Help Center",
+      "lead": "Everything you need to know about CodeOwl v2 — generating, reviewing, and solving tiered Parsons problems in a classroom context.",
+      "catGettingStarted": "Getting Started",
+      "catClassroom": "Classroom Management",
+      "catContent": "Finding & Reusing Content",
+      "catSequences": "Sequences & Tasks",
+      "catAdvanced": "Advanced Features",
+      "catAdmin": "Admin Tools",
+      "authTitle": "Accounts & Authentication",
+      "authBody": "CodeOwl v2 has full user accounts with three roles: <strong>Teacher</strong>, <strong>Student</strong>, and <strong>Admin</strong>. Teachers self-register; students are enrolled by their teacher via a one-time token link (no email required on day one).",
+      "authItems": [
+        "<strong>Login</strong> — Email + password, or token link (for students).",
+        "<strong>Register</strong> — Teachers only. Students are created by the teacher.",
+        "<strong>Forgot Password</strong> — Email-based reset flow.",
+        "<strong>Onboarding</strong> — Students set their own password after first login.",
+        "<strong>Profile</strong> — Change email or password at any time."
+      ],
+      "homeTitle": "Home Page — Generate Sequences",
+      "homeBody": "The starting point for creating tiered Parsons problem sets. Provide code, a problem statement, and/or concepts. CodeOwl generates three (or five) task tiers automatically.",
+      "homeItems": [
+        "<strong>Generate Sequence</strong> — creates a new 3-tier (or 5-tier) Parsons problem set.",
+        "<strong>Constraints</strong> — blacklist/whitelist constructs, control difficulty slope.",
+        "<strong>Target Language</strong> — force problem statements in German or English.",
+        "<strong>Demo / Reset</strong> — load a sample or clear the form.",
+        "<strong>Shortcut</strong> — <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to generate."
+      ],
+      "manualTitle": "Manual Task Creator",
+      "manualBody": "No LLM involved — write your own problem statements and code solutions directly. Ideal when you want full control over the exact wording and code, or when you already have classroom examples you want to turn into Parsons puzzles.",
+      "manualItems": [
+        "<strong>Tier Editor</strong> — write up to 3 tiers (T1–T3); each tier gets its own statement and code.",
+        "<strong>Live Block Preview</strong> — see how the code will be split into draggable blocks as you type.",
+        "<strong>Tab key</strong> — inserts 4 spaces in the code editor (no focus-trap)."
+      ],
+      "classesTitle": "Classes",
+      "classesBody": "Teachers create classes, manage student accounts within them, and assign worksheets. Students are enrolled via a generated token link — no email required at sign-up.",
+      "classesItems": [
+        "<strong>Create Class</strong> — name your class and add students.",
+        "<strong>Student Tokens</strong> — one-time login links for each student.",
+        "<strong>Assign Worksheets</strong> — attach worksheets to a class so students can access them.",
+        "<strong>Tracking</strong> — enable per-class tracking to log detailed learning events for research."
+      ],
+      "myClassesTitle": "My Classes (Students)",
+      "myClassesBody": "Students see their assigned classes and worksheets here. Each class card links to the worksheets the teacher has assigned — click a worksheet to start solving tasks.",
+      "myClassesItems": [
+        "Click a class card to see its worksheets.",
+        "Click a worksheet to open it and see all tasks.",
+        "If your class list is empty, ask your teacher to enrol you."
+      ],
+      "worksheetsTitle": "Worksheets",
+      "worksheetsBody": "Worksheets group sequences into a coherent unit (e.g., \"Week 3 — Arrays\"). Teachers assign worksheets to classes, configure hint settings, and export them to PDF.",
+      "worksheetsItems": [
+        "<strong>Manage Sequences</strong> — add or remove sequences from a worksheet.",
+        "<strong>Hint Configuration</strong> — enable/disable hints, set credits per task.",
+        "<strong>Assign to Class</strong> — make the worksheet visible to students.",
+        "<strong>Export</strong> — PDF (puzzle or free-form) and CSV/JSON export."
+      ],
+      "libraryTitle": "Library",
+      "libraryBody": "Browse, search, and reuse all sequences available to you. Filter by programming language, concept tags, tier count, or full-text search. Copy any sequence into your own worksheet with one click.",
+      "libraryItems": [
+        "<strong>Full-Text Search</strong> — searches problem statements and code simultaneously.",
+        "<strong>Tags</strong> — structural tags (e.g., <code>for-loop</code>) and semantic tags (e.g., <code>fibonacci</code>).",
+        "<strong>One-Click Copy</strong> — copy a sequence directly into one of your worksheets.",
+        "<strong>URL-State Filters</strong> — shareable filter links."
+      ],
+      "curriculumTitle": "Curriculum",
+      "curriculumBody": "Browse the Bavarian LehrplanPLUS (G9 Informatik) topic tree and generate sequences directly from a curriculum topic. CodeOwl automatically fills in concepts and injects curated reference code for the chosen grade level.",
+      "curriculumItems": [
+        "<strong>Topic Tree</strong> — grades 7, 9, 10, 11, 12/13 with learning areas.",
+        "<strong>Auto-Context</strong> — concepts and code examples pre-filled from the topic.",
+        "<strong>Grade Calibration</strong> — the prompt adapts difficulty to the selected grade."
+      ],
+      "sequenceTitle": "Sequence Page",
+      "sequenceBody": "Overview of all tasks (T1–T3 or T1–T5) within a generated sequence. Teachers see model solutions, can edit tasks, and export the sequence.",
+      "sequenceItems": [
+        "<strong>Solve Task / Review Task</strong> — student or teacher solver view.",
+        "<strong>Edit Task</strong> — adjust problem statement and code (teacher only).",
+        "<strong>Share Sequence</strong> — copies a student-safe link to clipboard.",
+        "<strong>Export</strong> — PDF or JSON/CSV download."
+      ],
+      "solveTitle": "Solve Page",
+      "solveBody": "The interactive Parsons problem solver. Drag, click, or use keyboard to arrange shuffled code blocks, then request feedback.",
+      "solveItems": [
+        "<strong>Feedback</strong> — green / yellow / red per block.",
+        "<strong>Click-to-Move</strong> — alternative to drag-and-drop (great for trackpads).",
+        "<strong>Distractors</strong> — plausible but incorrect blocks that must be identified and excluded.",
+        "<strong>Hints</strong> — static-analysis-powered hints that highlight problematic blocks.",
+        "<strong>Completion Banner</strong> — \"✓ Solved!\" with stats when correct."
+      ],
+      "hintsTitle": "Hint System",
+      "hintsBody": "When a student is stuck, the hint system runs static analysis on the current block arrangement and highlights the problematic blocks — no guesswork, no hallucination. A second tier optionally calls the LLM for a student-friendly explanation.",
+      "hintsItems": [
+        "<strong>Level 1</strong> — deterministic: Ruff (Python) or javac/SpotBugs (Java) identifies the error.",
+        "<strong>Level 2</strong> — \"Explain in detail\": the LLM explains the finding in plain language.",
+        "<strong>Credits</strong> — configurable per worksheet (default: 5 per task)."
+      ],
+      "distractorsTitle": "Distractors",
+      "distractorsBody": "Distractor blocks are plausible-looking but incorrect code lines mixed into the puzzle pool. Students must identify and exclude them. Taxonomy-based (6 types), LLM-generated by a separate \"Antagonist\" call.",
+      "distractorsItems": [
+        "<strong>Types</strong> — Logic Flip, Off-by-One, Variable Mismatch, Boundary Identity, Structural Illogical, Redundant Zombie.",
+        "<strong>Teacher Controls</strong> — edit, regenerate, or disable distractors per task.",
+        "<strong>Hint Integration</strong> — hints detect distractor blocks first before doing full analysis."
+      ],
+      "teacherTitle": "Teacher Mode",
+      "teacherBody": "Teachers and admins automatically have access to Teacher Mode — model solutions, review tools, edit controls, and export options.",
+      "teacherItems": [
+        "Toggle the \"Lehrer-Ansicht\" button to reveal/hide model solutions.",
+        "Edit tasks, manage distractors, configure hints per worksheet.",
+        "Students never see teacher controls regardless of URL."
+      ],
+      "adminTitle": "Admin Panel",
+      "adminBody": "Admin-only tools for managing the platform: user accounts, tag hygiene, and bulk operations on library content.",
+      "adminItems": [
+        "<strong>User Management</strong> — view, edit roles, and delete user accounts.",
+        "<strong>Library Admin</strong> — merge duplicate tags, bulk-retag sequences after model updates."
+      ]
+    },
+    "auth": {
+      "title": "Accounts & Authentication",
+      "intro": "CodeOwl v2 has full user accounts with three roles. All learning data (events, feedback logs) is linked to a user ID where available; anonymous use is still supported.",
+      "rolesTitle": "Roles",
+      "roles": [
+        "<strong>Teacher</strong> — can generate sequences, manage classes, create/edit worksheets.",
+        "<strong>Student</strong> — can solve tasks in assigned worksheets; cannot generate.",
+        "<strong>Admin</strong> — all teacher permissions plus user management and admin tools."
+      ],
+      "registrationTitle": "Registration & Login",
+      "registration": [
+        "<strong>Register</strong> — teachers self-register with name, email, and password. Email verification is sent automatically.",
+        "<strong>Login</strong> — email + password (teachers/admins), or a one-time token link (students).",
+        "<strong>Token Login</strong> — students paste or click the link generated by their teacher. No email required to start."
+      ],
+      "onboardingTitle": "Student Onboarding (\"Anton-Prinzip\")",
+      "onboarding": "Students do <em>not</em> self-register. The teacher creates student accounts inside a class. CodeOwl generates a personal token link per student — share this link (printed, chat, etc.). The student clicks it, is logged in immediately, and can optionally set an email and password during onboarding. This minimises friction on day one.",
+      "passwordTitle": "Password Management",
+      "password": [
+        "<strong>Forgot Password</strong> — enter your email to receive a reset link.",
+        "<strong>Reset Password</strong> — follow the link in the email to set a new password.",
+        "<strong>Profile</strong> — change email address or password at any time via your profile page."
+      ],
+      "securityTitle": "Security Notes",
+      "security": [
+        "Passwords are hashed with Argon2 — they are never stored in plain text.",
+        "JWTs expire and auto-refresh in the background.",
+        "Student token links are single-use; once redeemed they cannot be reused."
+      ]
+    },
+    "home": {
+      "title": "Home Page Help",
+      "intro": "The Home Page is your workspace for generating new tiered programming tasks. CodeOwl accepts multiple types of input and creates three tasks (T1–T3) — or five tasks (T1–T5) in extended mode.",
+      "inputsTitle": "Supported Inputs",
+      "inputs": [
+        "<strong>Code Snippet</strong> — paste a valid snippet; the model creates statements and variants.",
+        "<strong>Problem Statement</strong> — describe the problem in plain language.",
+        "<strong>Concepts</strong> — list programming ideas like loops, arrays, or recursion.",
+        "<strong>Important!</strong> — Either a Code Snippet must be present <em>or</em> the language must be explicitly stated. Context can be derived from everything except the language alone."
+      ],
+      "optionsTitle": "Generation Options",
+      "options": [
+        "<strong>Target Language</strong> — forces problem statements and code comments to be in German or English. Fixes the v1 problem where generation silently switched languages.",
+        "<strong>Tier Count</strong> — 3 tiers (default) or 5 tiers. Tier 4 adds distractor-heavy puzzles; Tier 5 adds an \"Explain Your Solution\" component.",
+        "<strong>Distractors</strong> — enable or disable LLM-generated distractor blocks. When enabled, a separate \"Antagonist\" call generates plausible-but-wrong lines per task."
+      ],
+      "contextModeLabel": "Context Mode",
+      "contextModeBody": "wraps the puzzle in read-only scaffolding code. The generated task receives a <em>contextBefore</em> and <em>contextAfter</em> block (e.g. a class header above and a calling function below). Students see the full picture but only rearrange the puzzle blocks in the middle. Useful for longer, realistic code problems.",
+      "advancedTitle": "Advanced Options (Constraints)",
+      "advanced": [
+        "<strong>Blacklist</strong> — comma-separated constructs to exclude, e.g., <code>ternary, lambda, list comprehension</code>. Prevents LLM from using concepts students haven't learned yet.",
+        "<strong>Whitelist</strong> — only use listed constructs. Useful for highly controlled exercises.",
+        "<strong>Difficulty Slope</strong> — controls how steep the complexity jump between tiers is (gentle → steep).",
+        "<strong>Additional Context</strong> — freetext injected directly into the prompt, e.g., \"Use only German variable names\" or \"Suitable for Jgst. 9\"."
+      ],
+      "controlsTitle": "Controls",
+      "controls": [
+        "<strong>Generate Sequence</strong> — sends inputs to the model and redirects to the sequence page.",
+        "<strong>Demo</strong> — instantly loads a sample tiered sequence for testing.",
+        "<strong>Reset</strong> — clears all input fields.",
+        "<kbd>Ctrl</kbd>+<kbd>Enter</kbd> — keyboard shortcut to generate."
+      ],
+      "tipsTitle": "Teacher Tips",
+      "tips": [
+        "Very short snippets can cause wrong language detection — set the language explicitly.",
+        "Use clear, short statements. Avoid specifying variable names or function identifiers.",
+        "English input yields slightly better quality than German, but German works reliably with <em>Target Language: German</em> set.",
+        "If the generated tasks use constructs students don't know yet, add them to the Blacklist and regenerate."
+      ]
+    },
+    "classes": {
+      "title": "Classes Help",
+      "intro": "Classes group students together and connect them to worksheets. Every student account belongs to at least one class.",
+      "overviewTitle": "Class Overview",
+      "overview": [
+        "The Classes page lists all your classes with student counts and assigned worksheets.",
+        "Click a class to open the detail view: student list + worksheet list."
+      ],
+      "createTitle": "Creating Students (\"Anton-Prinzip\")",
+      "createBody": "Click <strong>\"Add Student\"</strong> inside a class — enter a display name (first name, e.g., \"Anton\"). CodeOwl creates the account and shows a one-time login token link. Share this link with the student (print, chat, QR code). The student clicks it, is instantly logged in, and can start solving tasks. No email address is required.",
+      "create": [
+        "Token links can be regenerated if lost.",
+        "Students can later add an email and set a password via their profile page.",
+        "Students can be removed from a class at any time (this does <em>not</em> delete the account)."
+      ],
+      "assignTitle": "Assigning Worksheets",
+      "assign": [
+        "From the class detail page, click <strong>\"Assign Worksheet\"</strong> and pick from your worksheets.",
+        "Assigned worksheets become accessible to all students in the class.",
+        "Worksheets can also be assigned directly from the Worksheet page."
+      ],
+      "trackingTitle": "Tracking",
+      "trackingBody": "Each class has a <strong>Tracking</strong> toggle (⚙ button in the class detail view). When enabled, detailed learning events are recorded for every student interaction in this class — block moves, feedback clicks, hint usage, completion times.",
+      "tracking": [
+        "<strong>Enabled</strong> — full event stream logged; suitable for research or detailed progress analysis.",
+        "<strong>Disabled</strong> — only aggregate data is kept (correct/incorrect per task). Default for new classes.",
+        "Tracking state can be toggled at any time; it affects future events only."
+      ],
+      "permissionsTitle": "Permissions",
+      "permissions": [
+        "Only the class owner (or admin) can add/remove students or edit the class.",
+        "Other teachers can see a class if they share a worksheet with it, but cannot edit it."
+      ]
+    },
+    "worksheets": {
+      "title": "Worksheets Help",
+      "intro": "A worksheet is a named collection of sequences (e.g., \"Week 3 — Arrays & Loops\"). Worksheets are the primary unit assigned to classes.",
+      "overviewTitle": "Worksheet Overview",
+      "overview": [
+        "Create a worksheet from the Worksheets page or directly from a generated sequence.",
+        "Add sequences to a worksheet via the sequence page or the Library (one-click copy).",
+        "Sequences within a worksheet preserve their T1–T3 tier structure."
+      ],
+      "hintsTitle": "Hint Configuration (Teacher only)",
+      "hintsBody": "Per worksheet, configure whether hints are available to students and how many credits each student gets per task:",
+      "hints": [
+        "<strong>Enable Hints</strong> — checkbox on/off. When off, the Hint button doesn't appear.",
+        "<strong>Credits per Task</strong> — number (1–10, default 5). Level-1 hints cost 1 credit; Level-2 cost 2."
+      ],
+      "exportTitle": "Export",
+      "export": [
+        "<strong>Puzzle PDF</strong> — printable cut-and-arrange cards with dashed borders (for paper-based sessions).",
+        "<strong>Free-Form PDF</strong> — problem statement + code in a grey monospace box (for written exams).",
+        "<strong>JSON / CSV</strong> — raw task data for your own analysis (SPSS, R, Excel)."
+      ],
+      "copyTitle": "Copying Foreign Worksheets",
+      "copy": [
+        "You can view any worksheet shared to you; click <strong>\"Copy Worksheet\"</strong> to get your own editable version.",
+        "The deep copy duplicates all sequences and tasks with new IDs — you are the sole owner.",
+        "Changes to the copy never affect the original."
+      ]
+    },
+    "library": {
+      "title": "Library Help",
+      "intro": "The Library is a searchable repository of all sequences available to you — your own, plus those shared by colleagues. Find what you need, preview it, and copy it into a worksheet with one click.",
+      "searchTitle": "Searching",
+      "search": [
+        "<strong>Full-Text Search</strong> — searches problem statements and code simultaneously. Postgres full-text indexing ensures fast, relevant results.",
+        "<strong>Highlighted Snippets</strong> — matching text is highlighted in the result card so you immediately see why a sequence matched.",
+        "<strong>\"Did you mean?\"</strong> — trigram-based fuzzy suggestions for typos (<em>recursiv</em> → <em>recursive</em>)."
+      ],
+      "tagsTitle": "Tags & Filters",
+      "tagsBody": "Every sequence has two layers of tags:",
+      "tags": [
+        "<strong>Structural Tags</strong> (grey) — automatically detected from code: <code>for-loop</code>, <code>recursion</code>, <code>arrays</code>. These are added synchronously right after generation.",
+        "<strong>Semantic Tags</strong> (with ✨) — LLM-generated topic labels: <code>fibonacci</code>, <code>binary-search</code>, <code>caesar-cipher</code>. These arrive a few seconds after generation.",
+        "<strong>Manual Tags</strong> (blue) — added by the teacher; never overwritten by auto-tagging."
+      ],
+      "filtersBody": "Filters include: programming language, tier count (3 or 5), tags, date created, owner (\"Mine only\" / \"All\").",
+      "filtersUrl": "Filters are reflected in the URL so links can be shared.",
+      "copyTitle": "One-Click Copy",
+      "copy": [
+        "Click <strong>\"Copy to Worksheet\"</strong> on any sequence card and select the target worksheet from the dropdown.",
+        "A toast notification confirms the copy with an Undo option (5 seconds).",
+        "Sequences already in one of your worksheets show a green ✓ indicator."
+      ],
+      "editTitle": "Editing Tags (Teacher)",
+      "edit": [
+        "Hover over a tag on your own sequence to reveal the remove (×) button.",
+        "Click the pencil icon to add new tags. An autocomplete suggests existing tags to avoid duplicates.",
+        "Manual tags are always blue and are never overwritten by the auto-tagger."
+      ],
+      "curriculumTitle": "Library + Curriculum",
+      "curriculumBody": "From the Curriculum page, \"View existing sequences\" redirects to the Library with the curriculum topic pre-filled as a filter — so you instantly see all relevant material for a given LehrplanPLUS topic."
+    },
+    "curriculum": {
+      "title": "Curriculum Help",
+      "intro": "The Curriculum page maps CodeOwl directly onto the Bavarian LehrplanPLUS G9 Informatik. Browse by grade and learning area, then generate a sequence whose difficulty and concepts are automatically calibrated to that topic — no manual setup needed.",
+      "betaNote": "<strong>Beta feature.</strong> Curriculum-generated sequences use a dedicated prompt tuned for the Bavarian curriculum. The underlying code examples are curated by hand.",
+      "treeTitle": "Topic Tree",
+      "tree": [
+        "Topics are organised by grade (Jgst. 7, 9, 10, 11, 12/13) and learning area.",
+        "Each topic badge shows how many sequences already exist for that topic."
+      ],
+      "generateTitle": "Generating from a Topic",
+      "generateBody": "Click <strong>\"Generate\"</strong> next to a topic. The generation dialog opens pre-filled:",
+      "generate": [
+        "<strong>Concepts</strong> — automatically set from the curriculum topic mapping.",
+        "<strong>Code Example</strong> — a curated reference code snippet for the topic is injected as seed material.",
+        "<strong>Language</strong> — Java by default (as per Bavarian curriculum); can be changed.",
+        "<strong>Grade Calibration</strong> — the system prompt internally adjusts expected difficulty and prerequisite knowledge."
+      ],
+      "generateAfter": "You can modify any pre-filled value before generating, and all standard generation options (constraints, tier count, target language) are available.",
+      "viewTitle": "Viewing Existing Sequences",
+      "viewBody": "Click <strong>\"View sequences\"</strong> next to a topic to jump to the Library pre-filtered for that topic. This includes both curriculum-generated and manually tagged sequences that match.",
+      "tipsTitle": "Tips",
+      "tips": [
+        "For Jgst. 7 topics, keep constraints simple — the calibration already limits complexity.",
+        "Add your own curated code snippet instead of the default if you have a specific classroom example to use.",
+        "After generating, review the output in Teacher Mode before assigning to students."
+      ]
+    },
+    "sequence": {
+      "title": "Sequence Page Help",
+      "intro": "The Sequence Page displays all tasks within a generated sequence. Each task corresponds to a tier — Tier 1 is easiest, Tier 3 (or 5) is most complex.",
+      "overviewTitle": "Overview",
+      "overview": [
+        "<strong>Language / Concepts</strong> — detected programming language, concept tags, semantic summary.",
+        "<strong>Task Description</strong> — the general topic for all tasks in the sequence.",
+        "<strong>Code Snippet</strong> — original or reference code (if provided during generation).",
+        "<strong>Distractor Indicator</strong> — a badge shows if distractor blocks are active for a task."
+      ],
+      "actionsTitle": "Actions",
+      "actions": [
+        "<strong>🧩 Solve Task</strong> — opens the student solver view (<code>/solve/:id</code>).",
+        "<strong>👩‍🏫 Review Task</strong> — opens the solver with teacher tools visible.",
+        "<strong>Share Sequence</strong> — copies a student-safe share link to clipboard.",
+        "<strong>✏️ Edit Task</strong> — modify the problem statement or code (teacher/owner only).",
+        "<strong>📤 Export</strong> — download this sequence as PDF (puzzle or free-form) or JSON/CSV.",
+        "<strong>Add to Worksheet</strong> — copy directly into one of your worksheets."
+      ],
+      "teacherTitle": "Teacher Mode",
+      "teacher": [
+        "Automatically available for teachers and admins.",
+        "Expands solution accordions under each task card.",
+        "Shows distractor blocks alongside the model solution.",
+        "Allows switching to the teacher solver view with model solution overlay."
+      ],
+      "studentTitle": "Student Mode",
+      "student": [
+        "Only problem statements are shown — no model solutions.",
+        "Students click \"Solve Task\" to open the interactive solver."
+      ],
+      "editTitle": "Task Editing & Versioning",
+      "editBody": "If you own a sequence (or have copied it), you can edit any task's problem statement and code. The <strong>first save</strong> automatically preserves the original LLM-generated version for comparison and research purposes. You will be asked to rate the LLM output quality (1–5 stars) at first save.",
+      "edit": [
+        "On foreign sequences, the Edit button is locked — copy the worksheet first.",
+        "Original versions can be viewed via \"Show Original\" (teacher view)."
+      ]
+    },
+    "solve": {
+      "title": "Solve Page Help",
+      "intro": "The Solve Page is where learners engage with Parsons problems — rearranging shuffled code blocks (and identifying distractor blocks) to reconstruct the correct program.",
+      "howTitle": "How It Works",
+      "how": [
+        "Blocks start shuffled in the \"source\" area. Move them to the \"solution\" area in the correct order.",
+        "Indent lines to create nested structures (drag-and-drop the indent handle, or use the indent buttons).",
+        "Press <strong>Feedback</strong> to check correctness at any time.",
+        "Use <strong>Shuffle Lines</strong> to randomise again if you want a fresh start."
+      ],
+      "modesTitle": "Interaction Modes",
+      "modes": [
+        "<strong>Drag & Drop</strong> (default) — grab a block and drop it into position.",
+        "<strong>Click-to-Move</strong> — click a block to select it (it turns highlighted), then click the target slot to place it. Better for trackpads and tablets. Toggle in the toolbar; preference is saved across sessions.",
+        "<strong>Keyboard</strong> — Tab to move between blocks, arrow keys to reorder selected block. To indent a block via keyboard: select it, then use the <kbd>+</kbd> / <kbd>−</kbd> indent buttons in the block toolbar, or drag the indent handle on the left edge of the block.",
+        "<strong>Touch</strong> — long-press to select a block on mobile, tap to place it."
+      ],
+      "colorsTitle": "Feedback Colors",
+      "colors": [
+        "<span style=\"color:green\">🟩 Green</span> — correct line and indentation.",
+        "<span style=\"color:orange\">🟨 Yellow</span> — indentation warning (non-critical, often still accepted).",
+        "<span style=\"color:red\">🟥 Red</span> — incorrect position or indentation."
+      ],
+      "distractorTitle": "Distractor Blocks",
+      "distractorBody": "Some puzzles include distractor blocks — plausible-looking lines that do <em>not</em> belong in the correct solution. Distractor blocks look identical to real blocks; part of the challenge is identifying them and leaving them in the source area.",
+      "distractor": [
+        "A distractor in your solution zone will always be marked red on Feedback.",
+        "Hints can help identify distractor blocks (they show up as a distinct hint type)."
+      ],
+      "interchangeableTitle": "Interchangeable Blocks",
+      "interchangeableBody": "Some tasks contain blocks that are <em>equally valid in multiple positions</em> — for example, two independent variable declarations, or two independent base cases in a recursive function. The grader recognises all valid permutations and marks them green.",
+      "contextTitle": "Context Code",
+      "contextBody": "Some tasks show a <strong>grey read-only block</strong> above and/or below the puzzle area. This is <em>context code</em> — the surrounding scaffold (e.g. a class definition, an import block, or a function that calls your result). You do <strong>not</strong> move these blocks; they are fixed. They exist to give you the full picture of where your solution fits. The grader ignores them — only the movable puzzle blocks are checked.",
+      "hintsTitle": "Hints",
+      "hintsBody": "When stuck, click the <strong>Hint 💡</strong> button (only visible if hints are enabled for this worksheet):",
+      "hints": [
+        "<strong>Level 1 (1 credit)</strong> — a static analysis tool (Ruff for Python, javac + SpotBugs for Java) analyses your current arrangement and highlights the problematic block(s) with a red pulsing border. A short message explains the type of error (e.g., \"A block uses a variable that hasn't been defined yet\").",
+        "<strong>Level 2 (2 credits)</strong> — click \"Explain in detail\" to get an LLM-generated explanation that references the highlighted blocks by label (A, B, …) and explains the logic in student-friendly language.",
+        "Hints disappear after you move a block — encouraging you to act, not just read.",
+        "Remaining credits are shown next to the button: 💡 3/5."
+      ],
+      "completionTitle": "Completion",
+      "completionBody": "When you solve the puzzle correctly:",
+      "completion": [
+        "A <strong>\"✓ Solved!\"</strong> banner appears with your stats: attempts, time, hints used.",
+        "A short self-report (confidence rating) may appear — this is anonymous research data.",
+        "Use the <strong>\"Next Task\"</strong> button to advance to the next tier."
+      ],
+      "navTitle": "Navigation",
+      "nav": [
+        "<strong>← Back to Sequence</strong> — returns to the sequence overview.",
+        "<strong>🏠 Home</strong> — back to the generator.",
+        "<strong>🔗 Share Task</strong> — copies a student-safe task link to clipboard."
+      ],
+      "teacherToolsTitle": "Teacher Tools",
+      "teacherTools": [
+        "Toggle Teacher Mode at the top right to show/hide the model solution panel.",
+        "The \"Teacher Tools\" box (bottom right) shows the model solution and distractor list.",
+        "Share button copies a student-facing version (without teacher mode enabled).",
+        "Block labels (A, B, …) in the model solution correspond to hint labels — useful for classroom discussion."
+      ],
+      "studentTipsTitle": "Student Tips",
+      "studentTips": [
+        "Focus on logic, not syntax perfection — the grader understands minor indentation variations.",
+        "Use feedback iteratively; don't guess wildly. Try to understand each red block before moving on.",
+        "If a block keeps coming up red no matter where you put it, consider whether it might be a distractor.",
+        "Try Click-to-Move if drag-and-drop feels awkward on your device.",
+        "Use hints strategically — you have a limited credit budget per task."
+      ]
+    },
+    "hints": {
+      "title": "Hint System Help",
+      "intro": "The hint system provides structured, reliable help when a student is stuck. Unlike purely LLM-based hints, CodeOwl's hints are <strong>deterministic first</strong>: real static analysis tools run on the student's current block arrangement to identify concrete problems.",
+      "principle": "Design principle: <em>\"Möglichst deterministisch — kein LLM-Halluzinationsrisiko.\"</em>",
+      "howTitle": "How It Works",
+      "how": [
+        "The student's current block arrangement is assembled into a complete code file.",
+        "A static analysis tool runs on that file.",
+        "Findings are mapped back to specific block IDs.",
+        "The affected blocks are highlighted with a red pulsing border.",
+        "A short pedagogical message describes the type of error — without giving the answer."
+      ],
+      "toolsTitle": "Analysis Tools",
+      "tools": [
+        "<strong>Python → Ruff</strong> — ultra-fast Python linter. Key rules: <code>F821</code> (undefined name — block used before definition), <code>F841</code> (unused variable — block may be a distractor), <code>E999</code> (syntax error), <code>F811</code> (redefined name).",
+        "<strong>Java → javac (Stage 1)</strong> — compiler diagnostics catch undefined variables, type errors, and uninitialized variables.",
+        "<strong>Java → SpotBugs (Stage 2)</strong> — bytecode analysis for deeper bugs (null-pointer paths, dead stores, redundant null-checks). Only runs if the code compiles."
+      ],
+      "levelsTitle": "Hint Levels",
+      "levelsHead": [
+        "Level",
+        "Name",
+        "Source",
+        "Credits"
+      ],
+      "levelsRows": [
+        [
+          "0",
+          "Standard Feedback",
+          "js-parsons (position + indent check)",
+          "0 (free)"
+        ],
+        [
+          "1",
+          "Linter Hint",
+          "Ruff / javac / SpotBugs → deterministic",
+          "1"
+        ],
+        [
+          "2",
+          "\"Explain in detail\"",
+          "LLM explains the finding in student-friendly language",
+          "2"
+        ]
+      ],
+      "levelsNote": "Level 2 is not a diagnosis — the LLM receives the already-identified finding and only explains it. It does not analyse the code independently.",
+      "distractorTitle": "Distractor-Aware Hints",
+      "distractorBody": "If a distractor block is in the student's solution zone, the hint system detects this as the priority problem before running the full analysis:",
+      "distractor": [
+        "Hint text: \"One of the blocks in your workspace doesn't belong in the solution.\"",
+        "The distractor block is highlighted — but not explicitly named as a distractor."
+      ],
+      "edgeTitle": "Edge Cases",
+      "edge": [
+        "<strong>Too few blocks placed</strong> — if you have fewer blocks in the solution area than the correct answer requires, the hint tells you immediately: \"You have placed X of Y needed blocks.\" This takes priority over all other findings so you don't get misleading analysis on an incomplete arrangement.",
+        "<strong>No findings</strong> — if the arrangement compiles/lints without errors but is still wrong, the fallback message is: \"No errors found, but the order isn't right yet. Think about what needs to happen first.\"",
+        "<strong>Multiple findings</strong> — only the top 2 most severe findings are shown to avoid overwhelming the student.",
+        "<strong>Tool timeout / crash</strong> — graceful degradation: positional fallback or \"Hints temporarily unavailable\"."
+      ],
+      "configTitle": "Configuring Hints (Teacher)",
+      "configBody": "From the Worksheet page (Teacher view):",
+      "config": [
+        "<strong>Enable Hints</strong> — checkbox. Off = Hint button hidden entirely.",
+        "<strong>Credits per Task</strong> — 1–10 (default 5). Encourages strategic use over dependency."
+      ]
+    },
+    "distractors": {
+      "title": "Distractor System Help",
+      "intro": "Distractor blocks are plausible-looking but incorrect code lines that are mixed into the puzzle block pool. The student must identify them and leave them in the source area. They test whether students genuinely understand the code — not just rearrangement.",
+      "taxonomyTitle": "Distractor Taxonomy",
+      "taxonomyHead": [
+        "Type",
+        "Description",
+        "Tests"
+      ],
+      "taxonomyRows": [
+        [
+          "<code>LOGIC_FLIP</code>",
+          "Operator inverted (<code>&lt;</code> → <code>&gt;</code>, <code>==</code> → <code>!=</code>)",
+          "Conditional understanding"
+        ],
+        [
+          "<code>OFF_BY_ONE</code>",
+          "Wrong loop bounds (<code>range(n)</code> vs <code>range(n+1)</code>)",
+          "Boundary values"
+        ],
+        [
+          "<code>VARIABLE_MISMATCH</code>",
+          "Correct style, wrong variable used in expression",
+          "Data flow analysis"
+        ],
+        [
+          "<code>BOUNDARY_IDENTITY</code>",
+          "Wrong initial value or base case",
+          "Recursion / accumulator thinking"
+        ],
+        [
+          "<code>STRUCTURAL_ILLOGICAL</code>",
+          "Syntactically valid but contextually illegal (<code>break</code> outside loop)",
+          "Control flow rules"
+        ],
+        [
+          "<code>REDUNDANT_ZOMBIE</code>",
+          "Plausible but unnecessary extra line",
+          "Identifying superfluous code"
+        ]
+      ],
+      "generationTitle": "How Distractors Are Generated",
+      "generation": [
+        "<strong>Plan</strong> — during sequence generation, the model chooses a distractor type and rationale per task (e.g., \"LOGIC_FLIP: focus on Boolean inversion for early exits\").",
+        "<strong>Solver pass</strong> — the correct solution is generated as normal.",
+        "<strong>Antagonist call</strong> — a separate LLM call (\"CodeOwl Antagonist\") generates the actual distractor lines, guided by the plan. Distractors end with <code>#distractor</code> internally."
+      ],
+      "generationNote": "The solver and the antagonist are separate — the antagonist only sees the correct solution and the plan, not the solver's internal reasoning.",
+      "controlsTitle": "Teacher Controls",
+      "controls": [
+        "<strong>Enable/Disable</strong> — toggle distractors per task or per sequence during/after generation.",
+        "<strong>Edit Distractors</strong> — open the Task Edit Modal → \"Distractors\" tab → edit, add, or remove distractor lines.",
+        "<strong>Regenerate</strong> — click \"Regenerate Distractors\" to get a fresh set from the antagonist.",
+        "The distractor plan (type + rationale) is shown for context so you know what the AI was trying to achieve."
+      ],
+      "tipsTitle": "Student Tips",
+      "tips": [
+        "If a block stays red no matter where you place it, it may be a distractor.",
+        "Read each block carefully — distractors are designed to look plausible at a glance.",
+        "Hints can help: if a distractor is in your solution zone, the hint system specifically flags it."
+      ]
+    },
+    "teacher": {
+      "title": "Teacher Mode Help",
+      "intro": "Teachers and admins automatically have access to Teacher Mode across all pages. Teacher Mode reveals model solutions, enables editing, and surfaces research tools.",
+      "toggleTitle": "Toggling Teacher Mode",
+      "toggle": [
+        "Look for the yellow <strong>\"Lehrer-Ansicht\"</strong> button in the top-right of sequence and solve pages.",
+        "Students never see this button — teacher controls are gated by role, not just by URL."
+      ],
+      "sequenceTitle": "Sequence Page (Teacher)",
+      "sequence": [
+        "Model solutions expand in accordion panels under each task card.",
+        "Distractor blocks are listed alongside the solution.",
+        "Edit, export, and copy buttons are visible.",
+        "Rating badge shows the LLM quality rating given when the task was first edited."
+      ],
+      "solveTitle": "Solve Page (Teacher)",
+      "solve": [
+        "\"Teacher Tools\" panel (bottom right) shows the model solution with block labels.",
+        "Share button generates a student-safe link (without teacher parameters).",
+        "Full hint functionality is available for testing even without a credit budget."
+      ],
+      "editTitle": "Task Editing & Versioning",
+      "edit": [
+        "Edit any task you own via the \"Edit\" button on the Sequence page.",
+        "The <strong>first save</strong> preserves the LLM original in the database for research comparison.",
+        "You rate the original LLM quality (1–5 stars) at first save — this becomes part of the research dataset.",
+        "All edits and their process (started / saved / cancelled) are logged as learning events for research."
+      ],
+      "dataTitle": "What Data Is Collected?",
+      "dataBody": "CodeOwl v2 logs structured learning events for research purposes (event-based, JSONB). This includes:",
+      "data": [
+        "Task open/close times, feedback clicks, correct/abandoned events",
+        "Every individual block move (for strategy analysis)",
+        "Hint usage (level, timing, which blocks were highlighted)",
+        "Distractor interactions (placed, removed, time in workspace)",
+        "Teacher edit events (started, saved, duration, fields changed)",
+        "Self-report ratings (confidence, frustration — 1-click smileys after completion)",
+        "Session metadata (device type, viewport — once per session)"
+      ],
+      "dataNote": "No raw mouse tracking, no keystroke logging, no external tab tracking. Anonymous use (no login) is always possible — those events have <code>user_id = null</code>.",
+      "adminTitle": "Admin Features",
+      "admin": [
+        "<strong>User Management</strong> — view, edit, promote, and delete users.",
+        "<strong>Bulk Retag</strong> — re-run tag analysis across all sequences (useful after model updates or tag config changes).",
+        "<strong>Library Admin</strong> — merge duplicate tags, view newly discovered topics."
+      ],
+      "adminLink": "Full Admin documentation"
+    },
+    "manualCreate": {
+      "title": "Manual Task Creator Help",
+      "intro": "The Manual Task Creator lets you build a Parsons puzzle sequence without any LLM involvement — you write the problem statement and the correct code solution for each tier yourself. Use this when you want full control, or when you already have classroom code examples you want to turn into puzzles.",
+      "workflowTitle": "Workflow",
+      "workflow": [
+        "Set the <strong>programming language</strong> and <strong>concepts</strong> (comma-separated, e.g. <code>for-loop, arrays</code>).",
+        "For each tier (T1–T3), write a <strong>problem statement</strong> and paste the <strong>correct code solution</strong>.",
+        "Watch the <strong>live block preview</strong> on the right — it shows exactly how the code will be split into draggable blocks.",
+        "Click <strong>\"Create Sequence\"</strong> to save. You're redirected to the new sequence page."
+      ],
+      "blocksTitle": "How Code Becomes Blocks",
+      "blocksBody": "Every <strong>non-empty line</strong> in the solution editor becomes one block in the Parsons puzzle. Indentation in the code is automatically translated into indent levels — so a line indented by 4 spaces becomes a block at indent level 1, 8 spaces → level 2, etc.",
+      "blocks": [
+        "Keep solutions focused — 5 to 12 non-empty lines is the sweet spot.",
+        "The line count and character count are shown below the editor.",
+        "<kbd>Tab</kbd> in the code editor inserts 4 spaces (no focus-trap)."
+      ],
+      "tiersTitle": "Tiers",
+      "tiers": [
+        "Start with 1–3 tiers. Each tier is a separate puzzle at a different difficulty level.",
+        "Use the tab buttons at the top to switch between tiers — green badge ✓ means that tier has both a statement and a solution.",
+        "Use the <strong>Tier Level</strong> selector to assign T1 (easy), T2 (medium), or T3 (hard) to each slot.",
+        "You can add or remove tiers using the + / × buttons."
+      ],
+      "compareTitle": "Manual vs. Generate",
+      "compareHead": [
+        "",
+        "Manual Creator",
+        "AI Generator"
+      ],
+      "compareRows": [
+        [
+          "LLM used?",
+          "No",
+          "Yes"
+        ],
+        [
+          "Speed",
+          "As fast as you type",
+          "~10–30 seconds"
+        ],
+        [
+          "Control",
+          "Full — every word",
+          "Partial — prompt + constraints"
+        ],
+        [
+          "Distractors",
+          "Generate after creation",
+          "Can enable during generation"
+        ],
+        [
+          "Best for",
+          "Existing classroom code, exams",
+          "Exploring new topics quickly"
+        ]
+      ],
+      "tipsTitle": "Tips",
+      "tips": [
+        "After creation, you can still generate distractors via the sequence page.",
+        "The sequence is tagged automatically after creation — check the Library to verify tags.",
+        "Tiers don't have to share the same algorithm — T1 could be a simple loop, T3 a recursive version."
+      ]
+    },
+    "myClasses": {
+      "title": "My Classes Help (Students)",
+      "intro": "The My Classes page is your home screen as a student. It shows all the classes your teacher has enrolled you in, and from there you can access the worksheets assigned to your class.",
+      "navTitle": "Navigating to Tasks",
+      "nav": [
+        "Open <strong>My Classes</strong> from the navigation bar.",
+        "Click a class card to open the class detail page.",
+        "You'll see the worksheets your teacher has assigned — click one to open it.",
+        "The worksheet lists all task sequences. Click <strong>\"Solve Task\"</strong> to start a puzzle."
+      ],
+      "faqTitle": "Common Questions",
+      "faq": [
+        "<strong>My class list is empty.</strong> — Ask your teacher to enrol you. You need to be added to a class before worksheets appear here.",
+        "<strong>I don't see a worksheet my teacher mentioned.</strong> — The teacher may not have assigned it to your class yet, or you may be in the wrong class.",
+        "<strong>Can I see tasks not assigned to my class?</strong> — Yes, if you have a direct link to a sequence or worksheet you can still view and solve it anonymously."
+      ],
+      "accountTitle": "Your Account",
+      "account": [
+        "Your teacher created your account and gave you a one-time login link.",
+        "After logging in, you can set a personal password and email via your <strong>Profile</strong>.",
+        "Your progress (solved tasks, hints used) is saved to your account."
+      ]
+    },
+    "admin": {
+      "title": "Admin Panel Help",
+      "intro": "Admin tools give you global oversight of the CodeOwl platform — user accounts, tag hygiene, and bulk library operations. These pages are not visible to teachers or students.",
+      "usersTitle": "User Management",
+      "users": [
+        "<strong>View all users</strong> — list of every registered account with role, email, and creation date.",
+        "<strong>Edit role</strong> — promote a teacher to admin or demote back.",
+        "<strong>Delete user</strong> — removes the account. Sequences and worksheets owned by that user are preserved (owner_id is kept, but the user cannot log in).",
+        "<strong>Search / filter</strong> — filter by role or search by name/email."
+      ],
+      "libraryTitle": "Library Admin",
+      "library": [
+        "<strong>Bulk Retag</strong> — re-runs the automatic tag analysis pipeline across all sequences in the database. Use this after updating the tagger model or changing tag rules. Can take a few minutes depending on library size.",
+        "<strong>Merge Tags</strong> — combine duplicate or near-duplicate tags into one canonical form (e.g. <code>for_loop</code> + <code>for-loop</code> → <code>for-loop</code>). All sequence associations are updated automatically.",
+        "<strong>Tag Overview</strong> — see all tags sorted by usage count; spot orphaned or rarely-used tags that could be cleaned up."
+      ],
+      "cautionTitle": "Caution",
+      "caution": [
+        "Bulk Retag overwrites existing auto-generated tags. <strong>Manual tags are never touched.</strong>",
+        "Merging tags is irreversible via the UI — make a DB backup before large merge operations.",
+        "Deleting users does not cascade-delete their content — verify you want to keep orphaned sequences."
+      ]
+    }
   }
 }

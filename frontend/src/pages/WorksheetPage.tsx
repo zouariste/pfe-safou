@@ -442,7 +442,7 @@ export default function WorksheetPage() {
                         copied ? "btn-success" : "btn-outline-secondary"
                     }`}
                     onClick={handleCopyLink}
-                    title="Copies this worksheet link"
+                    title={t("worksheet.copyLinkTitle")}
                 >
                     <i className="bi bi-link-45deg"></i>
                     {copied ? t("worksheet.copied") : t("worksheet.shareWorksheet")}
