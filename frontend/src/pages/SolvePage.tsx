@@ -56,6 +56,7 @@ export default function SolvePage() {
     const [task, setTask] = useState<Task | null>(null);
     const [loading, setLoading] = useState(false);
     const [teacherViewEnabled, setTeacherViewEnabled] = useState(false);
+    const [teacherToolsVisible, setTeacherToolsVisible] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [sequenceOwnerId, setSequenceOwnerId] = useState<string | null>(null);
 
@@ -1599,7 +1600,7 @@ export default function SolvePage() {
                         </div>
                     )}
 
-                    {teacherViewEnabled && (
+                    {teacherViewEnabled && teacherToolsVisible && (
                         <div
                             style={{
                                 position: "fixed",
@@ -1614,7 +1615,16 @@ export default function SolvePage() {
                                 zIndex: 1000,
                             }}
                         >
-                            <h6 className="fw-bold mb-2">👩‍🏫 {t("solve.teacherTools")}</h6>
+                            <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                <h6 className="fw-bold mb-0">👩‍🏫 {t("solve.teacherTools")}</h6>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    aria-label={t("common.close")}
+                                    style={{ flexShrink: 0 }}
+                                    onClick={() => setTeacherToolsVisible(false)}
+                                />
+                            </div>
                             <details>
                                 <summary className="fw-semibold mb-1">{t("solve.showModelSolution")}</summary>
                                 <pre
