@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
-import type { ClassInfo, StudentInfo, StudentProgress } from "../types/models";
+import type { ClassInfo, StudentInfo, StudentProgress, Worksheet } from "../types/models";
 
 export default function ClassDetailPage() {
     const { t, i18n } = useTranslation();
@@ -29,8 +29,18 @@ export default function ClassDetailPage() {
 
     // Assign worksheet
     const [showAssignWorksheet, setShowAssignWorksheet] = useState(false);
-    const [worksheetId, setWorksheetId] = useState("");
+    const [worksheetSearch, setWorksheetSearch] = useState("");
+    const [selectedWorksheet, setSelectedWorksheet] = useState<Worksheet | null>(null);
+    const [worksheetOptions, setWorksheetOptions] = useState<Worksheet[]>([]);
+    const [loadingWorksheetOptions, setLoadingWorksheetOptions] = useState(false);
+    const [showWorksheetDropdown, setShowWorksheetDropdown] = useState(false);
     const [assigningWorksheet, setAssigningWorksheet] = useState(false);
+
+    // Create worksheet
+    const [showCreateWorksheet, setShowCreateWorksheet] = useState(false);
+    const [newWorksheetName, setNewWorksheetName] = useState("");
+    const [newWorksheetDesc, setNewWorksheetDesc] = useState("");
+    const [creatingWorksheet, setCreatingWorksheet] = useState(false);
 
     // Copied token feedback
     const [copiedToken, setCopiedToken] = useState<string | null>(null);
@@ -126,15 +136,36 @@ export default function ClassDetailPage() {
         }
     };
 
+    const loadWorksheetOptions = async () => {
+        try {
+            setLoadingWorksheetOptions(true);
+            const res = await api.get<Worksheet[]>("/worksheets/my");
+            setWorksheetOptions(res.data);
+        } catch {
+            // Ignore — manual UUID entry still works even if the list fails to load.
+        } finally {
+            setLoadingWorksheetOptions(false);
+        }
+    };
+
+    // Load the teacher's worksheets lazily, the first time the assign form is opened.
+    useEffect(() => {
+        if (showAssignWorksheet && isOwnerOrAdmin && worksheetOptions.length === 0 && !loadingWorksheetOptions) {
+            loadWorksheetOptions();
+        }
+    }, [showAssignWorksheet]);
+
     const handleAssignWorksheet = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!worksheetId.trim()) return;
+        const targetId = selectedWorksheet ? selectedWorksheet.id : worksheetSearch.trim();
+        if (!targetId) return;
 
         try {
             setAssigningWorksheet(true);
-            await api.post(`/classes/${id}/worksheets/${worksheetId.trim()}`);
+            await api.post(`/classes/${id}/worksheets/${targetId}`);
             await loadClass(); // reload to get worksheet name
-            setWorksheetId("");
+            setWorksheetSearch("");
+            setSelectedWorksheet(null);
             setShowAssignWorksheet(false);
             setSuccess(t("classDetail.worksheetAssigned"));
             setTimeout(() => setSuccess(""), 3000);
@@ -142,6 +173,31 @@ export default function ClassDetailPage() {
             setError(e.response?.data?.error || t("classDetail.errorAssigning"));
         } finally {
             setAssigningWorksheet(false);
+        }
+    };
+
+    const handleCreateWorksheet = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newWorksheetName.trim()) return;
+
+        try {
+            setCreatingWorksheet(true);
+            const res = await api.post<Worksheet>("/worksheets", {
+                name: newWorksheetName.trim(),
+                description: newWorksheetDesc.trim(),
+            });
+            await api.post(`/classes/${id}/worksheets/${res.data.id}`);
+            setWorksheetOptions((prev) => [res.data, ...prev]);
+            await loadClass(); // reload to show the new worksheet in the list
+            setNewWorksheetName("");
+            setNewWorksheetDesc("");
+            setShowCreateWorksheet(false);
+            setSuccess(t("classDetail.worksheetCreated"));
+            setTimeout(() => setSuccess(""), 3000);
+        } catch (e: any) {
+            setError(e.response?.data?.error || t("classDetail.errorCreatingWorksheet"));
+        } finally {
+            setCreatingWorksheet(false);
         }
     };
 
@@ -248,6 +304,14 @@ export default function ClassDetailPage() {
             </div>
         );
     }
+
+    const assignedWorksheetIds = new Set(classData.worksheets.map((w) => w.worksheetId));
+    const worksheetSearchQuery = worksheetSearch.trim().toLowerCase();
+    const filteredWorksheetOptions = worksheetOptions.filter(
+        (w) =>
+            !assignedWorksheetIds.has(w.id) &&
+            (worksheetSearchQuery === "" || w.name.toLowerCase().includes(worksheetSearchQuery))
+    );
 
     return (
         <>
@@ -548,35 +612,137 @@ export default function ClassDetailPage() {
                         {t("classDetail.worksheets", { count: classData.worksheets.length })}
                     </h5>
                     {isOwnerOrAdmin && (
-                        <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => setShowAssignWorksheet(!showAssignWorksheet)}
-                        >
-                            <i className="bi bi-plus-circle me-1"></i> {t("classDetail.assignWorksheet")}
-                        </button>
+                        <div className="d-flex gap-2">
+                            <button
+                                className="btn btn-sm btn-outline-secondary"
+                                onClick={() => {
+                                    setShowCreateWorksheet(!showCreateWorksheet);
+                                    setShowAssignWorksheet(false);
+                                }}
+                            >
+                                <i className="bi bi-file-earmark-plus me-1"></i> {t("classDetail.createWorksheet")}
+                            </button>
+                            <button
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={() => {
+                                    setShowAssignWorksheet(!showAssignWorksheet);
+                                    setShowCreateWorksheet(false);
+                                }}
+                            >
+                                <i className="bi bi-plus-circle me-1"></i> {t("classDetail.assignWorksheet")}
+                            </button>
+                        </div>
                     )}
                 </div>
                 <div className="card-body">
-                    {/* Assign worksheet form */}
-                    {showAssignWorksheet && (
-                        <form onSubmit={handleAssignWorksheet} className="mb-3 p-3 bg-light rounded">
-                            <div className="input-group">
+                    {/* Create worksheet form */}
+                    {showCreateWorksheet && (
+                        <form onSubmit={handleCreateWorksheet} className="mb-3 p-3 bg-light rounded">
+                            <div className="mb-2">
                                 <input
                                     type="text"
                                     className="form-control"
-                                    placeholder={t("classDetail.worksheetUuidPlaceholder")}
-                                    value={worksheetId}
-                                    onChange={(e) => setWorksheetId(e.target.value)}
+                                    placeholder={t("classDetail.newWorksheetNamePlaceholder")}
+                                    value={newWorksheetName}
+                                    onChange={(e) => setNewWorksheetName(e.target.value)}
                                     required
                                 />
+                            </div>
+                            <div className="mb-2">
+                                <textarea
+                                    className="form-control"
+                                    placeholder={t("classDetail.newWorksheetDescPlaceholder")}
+                                    value={newWorksheetDesc}
+                                    onChange={(e) => setNewWorksheetDesc(e.target.value)}
+                                    rows={2}
+                                />
+                            </div>
+                            <div className="d-flex gap-2">
                                 <button
                                     type="submit"
                                     className="btn btn-success"
-                                    disabled={assigningWorksheet}
+                                    disabled={creatingWorksheet || !newWorksheetName.trim()}
                                 >
-                                    {assigningWorksheet ? "..." : t("classDetail.assignBtn")}
+                                    {creatingWorksheet ? "..." : t("classDetail.createWorksheetBtn")}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={() => setShowCreateWorksheet(false)}
+                                >
+                                    {t("classDetail.cancel")}
                                 </button>
                             </div>
+                        </form>
+                    )}
+
+                    {/* Assign worksheet form */}
+                    {showAssignWorksheet && (
+                        <form onSubmit={handleAssignWorksheet} className="mb-3 p-3 bg-light rounded">
+                            <div className="position-relative">
+                                <div className="input-group">
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder={t("classDetail.worksheetSearchPlaceholder")}
+                                        value={worksheetSearch}
+                                        onChange={(e) => {
+                                            setWorksheetSearch(e.target.value);
+                                            setSelectedWorksheet(null);
+                                            setShowWorksheetDropdown(true);
+                                        }}
+                                        onFocus={() => setShowWorksheetDropdown(true)}
+                                        onBlur={() => setShowWorksheetDropdown(false)}
+                                        autoComplete="off"
+                                        required
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="btn btn-success"
+                                        disabled={assigningWorksheet || !(selectedWorksheet || worksheetSearch.trim())}
+                                    >
+                                        {assigningWorksheet ? "..." : t("classDetail.assignBtn")}
+                                    </button>
+                                </div>
+                                {showWorksheetDropdown && (
+                                    <ul
+                                        className="list-group position-absolute w-100 shadow-sm"
+                                        style={{ zIndex: 1000, maxHeight: 260, overflowY: "auto" }}
+                                    >
+                                        {loadingWorksheetOptions ? (
+                                            <li className="list-group-item text-muted small">
+                                                {t("classDetail.loadingWorksheets")}
+                                            </li>
+                                        ) : filteredWorksheetOptions.length === 0 ? (
+                                            <li className="list-group-item text-muted small">
+                                                {t("classDetail.noMatchingWorksheets")}
+                                            </li>
+                                        ) : (
+                                            filteredWorksheetOptions.slice(0, 8).map((w) => (
+                                                <li
+                                                    key={w.id}
+                                                    className="list-group-item list-group-item-action"
+                                                    style={{ cursor: "pointer" }}
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={() => {
+                                                        setSelectedWorksheet(w);
+                                                        setWorksheetSearch(w.name);
+                                                        setShowWorksheetDropdown(false);
+                                                    }}
+                                                >
+                                                    <div className="fw-semibold">{w.name}</div>
+                                                    {w.description && (
+                                                        <small className="text-muted">{w.description}</small>
+                                                    )}
+                                                </li>
+                                            ))
+                                        )}
+                                    </ul>
+                                )}
+                            </div>
+                            <small className="text-muted d-block mt-1">
+                                {t("classDetail.worksheetSearchHint")}
+                            </small>
                         </form>
                     )}
 
