@@ -36,6 +36,12 @@ export default function ClassDetailPage() {
     const [showWorksheetDropdown, setShowWorksheetDropdown] = useState(false);
     const [assigningWorksheet, setAssigningWorksheet] = useState(false);
 
+    // Create worksheet
+    const [showCreateWorksheet, setShowCreateWorksheet] = useState(false);
+    const [newWorksheetName, setNewWorksheetName] = useState("");
+    const [newWorksheetDesc, setNewWorksheetDesc] = useState("");
+    const [creatingWorksheet, setCreatingWorksheet] = useState(false);
+
     // Copied token feedback
     const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
@@ -167,6 +173,31 @@ export default function ClassDetailPage() {
             setError(e.response?.data?.error || t("classDetail.errorAssigning"));
         } finally {
             setAssigningWorksheet(false);
+        }
+    };
+
+    const handleCreateWorksheet = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newWorksheetName.trim()) return;
+
+        try {
+            setCreatingWorksheet(true);
+            const res = await api.post<Worksheet>("/worksheets", {
+                name: newWorksheetName.trim(),
+                description: newWorksheetDesc.trim(),
+            });
+            await api.post(`/classes/${id}/worksheets/${res.data.id}`);
+            setWorksheetOptions((prev) => [res.data, ...prev]);
+            await loadClass(); // reload to show the new worksheet in the list
+            setNewWorksheetName("");
+            setNewWorksheetDesc("");
+            setShowCreateWorksheet(false);
+            setSuccess(t("classDetail.worksheetCreated"));
+            setTimeout(() => setSuccess(""), 3000);
+        } catch (e: any) {
+            setError(e.response?.data?.error || t("classDetail.errorCreatingWorksheet"));
+        } finally {
+            setCreatingWorksheet(false);
         }
     };
 
@@ -581,15 +612,70 @@ export default function ClassDetailPage() {
                         {t("classDetail.worksheets", { count: classData.worksheets.length })}
                     </h5>
                     {isOwnerOrAdmin && (
-                        <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => setShowAssignWorksheet(!showAssignWorksheet)}
-                        >
-                            <i className="bi bi-plus-circle me-1"></i> {t("classDetail.assignWorksheet")}
-                        </button>
+                        <div className="d-flex gap-2">
+                            <button
+                                className="btn btn-sm btn-outline-secondary"
+                                onClick={() => {
+                                    setShowCreateWorksheet(!showCreateWorksheet);
+                                    setShowAssignWorksheet(false);
+                                }}
+                            >
+                                <i className="bi bi-file-earmark-plus me-1"></i> {t("classDetail.createWorksheet")}
+                            </button>
+                            <button
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={() => {
+                                    setShowAssignWorksheet(!showAssignWorksheet);
+                                    setShowCreateWorksheet(false);
+                                }}
+                            >
+                                <i className="bi bi-plus-circle me-1"></i> {t("classDetail.assignWorksheet")}
+                            </button>
+                        </div>
                     )}
                 </div>
                 <div className="card-body">
+                    {/* Create worksheet form */}
+                    {showCreateWorksheet && (
+                        <form onSubmit={handleCreateWorksheet} className="mb-3 p-3 bg-light rounded">
+                            <div className="mb-2">
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder={t("classDetail.newWorksheetNamePlaceholder")}
+                                    value={newWorksheetName}
+                                    onChange={(e) => setNewWorksheetName(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div className="mb-2">
+                                <textarea
+                                    className="form-control"
+                                    placeholder={t("classDetail.newWorksheetDescPlaceholder")}
+                                    value={newWorksheetDesc}
+                                    onChange={(e) => setNewWorksheetDesc(e.target.value)}
+                                    rows={2}
+                                />
+                            </div>
+                            <div className="d-flex gap-2">
+                                <button
+                                    type="submit"
+                                    className="btn btn-success"
+                                    disabled={creatingWorksheet || !newWorksheetName.trim()}
+                                >
+                                    {creatingWorksheet ? "..." : t("classDetail.createWorksheetBtn")}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={() => setShowCreateWorksheet(false)}
+                                >
+                                    {t("classDetail.cancel")}
+                                </button>
+                            </div>
+                        </form>
+                    )}
+
                     {/* Assign worksheet form */}
                     {showAssignWorksheet && (
                         <form onSubmit={handleAssignWorksheet} className="mb-3 p-3 bg-light rounded">
