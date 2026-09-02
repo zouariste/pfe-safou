@@ -892,6 +892,9 @@ export default function SolvePage() {
                 blockOrder,
                 indentLevels,
                 hintLevel,
+                // Hint text is written server-side, so the backend has to be told
+                // which language the UI is currently in.
+                locale: i18n.language,
             });
 
             const data = response.data;
