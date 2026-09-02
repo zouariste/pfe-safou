@@ -157,7 +157,7 @@
                 <version>5.0.0</version>
                 <configuration>
                     <properties>
-                        <year>2019-2026</year>
+                        <year>2026</year>
                     </properties>
                     <licenseSets>
                         <licenseSet>

@@ -83,6 +83,28 @@ frontend-test:   # Runs the vitest suite in frontend/.
     reports:
       junit: frontend/junit.xml  # Paths are relative to the project root, not the job cwd.
 
+backend-test:    # Runs the JUnit suite in backend/.
+  stage: test
+  image: eclipse-temurin:21-jdk   # Matches java.version in backend/pom.xml.
+  cache:
+    key:
+      files:
+        - backend/pom.xml
+    paths:
+      - backend/.m2/repository/
+  before_script:
+    - cd backend
+    # The executable bit on mvnw is easily lost when the repository is edited
+    # from Windows; without this the job dies on a bare permission denied.
+    - chmod +x mvnw
+  script:
+    - ./mvnw -B -ntp -Dmaven.repo.local=.m2/repository test
+  artifacts:
+    when: always # Keep the reports on failure too, that is when they are read.
+    expire_in: 1 week
+    reports:
+      junit: backend/target/surefire-reports/TEST-*.xml
+
 lint-test-job:   # This job also runs in the test stage.
   stage: test    # It can run at the same time as unit-test-job (in parallel).
   script:

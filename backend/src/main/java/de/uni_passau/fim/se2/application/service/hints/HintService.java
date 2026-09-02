@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2026 CodeOwl contributors
+ * Copyright (C) 2026 CodeOwl contributors
  *
  * This file is part of CodeOwl.
  *
@@ -158,6 +158,17 @@ public class HintService {
 
     @Transactional
     public HintResponse getHint(UUID taskId, List<String> blockOrder, List<Integer> indentLevels, int hintLevel, UUID userId) {
+        return getHint(taskId, blockOrder, indentLevels, hintLevel, userId, HintLocale.DE);
+    }
+
+    /**
+     * @param locale the UI language the hint text should be written in; hints
+     *               used to be German-only, so a client that sends nothing keeps
+     *               German.
+     */
+    @Transactional
+    public HintResponse getHint(UUID taskId, List<String> blockOrder, List<Integer> indentLevels, int hintLevel,
+                                UUID userId, HintLocale locale) {
         // Guard against null inputs from the client — treat as empty lists rather than crashing.
         if (blockOrder == null) blockOrder = List.of();
         if (indentLevels == null) indentLevels = List.of();
@@ -234,11 +245,11 @@ public class HintService {
         String explanation = null;
 
         if (hintLevel == 1) {
-            hintText = hintGenerator.generate(blockFindings, language, distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount);
+            hintText = hintGenerator.generate(blockFindings, language, distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount, locale);
         } else if (hintLevel == 2) {
-            hintText = hintGenerator.generate(blockFindings, language, distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount);
+            hintText = hintGenerator.generate(blockFindings, language, distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount, locale);
             explanation = hintExplainer.explain(blockFindings, assembly.code(), GapMarkers.strip(task.getSolution()), language,
-                    distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount);
+                    distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount, locale);
         }
 
         // 7. Get affected block indices (include distractor blocks as affected)

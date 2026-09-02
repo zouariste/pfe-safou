@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
 import HintButton from "../components/HintButton.tsx";
 import { formatGraderFeedback } from "../lib/graderFeedback.ts";
+import { applyHintLabels } from "../lib/hintHighlight.ts";
 import { shuffleElementChildren } from "../lib/shuffleSource.ts";
 
 declare global {
@@ -845,15 +846,7 @@ export default function SolvePage() {
         const sortableUl = document.getElementById(`ul-${widget.options.sortableId}`);
         if (!sortableUl) return;
 
-        const blocks = sortableUl.querySelectorAll("li");
-        const labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-        affectedBlockIndices.forEach((blockIdx, i) => {
-            if (blockIdx >= 0 && blockIdx < blocks.length) {
-                blocks[blockIdx].classList.add("block-hint-error");
-                blocks[blockIdx].setAttribute("data-hint-label", labels[i] || String(i + 1));
-            }
-        });
+        applyHintLabels(sortableUl, affectedBlockIndices);
     }
 
     async function requestHint(hintLevel: 1 | 2) {
@@ -892,6 +885,9 @@ export default function SolvePage() {
                 blockOrder,
                 indentLevels,
                 hintLevel,
+                // Hint text is written server-side, so the backend has to be told
+                // which language the UI is currently in.
+                locale: i18n.language,
             });
 
             const data = response.data;
