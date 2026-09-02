@@ -13,6 +13,8 @@ import { useEventTracker } from "../hooks/useEventTracker.ts";
 import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
 import HintButton from "../components/HintButton.tsx";
+import { formatGraderFeedback } from "../lib/graderFeedback.ts";
+import { shuffleElementChildren } from "../lib/shuffleSource.ts";
 
 declare global {
     interface Window {
@@ -36,7 +38,7 @@ function checkBlank(value: string, expected: string | null, mode: string): boole
 }
 
 export default function SolvePage() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const location = useLocation();
     const langFromNav = location.state?.lang;
 
@@ -366,6 +368,15 @@ export default function SolvePage() {
 
     const widgetRef = useRef<any>(null);
     const [feedbackHTML, setFeedbackHTML] = useState("");
+
+    // Grading produces already-resolved strings, so text on screen cannot
+    // retranslate itself when the language changes. Clear it rather than leave a
+    // German page showing an English verdict; the next grading refills it.
+    useEffect(() => {
+        const onLanguageChanged = () => setFeedbackHTML("");
+        i18n.on("languageChanged", onLanguageChanged);
+        return () => { i18n.off("languageChanged", onLanguageChanged); };
+    }, [i18n]);
     useEffect(() => {
         if (!task?.solution || !window.ParsonsWidget) return;
 
@@ -378,15 +389,15 @@ export default function SolvePage() {
                 : 0,
             programmingLang: task.programmingLanguage?.toLowerCase() ?? "",
 
-            // Fix: Initialisiere i18n direkt im Konstruktor
-            i18n: {
-                en: {
-                    no_matching: t("solve.no_matching"),
-                    one_item_error: t("solve.one_item_error"),
-                    trash_label: t("solve.source"),
-                    solution_label: t("solve.target"),
-                }
-            },
+            // Empty strings suppress the library's own column labels
+            // (parsons.js:1805 only emits the <p> when these are truthy). They are
+            // baked into the DOM at construction time and this effect does not
+            // re-run on a language change, so they would be stuck in whichever
+            // language was active when the task loaded. The <h6> headings that
+            // SolvePage renders above each column say the same thing and, being
+            // React, follow the language switch.
+            trash_label: "",
+            solution_label: "",
 
             grader: function CustomLineBasedGrader(p: any) {
                 const base = new window.ParsonsWidget._graders.LineBasedGrader(p);
@@ -424,13 +435,30 @@ export default function SolvePage() {
         if (task.distractors) {
             codeForWidget = codeForWidget + "\n" + task.distractors;
         }
-        // Fix: Zusätzliche Absicherung für die translations Property vor dem Init
-        if (!widget.translations) {
-            widget.translations = {
-                no_matching: t("solve.no_matching"),
-                trash_label: t("solve.source"),
-                solution_label: t("solve.target")
-            };
+        // The constructor always populates `translations` (falling back to its
+        // English table), so it is never missing. Its entries are functions, and
+        // they are what the grader writes into the feedback box.
+        //
+        // Only these four are reachable here: order/lines_too_many/lines_missing
+        // come from LineBasedGrader, which is the grader below, and no_matching
+        // from the widget's own indentation check. The remaining entries belong
+        // to graders this app never instantiates (LanguageTranslationGrader,
+        // UnitTestGrader, VariableCheckGrader), so translating them would only
+        // create the appearance of coverage.
+        if (widget.translations) {
+            //
+            // These call i18n.t rather than the t from useTranslation. This effect
+            // runs once per task, so a captured t would stay bound to the language
+            // that was active then and keep answering in it after a switch;
+            // i18n.t resolves against the instance's current language every call.
+            widget.translations.no_matching = (lineNro: number) =>
+                i18n.t("solve.no_matching", { line: lineNro });
+            widget.translations.order = () => i18n.t("solve.grader_order");
+            widget.translations.lines_too_many = () => i18n.t("solve.grader_lines_too_many");
+            widget.translations.lines_missing = () => i18n.t("solve.grader_lines_missing");
+            // Not part of upstream js-parsons: the Python indent message was
+            // hardcoded in our vendored copy and is now routed through here too.
+            widget.translations.indent_python = () => i18n.t("solve.grader_indent_python");
         }
 
         widget.init(codeForWidget);
@@ -1174,23 +1202,38 @@ export default function SolvePage() {
                             className="btn btn-outline-secondary"
                             onClick={(e) => {
                                 e.preventDefault();
-                                widgetRef.current?.shuffleLines();
-                                // Re-apply click-to-move after shuffle rebuilds DOM
+
+                                // Only the blocks still in the source area are
+                                // reordered; the solution the student has built
+                                // stays exactly as it is.
+                                const sourceUl = document.getElementById("ul-jsparsons-source");
+                                const moved = shuffleElementChildren(sourceUl);
+                                if (moved === 0) return;
+
+                                // jQuery UI caches each item's position for dragging,
+                                // so it has to recompute them after the nodes move.
+                                try { ($(sourceUl as HTMLElement) as any).sortable("refresh"); } catch { /* not sortable */ }
+
+                                // The nodes themselves are reused, so click-to-move
+                                // handlers survive; re-binding is cheap insurance
+                                // against any selection state pointing at a moved node.
                                 if (interactionMode === "click" && widgetRef.current) {
                                     try {
                                         widgetRef.current.disableClickToMove();
                                         widgetRef.current.enableClickToMove();
                                     } catch {}
                                 }
-                                setFeedbackHTML("");
-                                clearHintHighlights("feedback_clicked");
-                                setHintText(null);
-                                setHintExplanation(null);
-                                setHintError(null);
-                                // Log task_reset event (AP11)
+
+                                // Feedback and hints are deliberately left alone: they
+                                // describe the solution area, which this no longer
+                                // touches, so clearing them would discard information
+                                // that is still accurate.
+
                                 try {
                                     if (task?.id) {
-                                        logEvent(task.id, "task_reset", {
+                                        // Not task_reset any more — nothing is reset.
+                                        logEvent(task.id, "source_shuffled", {
+                                            blocksShuffled: moved,
                                             attemptCount: attemptCountRef.current,
                                             feedbackCount: feedbackCountRef.current,
                                             activeTimeMs: activeTimeRef.current,
@@ -1215,9 +1258,12 @@ export default function SolvePage() {
                                 setHintExplanation(null);
                                 setHintError(null);
 
-                                // Run js-parsons grading
+                                // Run js-parsons grading. getFeedback returns an
+                                // array of messages for this grader, never a bare
+                                // string — testing for a string dropped every
+                                // message on the floor.
                                 const fb = widget.getFeedback?.();
-                                if (typeof fb === "string") setFeedbackHTML(fb);
+                                setFeedbackHTML(formatGraderFeedback(fb));
 
                                 // Unlock hints after feedback
                                 setHintsUnlocked(true);

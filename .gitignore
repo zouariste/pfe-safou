@@ -50,3 +50,8 @@ Thumbs.db
 # Debug
 gpt-debug-response.json
 .openai-key
+
+# Claude Code — kept local: CLAUDE.md is per-developer guidance and
+# .claude/ holds machine-specific settings
+CLAUDE.md
+.claude/
