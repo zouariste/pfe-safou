@@ -824,8 +824,6 @@
     "crashBody": "Diese Seite konnte nicht angezeigt werden. Du kannst es erneut versuchen oder zur Startseite zurückkehren.",
     "crashDetails": "Technische Details",
     "crashRetry": "Erneut versuchen",
-    "accessDenied": "Zugriff verweigert",
-    "accessDeniedBody": "Du hast nicht die erforderliche Berechtigung, um diese Seite anzuzeigen.",
     "loading": "Laden...",
     "error": "Fehler",
     "save": "Speichern",

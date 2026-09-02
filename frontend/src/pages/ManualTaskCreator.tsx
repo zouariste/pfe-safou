@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useHomePath } from "../hooks/useHomePath.ts";
 import { renderGapLine } from "../lib/gapMarkers";
 import CodeSolutionEditor from "../components/CodeSolutionEditor";
 import type { SplitEntry } from "../types/models";
@@ -34,6 +35,7 @@ const EMPTY_TIER = (level: number): TierEntry => ({
 export default function ManualTaskCreator() {
     const { t } = useTranslation();
     usePageTitle(t("manual.pageTitle"));
+    const homePath = useHomePath();
     const navigate = useNavigate();
 
     // ── Form state ──────────────────────────────────────────
@@ -382,7 +384,7 @@ export default function ManualTaskCreator() {
                             <button
                                 type="button"
                                 className="btn btn-outline-secondary"
-                                onClick={() => navigate("/")}
+                                onClick={() => navigate(homePath)}
                                 disabled={submitting}
                             >
                                 {t("manual.cancel")}

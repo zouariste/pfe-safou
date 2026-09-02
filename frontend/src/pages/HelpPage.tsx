@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useAuth } from "../context/AuthContext.tsx";
+import { useHomePath } from "../hooks/useHomePath.ts";
 
 export default function HelpPage() {
     const { t } = useTranslation();
@@ -11,6 +12,7 @@ export default function HelpPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const { isTeacher, isAdmin } = useAuth();
+    const homePath = useHomePath();
 
     const searchParams = new URLSearchParams(location.search);
     const fromParam = searchParams.get("from");
@@ -20,7 +22,7 @@ export default function HelpPage() {
         if (fromParam) {
             const decoded = decodeURIComponent(fromParam);
             navigate(decoded);
-        } else navigate("/");
+        } else navigate(homePath);
     };
 
     // =====================================================================

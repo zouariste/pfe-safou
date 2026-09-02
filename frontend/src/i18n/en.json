@@ -824,8 +824,6 @@
     "crashBody": "This page could not be displayed. You can try again or return to the start page.",
     "crashDetails": "Technical details",
     "crashRetry": "Try again",
-    "accessDenied": "Access denied",
-    "accessDeniedBody": "You do not have the required permission to view this page.",
     "loading": "Loading...",
     "error": "Error",
     "save": "Save",

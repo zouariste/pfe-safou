@@ -20,7 +20,8 @@ export default function StudentClassesPage() {
             return;
         }
         if (!isStudent) {
-            navigate("/");
+            // A teacher or admin landing here belongs on their own classes page.
+            navigate("/classes");
             return;
         }
         loadClasses();

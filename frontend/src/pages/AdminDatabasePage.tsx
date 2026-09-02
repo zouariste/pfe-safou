@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import { homePathFor } from "../lib/homePath.ts";
 
 interface AuditEntry {
     id: number;
@@ -25,14 +26,15 @@ function formatBytes(bytes: number | null): string {
 
 export default function AdminDatabasePage() {
     const { t } = useTranslation();
-    const { isAdmin } = useAuth();
+    const { isAdmin, isLoggedIn, isStudent } = useAuth();
 
     const [downloading, setDownloading] = useState<"backup" | "research" | null>(null);
     const [error, setError] = useState("");
     const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
     const [loadingAudit, setLoadingAudit] = useState(false);
 
-    if (!isAdmin) return <Navigate to="/" replace />;
+    // Non-admins go back to their own classes page, not to the generator.
+    if (!isAdmin) return <Navigate to={homePathFor({ isLoggedIn, isStudent })} replace />;
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {

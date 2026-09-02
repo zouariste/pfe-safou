@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
+import { useHomePath } from "./hooks/useHomePath.ts";
 import HomePage from "./pages/HomePage.tsx";
 import SolvePage from "./pages/SolvePage.tsx";
 import SequencePage from "./pages/SequencePage.tsx";
@@ -120,10 +121,11 @@ function Navbar() {
     const { user, logout, isLoggedIn, isStudent, isAdmin } = useAuth();
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const homePath = useHomePath();
 
     return (
         <nav className="navbar navbar-expand-sm navbar-light bg-white border-bottom px-3 py-2">
-            <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
+            <Link className="navbar-brand d-flex align-items-center gap-2" to={homePath}>
                 <img
                     src={`${import.meta.env.BASE_URL}codeowllogo.png`}
                     alt="CodeOwl"
@@ -265,6 +267,7 @@ function RouteErrorBoundary({ children }: { children: ReactNode }) {
     const location = useLocation();
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const homePath = useHomePath();
 
     return (
         <ErrorBoundary
@@ -291,7 +294,7 @@ function RouteErrorBoundary({ children }: { children: ReactNode }) {
                                 className="btn btn-outline-secondary"
                                 onClick={() => {
                                     reset();
-                                    navigate("/");
+                                    navigate(homePath);
                                 }}
                             >
                                 {t("common.home")}
