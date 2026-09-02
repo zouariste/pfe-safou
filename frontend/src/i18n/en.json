@@ -236,11 +236,9 @@
     "contextBanner": "The grey code blocks above and below the puzzle area are fixed context — they are already in place. Arrange only the highlighted blocks.",
     "contextLabel": "Context (read-only)",
     "noTaskId": "No task Id specified.",
-    "sourceHeading": "Source",
+    "sourceHeading": "Available blocks",
     "targetHeading": "Construct your solution here",
 
-    "source": "Available Blocks",
-    "target": "Your Solution",
     "no_matching": "Based on language syntax, the highlighted fragment ({{line}}) is not correctly indented.",
     "grader_order": "Code fragments in your program are wrong, or in wrong order. This can be fixed by moving, removing, or replacing highlighted fragments.",
     "grader_lines_too_many": "Your program has too many code fragments.",

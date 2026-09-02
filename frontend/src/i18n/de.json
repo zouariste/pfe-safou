@@ -236,11 +236,9 @@
     "contextBanner": "Die grauen Code-Blöcke ober- und unterhalb des Puzzle-Bereichs sind fester Kontext — sie stehen bereits an der richtigen Stelle. Ordne nur die hervorgehobenen Blöcke.",
     "contextLabel": "Kontext (nur lesen)",
     "noTaskId": "Keine Aufgaben-ID angegeben.",
-    "sourceHeading": "Quellbereich",
+    "sourceHeading": "Verfügbare Blöcke",
     "targetHeading": "Baue hier deine Lösung",
 
-    "source": "Verfügbare Blöcke",
-    "target": "Deine Lösung",
     "no_matching": "Der hervorgehobene Block ({{line}}) ist laut Syntax nicht korrekt eingerückt.",
     "grader_order": "Manche Blöcke sind falsch oder in der falschen Reihenfolge. Verschiebe, entferne oder ersetze die hervorgehobenen Blöcke.",
     "grader_lines_too_many": "Dein Programm hat zu viele Blöcke.",

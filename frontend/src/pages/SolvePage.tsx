@@ -37,7 +37,7 @@ function checkBlank(value: string, expected: string | null, mode: string): boole
 }
 
 export default function SolvePage() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const location = useLocation();
     const langFromNav = location.state?.lang;
 
@@ -367,6 +367,15 @@ export default function SolvePage() {
 
     const widgetRef = useRef<any>(null);
     const [feedbackHTML, setFeedbackHTML] = useState("");
+
+    // Grading produces already-resolved strings, so text on screen cannot
+    // retranslate itself when the language changes. Clear it rather than leave a
+    // German page showing an English verdict; the next grading refills it.
+    useEffect(() => {
+        const onLanguageChanged = () => setFeedbackHTML("");
+        i18n.on("languageChanged", onLanguageChanged);
+        return () => { i18n.off("languageChanged", onLanguageChanged); };
+    }, [i18n]);
     useEffect(() => {
         if (!task?.solution || !window.ParsonsWidget) return;
 
@@ -379,12 +388,15 @@ export default function SolvePage() {
                 : 0,
             programmingLang: task.programmingLanguage?.toLowerCase() ?? "",
 
-            // js-parsons renders these as a <p> above each column (parsons.js:1805).
-            // They have to be top-level options: the library picks its own
-            // language table from `lang` and only consults `trash_label` /
-            // `solution_label` directly — it never reads a nested `i18n` object.
-            trash_label: t("solve.source"),
-            solution_label: t("solve.target"),
+            // Empty strings suppress the library's own column labels
+            // (parsons.js:1805 only emits the <p> when these are truthy). They are
+            // baked into the DOM at construction time and this effect does not
+            // re-run on a language change, so they would be stuck in whichever
+            // language was active when the task loaded. The <h6> headings that
+            // SolvePage renders above each column say the same thing and, being
+            // React, follow the language switch.
+            trash_label: "",
+            solution_label: "",
 
             grader: function CustomLineBasedGrader(p: any) {
                 const base = new window.ParsonsWidget._graders.LineBasedGrader(p);
@@ -433,14 +445,19 @@ export default function SolvePage() {
         // UnitTestGrader, VariableCheckGrader), so translating them would only
         // create the appearance of coverage.
         if (widget.translations) {
+            //
+            // These call i18n.t rather than the t from useTranslation. This effect
+            // runs once per task, so a captured t would stay bound to the language
+            // that was active then and keep answering in it after a switch;
+            // i18n.t resolves against the instance's current language every call.
             widget.translations.no_matching = (lineNro: number) =>
-                t("solve.no_matching", { line: lineNro });
-            widget.translations.order = () => t("solve.grader_order");
-            widget.translations.lines_too_many = () => t("solve.grader_lines_too_many");
-            widget.translations.lines_missing = () => t("solve.grader_lines_missing");
+                i18n.t("solve.no_matching", { line: lineNro });
+            widget.translations.order = () => i18n.t("solve.grader_order");
+            widget.translations.lines_too_many = () => i18n.t("solve.grader_lines_too_many");
+            widget.translations.lines_missing = () => i18n.t("solve.grader_lines_missing");
             // Not part of upstream js-parsons: the Python indent message was
             // hardcoded in our vendored copy and is now routed through here too.
-            widget.translations.indent_python = () => t("solve.grader_indent_python");
+            widget.translations.indent_python = () => i18n.t("solve.grader_indent_python");
         }
 
         widget.init(codeForWidget);
