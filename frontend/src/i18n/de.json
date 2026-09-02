@@ -223,6 +223,9 @@
   },
 
   "solve": {
+    "creditsExhausted": "Alle Hinweis-Credits für diese Aufgabe sind aufgebraucht.",
+    "creditsInsufficient": "Nicht genug Credits: dieser Hinweis kostet {{cost}}, du hast noch {{remaining}}.",
+    "creditsBadgeTitle": "Verbleibende Hinweis-Credits für diese Aufgabe",
     "pageTitle": "Aufgabe | CodeOwl",
     "home": "Home",
     "backToSequence": "Zurück zur Sequenz",
@@ -286,6 +289,9 @@
   },
 
   "worksheet": {
+    "unlimitedHints": "Unbegrenzte Hinweise",
+    "creditsPerTask": "Credits pro Aufgabe",
+    "creditsHelp": "Stufe 1 kostet 1, Stufe 2 kostet 2.",
     "pageTitle": "Arbeitsblatt-Ansicht",
     "copyLinkTitle": "Kopiert den Link zu diesem Arbeitsblatt",
     "teacherMode": "Lehrer-Ansicht",
@@ -1114,10 +1120,10 @@
         "Sequenzen behalten innerhalb eines Arbeitsblatts ihre Stufenstruktur T1–T3."
       ],
       "hintsTitle": "Hinweis-Konfiguration (nur Lehrkraft)",
-      "hintsBody": "Lege pro Arbeitsblatt fest, ob Hinweise für Schüler verfügbar sind und wie viele Credits jeder Schüler pro Aufgabe erhält:",
+      "hintsBody": "Lege pro Arbeitsblatt fest, ob Hinweise für Schüler verfügbar sind und ob ihre Nutzung begrenzt wird:",
       "hints": [
         "<strong>Hinweise aktivieren</strong> — Checkbox an/aus. Ist sie aus, erscheint der Hinweis-Button gar nicht.",
-        "<strong>Credits pro Aufgabe</strong> — Zahl (1–10, Standard 5). Hinweise der Stufe 1 kosten 1 Credit, Stufe 2 kostet 2."
+        "<strong>Unbegrenzte Hinweise</strong> — Standard. Schalte den Regler aus, um ein Budget zu setzen: <strong>Credits pro Aufgabe</strong> (1–99). Stufe 1 kostet 1 Credit, Stufe 2 kostet 2. Das Budget gilt pro Schüler und pro Aufgabe und wird beim Zurücksetzen der Aufgabe <em>nicht</em> aufgefüllt."
       ],
       "exportTitle": "Export",
       "export": [
@@ -1269,7 +1275,7 @@
         "<strong>Stufe 1 (1 Credit)</strong> — ein Werkzeug zur statischen Analyse (Ruff für Python, javac + SpotBugs für Java) untersucht deine aktuelle Anordnung und hebt die problematischen Blöcke mit einem rot pulsierenden Rahmen hervor. Eine kurze Meldung erklärt die Fehlerart (z.B. \"Ein Block verwendet eine Variable, die noch nicht definiert wurde\").",
         "<strong>Stufe 2 (2 Credits)</strong> — klicke auf \"Erklär es mir\", um eine vom LLM erzeugte Erklärung zu erhalten, die die hervorgehobenen Blöcke über ihre Kennbuchstaben (A, B, …) benennt und die Logik schülergerecht erläutert.",
         "Hinweise verschwinden, sobald du einen Block bewegst — das soll zum Handeln anregen, nicht nur zum Lesen.",
-        "Die verbleibenden Credits stehen neben dem Button: 💡 3/5."
+        "Ist für das Arbeitsblatt ein Budget gesetzt, stehen die verbleibenden Credits neben den Buttons: 💡 3/5. Sind sie aufgebraucht, werden beide Hinweis-Buttons deaktiviert."
       ],
       "completionTitle": "Abschluss",
       "completionBody": "Wenn du das Puzzle richtig gelöst hast:",
@@ -1363,7 +1369,7 @@
       "configBody": "Auf der Arbeitsblatt-Seite (Lehrer-Ansicht):",
       "config": [
         "<strong>Hinweise aktivieren</strong> — Checkbox. Aus = der Hinweis-Button wird komplett ausgeblendet.",
-        "<strong>Credits pro Aufgabe</strong> — 1–10 (Standard 5). Fördert gezielten Einsatz statt Abhängigkeit."
+        "<strong>Credits pro Aufgabe</strong> — 1–99, oder unbegrenzt (Standard). Fördert gezielten Einsatz statt Abhängigkeit."
       ]
     },
     "distractors": {

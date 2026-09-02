@@ -55,8 +55,9 @@ public class PostgreWorksheetDao implements WorksheetRepository {
         validateCreate(worksheet);
 
         String sql = """
-                INSERT INTO worksheets (id, name, description, owner_id, hints_enabled)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO worksheets (id, name, description, owner_id, hints_enabled,
+                                        hint_credits_per_task)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """;
 
         UUID id = UUID.randomUUID();
@@ -66,7 +67,8 @@ public class PostgreWorksheetDao implements WorksheetRepository {
                     worksheet.getName(),
                     worksheet.getDescription(),
                     worksheet.getOwnerId(),
-                    worksheet.isHintsEnabled()
+                    worksheet.isHintsEnabled(),
+                    worksheet.getHintCreditsPerTask()
         );
 
         worksheet.setId(id);
@@ -79,7 +81,8 @@ public class PostgreWorksheetDao implements WorksheetRepository {
 
         String sql = """
                 UPDATE worksheets
-                SET name = ?, description = ?, hints_enabled = ?
+                SET name = ?, description = ?, hints_enabled = ?,
+                    hint_credits_per_task = ?
                 WHERE id = ?
                 """;
 
@@ -87,6 +90,7 @@ public class PostgreWorksheetDao implements WorksheetRepository {
                                worksheet.getName(),
                                worksheet.getDescription(),
                                worksheet.isHintsEnabled(),
+                               worksheet.getHintCreditsPerTask(),
                                worksheet.getId()
         );
 
@@ -130,11 +134,13 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             w.description,
             w.owner_id,
             w.hints_enabled,
+            w.hint_credits_per_task,
             COALESCE(array_agg(ws.sequence_id ORDER BY ws.sequence_id), '{}') AS sequence_ids
         FROM worksheets w
         LEFT JOIN worksheets_sequence ws ON ws.worksheet_id = w.id
         WHERE w.id = ?
-        GROUP BY w.id, w.name, w.description, w.owner_id, w.hints_enabled
+        GROUP BY w.id, w.name, w.description, w.owner_id, w.hints_enabled,
+                 w.hint_credits_per_task
         """;
 
         try {
@@ -155,6 +161,7 @@ public class PostgreWorksheetDao implements WorksheetRepository {
                                 .description(rs.getString("description"))
                                 .ownerId(rs.getObject("owner_id", UUID.class))
                                 .hintsEnabled(rs.getBoolean("hints_enabled"))
+                                .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
                                 .sequenceDTOS(sequences)
                                 .build();
                     },
@@ -169,6 +176,7 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             worksheet.setDescription(result.getDescription());
             worksheet.setOwnerId(result.getOwnerId());
             worksheet.setHintsEnabled(result.isHintsEnabled());
+            worksheet.setHintCreditsPerTask(result.getHintCreditsPerTask());
             worksheet.setSequenceDTOS(result.getSequenceDTOS());
 
             log.debug("Loaded worksheet id={} with {} sequence references",
@@ -308,12 +316,13 @@ public class PostgreWorksheetDao implements WorksheetRepository {
     public List<WorksheetDTO> findByOwnerId(UUID ownerId) {
         String sql = """
             SELECT w.id, w.name, w.description, w.owner_id,
-                   w.hints_enabled,
+                   w.hints_enabled, w.hint_credits_per_task,
                    COUNT(ws.sequence_id) AS sequence_count
             FROM worksheets w
             LEFT JOIN worksheets_sequence ws ON ws.worksheet_id = w.id
             WHERE w.owner_id = ?
-            GROUP BY w.id, w.name, w.description, w.owner_id, w.hints_enabled
+            GROUP BY w.id, w.name, w.description, w.owner_id, w.hints_enabled,
+                     w.hint_credits_per_task
             ORDER BY w.name
             """;
 
@@ -323,6 +332,7 @@ public class PostgreWorksheetDao implements WorksheetRepository {
                 .description(rs.getString("description"))
                 .ownerId(rs.getObject("owner_id", UUID.class))
                 .hintsEnabled(rs.getBoolean("hints_enabled"))
+                .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
                 .build(), ownerId);
     }
 
