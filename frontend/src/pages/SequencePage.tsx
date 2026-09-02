@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { TieredTaskSequence, Task } from "../types/models.ts";
 import { api } from "../lib/api.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
+import { useHomePath } from "../hooks/useHomePath.ts";
 import {PersistentLogger} from "../PersistentLogger.ts";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.tsx";
@@ -24,6 +25,7 @@ type LoadState = "idle" | "loading" | "ready" | "notfound" | "error";
 export default function SequencePage() {
     const { t } = useTranslation();
     usePageTitle(t("sequence.pageTitle"));
+    const homePath = useHomePath();
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
@@ -270,7 +272,7 @@ export default function SequencePage() {
     return (
         <main className="container py-4 px-3" style={{ maxWidth: 900 }}>
             <div className="mb-3 d-flex gap-2">
-                <button className="btn btn-link" onClick={() => navigate("/")}>
+                <button className="btn btn-link" onClick={() => navigate(homePath)}>
                     ← {t("common.home")}
                 </button>
                 {fromWorksheet && (

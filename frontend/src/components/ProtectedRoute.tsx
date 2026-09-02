@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
+import { homePathFor } from "../lib/homePath.ts";
 import type { UserRole } from "../types/models";
 
 interface ProtectedRouteProps {
@@ -10,7 +11,7 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
     const { t } = useTranslation();
-    const { user, loading, isLoggedIn, mustChangePassword } = useAuth();
+    const { user, loading, isLoggedIn, isStudent, mustChangePassword } = useAuth();
 
     if (loading) {
         return (
@@ -23,7 +24,9 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     }
 
     if (!isLoggedIn) {
-        return <Navigate to="login" replace />;
+        // Absolute: a relative "login" resolves against the current route, so
+        // from /admin/users it aimed at a path that matches nothing.
+        return <Navigate to="/login" replace />;
     }
 
     // If a teacher set a temp password the student must change it first
@@ -31,14 +34,16 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
         return <Navigate to="/change-password" replace />;
     }
 
+    // Someone without the role — a teacher on an admin URL — is sent back to
+    // their own classes page rather than to the generator.
+    //
+    // This used to render an "access denied" message alongside the redirect,
+    // but <Navigate> acts on mount, so the message was replaced before it could
+    // be read. Redirecting outright is what actually happened; now it says so.
+    // Nothing links here for the wrong role either, so this only fires on a
+    // typed or bookmarked URL.
     if (requiredRole && user?.role !== requiredRole) {
-        return (
-            <div className="container py-5 text-center">
-                <h3 className="text-danger mb-3">{t("common.accessDenied")}</h3>
-                <p className="text-muted">{t("common.accessDeniedBody")}</p>
-                <Navigate to="/" replace />
-            </div>
-        );
+        return <Navigate to={homePathFor({ isLoggedIn, isStudent })} replace />;
     }
 
     return <>{children}</>;

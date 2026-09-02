@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api, apiErrorMessage } from "../lib/api.ts";
 import type { Worksheet, ClassInfo } from "../types/models.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
+import { useHomePath } from "../hooks/useHomePath.ts";
 import { ListGroup } from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { useAuth } from "../context/AuthContext.tsx";
@@ -17,6 +18,7 @@ import {
 export default function WorksheetPage() {
     const { t } = useTranslation();
     usePageTitle(t("worksheet.pageTitle"));
+    const homePath = useHomePath();
     const { sheetId } = useParams<{ sheetId: string }>();
     const navigate = useNavigate();
     const location = useLocation();
@@ -321,7 +323,7 @@ export default function WorksheetPage() {
 
     return (
         <div className="container py-4" style={{ maxWidth: 900 }}>
-            <button className="btn btn-link mb-3" onClick={() => navigate("/")}>
+            <button className="btn btn-link mb-3" onClick={() => navigate(homePath)}>
                 &larr; {t("common.home")}
             </button>
             {canToggleTeacherView && (

@@ -6,6 +6,7 @@ import type {Task} from "../types/models.ts";
 import {parseSplitPlan} from "../types/models.ts";
 import $ from "jquery";
 import {usePageTitle} from "../hooks/usePageTitle.ts";
+import {useHomePath} from "../hooks/useHomePath.ts";
 import { useLocation } from "react-router-dom";
 import {PersistentLogger} from "../PersistentLogger.ts";
 import { useAuth } from "../context/AuthContext.tsx";
@@ -45,6 +46,7 @@ export default function SolvePage() {
     const [language, setLanguage] = useState(langFromNav ?? "unknown");
     const lastFeedbackAtRef = useRef(0);
     usePageTitle(t("solve.pageTitle"));
+    const homePath = useHomePath();
     const {taskId} = useParams<{ taskId: string }>();
 
     useEffect(() => {
@@ -956,7 +958,7 @@ export default function SolvePage() {
         return (
             <div className="container py-4">
                 <div className="alert alert-warning">{t("solve.noTaskId")}</div>
-                <button className="btn btn-link" onClick={() => navigate("/")}>{t("solve.home")}</button>
+                <button className="btn btn-link" onClick={() => navigate(homePath)}>{t("solve.home")}</button>
             </div>
         );
     }
@@ -968,7 +970,9 @@ export default function SolvePage() {
                 <button
                     className="btn btn-link"
                     onClick={() => {
-                        if (!sequenceId) return navigate("/");
+                        // A task reached without a sequence has nothing to go back
+                        // to, so fall through to wherever Home would lead.
+                        if (!sequenceId) return navigate(homePath);
 
                         navigate(`/sequence/${sequenceId}`, {
                             state: { fromWorksheet: location.state?.fromWorksheet },
@@ -978,7 +982,7 @@ export default function SolvePage() {
                 >
                     ← {t("solve.backToSequence")}
                 </button>
-                <button className="btn btn-link" onClick={() => navigate("/")}>{t("solve.home")}</button>
+                <button className="btn btn-link" onClick={() => navigate(homePath)}>{t("solve.home")}</button>
             </div>
             {canToggleTeacherView && (
                 <div className="d-flex justify-content-end mb-3">
