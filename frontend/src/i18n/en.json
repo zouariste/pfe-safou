@@ -223,6 +223,8 @@
   },
 
   "solve": {
+    "redo": "Solve again",
+    "restoredNote": "Your solved arrangement has been restored.",
     "creditsExhausted": "All hint credits for this task have been used up.",
     "creditsInsufficient": "Not enough credits: this hint costs {{cost}}, you have {{remaining}} left.",
     "creditsBadgeTitle": "Hint credits remaining for this task",
