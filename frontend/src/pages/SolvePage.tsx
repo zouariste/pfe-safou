@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
 import HintButton from "../components/HintButton.tsx";
 import { formatGraderFeedback } from "../lib/graderFeedback.ts";
+import { shuffleElementChildren } from "../lib/shuffleSource.ts";
 
 declare global {
     interface Window {
@@ -1201,23 +1202,38 @@ export default function SolvePage() {
                             className="btn btn-outline-secondary"
                             onClick={(e) => {
                                 e.preventDefault();
-                                widgetRef.current?.shuffleLines();
-                                // Re-apply click-to-move after shuffle rebuilds DOM
+
+                                // Only the blocks still in the source area are
+                                // reordered; the solution the student has built
+                                // stays exactly as it is.
+                                const sourceUl = document.getElementById("ul-jsparsons-source");
+                                const moved = shuffleElementChildren(sourceUl);
+                                if (moved === 0) return;
+
+                                // jQuery UI caches each item's position for dragging,
+                                // so it has to recompute them after the nodes move.
+                                try { ($(sourceUl as HTMLElement) as any).sortable("refresh"); } catch { /* not sortable */ }
+
+                                // The nodes themselves are reused, so click-to-move
+                                // handlers survive; re-binding is cheap insurance
+                                // against any selection state pointing at a moved node.
                                 if (interactionMode === "click" && widgetRef.current) {
                                     try {
                                         widgetRef.current.disableClickToMove();
                                         widgetRef.current.enableClickToMove();
                                     } catch {}
                                 }
-                                setFeedbackHTML("");
-                                clearHintHighlights("feedback_clicked");
-                                setHintText(null);
-                                setHintExplanation(null);
-                                setHintError(null);
-                                // Log task_reset event (AP11)
+
+                                // Feedback and hints are deliberately left alone: they
+                                // describe the solution area, which this no longer
+                                // touches, so clearing them would discard information
+                                // that is still accurate.
+
                                 try {
                                     if (task?.id) {
-                                        logEvent(task.id, "task_reset", {
+                                        // Not task_reset any more — nothing is reset.
+                                        logEvent(task.id, "source_shuffled", {
+                                            blocksShuffled: moved,
                                             attemptCount: attemptCountRef.current,
                                             feedbackCount: feedbackCountRef.current,
                                             activeTimeMs: activeTimeRef.current,
