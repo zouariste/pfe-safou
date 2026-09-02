@@ -41,6 +41,13 @@ class HintGeneratorTest {
 
     private final HintGenerator generator = new HintGenerator();
 
+    /** A static-analysis finding pinned to one block of the solution. */
+    private static BlockMapper.BlockFinding findingOn(int blockIndex) {
+        return new BlockMapper.BlockFinding(blockIndex,
+                new AnalysisFinding("F821", "Undefined name 'x'", "error",
+                        blockIndex + 1, blockIndex + 1, "ruff", "undefined_variable"));
+    }
+
     /** No findings, no distractors, nothing missing — just the requested locale. */
     private String hint(HintLocale locale) {
         return generator.generate(List.of(), "python", List.of(), false, 0, 0, locale);
@@ -134,13 +141,36 @@ class HintGeneratorTest {
     class Content {
 
         @Test
-        @DisplayName("distractor block numbers are 1-based for the student")
-        void oneBasedNumbering() {
-            // Index 2 is the third block; students count from 1.
+        @DisplayName("blocks are named by the same letter the UI badges them with")
+        void namesBlocksByLetter() {
+            // Index 2 is the third block, badged "C" in the solution area. Saying
+            // "Block 3" here left the student matching a number against a letter.
             assertTrue(generator.generate(List.of(), "python", List.of(2), false, 0, 0, HintLocale.EN)
-                    .contains("Block 3"));
+                    .contains("Block C"));
             assertTrue(generator.generate(List.of(), "python", List.of(1, 3), false, 0, 0, HintLocale.EN)
-                    .contains("Blocks 2, 4"));
+                    .contains("Blocks B, D"));
+        }
+
+        @Test
+        @DisplayName("no hint refers to a block by number")
+        void neverUsesNumbers() {
+            String text = generator.generate(List.of(), "python", List.of(0, 1, 2), false, 0, 0, HintLocale.EN);
+            for (int n = 1; n <= 5; n++) {
+                assertFalse(text.contains("Block " + n), "numeric block reference in: " + text);
+            }
+        }
+
+        @Test
+        @DisplayName("a finding names its block by letter too")
+        void findingsUseLetters() {
+            // The per-finding line is a separate branch from the distractor one
+            // and was the half that kept saying "Block 5".
+            String text = generator.generate(List.of(findingOn(4)), "python", List.of(),
+                    false, 0, 0, HintLocale.EN);
+            assertAll(
+                    () -> assertTrue(text.contains("Block E"), text),
+                    () -> assertFalse(text.contains("Block 5"), text),
+                    () -> assertTrue(text.contains("F821"), text));
         }
 
         @Test

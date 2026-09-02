@@ -116,7 +116,7 @@ public class HintExplainer {
                 prompt.append(" ");
                 for (int i = 0; i < distractorBlockIndices.size(); i++) {
                     if (i > 0) prompt.append(", ");
-                    prompt.append(distractorBlockIndices.get(i) + 1);
+                    prompt.append(BlockLabels.of(distractorBlockIndices.get(i)));
                 }
                 prompt.append(" gehör");
                 prompt.append(distractorBlockIndices.size() == 1 ? "t" : "en");
@@ -129,7 +129,7 @@ public class HintExplainer {
             if (!blockFindings.isEmpty()) {
                 for (BlockMapper.BlockFinding bf : blockFindings) {
                     AnalysisFinding f = bf.finding();
-                    prompt.append("- Block ").append(bf.blockIndex() + 1).append(": ")
+                    prompt.append("- Block ").append(BlockLabels.of(bf.blockIndex())).append(": ")
                           .append(f.message()).append(" [").append(f.ruleId()).append("]\n");
                 }
             }
@@ -143,13 +143,21 @@ public class HintExplainer {
             // either way: it is input for the model, not output.
             if (locale == HintLocale.EN) {
                 prompt.append("\nExplain to the student in English what is wrong. ")
-                      .append("Be direct and concrete — name the affected blocks (e.g. \"Block 3\"). ")
+                      // The example has to use a letter. With "Block 3" here the
+                      // model copied the numeric style regardless of the letters
+                      // it was given above, and the answer then disagreed with
+                      // the badge on the block.
+                      .append("Refer to a block by the letter it is given above, never by a number ")
+                      .append("— write \"Block C\", not \"Block 3\". ")
+                      .append("Be direct and concrete. ")
                       .append("Do not reveal the full solution. ")
                       .append("No technical rule IDs. ")
                       .append("Three sentences at most. No opening pleasantry such as \"Sure\" or \"Of course\".");
             } else {
                 prompt.append("\nErkläre dem Schüler auf Deutsch, was falsch ist. ")
-                      .append("Sei direkt und konkret — nenne die betroffenen Blöcke (z.B. \"Block 3\"). ")
+                      .append("Nenne einen Block immer mit dem Buchstaben, der oben steht, nie mit einer Zahl ")
+                      .append("— schreibe \"Block C\", nicht \"Block 3\". ")
+                      .append("Sei direkt und konkret. ")
                       .append("Verrate nicht die vollständige Lösung. ")
                       .append("Keine technischen Rule-IDs. ")
                       .append("Maximal 3 Sätze. Kein einleitender Satz wie \"Natürlich\" oder \"Gerne\". ")

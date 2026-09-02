@@ -75,7 +75,7 @@ public class HintGenerator {
         // 2. Distractor warning
         if (!distractorBlockIndices.isEmpty()) {
             if (distractorBlockIndices.size() == 1) {
-                int block = distractorBlockIndices.get(0) + 1;
+                String block = BlockLabels.of(distractorBlockIndices.get(0));
                 if (en) {
                     sb.append("• Block ").append(block)
                       .append(" does not belong in the solution (distractor). Move it back to the source area.\n");
@@ -87,7 +87,7 @@ public class HintGenerator {
                 sb.append(en ? "• Blocks " : "• Blöcke ");
                 for (int i = 0; i < distractorBlockIndices.size(); i++) {
                     if (i > 0) sb.append(", ");
-                    sb.append(distractorBlockIndices.get(i) + 1);
+                    sb.append(BlockLabels.of(distractorBlockIndices.get(i)));
                 }
                 sb.append(en
                         ? " do not belong in the solution (distractors). Move them back to the source area.\n"
@@ -98,7 +98,7 @@ public class HintGenerator {
         // 3. Static analysis findings (already limited to max 2 by HintService)
         for (BlockMapper.BlockFinding bf : blockFindings) {
             AnalysisFinding f = bf.finding();
-            sb.append("• Block ").append(bf.blockIndex() + 1)
+            sb.append("• Block ").append(BlockLabels.of(bf.blockIndex()))
               .append(" [").append(f.ruleId()).append("]: ")
               .append(f.message()).append("\n");
         }
