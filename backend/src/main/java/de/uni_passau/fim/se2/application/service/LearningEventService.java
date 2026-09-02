@@ -43,7 +43,11 @@ public class LearningEventService {
             "feedback_requested",
             "task_correct",
             "task_abandoned",
+            // Historical: emitted while the shuffle button still cleared the
+            // solution area. Kept accepted so replayed or queued events from an
+            // older client are not rejected; nothing produces it now.
             "task_reset",
+            "source_shuffled",
             "task_reopened",
             "tier_opened",
             "tier_closed",
