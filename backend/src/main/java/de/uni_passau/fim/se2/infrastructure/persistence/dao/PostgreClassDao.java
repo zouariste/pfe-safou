@@ -29,6 +29,10 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import de.uni_passau.fim.se2.domain.model.WorksheetAvailability;
+
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.*;
 
 @Slf4j
@@ -117,17 +121,29 @@ public class PostgreClassDao implements ClassRepository {
 
         // Load worksheets
         List<ClassDTO.WorksheetInfo> worksheets = jdbc.query("""
-            SELECT w.id as worksheet_id, w.name, w.description
+            SELECT w.id as worksheet_id, w.name, w.description,
+                   cw.release_at, cw.deadline_at, cw.grace_minutes
             FROM class_worksheets cw
             JOIN worksheets w ON w.id = cw.worksheet_id
             WHERE cw.class_id = ?
             ORDER BY w.name
             """,
-                (rs, rowNum) -> ClassDTO.WorksheetInfo.builder()
-                        .worksheetId(rs.getObject("worksheet_id", UUID.class))
-                        .name(rs.getString("name"))
-                        .description(rs.getString("description"))
-                        .build(),
+                (rs, rowNum) -> {
+                    Instant releaseAt = toInstant(rs.getTimestamp("release_at"));
+                    Instant deadlineAt = toInstant(rs.getTimestamp("deadline_at"));
+                    Integer grace = (Integer) rs.getObject("grace_minutes");
+                    return ClassDTO.WorksheetInfo.builder()
+                            .worksheetId(rs.getObject("worksheet_id", UUID.class))
+                            .name(rs.getString("name"))
+                            .description(rs.getString("description"))
+                            .releaseAt(releaseAt)
+                            .deadlineAt(deadlineAt)
+                            .graceMinutes(grace)
+                            // Resolved here so every caller agrees, and so the
+                            // client cannot disagree with the server about now.
+                            .availability(WorksheetAvailability.of(releaseAt, deadlineAt, grace, Instant.now()))
+                            .build();
+                },
                 id
         );
         classDTO.setWorksheets(worksheets);
@@ -311,5 +327,31 @@ public class PostgreClassDao implements ClassRepository {
                 studentId
         );
         return results.stream().findFirst().orElse(null);
+    }
+
+    /** Null-safe timestamp conversion; a null column means "no constraint". */
+    private static Instant toInstant(Timestamp ts) {
+        return ts != null ? ts.toInstant() : null;
+    }
+
+    /**
+     * Sets the schedule for one worksheet in one class. Passing null for a field
+     * clears that constraint.
+     */
+    public void updateWorksheetSchedule(UUID classId, UUID worksheetId,
+                                        Instant releaseAt, Instant deadlineAt, Integer graceMinutes) {
+        int rows = jdbc.update("""
+                UPDATE class_worksheets
+                SET release_at = ?, deadline_at = ?, grace_minutes = ?
+                WHERE class_id = ? AND worksheet_id = ?
+                """,
+                releaseAt != null ? Timestamp.from(releaseAt) : null,
+                deadlineAt != null ? Timestamp.from(deadlineAt) : null,
+                graceMinutes,
+                classId, worksheetId);
+
+        if (rows == 0) {
+            throw new DomainValidationException("That worksheet is not assigned to this class.");
+        }
     }
 }

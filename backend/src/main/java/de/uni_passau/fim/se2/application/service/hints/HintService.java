@@ -23,6 +23,7 @@ import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.interfaces.HintUsageRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
 import de.uni_passau.fim.se2.application.service.OwnershipService;
+import de.uni_passau.fim.se2.application.service.WorksheetAccessService;
 import de.uni_passau.fim.se2.application.util.GapMarkers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,6 +52,7 @@ public class HintService {
     private final TaskRepository taskRepository;
     private final HintUsageRepository hintUsageRepository;
     private final OwnershipService ownershipService;
+    private final WorksheetAccessService worksheetAccessService;
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -59,7 +61,8 @@ public class HintService {
                        BlockMapper blockMapper, HintGenerator hintGenerator,
                        HintExplainer hintExplainer, SarifParser sarifParser,
                        TaskRepository taskRepository, HintUsageRepository hintUsageRepository,
-                       OwnershipService ownershipService, JdbcTemplate jdbc) {
+                       OwnershipService ownershipService,
+                       WorksheetAccessService worksheetAccessService, JdbcTemplate jdbc) {
         this.codeAssembler = codeAssembler;
         this.ruffAnalyzer = ruffAnalyzer;
         this.javacAnalyzer = javacAnalyzer;
@@ -71,6 +74,7 @@ public class HintService {
         this.taskRepository = taskRepository;
         this.hintUsageRepository = hintUsageRepository;
         this.ownershipService = ownershipService;
+        this.worksheetAccessService = worksheetAccessService;
         this.jdbc = jdbc;
     }
 
@@ -181,6 +185,10 @@ public class HintService {
         if (!isHintsEnabled(taskId)) {
             throw new AccessDeniedException("Hints are disabled for this worksheet.");
         }
+
+        // A closed worksheet may be read but not worked on, and asking for a hint
+        // is part of working on it.
+        worksheetAccessService.requireSolvable(taskId);
 
         Integer creditsPerTask = resolveCreditsPerTask(taskId);
         if (creditsPerTask != null && userId != null) {

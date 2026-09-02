@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import type { ClassInfo, StudentInfo, StudentProgress, Worksheet } from "../types/models";
+import WorksheetSchedule from "../components/WorksheetSchedule.tsx";
 
 export default function ClassDetailPage() {
     const { t, i18n } = useTranslation();
@@ -769,6 +770,26 @@ export default function ClassDetailPage() {
                                             <small className="text-muted d-block">
                                                 {w.description}
                                             </small>
+                                        )}
+                                        {isOwnerOrAdmin && (
+                                            <WorksheetSchedule
+                                                classId={id!}
+                                                worksheet={w}
+                                                onSaved={(patch) =>
+                                                    setClassData((prev) =>
+                                                        prev
+                                                            ? {
+                                                                  ...prev,
+                                                                  worksheets: prev.worksheets.map((x) =>
+                                                                      x.worksheetId === w.worksheetId
+                                                                          ? { ...x, ...patch }
+                                                                          : x,
+                                                                  ),
+                                                              }
+                                                            : prev,
+                                                    )
+                                                }
+                                            />
                                         )}
                                     </div>
                                     <div className="d-flex gap-2">

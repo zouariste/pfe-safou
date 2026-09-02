@@ -223,6 +223,8 @@
   },
 
   "solve": {
+    "closedBanner": "The deadline for this worksheet has passed. You can look at the task but no longer work on it.",
+    "closedTooltip": "Deadline passed",
     "redo": "Solve again",
     "restoredNote": "Your solved arrangement has been restored.",
     "creditsExhausted": "All hint credits for this task have been used up.",
@@ -291,6 +293,25 @@
     "toOverview": "To Overview"
   },
 
+
+  "schedule": {
+    "scheduled": "Not released yet",
+    "open": "Open",
+    "closed": "Deadline passed",
+    "edit": "Edit schedule",
+    "hide": "Hide schedule",
+    "releaseAt": "Released from",
+    "releaseHint": "Empty = available at once",
+    "deadlineAt": "Deadline",
+    "deadlineHint": "Empty = open indefinitely",
+    "graceMinutes": "Grace period (minutes)",
+    "graceHint": "Empty or 0 = sharp deadline",
+    "graceInvalid": "The grace period must be a number of 0 or more.",
+    "save": "Save",
+    "saving": "Saving...",
+    "clear": "Clear fields",
+    "saveFailed": "Could not save the schedule."
+  },
   "worksheet": {
     "unlimitedHints": "Unlimited hints",
     "creditsPerTask": "Credits per task",

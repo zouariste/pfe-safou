@@ -40,6 +40,7 @@ import java.util.UUID;
 public class TaskSubmissionService {
 
     private final TaskSubmissionRepository repository;
+    private final WorksheetAccessService worksheetAccessService;
 
     /**
      * Stores a solved arrangement.
@@ -57,6 +58,10 @@ public class TaskSubmissionService {
             log.debug("Anonymous solve of task {}, nothing to store", taskId);
             return;
         }
+        // Recording a solve on a closed worksheet would let a client that ignores
+        // the read-only UI carry on regardless.
+        worksheetAccessService.requireSolvable(taskId);
+
         if (blockOrder == null || blockOrder.isEmpty()) {
             // Nothing worth restoring, and storing an empty arrangement would
             // make the task look solved-but-blank on the next visit.

@@ -223,6 +223,8 @@
   },
 
   "solve": {
+    "closedBanner": "Die Abgabefrist für dieses Arbeitsblatt ist abgelaufen. Du kannst die Aufgabe ansehen, aber nicht mehr bearbeiten.",
+    "closedTooltip": "Abgabefrist abgelaufen",
     "redo": "Aufgabe erneut lösen",
     "restoredNote": "Deine gelöste Anordnung wurde wiederhergestellt.",
     "creditsExhausted": "Alle Hinweis-Credits für diese Aufgabe sind aufgebraucht.",
@@ -291,6 +293,25 @@
     "toOverview": "Zur Übersicht"
   },
 
+
+  "schedule": {
+    "scheduled": "Noch nicht freigegeben",
+    "open": "Offen",
+    "closed": "Abgabefrist abgelaufen",
+    "edit": "Zeitplan bearbeiten",
+    "hide": "Zeitplan ausblenden",
+    "releaseAt": "Freigabe ab",
+    "releaseHint": "Leer = sofort verfügbar",
+    "deadlineAt": "Abgabefrist",
+    "deadlineHint": "Leer = unbegrenzt offen",
+    "graceMinutes": "Nachfrist (Minuten)",
+    "graceHint": "Leer oder 0 = Frist ist hart",
+    "graceInvalid": "Die Nachfrist muss eine Zahl ab 0 sein.",
+    "save": "Speichern",
+    "saving": "Speichern...",
+    "clear": "Felder leeren",
+    "saveFailed": "Zeitplan konnte nicht gespeichert werden."
+  },
   "worksheet": {
     "unlimitedHints": "Unbegrenzte Hinweise",
     "creditsPerTask": "Credits pro Aufgabe",

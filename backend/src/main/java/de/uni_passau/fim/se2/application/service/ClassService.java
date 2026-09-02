@@ -30,6 +30,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreClassDao;
+
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -101,6 +104,15 @@ public class ClassService {
             if (!isStudentInClass) {
                 throw new AccessDeniedException("Kein Zugriff auf diese Klasse.");
             }
+        }
+
+        // A worksheet that has not been released yet does not exist as far as a
+        // student is concerned. Filtered here rather than in the query, so the
+        // teacher's own view keeps every assignment whatever its state.
+        if (ownershipService.isStudent()) {
+            classDTO.setWorksheets(classDTO.getWorksheets().stream()
+                    .filter(w -> w.getAvailability() == null || w.getAvailability().visibleToStudents())
+                    .toList());
         }
 
         return classDTO;
@@ -239,6 +251,35 @@ public class ClassService {
 
         ownershipService.checkOwnership(classDTO.getOwnerId(), "class");
         classRepository.addWorksheet(classId, worksheetId);
+    }
+
+    /**
+     * Sets when a worksheet opens and closes for one class.
+     *
+     * Any field may be null to lift that constraint: no release means available
+     * at once, no deadline means open indefinitely, no grace means the deadline
+     * is sharp.
+     */
+    public void setWorksheetSchedule(UUID classId, UUID worksheetId,
+                                     Instant releaseAt, Instant deadlineAt, Integer graceMinutes) {
+        ClassDTO classDTO = classRepository.findById(classId)
+                .orElseThrow(() -> new DomainValidationException("Klasse nicht gefunden."));
+        ownershipService.checkOwnership(classDTO.getOwnerId(), "class");
+
+        if (graceMinutes != null && graceMinutes < 0) {
+            throw new DomainValidationException("Die Nachfrist darf nicht negativ sein.");
+        }
+        if (releaseAt != null && deadlineAt != null && !deadlineAt.isAfter(releaseAt)) {
+            // Otherwise the worksheet would close before anyone could open it.
+            throw new DomainValidationException("Die Abgabefrist muss nach der Freigabe liegen.");
+        }
+
+        if (classRepository instanceof PostgreClassDao dao) {
+            dao.updateWorksheetSchedule(classId, worksheetId, releaseAt, deadlineAt, graceMinutes);
+        } else {
+            throw new DomainValidationException("Scheduling is not supported by this repository.");
+        }
+        log.info("Schedule set for worksheet {} in class {}", worksheetId, classId);
     }
 
     public void removeWorksheet(UUID classId, UUID worksheetId) {

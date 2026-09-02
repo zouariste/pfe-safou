@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
 import java.util.UUID;
 
 @RestController
@@ -177,6 +178,26 @@ public class ClassController {
         classService.removeWorksheet(id, worksheetId);
         return ResponseEntity.ok(Map.of("message", "Worksheet-Zuweisung entfernt."));
     }
+
+    /**
+     * Sets when a worksheet opens and closes for this class.
+     *
+     * Any field may be omitted or null to lift that constraint: no release means
+     * available at once, no deadline means open indefinitely, no grace period
+     * means the deadline is sharp.
+     */
+    @PutMapping("/{id}/worksheets/{worksheetId}/schedule")
+    public ResponseEntity<?> setWorksheetSchedule(
+            @PathVariable UUID id,
+            @PathVariable UUID worksheetId,
+            @RequestBody WorksheetScheduleRequest request) {
+        classService.setWorksheetSchedule(id, worksheetId,
+                request.releaseAt(), request.deadlineAt(), request.graceMinutes());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** All fields optional; null clears that part of the schedule. */
+    public record WorksheetScheduleRequest(Instant releaseAt, Instant deadlineAt, Integer graceMinutes) {}
 
     /**
      * Toggles tracking for a specified class.
