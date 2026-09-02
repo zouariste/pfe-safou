@@ -71,6 +71,51 @@ export default function WorksheetPage() {
     const [editDescription, setEditDescription] = useState("");
     const [saving, setSaving] = useState(false);
 
+    // Hint credit input, kept as a string so the field can be empty mid-edit.
+    const [creditsInput, setCreditsInput] = useState("5");
+
+    useEffect(() => {
+        if (worksheet?.hintCreditsPerTask != null) {
+            setCreditsInput(String(worksheet.hintCreditsPerTask));
+        }
+    }, [worksheet?.hintCreditsPerTask]);
+
+    /**
+     * Persists a change to the hint settings.
+     *
+     * PUT /worksheets replaces the whole row, so every field has to be sent
+     * back — omitting hintCreditsPerTask here would silently reset the budget
+     * to unlimited whenever the hints switch is flipped.
+     */
+    async function saveHintSettings(patch: Partial<Worksheet>) {
+        if (!worksheet) return;
+        const next = { ...worksheet, ...patch };
+        try {
+            await api.put(`/worksheets/${sheetId}`, {
+                id: sheetId,
+                name: next.name,
+                description: next.description,
+                hintsEnabled: next.hintsEnabled,
+                hintCreditsPerTask: next.hintCreditsPerTask,
+            });
+            setWorksheet(next);
+        } catch {
+            alert(t("worksheet.errorSavingHints"));
+        }
+    }
+
+    function commitCredits() {
+        const parsed = Number(creditsInput);
+        if (!Number.isInteger(parsed) || parsed < 1 || parsed > 99) {
+            // Reject nonsense by snapping back to the stored value.
+            setCreditsInput(String(worksheet?.hintCreditsPerTask ?? 5));
+            return;
+        }
+        if (parsed !== worksheet?.hintCreditsPerTask) {
+            saveHintSettings({ hintCreditsPerTask: parsed });
+        }
+    }
+
     function startEditing() {
         if (!worksheet) return;
         setEditName(worksheet.name);
@@ -311,25 +356,62 @@ export default function WorksheetPage() {
                             type="checkbox"
                             id="hintsEnabledToggle"
                             checked={worksheet.hintsEnabled}
-                            onChange={async () => {
-                                const newVal = !worksheet.hintsEnabled;
-                                try {
-                                    await api.put(`/worksheets/${sheetId}`, {
-                                        id: sheetId,
-                                        name: worksheet.name,
-                                        description: worksheet.description,
-                                        hintsEnabled: newVal,
-                                    });
-                                    setWorksheet({ ...worksheet, hintsEnabled: newVal });
-                                } catch {
-                                    alert(t("worksheet.errorSavingHints"));
-                                }
-                            }}
+                            onChange={() => saveHintSettings({ hintsEnabled: !worksheet.hintsEnabled })}
                         />
                         <label className="form-check-label" htmlFor="hintsEnabledToggle">
                             {worksheet.hintsEnabled ? t("worksheet.hintsEnabled") : t("worksheet.hintsDisabled")}
                         </label>
                     </div>
+
+                    {/* Credit budget. Only meaningful while hints are on at all. */}
+                    {worksheet.hintsEnabled && (
+                        <div className="d-flex align-items-center gap-3 flex-wrap">
+                            <div className="form-check form-switch mb-0">
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    id="unlimitedCreditsToggle"
+                                    checked={worksheet.hintCreditsPerTask === null}
+                                    onChange={() => {
+                                        // Leaving "unlimited" needs a concrete number; fall back to
+                                        // whatever is in the input, or the documented default of 5.
+                                        const next = worksheet.hintCreditsPerTask === null
+                                            ? (Number(creditsInput) > 0 ? Number(creditsInput) : 5)
+                                            : null;
+                                        saveHintSettings({ hintCreditsPerTask: next });
+                                    }}
+                                />
+                                <label className="form-check-label" htmlFor="unlimitedCreditsToggle">
+                                    {t("worksheet.unlimitedHints")}
+                                </label>
+                            </div>
+
+                            {worksheet.hintCreditsPerTask !== null && (
+                                <div className="d-flex align-items-center gap-2">
+                                    <label className="form-label mb-0" htmlFor="hintCreditsInput">
+                                        {t("worksheet.creditsPerTask")}
+                                    </label>
+                                    <input
+                                        id="hintCreditsInput"
+                                        type="number"
+                                        min={1}
+                                        max={99}
+                                        className="form-control form-control-sm"
+                                        style={{ width: "5rem" }}
+                                        value={creditsInput}
+                                        onChange={(e) => setCreditsInput(e.target.value)}
+                                        // Save on commit rather than per keystroke, so a half-typed
+                                        // number never reaches the server.
+                                        onBlur={() => commitCredits()}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                        }}
+                                    />
+                                    <small className="text-muted">{t("worksheet.creditsHelp")}</small>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className="dropdown ms-auto">
                         <button

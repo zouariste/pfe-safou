@@ -223,6 +223,9 @@
   },
 
   "solve": {
+    "creditsExhausted": "All hint credits for this task have been used up.",
+    "creditsInsufficient": "Not enough credits: this hint costs {{cost}}, you have {{remaining}} left.",
+    "creditsBadgeTitle": "Hint credits remaining for this task",
     "pageTitle": "Task Page | CodeOwl",
     "home": "Home",
     "backToSequence": "Back to Sequence",
@@ -286,6 +289,9 @@
   },
 
   "worksheet": {
+    "unlimitedHints": "Unlimited hints",
+    "creditsPerTask": "Credits per task",
+    "creditsHelp": "Level 1 costs 1, level 2 costs 2.",
     "pageTitle": "Worksheet View",
     "copyLinkTitle": "Copies this worksheet link",
     "teacherMode": "Teacher View",
@@ -1114,10 +1120,10 @@
         "Sequences within a worksheet preserve their T1–T3 tier structure."
       ],
       "hintsTitle": "Hint Configuration (Teacher only)",
-      "hintsBody": "Per worksheet, configure whether hints are available to students and how many credits each student gets per task:",
+      "hintsBody": "Per worksheet, configure whether hints are available to students and whether their use is capped:",
       "hints": [
         "<strong>Enable Hints</strong> — checkbox on/off. When off, the Hint button doesn't appear.",
-        "<strong>Credits per Task</strong> — number (1–10, default 5). Level-1 hints cost 1 credit; Level-2 cost 2."
+        "<strong>Unlimited hints</strong> — the default. Switch it off to set a budget: <strong>Credits per task</strong> (1–99). Level-1 hints cost 1 credit, level-2 cost 2. The budget is per student per task and is <em>not</em> refilled when a task is reset."
       ],
       "exportTitle": "Export",
       "export": [
@@ -1269,7 +1275,7 @@
         "<strong>Level 1 (1 credit)</strong> — a static analysis tool (Ruff for Python, javac + SpotBugs for Java) analyses your current arrangement and highlights the problematic block(s) with a red pulsing border. A short message explains the type of error (e.g., \"A block uses a variable that hasn't been defined yet\").",
         "<strong>Level 2 (2 credits)</strong> — click \"Explain in detail\" to get an LLM-generated explanation that references the highlighted blocks by label (A, B, …) and explains the logic in student-friendly language.",
         "Hints disappear after you move a block — encouraging you to act, not just read.",
-        "Remaining credits are shown next to the button: 💡 3/5."
+        "If the worksheet sets a budget, the remaining credits are shown next to the buttons: 💡 3/5. Once they run out, both hint buttons are disabled."
       ],
       "completionTitle": "Completion",
       "completionBody": "When you solve the puzzle correctly:",
@@ -1363,7 +1369,7 @@
       "configBody": "From the Worksheet page (Teacher view):",
       "config": [
         "<strong>Enable Hints</strong> — checkbox. Off = Hint button hidden entirely.",
-        "<strong>Credits per Task</strong> — 1–10 (default 5). Encourages strategic use over dependency."
+        "<strong>Credits per task</strong> — 1–99, or unlimited (the default). Encourages strategic use over dependency."
       ]
     },
     "distractors": {

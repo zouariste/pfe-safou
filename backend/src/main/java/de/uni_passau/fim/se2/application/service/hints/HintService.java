@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -95,11 +96,90 @@ public class HintService {
         }
     }
 
+    /**
+     * What one hint costs. Level 2 asks the LLM for an explanation on top of the
+     * deterministic finding, so it is charged double.
+     */
+    public static int creditCost(int hintLevel) {
+        return hintLevel >= 2 ? 2 : 1;
+    }
+
+    /**
+     * The credit budget configured for a task's worksheet, or {@code null} for
+     * unlimited — which is also the answer for a task that is not in any
+     * worksheet.
+     */
+    public Integer resolveCreditsPerTask(UUID taskId) {
+        String sql = """
+            SELECT w.hint_credits_per_task
+            FROM tasks t
+            JOIN worksheets_sequence ws ON ws.sequence_id = t.sequence_id
+            JOIN worksheets w ON w.id = ws.worksheet_id
+            WHERE t.id = ?
+            LIMIT 1
+            """;
+        try {
+            return jdbc.queryForObject(sql, Integer.class, taskId);
+        } catch (Exception e) {
+            // Standalone sequence (no worksheet) → unlimited
+            return null;
+        }
+    }
+
+    /**
+     * Credits this student has already spent on this task.
+     *
+     * Derived from hint_usage rather than a counter column, so resetting the
+     * puzzle does not refund anything: the usage rows outlive the reset.
+     * Anonymous requests cannot be attributed to anyone and always report 0.
+     */
+    public int creditsSpent(UUID taskId, UUID userId) {
+        if (userId == null) return 0;
+        String sql = """
+            SELECT COALESCE(SUM(CASE WHEN hint_level >= 2 THEN 2 ELSE 1 END), 0)
+            FROM hint_usage
+            WHERE user_id = ? AND task_id = ?
+            """;
+        Integer spent = jdbc.queryForObject(sql, Integer.class, userId, taskId);
+        return spent == null ? 0 : spent;
+    }
+
+    /**
+     * Everything the client needs to render the hint buttons: whether the
+     * teacher enabled hints at all, the budget, and what is left of it.
+     */
+    public HintStatus getStatus(UUID taskId, UUID userId) {
+        boolean enabled = isHintsEnabled(taskId);
+        Integer perTask = resolveCreditsPerTask(taskId);
+        int spent = creditsSpent(taskId, userId);
+        Integer remaining = perTask == null ? null : Math.max(0, perTask - spent);
+        return new HintStatus(enabled, perTask, spent, remaining);
+    }
+
     @Transactional
     public HintResponse getHint(UUID taskId, List<String> blockOrder, List<Integer> indentLevels, int hintLevel, UUID userId) {
         // Guard against null inputs from the client — treat as empty lists rather than crashing.
         if (blockOrder == null) blockOrder = List.of();
         if (indentLevels == null) indentLevels = List.of();
+
+        // 0. Authorisation, before any analysis runs.
+        //
+        // Both checks live here rather than in the controller so there is a single
+        // place to bypass. Hiding the buttons in the UI is a convenience; this is
+        // what actually enforces the teacher's setting against a replayed request.
+        if (!isHintsEnabled(taskId)) {
+            throw new AccessDeniedException("Hints are disabled for this worksheet.");
+        }
+
+        Integer creditsPerTask = resolveCreditsPerTask(taskId);
+        if (creditsPerTask != null && userId != null) {
+            int spent = creditsSpent(taskId, userId);
+            int cost = creditCost(hintLevel);
+            if (spent + cost > creditsPerTask) {
+                throw new AccessDeniedException(
+                        "No hint credits left for this task (" + spent + "/" + creditsPerTask + " used).");
+            }
+        }
 
         // 1. Load task to determine language + distractors
         TaskDTO task = new TaskDTO();
@@ -249,6 +329,14 @@ public class HintService {
             logger.error("Failed to serialize hint usage data", e);
         }
     }
+
+    /** Hint availability for one student on one task. */
+    public record HintStatus(
+        boolean hintsEnabled,
+        Integer creditsPerTask,  // null = unlimited
+        int creditsUsed,
+        Integer creditsRemaining // null = unlimited
+    ) {}
 
     // Response record
     public record HintResponse(

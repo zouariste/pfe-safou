@@ -75,4 +75,11 @@ public class WorksheetDTO {
      */
     @Builder.Default
     private boolean hintsEnabled = true;
+
+    /**
+     * How many hint credits each student gets per task in this worksheet.
+     * {@code null} means unlimited, which is the default and the behaviour
+     * every worksheet had before budgets existed.
+     */
+    private Integer hintCreditsPerTask;
 }

@@ -127,6 +127,8 @@ export interface Worksheet {
     sequenceDTOS: { id: string }[];
     ownerId: string | null;
     hintsEnabled: boolean;
+    /** Hint credits each student gets per task; null means unlimited. */
+    hintCreditsPerTask: number | null;
 }
 
 // ── Class Types ─────────────────────────────────────────

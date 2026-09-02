@@ -23,6 +23,7 @@ import de.uni_passau.fim.se2.application.service.hints.HintService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -50,10 +51,26 @@ public class HintController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Hint availability for the current user on this task: whether the teacher
+     * enabled hints, the credit budget, and what is left of it.
+     *
+     * This drives the buttons in the UI. It is not the enforcement point —
+     * HintService re-checks both on every actual hint request.
+     */
     @GetMapping("/{taskId}/config")
     public ResponseEntity<Map<String, Object>> getHintConfig(@PathVariable UUID taskId) {
-        boolean enabled = hintService.isHintsEnabled(taskId);
-        return ResponseEntity.ok(Map.of("hintsEnabled", enabled));
+        UUID userId = ownershipService.getCurrentUserId();
+        HintService.HintStatus status = hintService.getStatus(taskId, userId);
+
+        // HashMap rather than Map.of: the credit fields are null when the
+        // worksheet grants unlimited hints, and Map.of rejects null values.
+        Map<String, Object> body = new HashMap<>();
+        body.put("hintsEnabled", status.hintsEnabled());
+        body.put("creditsPerTask", status.creditsPerTask());
+        body.put("creditsUsed", status.creditsUsed());
+        body.put("creditsRemaining", status.creditsRemaining());
+        return ResponseEntity.ok(body);
     }
 
     public record HintRequest(List<String> blockOrder, List<Integer> indentLevels, int hintLevel) {}

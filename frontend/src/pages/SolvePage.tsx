@@ -1,5 +1,5 @@
 /* eslint-env browser */
-import {useEffect, useMemo, useRef, useState} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useNavigate, useParams} from "react-router-dom";
 import {api} from "../lib/api.ts";
 import type {Task} from "../types/models.ts";
@@ -12,6 +12,7 @@ import { useAuth } from "../context/AuthContext.tsx";
 import { useEventTracker } from "../hooks/useEventTracker.ts";
 import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
+import HintButton from "../components/HintButton.tsx";
 
 declare global {
     interface Window {
@@ -84,6 +85,9 @@ export default function SolvePage() {
     const [hintError, setHintError] = useState<string | null>(null);
     const [hintsUnlocked, setHintsUnlocked] = useState(false);
     const [hintsEnabled, setHintsEnabled] = useState(true);
+    // null = unlimited (no budget configured on the worksheet)
+    const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null);
+    const [creditsPerTask, setCreditsPerTask] = useState<number | null>(null);
     const hintShownAtRef = useRef<number>(0);
     const lastHintLevelRef = useRef<number>(0);
     const correctCountBeforeHintRef = useRef<number | null>(null);
@@ -123,13 +127,17 @@ export default function SolvePage() {
     const movesSinceFeedbackRef = useRef(0);
     const correctUndoCountRef = useRef(0);
 
-    // Fetch hint config (teacher toggle)
-    useEffect(() => {
+    // Fetch hint config: teacher toggle plus this student's remaining credits.
+    const refreshHintConfig = useCallback(() => {
         if (!taskId) return;
         api.get(`/hints/${taskId}/config`).then(({ data }) => {
             setHintsEnabled(data.hintsEnabled ?? true);
-        }).catch(() => { /* default: enabled */ });
+            setCreditsPerTask(data.creditsPerTask ?? null);
+            setCreditsRemaining(data.creditsRemaining ?? null);
+        }).catch(() => { /* default: enabled, unlimited */ });
     }, [taskId]);
+
+    useEffect(() => { refreshHintConfig(); }, [refreshHintConfig]);
 
     // Role-based teacher view: show toggle for owners and admins
     const isOwnerOrAdmin = isLoggedIn && user && (sequenceOwnerId === user.userId || isAdmin);
@@ -882,13 +890,39 @@ export default function SolvePage() {
                 affectedBlocks: data.affectedBlocks,
             }, task.sequenceId, task.tierLevel);
 
+            // The hint was charged server-side; re-read the budget rather than
+            // guessing the cost here, so the two can never drift apart.
+            refreshHintConfig();
+
         } catch (err: any) {
+            // A 403 here means the server refused (hints disabled, or no credits
+            // left). Re-read the config so the buttons reflect that immediately.
+            if (err?.response?.status === 403) refreshHintConfig();
             const msg = err?.response?.data?.hintText || err?.response?.data?.message || err?.message || t("solve.hintLoadFailed");
             setHintError(msg);
         } finally {
             setHintLoading(false);
         }
     }
+
+    // Level 2 costs two credits, level 1 costs one; a null budget is unlimited.
+    const hintCost = (level: 1 | 2) => (level === 2 ? 2 : 1);
+    const canAfford = (level: 1 | 2) =>
+        creditsRemaining === null || creditsRemaining >= hintCost(level);
+
+    /** Tooltip for a hint button, explaining whichever thing is blocking it. */
+    const hintTooltip = (level: 1 | 2, enabledTitle: string) => {
+        // Credits first: running out is permanent for this task, while "click
+        // Feedback first" is a step the student can still take. Reporting the
+        // transient blocker would send them off to do something that cannot help.
+        if (!canAfford(level)) {
+            return creditsRemaining === 0
+                ? t("solve.creditsExhausted")
+                : t("solve.creditsInsufficient", { cost: hintCost(level), remaining: creditsRemaining });
+        }
+        if (!hintsUnlocked) return t("solve.feedbackFirst");
+        return enabledTitle;
+    };
 
     if (!taskId) {
         return (
@@ -1451,38 +1485,34 @@ export default function SolvePage() {
                         {/* AP13: Hint buttons (only if teacher enabled hints) */}
                         {hintsEnabled && (
                         <>
-                        <button
+                        <HintButton
+                            level={1}
                             className="btn btn-outline-info"
-                            disabled={!hintsUnlocked || hintLoading || isCompleteRef.current}
-                            onClick={async (e) => {
-                                e.preventDefault();
-                                await requestHint(1);
-                            }}
-                            title={hintsUnlocked ? t("solve.hintTitle") : t("solve.feedbackFirst")}
-                        >
-                            {hintLoading ? (
-                                <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
-                            ) : (
-                                <span className="me-1">💡</span>
-                            )}
-                            {t("solve.hint")}
-                        </button>
-                        <button
+                            icon="💡"
+                            label={t("solve.hint")}
+                            tooltip={hintTooltip(1, t("solve.hintTitle"))}
+                            disabled={!hintsUnlocked || hintLoading || isCompleteRef.current || !canAfford(1)}
+                            loading={hintLoading}
+                            onRequest={requestHint}
+                        />
+                        <HintButton
+                            level={2}
                             className="btn btn-outline-warning"
-                            disabled={!hintsUnlocked || hintLoading || isCompleteRef.current}
-                            onClick={async (e) => {
-                                e.preventDefault();
-                                await requestHint(2);
-                            }}
-                            title={hintsUnlocked ? t("solve.explainTitle") : t("solve.feedbackFirst")}
-                        >
-                            {hintLoading ? (
-                                <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
-                            ) : (
-                                <span className="me-1">🧑‍🏫</span>
-                            )}
-                            {t("solve.explain")}
-                        </button>
+                            icon="🧑‍🏫"
+                            label={t("solve.explain")}
+                            tooltip={hintTooltip(2, t("solve.explainTitle"))}
+                            disabled={!hintsUnlocked || hintLoading || isCompleteRef.current || !canAfford(2)}
+                            loading={hintLoading}
+                            onRequest={requestHint}
+                        />
+                        {creditsPerTask !== null && (
+                            <span
+                                className={`badge align-self-center ${creditsRemaining === 0 ? "text-bg-secondary" : "text-bg-light"}`}
+                                title={t("solve.creditsBadgeTitle")}
+                            >
+                                💡 {creditsRemaining ?? creditsPerTask}/{creditsPerTask}
+                            </span>
+                        )}
                         </>
                         )}
                     </div>
