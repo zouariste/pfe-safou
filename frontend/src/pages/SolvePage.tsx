@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
 import HintButton from "../components/HintButton.tsx";
 import { formatGraderFeedback } from "../lib/graderFeedback.ts";
+import { restoreSubmission } from "../lib/restoreSubmission.ts";
 import { applyHintLabels } from "../lib/hintHighlight.ts";
 import { shuffleElementChildren } from "../lib/shuffleSource.ts";
 
@@ -93,6 +94,11 @@ export default function SolvePage() {
     // null = unlimited (no budget configured on the worksheet)
     const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null);
     const [creditsPerTask, setCreditsPerTask] = useState<number | null>(null);
+    // A previously solved arrangement, restored into the puzzle on open.
+    const [solvedPreviously, setSolvedPreviously] = useState(false);
+    const restoredRef = useRef(false);
+    // When the restored solution was first solved, reported with the redo event.
+    const solvedAtRef = useRef<string | null>(null);
     const hintShownAtRef = useRef<number>(0);
     const lastHintLevelRef = useRef<number>(0);
     const correctCountBeforeHintRef = useRef<number | null>(null);
@@ -467,6 +473,29 @@ export default function SolvePage() {
         widget.init(codeForWidget);
         widget.shuffleLines();
         widgetRef.current = widget;
+
+        // If this student already solved the task, put their arrangement back
+        // rather than handing them a reshuffled puzzle. Fire-and-forget: a failed
+        // lookup simply means they start fresh, which is the old behaviour.
+        // Anonymous visitors get 204, since there is nobody to have stored work.
+        restoredRef.current = false;
+        api.get(`/tasks/${task.id}/submission`)
+            .then(({ data }) => {
+                if (!data?.blockOrder?.length) return;
+                const { restored } = restoreSubmission(
+                    document.getElementById("ul-jsparsons-source"),
+                    document.getElementById("ul-jsparsons-target"),
+                    data.blockOrder,
+                    data.indentLevels,
+                    widget.options?.x_indent || 50,
+                );
+                if (restored > 0) {
+                    restoredRef.current = true;
+                    solvedAtRef.current = data.solvedAt ?? null;
+                    setSolvedPreviously(true);
+                }
+            })
+            .catch(() => { /* nothing stored, or not logged in */ });
 
         // AP15: Populate distractor text set for analytics tracking
         if (task.distractors) {
@@ -1245,6 +1274,58 @@ export default function SolvePage() {
                         >
                             {t("solve.shuffleLines")}
                         </button>
+
+                        {/*
+                          * Offered only once the task has been solved, since that is
+                          * the only time the puzzle comes back already filled in.
+                          * The stored solution is deliberately left in place: an
+                          * abandoned redo should not cost the student their work.
+                          */}
+                        {solvedPreviously && (
+                            <button
+                                className="btn btn-outline-primary"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    const widget = widgetRef.current;
+                                    if (!widget) return;
+
+                                    // Deal the task out again from scratch.
+                                    widget.shuffleLines();
+                                    isCompleteRef.current = false;
+                                    setShowCompletionBanner(false);
+                                    setShowSelfReport(false);
+                                    setFeedbackHTML("");
+                                    clearHintHighlights("new_hint");
+                                    setHintText(null);
+                                    setHintExplanation(null);
+                                    setHintError(null);
+                                    setHintsUnlocked(false);
+                                    startTimeRef.current = Date.now();
+                                    attemptCountRef.current = 0;
+
+                                    if (interactionMode === "click") {
+                                        try {
+                                            widget.disableClickToMove();
+                                            widget.enableClickToMove();
+                                        } catch { /* not enabled */ }
+                                    }
+
+                                    try {
+                                        if (task?.id) {
+                                            logEvent(task.id, "task_redo_started", {
+                                                previouslySolvedAt: solvedAtRef.current,
+                                                hintsUsedBefore: creditsPerTask !== null && creditsRemaining !== null
+                                                    ? creditsPerTask - creditsRemaining
+                                                    : null,
+                                            }, task.sequenceId, task.tierLevel);
+                                        }
+                                    } catch { /* silent */ }
+                                }}
+                            >
+                                {t("solve.redo")}
+                            </button>
+                        )}
+
                         <button
                             className="btn btn-primary"
                             onClick={(e) => {
@@ -1503,6 +1584,19 @@ export default function SolvePage() {
                                 if (allCorrect) {
                                     setShowSelfReport(true);
                                     setShowCompletionBanner(true); // AP18
+                                    setSolvedPreviously(true);
+
+                                    // Keep the arrangement so reopening the task shows
+                                    // their work. Fire-and-forget: failing to store it
+                                    // must not take away having solved it.
+                                    const xIndent = widget.options?.x_indent || 50;
+                                    api.put(`/tasks/${task.id}/submission`, {
+                                        blockOrder,
+                                        indentLevels: domBlocks.map((li) => {
+                                            const ml = parseFloat((li as HTMLElement).style.marginLeft) || 0;
+                                            return Math.round(ml / xIndent);
+                                        }),
+                                    }).catch(() => { /* works fine without persistence */ });
                                 }
 
                                 // Send feedback-log to legacy endpoint (fire-and-forget)

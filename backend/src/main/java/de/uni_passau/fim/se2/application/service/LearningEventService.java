@@ -68,6 +68,8 @@ public class LearningEventService {
             // AP15: Distractor analytics
             "distractor_placed",
             "distractor_removed",
+            // Redo of an already-solved task
+            "task_redo_started",
             // AP31: Inline-split fragment analytics
             "fragment_placed",
             "split_distractor_placed"

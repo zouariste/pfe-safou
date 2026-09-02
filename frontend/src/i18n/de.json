@@ -223,6 +223,8 @@
   },
 
   "solve": {
+    "redo": "Aufgabe erneut lösen",
+    "restoredNote": "Deine gelöste Anordnung wurde wiederhergestellt.",
     "creditsExhausted": "Alle Hinweis-Credits für diese Aufgabe sind aufgebraucht.",
     "creditsInsufficient": "Nicht genug Credits: dieser Hinweis kostet {{cost}}, du hast noch {{remaining}}.",
     "creditsBadgeTitle": "Verbleibende Hinweis-Credits für diese Aufgabe",

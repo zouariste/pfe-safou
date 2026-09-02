@@ -25,6 +25,7 @@ import de.uni_passau.fim.se2.api.dto.TaskEditRequest;
 import de.uni_passau.fim.se2.application.service.FeedbackLogService;
 import de.uni_passau.fim.se2.application.service.ManualTaskService;
 import de.uni_passau.fim.se2.application.service.OwnershipService;
+import de.uni_passau.fim.se2.application.service.TaskSubmissionService;
 import de.uni_passau.fim.se2.application.service.TaskEditService;
 import de.uni_passau.fim.se2.application.service.TaskEnricher;
 import de.uni_passau.fim.se2.application.service.TaskGeneratorService;
@@ -35,6 +36,7 @@ import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
+import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
 import de.uni_passau.fim.se2.domain.interfaces.TaskOriginalRepository;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -72,6 +74,7 @@ public class TasksController {
     private final TaskOriginalRepository taskOriginalRepository;
     private final FeedbackLogService feedbackLogService;
     private final TaskEnricher taskEnricher;
+    private final TaskSubmissionService taskSubmissionService;
 
     /**
      * Generate a new task sequence.
@@ -197,6 +200,39 @@ public class TasksController {
         if (userId == null) return ResponseEntity.status(401).build();
         return ResponseEntity.ok(worksheetService.findByOwnerId(userId));
     }
+
+    /**
+     * The current student's solved arrangement of a task, so reopening it shows
+     * their work instead of a reshuffled puzzle.
+     *
+     * 204 when there is nothing stored — including for anonymous visitors, who
+     * have nobody to store work against.
+     */
+    @GetMapping("/tasks/{taskId}/submission")
+    public ResponseEntity<TaskSubmissionDTO> getMySubmission(@PathVariable UUID taskId) {
+        UUID userId = ownershipService.getCurrentUserId();
+        return taskSubmissionService.find(userId, taskId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    /**
+     * Records the arrangement a student had when they solved a task.
+     *
+     * Replaces any earlier one for the same student and task. Anonymous solves
+     * are accepted and quietly ignored, so a shared-link visitor is not shown an
+     * error for something that is not their problem.
+     */
+    @PutMapping("/tasks/{taskId}/submission")
+    public ResponseEntity<Void> saveMySubmission(@PathVariable UUID taskId,
+                                                 @RequestBody TaskSubmissionRequest request) {
+        UUID userId = ownershipService.getCurrentUserId();
+        taskSubmissionService.saveSolved(userId, taskId, request.blockOrder(), request.indentLevels());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** The solution area as the student left it. */
+    public record TaskSubmissionRequest(List<String> blockOrder, List<Integer> indentLevels) {}
 
     /**
      * Get all sequences owned by the current user.
