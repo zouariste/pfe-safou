@@ -13,6 +13,7 @@ import { useEventTracker } from "../hooks/useEventTracker.ts";
 import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
 import HintButton from "../components/HintButton.tsx";
+import { formatGraderFeedback } from "../lib/graderFeedback.ts";
 
 declare global {
     interface Window {
@@ -378,15 +379,12 @@ export default function SolvePage() {
                 : 0,
             programmingLang: task.programmingLanguage?.toLowerCase() ?? "",
 
-            // Fix: Initialisiere i18n direkt im Konstruktor
-            i18n: {
-                en: {
-                    no_matching: t("solve.no_matching"),
-                    one_item_error: t("solve.one_item_error"),
-                    trash_label: t("solve.source"),
-                    solution_label: t("solve.target"),
-                }
-            },
+            // js-parsons renders these as a <p> above each column (parsons.js:1805).
+            // They have to be top-level options: the library picks its own
+            // language table from `lang` and only consults `trash_label` /
+            // `solution_label` directly — it never reads a nested `i18n` object.
+            trash_label: t("solve.source"),
+            solution_label: t("solve.target"),
 
             grader: function CustomLineBasedGrader(p: any) {
                 const base = new window.ParsonsWidget._graders.LineBasedGrader(p);
@@ -424,13 +422,25 @@ export default function SolvePage() {
         if (task.distractors) {
             codeForWidget = codeForWidget + "\n" + task.distractors;
         }
-        // Fix: Zusätzliche Absicherung für die translations Property vor dem Init
-        if (!widget.translations) {
-            widget.translations = {
-                no_matching: t("solve.no_matching"),
-                trash_label: t("solve.source"),
-                solution_label: t("solve.target")
-            };
+        // The constructor always populates `translations` (falling back to its
+        // English table), so it is never missing. Its entries are functions, and
+        // they are what the grader writes into the feedback box.
+        //
+        // Only these four are reachable here: order/lines_too_many/lines_missing
+        // come from LineBasedGrader, which is the grader below, and no_matching
+        // from the widget's own indentation check. The remaining entries belong
+        // to graders this app never instantiates (LanguageTranslationGrader,
+        // UnitTestGrader, VariableCheckGrader), so translating them would only
+        // create the appearance of coverage.
+        if (widget.translations) {
+            widget.translations.no_matching = (lineNro: number) =>
+                t("solve.no_matching", { line: lineNro });
+            widget.translations.order = () => t("solve.grader_order");
+            widget.translations.lines_too_many = () => t("solve.grader_lines_too_many");
+            widget.translations.lines_missing = () => t("solve.grader_lines_missing");
+            // Not part of upstream js-parsons: the Python indent message was
+            // hardcoded in our vendored copy and is now routed through here too.
+            widget.translations.indent_python = () => t("solve.grader_indent_python");
         }
 
         widget.init(codeForWidget);
@@ -1215,9 +1225,12 @@ export default function SolvePage() {
                                 setHintExplanation(null);
                                 setHintError(null);
 
-                                // Run js-parsons grading
+                                // Run js-parsons grading. getFeedback returns an
+                                // array of messages for this grader, never a bare
+                                // string — testing for a string dropped every
+                                // message on the floor.
                                 const fb = widget.getFeedback?.();
-                                if (typeof fb === "string") setFeedbackHTML(fb);
+                                setFeedbackHTML(formatGraderFeedback(fb));
 
                                 // Unlock hints after feedback
                                 setHintsUnlocked(true);
