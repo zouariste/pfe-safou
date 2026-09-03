@@ -168,7 +168,12 @@ export interface ClassWorksheetInfo {
     worksheetId: string;
     name: string;
     description: string;
-    /** ISO instant, or null for "available as soon as it is assigned". */
+    /**
+     * Set by the teacher's publish button. A newly assigned worksheet starts
+     * false, so students never meet one that is still being prepared.
+     */
+    published?: boolean;
+    /** ISO instant at which it opens by itself; null means only publishing opens it. */
     releaseAt?: string | null;
     /** ISO instant, or null for "open indefinitely". */
     deadlineAt?: string | null;

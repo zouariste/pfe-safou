@@ -50,18 +50,25 @@ public enum WorksheetAvailability {
     /**
      * Resolves the state of one assignment.
      *
-     * Each field is optional and absent means unconstrained, which is what an
-     * assignment made before this feature existed will have:
-     * no release means available immediately, no deadline means open
-     * indefinitely, and no grace means the deadline is sharp.
+     * An assignment is hidden until it is released, which happens either because
+     * the teacher published it or because its release date has arrived. A newly
+     * assigned worksheet is neither, so it starts hidden — students should not
+     * meet one that is still being put together.
      *
+     * After that, the deadline and its grace decide whether it is still
+     * workable. Each date is optional and absent means unconstrained: no
+     * deadline stays open indefinitely, no grace makes the deadline sharp.
+     *
+     * @param published    set by the teacher's publish button
+     * @param releaseAt    when it opens by itself; null means only publishing opens it
      * @param graceMinutes minutes allowed after the deadline; null or 0 is sharp
      */
-    public static WorksheetAvailability of(Instant releaseAt, Instant deadlineAt,
+    public static WorksheetAvailability of(boolean published, Instant releaseAt, Instant deadlineAt,
                                            Integer graceMinutes, Instant now) {
         Instant moment = now != null ? now : Instant.now();
 
-        if (releaseAt != null && moment.isBefore(releaseAt)) {
+        boolean releasedByDate = releaseAt != null && !moment.isBefore(releaseAt);
+        if (!published && !releasedByDate) {
             return SCHEDULED;
         }
         if (deadlineAt == null) {
@@ -74,8 +81,8 @@ public enum WorksheetAvailability {
         long grace = graceMinutes != null ? Math.max(0, graceMinutes) : 0;
         Instant closesAt = deadlineAt.plus(Duration.ofMinutes(grace));
 
-        // On the boundary the worksheet is still open: a submission landing on
-        // the exact second of the deadline should count.
+        // On the boundary the worksheet is still open: work landing on the exact
+        // second of the deadline should count.
         return moment.isAfter(closesAt) ? CLOSED : OPEN;
     }
 }

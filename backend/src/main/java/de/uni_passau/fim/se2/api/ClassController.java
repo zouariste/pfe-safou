@@ -196,6 +196,35 @@ public class ClassController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Publishes an assignment immediately, so the class can see it.
+     *
+     * A newly assigned worksheet is hidden until this is called or its release
+     * date arrives, so students never meet one that is still being prepared.
+     */
+    @PostMapping("/{id}/worksheets/{worksheetId}/publish")
+    public ResponseEntity<?> publishWorksheet(@PathVariable UUID id, @PathVariable UUID worksheetId) {
+        classService.setWorksheetPublished(id, worksheetId, true);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Takes an assignment back out of sight, e.g. one published by mistake. */
+    @PostMapping("/{id}/worksheets/{worksheetId}/unpublish")
+    public ResponseEntity<?> unpublishWorksheet(@PathVariable UUID id, @PathVariable UUID worksheetId) {
+        classService.setWorksheetPublished(id, worksheetId, false);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Ends an assignment now: the deadline becomes this moment, so students may
+     * still read the tasks but no longer work on them.
+     */
+    @PostMapping("/{id}/worksheets/{worksheetId}/close")
+    public ResponseEntity<?> closeWorksheet(@PathVariable UUID id, @PathVariable UUID worksheetId) {
+        classService.closeWorksheetNow(id, worksheetId);
+        return ResponseEntity.noContent().build();
+    }
+
     /** All fields optional; null clears that part of the schedule. */
     public record WorksheetScheduleRequest(Instant releaseAt, Instant deadlineAt, Integer graceMinutes) {}
 

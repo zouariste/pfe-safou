@@ -122,7 +122,7 @@ public class PostgreClassDao implements ClassRepository {
         // Load worksheets
         List<ClassDTO.WorksheetInfo> worksheets = jdbc.query("""
             SELECT w.id as worksheet_id, w.name, w.description,
-                   cw.release_at, cw.deadline_at, cw.grace_minutes
+                   cw.published, cw.release_at, cw.deadline_at, cw.grace_minutes
             FROM class_worksheets cw
             JOIN worksheets w ON w.id = cw.worksheet_id
             WHERE cw.class_id = ?
@@ -132,16 +132,18 @@ public class PostgreClassDao implements ClassRepository {
                     Instant releaseAt = toInstant(rs.getTimestamp("release_at"));
                     Instant deadlineAt = toInstant(rs.getTimestamp("deadline_at"));
                     Integer grace = (Integer) rs.getObject("grace_minutes");
+                    boolean published = rs.getBoolean("published");
                     return ClassDTO.WorksheetInfo.builder()
                             .worksheetId(rs.getObject("worksheet_id", UUID.class))
                             .name(rs.getString("name"))
                             .description(rs.getString("description"))
+                            .published(published)
                             .releaseAt(releaseAt)
                             .deadlineAt(deadlineAt)
                             .graceMinutes(grace)
                             // Resolved here so every caller agrees, and so the
                             // client cannot disagree with the server about now.
-                            .availability(WorksheetAvailability.of(releaseAt, deadlineAt, grace, Instant.now()))
+                            .availability(WorksheetAvailability.of(published, releaseAt, deadlineAt, grace, Instant.now()))
                             .build();
                 },
                 id
@@ -332,6 +334,63 @@ public class PostgreClassDao implements ClassRepository {
     /** Null-safe timestamp conversion; a null column means "no constraint". */
     private static Instant toInstant(Timestamp ts) {
         return ts != null ? ts.toInstant() : null;
+    }
+
+    /**
+     * Publishes or unpublishes one assignment.
+     *
+     * Two things can release an assignment — the publish flag and a release date
+     * that has arrived — so taking it back out of sight has to neutralise both.
+     * Clearing only the flag would leave a passed release date still releasing
+     * it, and the button would appear to do nothing.
+     */
+    public void setWorksheetPublished(UUID classId, UUID worksheetId, boolean published) {
+        int rows;
+        if (published) {
+            // Stamp the moment of publication into the schedule, the way ending
+            // stamps the deadline, so the editor shows when it went live rather
+            // than an empty field.
+            //
+            // Unless that would put the release after an already-passed deadline,
+            // which the deadline_after_release constraint forbids. In that case
+            // the flag alone publishes it and the schedule is left as the teacher
+            // set it — a worksheet published after its deadline reads as closed,
+            // which is the truth.
+            Timestamp now = Timestamp.from(Instant.now());
+            rows = jdbc.update("""
+                    UPDATE class_worksheets
+                    SET published = true,
+                        release_at = CASE WHEN deadline_at IS NULL OR deadline_at > ?
+                                          THEN ? ELSE release_at END
+                    WHERE class_id = ? AND worksheet_id = ?
+                    """, now, now, classId, worksheetId);
+        } else {
+            rows = jdbc.update("""
+                    UPDATE class_worksheets
+                    SET published = false, release_at = NULL
+                    WHERE class_id = ? AND worksheet_id = ?
+                    """, classId, worksheetId);
+        }
+        if (rows == 0) {
+            throw new DomainValidationException("That worksheet is not assigned to this class.");
+        }
+    }
+
+    /**
+     * Ends an assignment now: the deadline becomes this moment with no grace, so
+     * it reads as closed immediately and the reason is visible in the schedule
+     * rather than hidden in a separate flag.
+     */
+    public void closeWorksheetNow(UUID classId, UUID worksheetId, Instant now) {
+        int rows = jdbc.update("""
+                UPDATE class_worksheets
+                SET deadline_at = ?, grace_minutes = 0,
+                    published = true
+                WHERE class_id = ? AND worksheet_id = ?
+                """, Timestamp.from(now), classId, worksheetId);
+        if (rows == 0) {
+            throw new DomainValidationException("That worksheet is not assigned to this class.");
+        }
     }
 
     /**

@@ -77,7 +77,7 @@ public class WorksheetAccessService {
 
         Instant now = Instant.now();
         return schedules.stream()
-                .map(s -> WorksheetAvailability.of(s.releaseAt(), s.deadlineAt(), s.graceMinutes(), now))
+                .map(s -> WorksheetAvailability.of(s.published(), s.releaseAt(), s.deadlineAt(), s.graceMinutes(), now))
                 .anyMatch(WorksheetAvailability::allowsSolving);
     }
 
@@ -93,7 +93,7 @@ public class WorksheetAccessService {
         // task -> sequence -> worksheet -> assignment, restricted to the classes
         // this student is actually in.
         String sql = """
-                SELECT cw.release_at, cw.deadline_at, cw.grace_minutes
+                SELECT cw.published, cw.release_at, cw.deadline_at, cw.grace_minutes
                 FROM tasks t
                 JOIN worksheets_sequence ws ON ws.sequence_id = t.sequence_id
                 JOIN class_worksheets cw    ON cw.worksheet_id = ws.worksheet_id
@@ -102,6 +102,7 @@ public class WorksheetAccessService {
                 """;
         try {
             return jdbc.query(sql, (rs, rowNum) -> new Schedule(
+                    rs.getBoolean("published"),
                     rs.getTimestamp("release_at") != null ? rs.getTimestamp("release_at").toInstant() : null,
                     rs.getTimestamp("deadline_at") != null ? rs.getTimestamp("deadline_at").toInstant() : null,
                     (Integer) rs.getObject("grace_minutes")
@@ -113,7 +114,7 @@ public class WorksheetAccessService {
         }
     }
 
-    private record Schedule(Instant releaseAt, Instant deadlineAt, Integer graceMinutes) {}
+    private record Schedule(boolean published, Instant releaseAt, Instant deadlineAt, Integer graceMinutes) {}
 
     /** For the client: whether the task is still workable, without attempting a write. */
     public record TaskAccess(boolean canSolve) {}

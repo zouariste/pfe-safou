@@ -262,9 +262,7 @@ public class ClassService {
      */
     public void setWorksheetSchedule(UUID classId, UUID worksheetId,
                                      Instant releaseAt, Instant deadlineAt, Integer graceMinutes) {
-        ClassDTO classDTO = classRepository.findById(classId)
-                .orElseThrow(() -> new DomainValidationException("Klasse nicht gefunden."));
-        ownershipService.checkOwnership(classDTO.getOwnerId(), "class");
+        requireClassOwner(classId);
 
         if (graceMinutes != null && graceMinutes < 0) {
             throw new DomainValidationException("Die Nachfrist darf nicht negativ sein.");
@@ -274,12 +272,43 @@ public class ClassService {
             throw new DomainValidationException("Die Abgabefrist muss nach der Freigabe liegen.");
         }
 
-        if (classRepository instanceof PostgreClassDao dao) {
-            dao.updateWorksheetSchedule(classId, worksheetId, releaseAt, deadlineAt, graceMinutes);
-        } else {
-            throw new DomainValidationException("Scheduling is not supported by this repository.");
-        }
+        dao().updateWorksheetSchedule(classId, worksheetId, releaseAt, deadlineAt, graceMinutes);
         log.info("Schedule set for worksheet {} in class {}", worksheetId, classId);
+    }
+
+    /**
+     * Publishes an assignment now, or takes it back out of sight.
+     *
+     * Independent of the release date: a teacher can publish by hand without
+     * setting one, and a release date still opens the assignment by itself when
+     * the moment comes.
+     */
+    public void setWorksheetPublished(UUID classId, UUID worksheetId, boolean published) {
+        requireClassOwner(classId);
+        dao().setWorksheetPublished(classId, worksheetId, published);
+        log.info("Worksheet {} in class {} {}", worksheetId, classId,
+                published ? "published" : "unpublished");
+    }
+
+    /**
+     * Ends an assignment immediately: students keep access to read the tasks but
+     * can no longer work on them.
+     */
+    public void closeWorksheetNow(UUID classId, UUID worksheetId) {
+        requireClassOwner(classId);
+        dao().closeWorksheetNow(classId, worksheetId, Instant.now());
+        log.info("Worksheet {} in class {} closed manually", worksheetId, classId);
+    }
+
+    private void requireClassOwner(UUID classId) {
+        ClassDTO classDTO = classRepository.findById(classId)
+                .orElseThrow(() -> new DomainValidationException("Klasse nicht gefunden."));
+        ownershipService.checkOwnership(classDTO.getOwnerId(), "class");
+    }
+
+    private PostgreClassDao dao() {
+        if (classRepository instanceof PostgreClassDao dao) return dao;
+        throw new DomainValidationException("Scheduling is not supported by this repository.");
     }
 
     public void removeWorksheet(UUID classId, UUID worksheetId) {

@@ -81,6 +81,9 @@ public class ClassDTO {
          * means unconstrained: no release is immediately available, no deadline
          * stays open, no grace makes the deadline sharp.
          */
+        /** Set by the teacher's publish button; a new assignment starts false. */
+        private boolean published;
+
         private Instant releaseAt;
         private Instant deadlineAt;
         private Integer graceMinutes;
