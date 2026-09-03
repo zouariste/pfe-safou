@@ -82,7 +82,11 @@ public class ClassService {
         }
 
         if (ownershipService.isStudent()) {
-            return classRepository.findByStudentId(userId);
+            List<ClassDTO> classes = classRepository.findByStudentId(userId);
+            // Same filter as the detail view: the overview must not leak a
+            // worksheet that has not been released yet, deadline and all.
+            classes.forEach(ClassService::hideUnreleased);
+            return classes;
         }
 
         return classRepository.findByOwnerId(userId);
@@ -106,16 +110,28 @@ public class ClassService {
             }
         }
 
-        // A worksheet that has not been released yet does not exist as far as a
-        // student is concerned. Filtered here rather than in the query, so the
-        // teacher's own view keeps every assignment whatever its state.
         if (ownershipService.isStudent()) {
-            classDTO.setWorksheets(classDTO.getWorksheets().stream()
-                    .filter(w -> w.getAvailability() == null || w.getAvailability().visibleToStudents())
-                    .toList());
+            hideUnreleased(classDTO);
         }
 
         return classDTO;
+    }
+
+    /**
+     * Drops the assignments a student is not meant to know about yet.
+     *
+     * A worksheet that has not been released does not exist as far as a student
+     * is concerned. Done here rather than in the query, so the teacher's own
+     * view keeps every assignment whatever its state.
+     *
+     * A closed worksheet stays: students may still read it, and seeing that its
+     * deadline has passed is the point.
+     */
+    private static void hideUnreleased(ClassDTO classDTO) {
+        if (classDTO.getWorksheets() == null) return;
+        classDTO.setWorksheets(classDTO.getWorksheets().stream()
+                .filter(w -> w.getAvailability() == null || w.getAvailability().visibleToStudents())
+                .toList());
     }
 
     public ClassDTO updateClass(UUID classId, String name, String description) {

@@ -323,6 +323,12 @@
     "clear": "Clear fields",
     "saveFailed": "Could not save the schedule."
   },
+  "deadline": {
+    "next": "Next due: {{name}} — {{when}}",
+    "due": "Due {{when}}",
+    "closed": "Deadline passed",
+    "was": "Deadline was {{when}}"
+  },
   "worksheet": {
     "unlimitedHints": "Unlimited hints",
     "creditsPerTask": "Credits per task",

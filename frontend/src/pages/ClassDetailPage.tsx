@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import type { ClassInfo, StudentInfo, StudentProgress, Worksheet } from "../types/models";
 import WorksheetSchedule from "../components/WorksheetSchedule.tsx";
+import WorksheetDeadline from "../components/WorksheetDeadline.tsx";
 
 export default function ClassDetailPage() {
     const { t, i18n } = useTranslation();
@@ -771,6 +772,12 @@ export default function ClassDetailPage() {
                                                 {w.description}
                                             </small>
                                         )}
+                                        {/*
+                                          * Students get the deadline read-only;
+                                          * the editable schedule is the
+                                          * teacher's.
+                                          */}
+                                        {!isOwnerOrAdmin && <WorksheetDeadline worksheet={w} />}
                                         {isOwnerOrAdmin && (
                                             <WorksheetSchedule
                                                 classId={id!}

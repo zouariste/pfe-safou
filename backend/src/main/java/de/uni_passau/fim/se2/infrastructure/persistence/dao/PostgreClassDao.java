@@ -27,12 +27,11 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import de.uni_passau.fim.se2.domain.model.WorksheetAvailability;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Slf4j
@@ -41,6 +40,56 @@ import java.util.*;
 public class PostgreClassDao implements ClassRepository {
 
     private final JdbcTemplate jdbc;
+
+    private static final String WORKSHEET_SELECT = """
+            SELECT cw.class_id, w.id as worksheet_id, w.name, w.description,
+                   cw.published, cw.release_at, cw.deadline_at, cw.grace_minutes
+            FROM class_worksheets cw
+            JOIN worksheets w ON w.id = cw.worksheet_id
+            """;
+
+    /** One assignment row, with its availability already resolved. */
+    private static ClassDTO.WorksheetInfo worksheetRow(java.sql.ResultSet rs) throws java.sql.SQLException {
+        Instant releaseAt = toInstant(rs.getTimestamp("release_at"));
+        Instant deadlineAt = toInstant(rs.getTimestamp("deadline_at"));
+        Integer grace = (Integer) rs.getObject("grace_minutes");
+        boolean published = rs.getBoolean("published");
+        return ClassDTO.WorksheetInfo.builder()
+                .worksheetId(rs.getObject("worksheet_id", UUID.class))
+                .name(rs.getString("name"))
+                .description(rs.getString("description"))
+                .published(published)
+                .releaseAt(releaseAt)
+                .deadlineAt(deadlineAt)
+                .graceMinutes(grace)
+                // Resolved here so every caller agrees, and so the
+                // client cannot disagree with the server about now.
+                .availability(WorksheetAvailability.of(published, releaseAt, deadlineAt, grace, Instant.now()))
+                .build();
+    }
+
+    /**
+     * Fills in the worksheet assignments for a list of classes in one query.
+     *
+     * The overview needs deadlines, and loading them class by class would mean a
+     * query per card.
+     */
+    private void attachWorksheets(List<ClassDTO> classes) {
+        if (classes.isEmpty()) return;
+
+        List<UUID> ids = classes.stream().map(ClassDTO::getId).toList();
+        String placeholders = String.join(", ", Collections.nCopies(ids.size(), "?"));
+        Map<UUID, List<ClassDTO.WorksheetInfo>> byClass = new HashMap<>();
+
+        jdbc.query(WORKSHEET_SELECT + " WHERE cw.class_id IN (" + placeholders + ") ORDER BY w.name",
+                rs -> {
+                    byClass.computeIfAbsent(rs.getObject("class_id", UUID.class), k -> new ArrayList<>())
+                            .add(worksheetRow(rs));
+                },
+                ids.toArray());
+
+        classes.forEach(c -> c.setWorksheets(byClass.getOrDefault(c.getId(), List.of())));
+    }
 
     @Override
     public ClassDTO save(ClassDTO classDTO) {
@@ -120,32 +169,9 @@ public class PostgreClassDao implements ClassRepository {
         classDTO.setStudents(students);
 
         // Load worksheets
-        List<ClassDTO.WorksheetInfo> worksheets = jdbc.query("""
-            SELECT w.id as worksheet_id, w.name, w.description,
-                   cw.published, cw.release_at, cw.deadline_at, cw.grace_minutes
-            FROM class_worksheets cw
-            JOIN worksheets w ON w.id = cw.worksheet_id
-            WHERE cw.class_id = ?
-            ORDER BY w.name
-            """,
-                (rs, rowNum) -> {
-                    Instant releaseAt = toInstant(rs.getTimestamp("release_at"));
-                    Instant deadlineAt = toInstant(rs.getTimestamp("deadline_at"));
-                    Integer grace = (Integer) rs.getObject("grace_minutes");
-                    boolean published = rs.getBoolean("published");
-                    return ClassDTO.WorksheetInfo.builder()
-                            .worksheetId(rs.getObject("worksheet_id", UUID.class))
-                            .name(rs.getString("name"))
-                            .description(rs.getString("description"))
-                            .published(published)
-                            .releaseAt(releaseAt)
-                            .deadlineAt(deadlineAt)
-                            .graceMinutes(grace)
-                            // Resolved here so every caller agrees, and so the
-                            // client cannot disagree with the server about now.
-                            .availability(WorksheetAvailability.of(published, releaseAt, deadlineAt, grace, Instant.now()))
-                            .build();
-                },
+        List<ClassDTO.WorksheetInfo> worksheets = jdbc.query(
+                WORKSHEET_SELECT + " WHERE cw.class_id = ? ORDER BY w.name",
+                (rs, rowNum) -> worksheetRow(rs),
                 id
         );
         classDTO.setWorksheets(worksheets);
@@ -271,7 +297,7 @@ public class PostgreClassDao implements ClassRepository {
 
     @Override
     public List<ClassDTO> findByStudentId(UUID studentId) {
-        return jdbc.query("""
+        List<ClassDTO> classes = jdbc.query("""
             SELECT c.* FROM classes c
             JOIN class_students cs ON cs.class_id = c.id
             WHERE cs.student_id = ?
@@ -290,6 +316,9 @@ public class PostgreClassDao implements ClassRepository {
                         .build(),
                 studentId
         );
+        // The overview shows deadlines, so the assignments have to come with it.
+        attachWorksheets(classes);
+        return classes;
     }
 
     // ── Tracking (AP5) ──────────────────────────────────────

@@ -323,6 +323,12 @@
     "clear": "Felder leeren",
     "saveFailed": "Zeitplan konnte nicht gespeichert werden."
   },
+  "deadline": {
+    "next": "Als Nächstes fällig: {{name}} – {{when}}",
+    "due": "Fällig {{when}}",
+    "closed": "Frist abgelaufen",
+    "was": "Frist war {{when}}"
+  },
   "worksheet": {
     "unlimitedHints": "Unbegrenzte Hinweise",
     "creditsPerTask": "Credits pro Aufgabe",

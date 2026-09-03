@@ -4,9 +4,10 @@ import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import type { ClassInfo } from "../types/models";
+import { nextDeadline, formatDeadline } from "../lib/classDeadlines";
 
 export default function StudentClassesPage() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { isLoggedIn, isStudent } = useAuth();
     const navigate = useNavigate();
 
@@ -70,7 +71,11 @@ export default function StudentClassesPage() {
                 </div>
             ) : (
                 <div className="row g-3">
-                    {classes.map((c) => (
+                    {classes.map((c) => {
+                    // What the student has to hand in next in this class. The
+                    // server has already dropped anything not released to them.
+                    const due = nextDeadline(c.worksheets);
+                    return (
                         <div key={c.id} className="col-12 col-md-6">
                             <div
                                 className="card h-100 hover-shadow"
@@ -87,13 +92,23 @@ export default function StudentClassesPage() {
                                             {c.description}
                                         </p>
                                     )}
+                                    {due && (
+                                        <p className={`small mb-0 mt-2 ${due.soon ? "text-danger" : "text-muted"}`}>
+                                            <i className="bi bi-clock me-1"></i>
+                                            {t("deadline.next", {
+                                                name: due.name,
+                                                when: formatDeadline(due.deadlineAt, i18n.language),
+                                            })}
+                                        </p>
+                                    )}
                                     <div className="mt-auto pt-2 text-end">
                                         <i className="bi bi-chevron-right text-muted"></i>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    ))}
+                    );
+                    })}
                 </div>
             )}
         </div>
