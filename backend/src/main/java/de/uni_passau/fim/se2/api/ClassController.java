@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
 import java.util.UUID;
 
 @RestController
@@ -177,6 +178,55 @@ public class ClassController {
         classService.removeWorksheet(id, worksheetId);
         return ResponseEntity.ok(Map.of("message", "Worksheet-Zuweisung entfernt."));
     }
+
+    /**
+     * Sets when a worksheet opens and closes for this class.
+     *
+     * Any field may be omitted or null to lift that constraint: no release means
+     * available at once, no deadline means open indefinitely, no grace period
+     * means the deadline is sharp.
+     */
+    @PutMapping("/{id}/worksheets/{worksheetId}/schedule")
+    public ResponseEntity<?> setWorksheetSchedule(
+            @PathVariable UUID id,
+            @PathVariable UUID worksheetId,
+            @RequestBody WorksheetScheduleRequest request) {
+        classService.setWorksheetSchedule(id, worksheetId,
+                request.releaseAt(), request.deadlineAt(), request.graceMinutes());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Publishes an assignment immediately, so the class can see it.
+     *
+     * A newly assigned worksheet is hidden until this is called or its release
+     * date arrives, so students never meet one that is still being prepared.
+     */
+    @PostMapping("/{id}/worksheets/{worksheetId}/publish")
+    public ResponseEntity<?> publishWorksheet(@PathVariable UUID id, @PathVariable UUID worksheetId) {
+        classService.setWorksheetPublished(id, worksheetId, true);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Takes an assignment back out of sight, e.g. one published by mistake. */
+    @PostMapping("/{id}/worksheets/{worksheetId}/unpublish")
+    public ResponseEntity<?> unpublishWorksheet(@PathVariable UUID id, @PathVariable UUID worksheetId) {
+        classService.setWorksheetPublished(id, worksheetId, false);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Ends an assignment now: the deadline becomes this moment, so students may
+     * still read the tasks but no longer work on them.
+     */
+    @PostMapping("/{id}/worksheets/{worksheetId}/close")
+    public ResponseEntity<?> closeWorksheet(@PathVariable UUID id, @PathVariable UUID worksheetId) {
+        classService.closeWorksheetNow(id, worksheetId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** All fields optional; null clears that part of the schedule. */
+    public record WorksheetScheduleRequest(Instant releaseAt, Instant deadlineAt, Integer graceMinutes) {}
 
     /**
      * Toggles tracking for a specified class.

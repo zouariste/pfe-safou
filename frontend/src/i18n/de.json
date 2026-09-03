@@ -223,6 +223,8 @@
   },
 
   "solve": {
+    "closedBanner": "Die Abgabefrist für dieses Arbeitsblatt ist abgelaufen. Du kannst die Aufgabe ansehen, aber nicht mehr bearbeiten.",
+    "closedTooltip": "Abgabefrist abgelaufen",
     "redo": "Aufgabe erneut lösen",
     "restoredNote": "Deine gelöste Anordnung wurde wiederhergestellt.",
     "creditsExhausted": "Alle Hinweis-Credits für diese Aufgabe sind aufgebraucht.",
@@ -291,6 +293,42 @@
     "toOverview": "Zur Übersicht"
   },
 
+
+  "schedule": {
+    "endNotRunning": "Nur ein laufendes Arbeitsblatt kann beendet werden.",
+    "publishNow": "Jetzt freigeben",
+    "unpublish": "Zurückziehen",
+    "endNow": "Jetzt beenden",
+    "actionFailed": "Aktion konnte nicht ausgeführt werden.",
+    "dateLabel": "Datum",
+    "timeLabel": "Uhrzeit",
+    "minutesShort": "Min.",
+    "hoursShort": "Std.",
+    "graceMinutesLabel": "Nachfrist, Minuten",
+    "graceHours": "Nachfrist, Stunden",
+    "grace": "Nachfrist",
+    "scheduled": "Noch nicht freigegeben",
+    "open": "Offen",
+    "closed": "Abgabefrist abgelaufen",
+    "edit": "Zeitplan bearbeiten",
+    "hide": "Zeitplan ausblenden",
+    "releaseAt": "Freigabe ab",
+    "releaseHint": "Leer = sofort verfügbar; Uhrzeit leer = 0:00 Uhr",
+    "deadlineAt": "Abgabefrist",
+    "deadlineHint": "Leer = unbegrenzt offen; Uhrzeit leer = 0:00 Uhr",
+    "graceHint": "Leer oder 0 = Frist ist hart",
+    "graceInvalid": "Stunden und Minuten müssen ganze Zahlen ab 0 sein.",
+    "save": "Speichern",
+    "saving": "Speichern...",
+    "clear": "Felder leeren",
+    "saveFailed": "Zeitplan konnte nicht gespeichert werden."
+  },
+  "deadline": {
+    "next": "Als Nächstes fällig: {{name}} – {{when}}",
+    "due": "Fällig {{when}}",
+    "closed": "Frist abgelaufen",
+    "was": "Frist war {{when}}"
+  },
   "worksheet": {
     "unlimitedHints": "Unbegrenzte Hinweise",
     "creditsPerTask": "Credits pro Aufgabe",

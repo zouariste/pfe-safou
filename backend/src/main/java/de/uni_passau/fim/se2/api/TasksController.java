@@ -26,6 +26,7 @@ import de.uni_passau.fim.se2.application.service.FeedbackLogService;
 import de.uni_passau.fim.se2.application.service.ManualTaskService;
 import de.uni_passau.fim.se2.application.service.OwnershipService;
 import de.uni_passau.fim.se2.application.service.TaskSubmissionService;
+import de.uni_passau.fim.se2.application.service.WorksheetAccessService;
 import de.uni_passau.fim.se2.application.service.TaskEditService;
 import de.uni_passau.fim.se2.application.service.TaskEnricher;
 import de.uni_passau.fim.se2.application.service.TaskGeneratorService;
@@ -75,6 +76,7 @@ public class TasksController {
     private final FeedbackLogService feedbackLogService;
     private final TaskEnricher taskEnricher;
     private final TaskSubmissionService taskSubmissionService;
+    private final WorksheetAccessService worksheetAccessService;
 
     /**
      * Generate a new task sequence.
@@ -199,6 +201,18 @@ public class TasksController {
         UUID userId = ownershipService.getCurrentUserId();
         if (userId == null) return ResponseEntity.status(401).build();
         return ResponseEntity.ok(worksheetService.findByOwnerId(userId));
+    }
+
+    /**
+     * Whether the current user may still work on this task, or only read it.
+     *
+     * Drives the solve page's read-only mode. Not the enforcement point: the
+     * services that record solving re-check it, so a client that ignores this
+     * still cannot write.
+     */
+    @GetMapping("/tasks/{taskId}/access")
+    public ResponseEntity<Map<String, Object>> getTaskAccess(@PathVariable UUID taskId) {
+        return ResponseEntity.ok(Map.of("canSolve", worksheetAccessService.canSolve(taskId)));
     }
 
     /**

@@ -161,10 +161,26 @@ export interface StudentInfo {
     inviteToken: string | null;
 }
 
+/** How a worksheet assignment stands relative to its schedule, for one class. */
+export type WorksheetAvailability = "SCHEDULED" | "OPEN" | "CLOSED";
+
 export interface ClassWorksheetInfo {
     worksheetId: string;
     name: string;
     description: string;
+    /**
+     * Set by the teacher's publish button. A newly assigned worksheet starts
+     * false, so students never meet one that is still being prepared.
+     */
+    published?: boolean;
+    /** ISO instant at which it opens by itself; null means only publishing opens it. */
+    releaseAt?: string | null;
+    /** ISO instant, or null for "open indefinitely". */
+    deadlineAt?: string | null;
+    /** Minutes allowed after the deadline; null or 0 means a sharp deadline. */
+    graceMinutes?: number | null;
+    /** Resolved server-side, so the client cannot disagree about the time. */
+    availability?: WorksheetAvailability;
 }
 
 // ── AP19 Teil A: Library / Sequence Tags ───────────────

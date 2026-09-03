@@ -223,6 +223,8 @@
   },
 
   "solve": {
+    "closedBanner": "The deadline for this worksheet has passed. You can look at the task but no longer work on it.",
+    "closedTooltip": "Deadline passed",
     "redo": "Solve again",
     "restoredNote": "Your solved arrangement has been restored.",
     "creditsExhausted": "All hint credits for this task have been used up.",
@@ -291,6 +293,42 @@
     "toOverview": "To Overview"
   },
 
+
+  "schedule": {
+    "endNotRunning": "Only a running worksheet can be ended.",
+    "publishNow": "Publish now",
+    "unpublish": "Unpublish",
+    "endNow": "End now",
+    "actionFailed": "Could not carry out that action.",
+    "dateLabel": "Date",
+    "timeLabel": "Time",
+    "minutesShort": "min",
+    "hoursShort": "h",
+    "graceMinutesLabel": "Grace period, minutes",
+    "graceHours": "Grace period, hours",
+    "grace": "Grace period",
+    "scheduled": "Not released yet",
+    "open": "Open",
+    "closed": "Deadline passed",
+    "edit": "Edit schedule",
+    "hide": "Hide schedule",
+    "releaseAt": "Released from",
+    "releaseHint": "Empty = available at once; no time = 00:00",
+    "deadlineAt": "Deadline",
+    "deadlineHint": "Empty = open indefinitely; no time = 00:00",
+    "graceHint": "Empty or 0 = sharp deadline",
+    "graceInvalid": "Hours and minutes must be whole numbers of 0 or more.",
+    "save": "Save",
+    "saving": "Saving...",
+    "clear": "Clear fields",
+    "saveFailed": "Could not save the schedule."
+  },
+  "deadline": {
+    "next": "Next due: {{name}} — {{when}}",
+    "due": "Due {{when}}",
+    "closed": "Deadline passed",
+    "was": "Deadline was {{when}}"
+  },
   "worksheet": {
     "unlimitedHints": "Unlimited hints",
     "creditsPerTask": "Credits per task",

@@ -30,6 +30,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreClassDao;
+
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -79,7 +82,11 @@ public class ClassService {
         }
 
         if (ownershipService.isStudent()) {
-            return classRepository.findByStudentId(userId);
+            List<ClassDTO> classes = classRepository.findByStudentId(userId);
+            // Same filter as the detail view: the overview must not leak a
+            // worksheet that has not been released yet, deadline and all.
+            classes.forEach(ClassService::hideUnreleased);
+            return classes;
         }
 
         return classRepository.findByOwnerId(userId);
@@ -103,7 +110,28 @@ public class ClassService {
             }
         }
 
+        if (ownershipService.isStudent()) {
+            hideUnreleased(classDTO);
+        }
+
         return classDTO;
+    }
+
+    /**
+     * Drops the assignments a student is not meant to know about yet.
+     *
+     * A worksheet that has not been released does not exist as far as a student
+     * is concerned. Done here rather than in the query, so the teacher's own
+     * view keeps every assignment whatever its state.
+     *
+     * A closed worksheet stays: students may still read it, and seeing that its
+     * deadline has passed is the point.
+     */
+    private static void hideUnreleased(ClassDTO classDTO) {
+        if (classDTO.getWorksheets() == null) return;
+        classDTO.setWorksheets(classDTO.getWorksheets().stream()
+                .filter(w -> w.getAvailability() == null || w.getAvailability().visibleToStudents())
+                .toList());
     }
 
     public ClassDTO updateClass(UUID classId, String name, String description) {
@@ -239,6 +267,64 @@ public class ClassService {
 
         ownershipService.checkOwnership(classDTO.getOwnerId(), "class");
         classRepository.addWorksheet(classId, worksheetId);
+    }
+
+    /**
+     * Sets when a worksheet opens and closes for one class.
+     *
+     * Any field may be null to lift that constraint: no release means available
+     * at once, no deadline means open indefinitely, no grace means the deadline
+     * is sharp.
+     */
+    public void setWorksheetSchedule(UUID classId, UUID worksheetId,
+                                     Instant releaseAt, Instant deadlineAt, Integer graceMinutes) {
+        requireClassOwner(classId);
+
+        if (graceMinutes != null && graceMinutes < 0) {
+            throw new DomainValidationException("Die Nachfrist darf nicht negativ sein.");
+        }
+        if (releaseAt != null && deadlineAt != null && !deadlineAt.isAfter(releaseAt)) {
+            // Otherwise the worksheet would close before anyone could open it.
+            throw new DomainValidationException("Die Abgabefrist muss nach der Freigabe liegen.");
+        }
+
+        dao().updateWorksheetSchedule(classId, worksheetId, releaseAt, deadlineAt, graceMinutes);
+        log.info("Schedule set for worksheet {} in class {}", worksheetId, classId);
+    }
+
+    /**
+     * Publishes an assignment now, or takes it back out of sight.
+     *
+     * Independent of the release date: a teacher can publish by hand without
+     * setting one, and a release date still opens the assignment by itself when
+     * the moment comes.
+     */
+    public void setWorksheetPublished(UUID classId, UUID worksheetId, boolean published) {
+        requireClassOwner(classId);
+        dao().setWorksheetPublished(classId, worksheetId, published);
+        log.info("Worksheet {} in class {} {}", worksheetId, classId,
+                published ? "published" : "unpublished");
+    }
+
+    /**
+     * Ends an assignment immediately: students keep access to read the tasks but
+     * can no longer work on them.
+     */
+    public void closeWorksheetNow(UUID classId, UUID worksheetId) {
+        requireClassOwner(classId);
+        dao().closeWorksheetNow(classId, worksheetId, Instant.now());
+        log.info("Worksheet {} in class {} closed manually", worksheetId, classId);
+    }
+
+    private void requireClassOwner(UUID classId) {
+        ClassDTO classDTO = classRepository.findById(classId)
+                .orElseThrow(() -> new DomainValidationException("Klasse nicht gefunden."));
+        ownershipService.checkOwnership(classDTO.getOwnerId(), "class");
+    }
+
+    private PostgreClassDao dao() {
+        if (classRepository instanceof PostgreClassDao dao) return dao;
+        throw new DomainValidationException("Scheduling is not supported by this repository.");
     }
 
     public void removeWorksheet(UUID classId, UUID worksheetId) {

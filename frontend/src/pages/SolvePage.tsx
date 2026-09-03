@@ -96,6 +96,9 @@ export default function SolvePage() {
     const [creditsPerTask, setCreditsPerTask] = useState<number | null>(null);
     // A previously solved arrangement, restored into the puzzle on open.
     const [solvedPreviously, setSolvedPreviously] = useState(false);
+    // False once a worksheet deadline (plus grace) has passed: the task can
+    // still be read, but not worked on.
+    const [canSolve, setCanSolve] = useState(true);
     const restoredRef = useRef(false);
     // When the restored solution was first solved, reported with the redo event.
     const solvedAtRef = useRef<string | null>(null);
@@ -149,6 +152,15 @@ export default function SolvePage() {
     }, [taskId]);
 
     useEffect(() => { refreshHintConfig(); }, [refreshHintConfig]);
+
+    // Whether the worksheet this task belongs to is still open for this user.
+    // Advisory only — the services that record solving re-check it.
+    useEffect(() => {
+        if (!taskId) return;
+        api.get(`/tasks/${taskId}/access`)
+            .then(({ data }) => setCanSolve(data?.canSolve !== false))
+            .catch(() => setCanSolve(true));
+    }, [taskId]);
 
     // Role-based teacher view: show toggle for owners and admins
     const isOwnerOrAdmin = isLoggedIn && user && (sequenceOwnerId === user.userId || isAdmin);
@@ -1077,6 +1089,13 @@ export default function SolvePage() {
                         </div>
                     )}
 
+                    {!canSolve && (
+                        <div className="alert alert-secondary d-flex align-items-center gap-2 mb-3 py-2" role="alert">
+                            <span style={{ fontSize: "1.2rem" }}>&#x1F512;</span>
+                            <span>{t("solve.closedBanner")}</span>
+                        </div>
+                    )}
+
                     {/* AP15: Distractor info banner */}
                     {task.distractors && (
                         <div className="alert alert-warning d-flex align-items-center gap-2 mb-3 py-2" role="alert">
@@ -1229,6 +1248,7 @@ export default function SolvePage() {
                         </div>
                         <button
                             className="btn btn-outline-secondary"
+                            disabled={!canSolve}
                             onClick={(e) => {
                                 e.preventDefault();
 
@@ -1281,7 +1301,7 @@ export default function SolvePage() {
                           * The stored solution is deliberately left in place: an
                           * abandoned redo should not cost the student their work.
                           */}
-                        {solvedPreviously && (
+                        {solvedPreviously && canSolve && (
                             <button
                                 className="btn btn-outline-primary"
                                 onClick={(e) => {
@@ -1328,6 +1348,7 @@ export default function SolvePage() {
 
                         <button
                             className="btn btn-primary"
+                            disabled={!canSolve}
                             onClick={(e) => {
                                 e.preventDefault();
                                 const widget = widgetRef.current;
@@ -1623,7 +1644,7 @@ export default function SolvePage() {
                         </button>
 
                         {/* AP13: Hint buttons (only if teacher enabled hints) */}
-                        {hintsEnabled && (
+                        {hintsEnabled && canSolve && (
                         <>
                         <HintButton
                             level={1}
