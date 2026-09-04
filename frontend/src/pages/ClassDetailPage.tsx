@@ -1,11 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api } from "../lib/api";
+import { api, apiErrorMessage } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import type { ClassInfo, StudentInfo, StudentProgress, Worksheet } from "../types/models";
 import WorksheetSchedule from "../components/WorksheetSchedule.tsx";
 import WorksheetDeadline from "../components/WorksheetDeadline.tsx";
+import {
+    parseStudentCsv,
+    downloadInviteCsv,
+    downloadTemplateCsv,
+    csvDelimiterForLocale,
+    studentInviteUrl,
+    type ParsedStudent,
+} from "../lib/studentImport.ts";
+
+/** How many names of an import to show before summarising the rest. */
+const IMPORT_PREVIEW_LIMIT = 10;
 
 export default function ClassDetailPage() {
     const { t, i18n } = useTranslation();
@@ -43,6 +54,15 @@ export default function ClassDetailPage() {
     const [newWorksheetName, setNewWorksheetName] = useState("");
     const [newWorksheetDesc, setNewWorksheetDesc] = useState("");
     const [creatingWorksheet, setCreatingWorksheet] = useState(false);
+
+    // CSV import of a whole class list
+    const [showImport, setShowImport] = useState(false);
+    const [importRows, setImportRows] = useState<ParsedStudent[]>([]);
+    const [importError, setImportError] = useState("");
+    const [importing, setImporting] = useState(false);
+    // Kept after the import so the invite links stay downloadable.
+    const [importedStudents, setImportedStudents] = useState<StudentInfo[]>([]);
+    const csvInputRef = useRef<HTMLInputElement>(null);
 
     // Copied token feedback
     const [copiedToken, setCopiedToken] = useState<string | null>(null);
@@ -242,10 +262,87 @@ export default function ClassDetailPage() {
     };
 
     const copyToken = (token: string) => {
-        const url = `${window.location.origin}${import.meta.env.BASE_URL}student-onboarding?token=${token}`;
-        navigator.clipboard.writeText(url);
+        navigator.clipboard.writeText(studentInviteUrl(token));
         setCopiedToken(token);
         setTimeout(() => setCopiedToken(null), 2000);
+    };
+
+    /** Column titles for both CSVs, in the teacher's own language. */
+    const csvHeaders = (): [string, string, string] => [
+        t("csvImport.colFirstName"),
+        t("csvImport.colLastName"),
+        t("csvImport.colInviteLink"),
+    ];
+
+    const resetImport = () => {
+        setImportRows([]);
+        setImportError("");
+        setImportedStudents([]);
+        // The picker holds on to the last file otherwise, and choosing the
+        // same one again would fire no change event.
+        if (csvInputRef.current) csvInputRef.current.value = "";
+    };
+
+    const toggleImport = () => {
+        resetImport();
+        setShowImport((open) => !open);
+    };
+
+    const handleCsvChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        setImportRows([]);
+        setImportError("");
+        setImportedStudents([]);
+        if (!file) return;
+
+        try {
+            const result = parseStudentCsv(await file.text());
+            // The parser reports an i18n key so the message can be translated
+            // where it is shown rather than where it is found.
+            if (result.error) setImportError(t(result.error.key, result.error.params));
+            else setImportRows(result.students);
+        } catch {
+            setImportError(t("csvImport.errorRead"));
+        }
+    };
+
+    const handleImport = async () => {
+        if (importRows.length === 0) return;
+        try {
+            setImporting(true);
+            setImportError("");
+            const res = await api.post<StudentInfo[]>(`/classes/${id}/students/bulk`, {
+                students: importRows,
+            });
+            setClassData((prev) =>
+                prev ? { ...prev, students: [...prev.students, ...res.data] } : prev
+            );
+            // The preview is spent; what replaces it is the link download.
+            setImportedStudents(res.data);
+            setImportRows([]);
+            if (csvInputRef.current) csvInputRef.current.value = "";
+            setSuccess(t("csvImport.created", { count: res.data.length }));
+            setTimeout(() => setSuccess(""), 5000);
+        } catch (err) {
+            // apiErrorMessage rather than the older reach into `data.details`
+            // in this file: the row the server names is the whole point.
+            setImportError(apiErrorMessage(err, t("csvImport.errorCreating")));
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    const handleDownloadLinks = () => {
+        if (!classData) return;
+        downloadInviteCsv(importedStudents, classData.name, {
+            headers: csvHeaders(),
+            delimiter: csvDelimiterForLocale(i18n.language),
+        });
+    };
+
+    const handleDownloadTemplate = () => {
+        const [first, last] = csvHeaders();
+        downloadTemplateCsv([first, last], csvDelimiterForLocale(i18n.language));
     };
 
     const handleToggleTracking = async () => {
@@ -391,12 +488,22 @@ export default function ClassDetailPage() {
                         <i className="bi bi-person me-2"></i>
                         {t("classDetail.students", { count: classData.students.length })}
                     </h5>
-                    <button
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() => setShowAddStudent(!showAddStudent)}
-                    >
-                        <i className="bi bi-person-plus me-1"></i> {t("classDetail.addStudent")}
-                    </button>
+                    <div className="d-flex gap-2">
+                        <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => setShowAddStudent(!showAddStudent)}
+                        >
+                            <i className="bi bi-person-plus me-1"></i> {t("classDetail.addStudent")}
+                        </button>
+                        {/* A whole class list at once, for the start of a school year. */}
+                        <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={toggleImport}
+                            aria-expanded={showImport}
+                        >
+                            <i className="bi bi-filetype-csv me-1"></i> {t("csvImport.button")}
+                        </button>
+                    </div>
                 </div>
                 <div className="card-body">
                     {/* Add student form */}
@@ -434,6 +541,99 @@ export default function ClassDetailPage() {
                                 </div>
                             </div>
                         </form>
+                    )}
+
+                    {/* CSV import */}
+                    {showImport && (
+                        <div className="mb-3 p-3 bg-light rounded">
+                            <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-1">
+                                <h6 className="mb-0">{t("csvImport.title")}</h6>
+                                {/*
+                                  * An example beats the description: a teacher
+                                  * who fills this in cannot get the shape wrong,
+                                  * and finds out here whether their spreadsheet
+                                  * mangles umlauts.
+                                  */}
+                                <button className="btn btn-sm btn-link p-0" onClick={handleDownloadTemplate}>
+                                    <i className="bi bi-download me-1"></i>
+                                    {t("csvImport.template")}
+                                </button>
+                            </div>
+                            <p className="small text-muted">{t("csvImport.hint")}</p>
+                            <input
+                                ref={csvInputRef}
+                                type="file"
+                                accept=".csv,text/csv"
+                                className="form-control form-control-sm"
+                                aria-label={t("csvImport.fileLabel")}
+                                disabled={importing}
+                                onChange={handleCsvChosen}
+                            />
+
+                            {importError && (
+                                <div className="alert alert-danger py-1 px-2 mt-2 mb-0 small">{importError}</div>
+                            )}
+
+                            {/*
+                              * Nothing is created until the teacher has seen the
+                              * names: an import cannot be undone in one step.
+                              */}
+                            {importRows.length > 0 && (
+                                <div className="mt-2">
+                                    <p className="small mb-1">
+                                        {t("csvImport.preview", { count: importRows.length })}
+                                    </p>
+                                    <ul className="small text-muted mb-2">
+                                        {importRows.slice(0, IMPORT_PREVIEW_LIMIT).map((s, i) => (
+                                            <li key={i}>
+                                                {s.firstName} {s.lastName}
+                                            </li>
+                                        ))}
+                                        {importRows.length > IMPORT_PREVIEW_LIMIT && (
+                                            <li>
+                                                {t("csvImport.previewMore", {
+                                                    count: importRows.length - IMPORT_PREVIEW_LIMIT,
+                                                })}
+                                            </li>
+                                        )}
+                                    </ul>
+                                    <div className="d-flex gap-2">
+                                        <button
+                                            className="btn btn-success btn-sm"
+                                            onClick={handleImport}
+                                            disabled={importing}
+                                        >
+                                            {importing
+                                                ? t("csvImport.creating")
+                                                : t("csvImport.createBtn", { count: importRows.length })}
+                                        </button>
+                                        <button
+                                            className="btn btn-outline-secondary btn-sm"
+                                            onClick={resetImport}
+                                            disabled={importing}
+                                        >
+                                            {t("csvImport.cancel")}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {importedStudents.length > 0 && (
+                                <div className="alert alert-success py-2 px-2 mt-2 mb-0">
+                                    <p className="small mb-2">
+                                        {t("csvImport.created", { count: importedStudents.length })}
+                                    </p>
+                                    <button
+                                        className="btn btn-sm btn-outline-success"
+                                        onClick={handleDownloadLinks}
+                                    >
+                                        <i className="bi bi-download me-1"></i>
+                                        {t("csvImport.downloadLinks")}
+                                    </button>
+                                    <p className="small text-muted mb-0 mt-2">{t("csvImport.downloadHint")}</p>
+                                </div>
+                            )}
+                        </div>
                     )}
 
                     {/* Student list */}

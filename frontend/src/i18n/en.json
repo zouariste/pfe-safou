@@ -620,6 +620,32 @@
     "errorResetPassword": "Error resetting password."
   },
 
+  "csvImport": {
+    "button": "Import CSV",
+    "title": "Import students from a CSV file",
+    "hint": "Two columns: first name and last name. A heading row is optional, and commas, semicolons or tabs all work as separators.",
+    "template": "Download template",
+    "fileLabel": "CSV file",
+    "preview": "{{count}} students will be created:",
+    "previewMore": "… and {{count}} more",
+    "createBtn": "Create {{count}} students",
+    "creating": "Creating…",
+    "cancel": "Cancel",
+    "created": "{{count}} students created.",
+    "downloadLinks": "Download invite links (CSV)",
+    "downloadHint": "One row per student, with the link they use to claim their account.",
+    "colFirstName": "First name",
+    "colLastName": "Last name",
+    "colInviteLink": "Invite link",
+    "errorEmpty": "No students found in this file.",
+    "errorColumns": "Row {{row}}: expected two columns (first name, last name) but found {{count}}.",
+    "errorMissingName": "Row {{row}}: both a first and a last name are required.",
+    "errorNameTooLong": "Row {{row}}: names may be at most {{max}} characters long.",
+    "errorTooMany": "{{count}} rows — at most {{max}} students can be imported at once.",
+    "errorRead": "That file could not be read.",
+    "errorCreating": "Error importing the students."
+  },
+
   "admin": {
     "title": "User Management",
     "searchPlaceholder": "Search by name or email...",

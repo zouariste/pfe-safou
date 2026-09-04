@@ -620,6 +620,32 @@
     "errorResetPassword": "Fehler beim Zurücksetzen des Passworts."
   },
 
+  "csvImport": {
+    "button": "CSV importieren",
+    "title": "Schüler aus einer CSV-Datei importieren",
+    "hint": "Zwei Spalten: Vorname und Nachname. Eine Kopfzeile ist optional, als Trennzeichen funktionieren Komma, Semikolon und Tabulator.",
+    "template": "Vorlage herunterladen",
+    "fileLabel": "CSV-Datei",
+    "preview": "{{count}} Schüler werden angelegt:",
+    "previewMore": "… und {{count}} weitere",
+    "createBtn": "{{count}} Schüler anlegen",
+    "creating": "Wird angelegt…",
+    "cancel": "Abbrechen",
+    "created": "{{count}} Schüler angelegt.",
+    "downloadLinks": "Einladungslinks herunterladen (CSV)",
+    "downloadHint": "Eine Zeile pro Schüler, mit dem Link zum Einrichten des Zugangs.",
+    "colFirstName": "Vorname",
+    "colLastName": "Nachname",
+    "colInviteLink": "Einladungslink",
+    "errorEmpty": "In dieser Datei wurden keine Schüler gefunden.",
+    "errorColumns": "Zeile {{row}}: zwei Spalten (Vorname, Nachname) erwartet, aber {{count}} gefunden.",
+    "errorMissingName": "Zeile {{row}}: Vor- und Nachname sind beide erforderlich.",
+    "errorNameTooLong": "Zeile {{row}}: Namen dürfen höchstens {{max}} Zeichen lang sein.",
+    "errorTooMany": "{{count}} Zeilen — es können höchstens {{max}} Schüler auf einmal importiert werden.",
+    "errorRead": "Die Datei konnte nicht gelesen werden.",
+    "errorCreating": "Fehler beim Importieren der Schüler."
+  },
+
   "admin": {
     "title": "Benutzerverwaltung",
     "searchPlaceholder": "Suche nach Name oder Email...",
