@@ -79,7 +79,9 @@ class ClassServiceBulkStudentsTest {
                 tokenService,
                 mock(FeedbackLogService.class),
                 mock(TempPasswordGenerator.class),
-                mock(PasswordHasherService.class));
+                mock(PasswordHasherService.class),
+                mock(WorksheetService.class),
+                mock(TaskPersistenceService.class));
 
         when(classRepository.findById(CLASS_ID)).thenReturn(Optional.of(ClassDTO.builder()
                 .id(CLASS_ID)

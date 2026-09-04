@@ -23,6 +23,7 @@ import de.uni_passau.fim.se2.api.dto.CreateClassRequest;
 import de.uni_passau.fim.se2.api.dto.CreateStudentRequest;
 import de.uni_passau.fim.se2.application.service.ClassService;
 import de.uni_passau.fim.se2.domain.entities.ClassDTO;
+import de.uni_passau.fim.se2.domain.entities.StudentProgressDetailDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -281,5 +282,19 @@ public class ClassController {
     public ResponseEntity<List<Map<String, Object>>> getClassProgress(@PathVariable UUID classId) {
         List<Map<String, Object>> progress = classService.getClassProgress(classId);
         return ResponseEntity.ok(progress);
+    }
+
+    /**
+     * One student's work across this class's assigned worksheets: every task,
+     * how many times they attempted it, and whether it was solved.
+     *
+     * @param classId   the UUID of the class
+     * @param studentId the UUID of the student
+     */
+    @GetMapping("/{classId}/students/{studentId}/progress")
+    public ResponseEntity<StudentProgressDetailDTO> getStudentProgressDetail(
+            @PathVariable UUID classId,
+            @PathVariable UUID studentId) {
+        return ResponseEntity.ok(classService.getStudentProgressDetail(classId, studentId));
     }
 }

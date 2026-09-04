@@ -21,6 +21,7 @@ import ProfilePage from "./pages/ProfilePage";
 import ClassesPage from "./pages/ClassesPage";
 import WorksheetsPage from "./pages/WorksheetsPage";
 import ClassDetailPage from "./pages/ClassDetailPage";
+import StudentProgressPage from "./pages/StudentProgressPage";
 import StudentClassesPage from "./pages/StudentClassesPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminLibraryPage from "./pages/AdminLibraryPage";
@@ -342,6 +343,7 @@ export default function App() {
                                 <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                                 <Route path="/classes" element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
                                 <Route path="/classes/:id" element={<ProtectedRoute><ClassDetailPage /></ProtectedRoute>} />
+                                <Route path="/classes/:id/students/:studentId/progress" element={<ProtectedRoute><StudentProgressPage /></ProtectedRoute>} />
                                 <Route path="/worksheets" element={<ProtectedRoute><WorksheetsPage /></ProtectedRoute>} />
                                 <Route path="/my-classes" element={<ProtectedRoute><StudentClassesPage /></ProtectedRoute>} />
 
