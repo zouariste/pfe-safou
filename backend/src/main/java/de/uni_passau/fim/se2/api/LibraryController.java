@@ -20,6 +20,9 @@ package de.uni_passau.fim.se2.api;
 
 import de.uni_passau.fim.se2.api.dto.*;
 import de.uni_passau.fim.se2.application.service.*;
+import de.uni_passau.fim.se2.application.query.WorksheetSearchQuery;
+import de.uni_passau.fim.se2.application.query.WorksheetSearchResult;
+import de.uni_passau.fim.se2.application.service.WorksheetSearchService;
 import de.uni_passau.fim.se2.api.dto.LibraryItemDTO;
 import de.uni_passau.fim.se2.api.dto.LibrarySearchResponse;
 import de.uni_passau.fim.se2.application.service.OwnershipService;
@@ -63,6 +66,7 @@ public class LibraryController {
     private final OwnershipService ownershipService;
     private final TaskPersistenceService taskPersistenceService;
     private final WorksheetService worksheetService;
+    private final WorksheetSearchService worksheetSearchService;
     /** Minimal request body for adding a tag — keeps the URL shape clean. */
     public record AddTagRequest(String tag) {}
 
@@ -108,6 +112,35 @@ public class LibraryController {
 
         LibrarySearchResponse response = searchService.search(query, currentUserId);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Search published worksheets — the marketplace.
+     *
+     * <p>Lists only worksheets whose owner set them to PUBLIC, which is enforced in the SQL
+     * rather than here: the filter is the reason this endpoint is safe to serve, so it belongs
+     * where it cannot be forgotten. Readable without logging in, like the sequence library,
+     * although "only mine" then has nothing to mean and returns nothing.
+     *
+     * @param q        free-text query over the worksheets and everything inside them
+     * @param lang     restrict to worksheets containing sequences in this language
+     * @param owner    {@code "me"} to see only what the caller published
+     * @param sort     {@code recent} (default), {@code relevance} or {@code popularity}
+     */
+    @GetMapping("/worksheets")
+    public ResponseEntity<WorksheetSearchResult> searchWorksheets(
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "lang", required = false) String lang,
+            @RequestParam(name = "owner", required = false, defaultValue = "any") String owner,
+            @RequestParam(name = "sort", required = false, defaultValue = "recent") String sort,
+            @RequestParam(name = "page", required = false, defaultValue = "0") int page,
+            @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
+
+        WorksheetSearchQuery query = WorksheetSearchQuery.of(
+                q, lang, "me".equalsIgnoreCase(owner), sort, page, size);
+
+        return ResponseEntity.ok(
+                worksheetSearchService.search(query, ownershipService.getCurrentUserId()));
     }
 
     /**

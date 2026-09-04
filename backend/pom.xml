@@ -80,6 +80,33 @@
             <version>5.2.0</version>
             <scope>test</scope>
         </dependency>
+        <!--
+            Testcontainers: starts a real Postgres for the search tests.
+
+            The search services are the one place where the behaviour lives in the SQL rather
+            than in Java - full-text vectors, tsquery, ts_headline, GIN indexes - so a mock can
+            only confirm that we wrote the string we wrote. These tests run the real queries
+            against the real db/init schema and throw the database away afterwards.
+
+            Version comes from the Spring Boot parent's dependency management.
+
+            These tests need a running Docker daemon and are skipped without one, so a
+            developer without Docker still gets a green `mvn test` - and so does CI, where the
+            shared runner is unprivileged and cannot host a daemon at all. Skipping is a
+            concession: a search test that does not run proves nothing, and this one found a
+            genuinely broken query the first time it ran. Run the suite locally with Docker up
+            before changing the search or db/init; see the CI follow-up issue.
+        -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>com.github.javaparser</groupId>
             <artifactId>javaparser-core</artifactId>

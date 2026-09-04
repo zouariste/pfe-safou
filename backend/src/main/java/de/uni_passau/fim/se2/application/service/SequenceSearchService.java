@@ -130,6 +130,16 @@ public class SequenceSearchService {
         StringBuilder sb = new StringBuilder(" WHERE 1=1 ");
         List<Object> params = new ArrayList<>();
 
+        // Originals only. Copying a worksheet duplicates every sequence in it, and the
+        // marketplace turns copying from something a teacher does occasionally into the main
+        // way material spreads — so without this the library would fill up with clones of the
+        // very sequences it is meant to help people find. The copy stays perfectly usable in
+        // the worksheet it belongs to; it just does not get listed a second time.
+        //
+        // Rows predating the column have copied_from NULL and are treated as originals, which
+        // is right: nothing knew they were copies either.
+        sb.append(" AND s.copied_from IS NULL ");
+
         // Language filter
         if (q.lang() != null && !q.lang().isBlank()) {
             sb.append(" AND s.programming_language = ? ");
@@ -616,83 +626,22 @@ public class SequenceSearchService {
     // Umlaut-tolerant free-text search
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * SQL fragment for a free-text tsquery that ORs together four ways a search term can match,
-     * combined with the tsquery {@code ||} (OR) operator. Every occurrence takes four bind
-     * parameters, filled in by {@link #addTsqueryParams}, in this order:
-     *
-     * <ol>
-     *   <li>{@code websearch_to_tsquery(query)} — the query as typed, with real operators
-     *       ("exact phrase", {@code -exclude}, {@code or}).</li>
-     *   <li>{@code websearch_to_tsquery(foldedQuery)} — see {@link #foldGermanUmlauts}: sequences
-     *       tagged before the semantic-tagger prompt bug was fixed have task_description /
-     *       semantic_summary written with "oe"/"ae"/"ue"/"ss" digraphs instead of real umlauts.
-     *       Folding the query the same way lets a search typed with proper umlauts (e.g.
-     *       "Prüfung") still find that older data ("Pruefung"), without touching the stored text
-     *       or rebuilding the FTS index.</li>
-     *   <li>a prefix match on every word of {@code query} (see {@link #prefixTsquerySubexpr()}) —
-     *       the Library search box is live/debounced, so most keystrokes submit a word that is
-     *       still being typed ("pr" on the way to "prüfung"); {@code websearch_to_tsquery} only
-     *       matches whole words, so without this branch search-as-you-type would show nothing
-     *       until the last word of the query is finished. Loses websearch's operators (a prefix
-     *       match can't parse "exact phrase" or {@code -exclude}), which is why this is additive
-     *       to (1) rather than a replacement for it.</li>
-     *   <li>the same prefix match applied to {@code foldedQuery} — typing "prü" while an old row
-     *       only has "prue" needs both the fold and the prefix at once.</li>
-     * </ol>
-     */
-    static final String TSQUERY_EXPR = """
-            (websearch_to_tsquery('simple', ?) || websearch_to_tsquery('simple', ?) \
-            || %1$s || %1$s)\
-            """.formatted(prefixTsquerySubexpr());
+    // Moved to FullTextSearch when the worksheet marketplace gained a second search box: the
+    // two must agree about umlauts and half-typed words, and two copies would not have. These
+    // delegates stay because this service's own test pins them down here, where the behaviour
+    // was worked out and where its rationale is documented.
 
-    /**
-     * Builds an all-words-as-prefixes tsquery from arbitrary raw text — safe against tsquery
-     * syntax errors (and SQL injection, since the text only ever flows through as a bind
-     * parameter) because {@code to_tsvector} does the tokenizing: its output lexemes can never
-     * contain tsquery metacharacters ({@code & | ! ( ) :}), so joining them back together with
-     * {@code ':*'} suffixes and re-parsing with {@code to_tsquery} is always well-formed. Falls
-     * back to an empty (never-matching) tsquery for blank input rather than erroring.
-     */
-    private static String prefixTsquerySubexpr() {
-        return """
-                COALESCE(
-                    (SELECT to_tsquery('simple', string_agg(lexeme || ':*', ' & '))
-                       FROM unnest(to_tsvector('simple', ?)) AS u(lexeme, positions, weights)),
-                    ''::tsquery
-                )""";
-    }
+    /** @see FullTextSearch#TSQUERY_EXPR */
+    static final String TSQUERY_EXPR = FullTextSearch.TSQUERY_EXPR;
 
-    /**
-     * Adds the four bind parameters one {@link #TSQUERY_EXPR} occurrence needs, in order.
-     * Package-private (not {@code private}) so {@code SequenceSearchServiceTest} can pin the
-     * exact ordering down — the SQL placeholders are position-based, so a reorder here silently
-     * breaks every query that uses TSQUERY_EXPR without a compiler error to catch it.
-     */
+    /** @see FullTextSearch#addTsqueryParams */
     static void addTsqueryParams(List<Object> params, String query) {
-        String folded = foldGermanUmlauts(query);
-        params.add(query);
-        params.add(folded);
-        params.add(query);
-        params.add(folded);
+        FullTextSearch.addTsqueryParams(params, query);
     }
 
-    /** ä/ö/ü/ß → ae/oe/ue/ss (both cases); every other character is left untouched. */
-    private static final Map<Character, String> UMLAUT_FOLD = Map.of(
-            'ä', "ae", 'ö', "oe", 'ü', "ue",
-            'Ä', "Ae", 'Ö', "Oe", 'Ü', "Ue",
-            'ß', "ss"
-    );
-
-    /** Package-private (not {@code private}) so {@code SequenceSearchServiceTest} can unit-test the mapping directly. */
+    /** @see FullTextSearch#foldGermanUmlauts */
     static String foldGermanUmlauts(String s) {
-        StringBuilder sb = new StringBuilder(s.length());
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            String folded = UMLAUT_FOLD.get(c);
-            sb.append(folded != null ? folded : String.valueOf(c));
-        }
-        return sb.toString();
+        return FullTextSearch.foldGermanUmlauts(s);
     }
 
     // ─────────────────────────────────────────────────────────────────────

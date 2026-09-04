@@ -33,6 +33,18 @@ docker compose down -v && docker compose up -d db
 
 That deletes all local data, so use it on development volumes only.
 
+## The tests run against this directory too
+
+`WorksheetSearchDatabaseTest` and `MarketplaceJourneyDatabaseTest` start a Postgres container
+from these exact scripts, so the schema they test is the schema that ships. A migration that
+breaks a fresh bootstrap therefore breaks those tests rather than only breaking the next person
+to clone the repository.
+
+**But only locally.** Both classes are skipped where there is no Docker daemon, and the shared
+CI runner is unprivileged, so a `docker:dind` service cannot start there. A green pipeline
+consequently says nothing about whether these scripts still bootstrap. Run `mvn test` with
+Docker up after changing anything in this directory, and do not take CI's word for it.
+
 ## Writing a migration
 
 Make it re-runnable. `ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`, and a
