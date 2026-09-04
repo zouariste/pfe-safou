@@ -161,25 +161,104 @@ public class ClassService {
 
     // ── Student Management ────────────────────────────────────
 
+    /** One row of a class list, before it has been checked. */
+    public record NewStudent(String firstName, String lastName) {}
+
+    /**
+     * users.first_name and last_name are varchar(100); refusing here turns what
+     * would be a 500 from Postgres into a message naming the offending row.
+     */
+    private static final int MAX_NAME_LENGTH = 100;
+
+    /**
+     * Every row becomes an account, and there is no one-click way back. A file
+     * chosen by mistake should be refused rather than acted on; the CSV importer
+     * in the frontend applies the same bound before anything is sent.
+     */
+    private static final int MAX_BULK_STUDENTS = 200;
+
     /**
      * Creates a new student user and adds them to the class.
      * Returns the student with their invite token.
      */
     @Transactional
     public ClassDTO.StudentInfo createStudent(UUID classId, String firstName, String lastName) {
-        ClassDTO classDTO = classRepository.findById(classId)
-                .orElseThrow(() -> new DomainValidationException("Klasse nicht gefunden."));
+        requireOwnedClass(classId);
+        return createStudent(classId, checked(new NewStudent(firstName, lastName)));
+    }
 
-        ownershipService.checkOwnership(classDTO.getOwnerId(), "class");
+    /**
+     * Creates a whole class list at once, as read from a teacher's CSV.
+     *
+     * All or nothing: every row is checked before any account exists, and the
+     * transaction rolls the rest back if a later one fails. A half-imported
+     * class, with no way to tell which half took, is worse than none.
+     *
+     * Names are not treated as unique. Two students really can share one, and
+     * refusing the second would be wrong more often than it would be right.
+     *
+     * @return the created students, each with the invite token to send them
+     */
+    @Transactional
+    public List<ClassDTO.StudentInfo> createStudents(UUID classId, List<NewStudent> students) {
+        requireOwnedClass(classId);
 
-        if (firstName == null || firstName.isBlank() || lastName == null || lastName.isBlank()) {
-            throw new DomainValidationException("Vor- und Nachname des Schülers sind erforderlich.");
+        if (students == null || students.isEmpty()) {
+            throw new DomainValidationException("Es wurden keine Schüler übergeben.");
+        }
+        if (students.size() > MAX_BULK_STUDENTS) {
+            throw new DomainValidationException(
+                    "Höchstens " + MAX_BULK_STUDENTS + " Schüler pro Import (" + students.size() + " übergeben).");
         }
 
+        List<NewStudent> rows = new ArrayList<>(students.size());
+        for (int i = 0; i < students.size(); i++) {
+            try {
+                rows.add(checked(students.get(i)));
+            } catch (DomainValidationException e) {
+                // The row number is what makes the message actionable.
+                throw new DomainValidationException("Zeile " + (i + 1) + ": " + e.getMessage());
+            }
+        }
+
+        List<ClassDTO.StudentInfo> created = new ArrayList<>(rows.size());
+        for (NewStudent row : rows) {
+            created.add(createStudent(classId, row));
+        }
+
+        log.info("Created {} students in class {}", created.size(), classId);
+        return created;
+    }
+
+    /** Loads the class and refuses anyone who is neither its owner nor an admin. */
+    private ClassDTO requireOwnedClass(UUID classId) {
+        ClassDTO classDTO = classRepository.findById(classId)
+                .orElseThrow(() -> new DomainValidationException("Klasse nicht gefunden."));
+        ownershipService.checkOwnership(classDTO.getOwnerId(), "class");
+        return classDTO;
+    }
+
+    /** Trims a row and rejects it if it could not become an account. */
+    private static NewStudent checked(NewStudent student) {
+        String firstName = student.firstName() != null ? student.firstName().trim() : "";
+        String lastName = student.lastName() != null ? student.lastName().trim() : "";
+
+        if (firstName.isEmpty() || lastName.isEmpty()) {
+            throw new DomainValidationException("Vor- und Nachname des Schülers sind erforderlich.");
+        }
+        if (firstName.length() > MAX_NAME_LENGTH || lastName.length() > MAX_NAME_LENGTH) {
+            throw new DomainValidationException(
+                    "Vor- und Nachname dürfen höchstens " + MAX_NAME_LENGTH + " Zeichen lang sein.");
+        }
+        return new NewStudent(firstName, lastName);
+    }
+
+    /** Creates one already-checked student in an already-authorised class. */
+    private ClassDTO.StudentInfo createStudent(UUID classId, NewStudent row) {
         // Create student user (no email/password yet — Anton-Prinzip)
         UserDTO student = UserDTO.builder()
-                .firstName(firstName.trim())
-                .lastName(lastName.trim())
+                .firstName(row.firstName())
+                .lastName(row.lastName())
                 .role(UserDTO.UserRole.STUDENT)
                 .verified(false)
                 .active(true)
@@ -192,7 +271,7 @@ public class ClassService {
         // Add to class
         classRepository.addStudent(classId, student.getUserId());
 
-        log.info("Created student {} {} in class {}", firstName, lastName, classId);
+        log.info("Created student {} {} in class {}", row.firstName(), row.lastName(), classId);
 
         return ClassDTO.StudentInfo.builder()
                 .userId(student.getUserId())

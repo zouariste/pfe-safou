@@ -18,6 +18,7 @@
  */
 package de.uni_passau.fim.se2.api;
 
+import de.uni_passau.fim.se2.api.dto.BulkCreateStudentsRequest;
 import de.uni_passau.fim.se2.api.dto.CreateClassRequest;
 import de.uni_passau.fim.se2.api.dto.CreateStudentRequest;
 import de.uni_passau.fim.se2.application.service.ClassService;
@@ -113,6 +114,29 @@ public class ClassController {
         ClassDTO.StudentInfo student = classService.createStudent(
                 id, request.getFirstName(), request.getLastName());
         return ResponseEntity.ok(student);
+    }
+
+    /**
+     * Adds a whole class list at once, as read from a teacher's CSV.
+     *
+     * All or nothing: a single unusable row rejects the request naming that row,
+     * rather than leaving the teacher with a half-imported class.
+     *
+     * @param id      the UUID of the class
+     * @param request the request body containing one first/last name pair per student
+     * @return the created students, each with the invite token to send them
+     */
+    @PostMapping("/{id}/students/bulk")
+    public ResponseEntity<List<ClassDTO.StudentInfo>> createStudents(
+            @PathVariable UUID id,
+            @RequestBody BulkCreateStudentsRequest request) {
+        // No @Valid: the service does the checking, so a bad row comes back as
+        // a 400 naming it rather than as the catch-all's generic 500.
+        List<ClassService.NewStudent> rows = request.getStudents() == null ? List.of()
+                : request.getStudents().stream()
+                        .map(s -> new ClassService.NewStudent(s.getFirstName(), s.getLastName()))
+                        .toList();
+        return ResponseEntity.ok(classService.createStudents(id, rows));
     }
 
     /**
