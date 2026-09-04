@@ -23,8 +23,11 @@ import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
+import de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy;
+import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,6 +73,19 @@ public class WorksheetService {
         WorksheetDTO worksheet = WorksheetDTO.builder().id(id).build();
         worksheetRepo.getWorksheetById(worksheet);
         return worksheet;
+    }
+
+    /**
+     * A worksheet, if it exists.
+     *
+     * <p>Preferred over {@link #loadWorksheetById(UUID)} wherever the answer might legitimately
+     * be "there is none". That method throws, which turns a missing worksheet into a 400 saying
+     * so — and an endpoint that answers 404 for a worksheet the caller may not see then tells
+     * that caller which ids are real. An empty result lets both cases answer alike.
+     */
+    @Transactional(readOnly = true)
+    public Optional<WorksheetDTO> findWorksheetById(UUID id) {
+        return worksheetRepo.findById(id);
     }
 
     @Transactional(readOnly = true)
@@ -175,6 +191,59 @@ public class WorksheetService {
     @Transactional
     public WorksheetDTO copyWorksheet(UUID sourceWorksheetId, UUID newOwnerId) {
         return cloneService.copy(sourceWorksheetId, newOwnerId);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Visibility
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Publishes or unpublishes a worksheet.
+     *
+     * <p>The decision itself lives in {@link WorksheetAccessPolicy}; this method's job is to
+     * gather the facts the policy needs — who owns the worksheet, and whether it is the Library
+     * Inbox, which is knowledge about a sentinel in the description and therefore not something
+     * the domain should have to carry.
+     *
+     * @param worksheetId the worksheet to change
+     * @param visibility  the visibility to set
+     * @param actorId     who is asking, or {@code null} when anonymous
+     * @param actorRole   their role, or {@code null} when anonymous
+     * @return the worksheet as it now stands
+     * @throws AccessDeniedException     if the actor may not change this worksheet's visibility
+     * @throws DomainValidationException if the id is null or no such worksheet exists
+     */
+    @Transactional
+    public WorksheetDTO setVisibility(UUID worksheetId, WorksheetVisibility visibility,
+                                      UUID actorId, UserDTO.UserRole actorRole) {
+        if (visibility == null) {
+            throw new DomainValidationException("Visibility must not be null.");
+        }
+
+        WorksheetDTO worksheet = loadWorksheetById(worksheetId);
+
+        if (!WorksheetAccessPolicy.canChangeVisibility(
+                worksheet.getOwnerId(), actorId, actorRole, isLibraryInbox(worksheet))) {
+            throw new AccessDeniedException(
+                    "You do not have permission to change this worksheet's visibility");
+        }
+
+        worksheetRepo.updateVisibility(worksheetId, visibility);
+        worksheet.setVisibility(visibility);
+        return worksheet;
+    }
+
+    /**
+     * Whether this is the auto-created Library Inbox.
+     *
+     * <p>Identified by the sentinel in the description, the same way
+     * {@link #getOrCreateDefaultWorksheet(UUID)} finds it — so renaming the worksheet does not
+     * turn it into an ordinary one.
+     */
+    public static boolean isLibraryInbox(WorksheetDTO worksheet) {
+        return worksheet != null
+                && worksheet.getDescription() != null
+                && worksheet.getDescription().contains(LIBRARY_INBOX_SENTINEL);
     }
 
     private void validateWorksheetForCreate(WorksheetDTO worksheet) {

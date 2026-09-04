@@ -357,6 +357,24 @@
     "copying": "Copying...",
     "assign": "Assign",
     "shareWorksheet": "Share worksheet",
+    "notAvailable": "This worksheet does not exist, or it is not shared with you.",
+    "visibility": {
+      "legend": "Visibility",
+      "saving": "Saving …",
+      "error": "The visibility could not be changed. Please try again.",
+      "PRIVATE": {
+        "label": "Only me",
+        "hint": "Nobody else can open this worksheet, not even with a link."
+      },
+      "UNLISTED": {
+        "label": "Anyone with the link",
+        "hint": "Whoever has the link can open it. It appears in no search. This is how worksheets behaved until now."
+      },
+      "PUBLIC": {
+        "label": "In the marketplace",
+        "hint": "Other teachers can find it by searching and copy it into their own space."
+      }
+    },
     "copied": "Copied!",
     "addSequence": "Add sequence",
     "sequenceLabel": "Sequence {{index}}",

@@ -27,6 +27,7 @@ import de.uni_passau.fim.se2.domain.interfaces.SequenceTagRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
 import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
+import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -44,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -164,6 +166,27 @@ class WorksheetCloneServiceTest {
     }
 
     @Test
+    @DisplayName("a copy starts private, whatever the source was")
+    void copyStartsPrivate() {
+        service.copy(SOURCE_WORKSHEET, COPIER);
+
+        assertEquals(WorksheetVisibility.PRIVATE, savedWorksheet().getVisibility(),
+                "a half-adapted copy must not inherit its source's place in the marketplace");
+    }
+
+    @Test
+    @DisplayName("both the worksheet and its sequences record where they came from")
+    void copyRecordsProvenance() {
+        service.copy(SOURCE_WORKSHEET, COPIER);
+
+        assertAll(
+                () -> assertEquals(SOURCE_WORKSHEET, savedWorksheet().getCopiedFrom()),
+                () -> assertNotNull(savedWorksheet().getCopiedAt()),
+                () -> assertEquals(SOURCE_SEQUENCE, savedSequence().getCopiedFrom(),
+                        "the library search needs this to tell a clone from an original"));
+    }
+
+    @Test
     @DisplayName("the copied task hangs off the copied sequence, not the original")
     void copiedTaskPointsAtTheCopiedSequence() {
         service.copy(SOURCE_WORKSHEET, COPIER);
@@ -214,7 +237,11 @@ class WorksheetCloneServiceTest {
         Set<String> deliberatelyReset = Set.of(
                 "id",             // a copy is a new row
                 "ownerId",        // the copy belongs to whoever made it
-                "sequenceDTOS");  // refilled with copied sequences, not the source's
+                "sequenceDTOS",   // refilled with copied sequences, not the source's
+                "visibility",     // always PRIVATE; publishing a copy is a separate decision
+                "createdAt",      // stamped by the database
+                "copiedFrom",     // set to the source, not inherited from it
+                "copiedAt");      // when this copy was made
 
         Set<String> declared = java.util.Arrays.stream(WorksheetDTO.class.getDeclaredFields())
                 .filter(f -> !f.isSynthetic())

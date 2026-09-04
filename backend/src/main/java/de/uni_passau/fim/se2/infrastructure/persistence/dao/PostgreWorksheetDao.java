@@ -27,12 +27,16 @@ import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
 import lombok.extern.slf4j.*;
 import org.springframework.dao.*;
+import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
+import java.sql.Timestamp;
+import java.time.Instant;
 import org.springframework.jdbc.core.*;
 import org.springframework.stereotype.*;
 
 import java.sql.Array;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.Optional;
 
 /**
  * PostgreSQL-based implementation of the {@link WorksheetRepository}.
@@ -56,10 +60,12 @@ public class PostgreWorksheetDao implements WorksheetRepository {
     public void createWorksheet(WorksheetDTO worksheet) {
         validateCreate(worksheet);
 
+        // created_at is left to the column default: the database is the authority on when a row
+        // came into existence, and a client clock has no business deciding marketplace ordering.
         String sql = """
                 INSERT INTO worksheets (id, name, description, owner_id, hints_enabled,
-                                        hint_credits_per_task)
-                VALUES (?, ?, ?, ?, ?, ?)
+                                        hint_credits_per_task, visibility, copied_from, copied_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         UUID id = UUID.randomUUID();
@@ -70,7 +76,10 @@ public class PostgreWorksheetDao implements WorksheetRepository {
                     worksheet.getDescription(),
                     worksheet.getOwnerId(),
                     worksheet.isHintsEnabled(),
-                    worksheet.getHintCreditsPerTask()
+                    worksheet.getHintCreditsPerTask(),
+                    visibilityOf(worksheet).name(),
+                    worksheet.getCopiedFrom(),
+                    toTimestamp(worksheet.getCopiedAt())
         );
 
         worksheet.setId(id);
@@ -118,9 +127,61 @@ public class PostgreWorksheetDao implements WorksheetRepository {
     }
 
     /**
-     * Loads a worksheet including the identifiers of all associated tiered task sequences.
-     * This method retrieves worksheet metadata and the sequence relationships from
-     * the {@code worksheet_sequence} join table. It does not load task details.
+     * One worksheet with the ids of the sequences on it.
+     *
+     * <p>Shared by both read paths below so there is one query and one mapper rather than two
+     * that have to be kept in step — the columns here have already been widened twice.
+     */
+    private static final String SELECT_ONE = """
+        SELECT
+            w.id,
+            w.name,
+            w.description,
+            w.owner_id,
+            w.hints_enabled,
+            w.hint_credits_per_task,
+            w.visibility,
+            w.created_at,
+            w.copied_from,
+            w.copied_at,
+            COALESCE(array_agg(ws.sequence_id ORDER BY ws.sequence_id), '{}') AS sequence_ids
+        FROM worksheets w
+        LEFT JOIN worksheets_sequence ws ON ws.worksheet_id = w.id
+        WHERE w.id = ?
+        GROUP BY w.id, w.name, w.description, w.owner_id, w.hints_enabled,
+                 w.hint_credits_per_task, w.visibility, w.created_at, w.copied_from, w.copied_at
+        """;
+
+    private static final RowMapper<WorksheetDTO> WORKSHEET_MAPPER = (rs, rowNum) ->
+            WorksheetDTO.builder()
+                .id(UUID.fromString(rs.getString("id")))
+                .name(rs.getString("name"))
+                .description(rs.getString("description"))
+                .ownerId(rs.getObject("owner_id", UUID.class))
+                .hintsEnabled(rs.getBoolean("hints_enabled"))
+                .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
+                .visibility(WorksheetVisibility.parse(rs.getString("visibility")))
+                .createdAt(toInstant(rs.getTimestamp("created_at")))
+                .copiedFrom(rs.getObject("copied_from", UUID.class))
+                .copiedAt(toInstant(rs.getTimestamp("copied_at")))
+                    .sequenceDTOS(sequenceReferences(rs.getArray("sequence_ids")))
+                    .build();
+
+    @Override
+    public Optional<WorksheetDTO> findById(UUID worksheetId) {
+        if (worksheetId == null) {
+            return Optional.empty();
+        }
+        List<WorksheetDTO> rows = jdbc.query(SELECT_ONE, WORKSHEET_MAPPER, worksheetId);
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
+    /**
+     * Loads a worksheet including the identifiers of all associated tiered task sequences,
+     * into the DTO it is handed.
+     *
+     * <p>Kept for the callers that rely on it throwing when the worksheet does not exist. New
+     * code should prefer {@link #findById(UUID)}, which says so without an exception.
      *
      * @param worksheet the {@link WorksheetDTO} instance to populate with data
      *                  corresponding to its unique identifier.
@@ -129,54 +190,22 @@ public class PostgreWorksheetDao implements WorksheetRepository {
     public void getWorksheetById(WorksheetDTO worksheet) {
         validateId(worksheet);
 
-        String sql = """
-        SELECT
-            w.id,
-            w.name,
-            w.description,
-            w.owner_id,
-            w.hints_enabled,
-            w.hint_credits_per_task,
-            COALESCE(array_agg(ws.sequence_id ORDER BY ws.sequence_id), '{}') AS sequence_ids
-        FROM worksheets w
-        LEFT JOIN worksheets_sequence ws ON ws.worksheet_id = w.id
-        WHERE w.id = ?
-        GROUP BY w.id, w.name, w.description, w.owner_id, w.hints_enabled,
-                 w.hint_credits_per_task
-        """;
+        WorksheetDTO result = findById(worksheet.getId()).orElseThrow(() ->
+                new DomainValidationException("Worksheet not found for id=" + worksheet.getId()));
 
-        try {
-            WorksheetDTO result = jdbc.queryForObject(
-                    sql,
-                    (rs, rowNum) -> WorksheetDTO.builder()
-                            .id(UUID.fromString(rs.getString("id")))
-                            .name(rs.getString("name"))
-                            .description(rs.getString("description"))
-                            .ownerId(rs.getObject("owner_id", UUID.class))
-                            .hintsEnabled(rs.getBoolean("hints_enabled"))
-                            .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
-                            .sequenceDTOS(sequenceReferences(rs.getArray("sequence_ids")))
-                            .build(),
-                    worksheet.getId()
-            );
+        worksheet.setName(result.getName());
+        worksheet.setDescription(result.getDescription());
+        worksheet.setOwnerId(result.getOwnerId());
+        worksheet.setHintsEnabled(result.isHintsEnabled());
+        worksheet.setHintCreditsPerTask(result.getHintCreditsPerTask());
+        worksheet.setVisibility(result.getVisibility());
+        worksheet.setCreatedAt(result.getCreatedAt());
+        worksheet.setCopiedFrom(result.getCopiedFrom());
+        worksheet.setCopiedAt(result.getCopiedAt());
+        worksheet.setSequenceDTOS(result.getSequenceDTOS());
 
-            if (result == null) {
-                throw new DomainValidationException("Worksheet not found for id=" + worksheet.getId());
-            }
-
-            worksheet.setName(result.getName());
-            worksheet.setDescription(result.getDescription());
-            worksheet.setOwnerId(result.getOwnerId());
-            worksheet.setHintsEnabled(result.isHintsEnabled());
-            worksheet.setHintCreditsPerTask(result.getHintCreditsPerTask());
-            worksheet.setSequenceDTOS(result.getSequenceDTOS());
-
-            log.debug("Loaded worksheet id={} with {} sequence references",
-                      worksheet.getId(), result.getSequenceDTOS().size());
-
-        } catch (EmptyResultDataAccessException e) {
-            throw new DomainValidationException("Worksheet not found for id=" + worksheet.getId());
-        }
+        log.debug("Loaded worksheet id={} with {} sequence references",
+                  worksheet.getId(), result.getSequenceDTOS().size());
     }
 
     /**
@@ -316,12 +345,14 @@ public class PostgreWorksheetDao implements WorksheetRepository {
         String sql = """
             SELECT w.id, w.name, w.description, w.owner_id,
                    w.hints_enabled, w.hint_credits_per_task,
+                   w.visibility, w.created_at, w.copied_from, w.copied_at,
                    COALESCE(array_agg(ws.sequence_id ORDER BY ws.sequence_id), '{}') AS sequence_ids
             FROM worksheets w
             LEFT JOIN worksheets_sequence ws ON ws.worksheet_id = w.id
             WHERE w.owner_id = ?
             GROUP BY w.id, w.name, w.description, w.owner_id, w.hints_enabled,
-                     w.hint_credits_per_task
+                     w.hint_credits_per_task, w.visibility, w.created_at,
+                     w.copied_from, w.copied_at
             ORDER BY w.name
             """;
 
@@ -333,7 +364,45 @@ public class PostgreWorksheetDao implements WorksheetRepository {
                 .hintsEnabled(rs.getBoolean("hints_enabled"))
                 .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
                 .sequenceDTOS(sequenceReferences(rs.getArray("sequence_ids")))
+                .visibility(WorksheetVisibility.parse(rs.getString("visibility")))
+                .createdAt(toInstant(rs.getTimestamp("created_at")))
+                .copiedFrom(rs.getObject("copied_from", UUID.class))
+                .copiedAt(toInstant(rs.getTimestamp("copied_at")))
                 .build(), ownerId);
+    }
+
+    @Override
+    public void updateVisibility(UUID worksheetId, WorksheetVisibility visibility) {
+        if (worksheetId == null) {
+            throw new DomainValidationException("Worksheet ID cannot be null");
+        }
+        WorksheetVisibility target = visibility == null ? WorksheetVisibility.DEFAULT : visibility;
+
+        // The enum's name() is bound as a parameter and the column carries a CHECK constraint,
+        // so an unknown value cannot reach the table even if a caller invents one.
+        int rows = jdbc.update("UPDATE worksheets SET visibility = ? WHERE id = ?",
+                               target.name(), worksheetId);
+        if (rows == 0) {
+            throw new DomainValidationException("Worksheet not found for id=" + worksheetId);
+        }
+        log.info("Worksheet {} visibility set to {}", worksheetId, target);
+    }
+
+    /** {@code timestamptz} to {@link Instant}; null stays null. */
+    private static Instant toInstant(Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toInstant();
+    }
+
+    /** {@link Instant} back to a bindable {@code timestamptz}; null stays null. */
+    private static Timestamp toTimestamp(Instant instant) {
+        return instant == null ? null : Timestamp.from(instant);
+    }
+
+    /** A worksheet built before the field existed carries none; it gets today's behaviour. */
+    private static WorksheetVisibility visibilityOf(WorksheetDTO worksheet) {
+        return worksheet.getVisibility() == null
+                ? WorksheetVisibility.DEFAULT
+                : worksheet.getVisibility();
     }
 
     /**

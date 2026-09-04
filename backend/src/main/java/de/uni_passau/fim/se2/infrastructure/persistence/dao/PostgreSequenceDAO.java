@@ -54,7 +54,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
         String sql = """
                          SELECT id, programming_language, code_snippet, created_at, task_description,
                                 version_id, strategyname, owner_id, target_language, constraint_config, tier_count,
-                                curriculum_topic_id
+                                curriculum_topic_id, copied_from
                          FROM tiered_task_sequences
                          WHERE id = ?
                      """;
@@ -72,6 +72,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                 target.setConstraints(db.getConstraints());
                 target.setTierCount(db.getTierCount());
                 target.setCurriculumTopicId(db.getCurriculumTopicId());
+                target.setCopiedFrom(db.getCopiedFrom());
                 target.setConcepts(loadConceptNames(target.getId()));
             }
         } catch (EmptyResultDataAccessException e) {
@@ -130,8 +131,8 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
         // created_at lassen wir von der DB setzen (DEFAULT)
         String sql = """
                          INSERT INTO tiered_task_sequences
-                             (id, programming_language, code_snippet, task_description, version_id, strategyname, owner_id, target_language, constraint_config, tier_count, curriculum_topic_id)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             (id, programming_language, code_snippet, task_description, version_id, strategyname, owner_id, target_language, constraint_config, tier_count, curriculum_topic_id, copied_from)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                      """;
         jdbc.update(sql,
                     id,
@@ -144,7 +145,8 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                     sequence.getTargetLanguage(),
                     toJsonb(sequence.getConstraints()),
                     sequence.getTierCount(),
-                    sequence.getCurriculumTopicId()
+                    sequence.getCurriculumTopicId(),
+                    sequence.getCopiedFrom()
         );
     }
 

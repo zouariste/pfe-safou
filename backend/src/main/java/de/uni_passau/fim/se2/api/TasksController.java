@@ -40,6 +40,8 @@ import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
 import de.uni_passau.fim.se2.domain.interfaces.TaskOriginalRepository;
 import lombok.Getter;
+import de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy;
+import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.springframework.http.HttpStatus;
@@ -280,14 +282,50 @@ public class TasksController {
     }
 
     /**
-     * Get a worksheet by ID. Public endpoint (anyone can view via link).
+     * Get a worksheet by ID.
+     *
+     * <p>Still reachable without logging in — that is how a student opens a worksheet from a
+     * link their teacher sent — but no longer unconditionally. A PRIVATE worksheet answers 404
+     * rather than 403, so the endpoint does not confirm that an id someone guessed exists.
      */
     @GetMapping("/worksheets/{sheetId}")
     public ResponseEntity<WorksheetDTO> getWorksheetById(@PathVariable UUID sheetId) {
         WorksheetDTO worksheet = worksheetService.loadWorksheetById(sheetId);
         if (worksheet == null) return ResponseEntity.notFound().build();
+
+        if (!WorksheetAccessPolicy.canView(worksheet.getVisibility(), worksheet.getOwnerId(),
+                ownershipService.getCurrentUserId(), ownershipService.getCurrentUserRole())) {
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.ok(worksheet);
     }
+
+    /**
+     * Publish a worksheet to the marketplace, or take it back out.
+     * Allowed: Owner, Admin — except for the Library Inbox, which is a scratch pile.
+     */
+    @PutMapping("/worksheets/{sheetId}/visibility")
+    public ResponseEntity<WorksheetDTO> setWorksheetVisibility(
+            @PathVariable UUID sheetId,
+            @RequestBody VisibilityRequest request) {
+
+        WorksheetVisibility visibility;
+        try {
+            visibility = WorksheetVisibility.parse(request == null ? null : request.visibility());
+        } catch (IllegalArgumentException e) {
+            // An unknown value is a client bug, not a server one, and must not be rounded down
+            // to something permissive.
+            return ResponseEntity.badRequest().build();
+        }
+
+        WorksheetDTO updated = worksheetService.setVisibility(
+                sheetId, visibility,
+                ownershipService.getCurrentUserId(), ownershipService.getCurrentUserRole());
+        return ResponseEntity.ok(updated);
+    }
+
+    /** Body of {@code PUT /worksheets/{id}/visibility}: {@code {"visibility": "PUBLIC"}}. */
+    public record VisibilityRequest(String visibility) {}
 
     /**
      * Create a new worksheet.
@@ -391,8 +429,8 @@ public class TasksController {
 
     /**
      * Deep-copy a worksheet (with all sequences and tasks).
-     * The copy belongs to the current authenticated user.
-     * Allowed: TEACHER, ADMIN
+     * The copy belongs to the current authenticated user and starts out PRIVATE.
+     * Allowed: TEACHER, ADMIN, on a worksheet they are allowed to see
      * Denied: Students, Anonymous
      */
     @PostMapping("/worksheets/{sheetId}/copy")
@@ -402,6 +440,15 @@ public class TasksController {
         UUID currentUserId = ownershipService.getCurrentUserId();
         if (currentUserId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // Until now this endpoint checked only that the caller was a teacher, never anything
+        // about the source. That was harmless while every worksheet was readable by link; with
+        // PRIVATE in existence it would have been a way to read one by copying it.
+        WorksheetDTO source = worksheetService.loadWorksheetById(sheetId);
+        if (!WorksheetAccessPolicy.canCopy(source.getVisibility(), source.getOwnerId(),
+                currentUserId, ownershipService.getCurrentUserRole())) {
+            return ResponseEntity.notFound().build();
         }
 
         WorksheetDTO copy = worksheetService.copyWorksheet(sheetId, currentUserId);

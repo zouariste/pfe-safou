@@ -28,6 +28,23 @@ export function apiErrorMessage(err: unknown, fallback = "Unexpected error"): st
     return axiosError?.message || fallback;
 }
 
+/**
+ * Whether a failed request came back as 404.
+ *
+ * <p>Worth asking about separately, because a 404 from this API carries no body: the worksheet
+ * endpoints answer it both for "no such worksheet" and for "not yours to see", deliberately
+ * identical so nobody can tell which. With nothing in the body, {@link apiErrorMessage} falls
+ * through to axios's own "Request failed with status code 404" — an English string in front of
+ * a German-speaking teacher whose only mistake was opening a link to something that has since
+ * been made private.
+ *
+ * <p>So pages that can meet a 404 check for it and say something true instead.
+ */
+export function isNotFound(err: unknown): boolean {
+    const axiosError = err as { response?: { status?: number } } | undefined;
+    return axiosError?.response?.status === 404;
+}
+
 export const api = axios.create({
     baseURL,
     timeout: 120000,

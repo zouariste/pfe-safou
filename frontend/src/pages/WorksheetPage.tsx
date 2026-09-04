@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, apiErrorMessage } from "../lib/api.ts";
-import type { Worksheet, ClassInfo, LibraryItem, LibrarySearchResponse } from "../types/models.ts";
+import { api, apiErrorMessage, isNotFound } from "../lib/api.ts";
+import type { Worksheet, ClassInfo, LibraryItem, LibrarySearchResponse, WorksheetVisibility } from "../types/models.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useHomePath } from "../hooks/useHomePath.ts";
 import { ListGroup } from "react-bootstrap";
@@ -10,6 +10,8 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import { useAuth } from "../context/AuthContext.tsx";
 import { renderHighlight } from "../lib/highlight.ts";
 import { prepareSequenceOptions, sequenceOptionTitle } from "../lib/sequencePicker.ts";
+import VisibilityToggle from "../components/VisibilityToggle.tsx";
+import { canOfferVisibilityControl, effectiveVisibility } from "../lib/worksheetVisibility.ts";
 import type { ExportableWorksheet, ExportableSequence } from "../lib/export.ts";
 import {
     exportWorksheetJSON,
@@ -67,6 +69,20 @@ export default function WorksheetPage() {
 
     // Copy worksheet state
     const [copying, setCopying] = useState(false);
+
+    // The visibility control is offered to owners and admins, but never for the Library Inbox:
+    // the backend refuses to publish it, and a button that always fails is worse than none.
+    const canSetVisibility = canOfferVisibilityControl(worksheet, !!isOwnerOrAdmin);
+
+    async function handleVisibilityChange(next: WorksheetVisibility) {
+        if (!sheetId) return;
+        // Deliberately not caught here: VisibilityToggle reverts its own selection on a
+        // rejected promise, which is the only place that knows what to revert to.
+        const { data } = await api.put<Worksheet>(`/worksheets/${sheetId}/visibility`, {
+            visibility: next,
+        });
+        setWorksheet(data);
+    }
 
     // Assign to class state
     const [showAssignModal, setShowAssignModal] = useState(false);
@@ -396,9 +412,14 @@ export default function WorksheetPage() {
     useEffect(() => {
         api.get(`/worksheets/${sheetId}`)
             .then(({ data }) => setWorksheet(data))
-            .catch((err) => setError(apiErrorMessage(err)))
+            .catch((err) =>
+                // A 404 here means the worksheet is gone or is not shared with this visitor,
+                // and the endpoint deliberately does not say which. It also carries no body, so
+                // without this the page would show axios's English "Request failed with status
+                // code 404" to someone who just opened a link.
+                setError(isNotFound(err) ? t("worksheet.notAvailable") : apiErrorMessage(err)))
             .finally(() => setLoading(false));
-    }, [sheetId]);
+    }, [sheetId, t]);
 
     if (loading) return <div className="container py-4">{t("common.loading")}</div>;
     if (error) return <div className="container py-4 text-danger">{error}</div>;
@@ -612,6 +633,13 @@ export default function WorksheetPage() {
                     </button>
                 )}
             </div>
+
+            {canSetVisibility && (
+                <VisibilityToggle
+                    value={effectiveVisibility(worksheet)}
+                    onChange={handleVisibilityChange}
+                />
+            )}
 
             <h3 className="mt-4">{t("worksheet.sequences")}</h3>
             <div className="d-flex justify-content-end align-items-center gap-2 mb-3">
