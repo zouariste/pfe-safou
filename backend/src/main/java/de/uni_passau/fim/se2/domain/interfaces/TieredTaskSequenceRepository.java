@@ -102,6 +102,18 @@ public interface TieredTaskSequenceRepository {
      */
     void replaceConcepts(UUID sequenceId, List<UUID> conceptIds);
 
+    /**
+     * The concept IDs currently linked to a sequence.
+     *
+     * <p>The read counterpart to {@link #linkConceptsBatch(UUID, List)}. Copying a sequence
+     * needs it: without the links the copy loses its structural concepts, and with them the
+     * copy's tags can be reproduced without paying for another LLM pass.
+     *
+     * @param sequenceId the sequence to read links for
+     * @return the linked concept IDs, empty when there are none or the sequence is unknown
+     */
+    List<UUID> findConceptIdsBySequenceId(UUID sequenceId);
+
     void tagSequence(UUID sequenceId, UUID evalInputId, String mode, UUID runId);
 
     /**
@@ -120,6 +132,23 @@ public interface TieredTaskSequenceRepository {
      * No-op if the sequence doesn't exist.
      */
     void updateSemanticSummary(UUID sequenceId, String summary);
+
+    /**
+     * Reads the semantic_summary column.
+     *
+     * <p>The symmetric partner of {@link #updateSemanticSummary(UUID, String)}, added so a
+     * copied sequence can inherit its source's summary instead of waiting on a fresh LLM call
+     * that costs money and would drift from the original wording.
+     *
+     * <p>Deliberately a repository method rather than a field on
+     * {@link TieredTaskSequenceDTO}: the summary is not part of what the rest of the
+     * application loads and passes around, and widening the main read path for one copy
+     * operation would touch every caller of {@code loadById}.
+     *
+     * @param sequenceId the sequence to read
+     * @return the summary, or {@code null} when there is none or the sequence is unknown
+     */
+    String findSemanticSummary(UUID sequenceId);
 
     /**
      * AP19 Teil A: Loads the minimal payload needed to republish a

@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 @Setter
 @ToString
 @EqualsAndHashCode(of = "id")
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class TieredTaskSequenceDTO {
@@ -163,5 +163,39 @@ public class TieredTaskSequenceDTO {
     @JsonIgnore
     public boolean isComplete() {
         return tasks != null && !tasks.isEmpty() && tasks.stream().allMatch(Objects::nonNull);
+    }
+
+    /**
+     * A detached copy of this sequence, belonging to a different owner.
+     *
+     * <p>Built from {@code toBuilder()} for the same reason as {@link TaskDTO#copyFor(UUID)}:
+     * a field added later travels with the copy without anyone having to remember it. Naming
+     * fields by hand is how {@code tierCount}, {@code targetLanguage}, {@code constraints} and
+     * {@code curriculumTopicId} were lost by the worksheet copy — and silently, because the
+     * {@code @Builder.Default} values stepped in and made a five-tier sequence look like a
+     * perfectly ordinary three-tier one.
+     *
+     * <p>Reset here is only what must not be shared:
+     * <ul>
+     *   <li>{@code id} — a copy is a new row</li>
+     *   <li>{@code ownerId} — the copy belongs to whoever made it</li>
+     *   <li>{@code createdAt} — the copy is new; the database stamps it</li>
+     *   <li>{@code tasks} — emptied, because the caller refills it with task copies rather
+     *       than letting both sequences point at the same task objects</li>
+     * </ul>
+     *
+     * <p>{@code concepts} is defensively copied for the same aliasing reason.
+     *
+     * @param newOwnerId the user the copy belongs to
+     * @return a new sequence with no tasks, ready to be persisted and refilled
+     */
+    public TieredTaskSequenceDTO copyFor(UUID newOwnerId) {
+        return toBuilder()
+                .id(null)
+                .ownerId(newOwnerId)
+                .createdAt(null)
+                .tasks(new ArrayList<>())
+                .concepts(concepts == null ? null : new ArrayList<>(concepts))
+                .build();
     }
 }

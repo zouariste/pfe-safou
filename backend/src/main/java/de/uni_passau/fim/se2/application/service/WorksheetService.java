@@ -19,12 +19,9 @@
 package de.uni_passau.fim.se2.application.service;
 
 import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
-import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
 import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,8 +36,7 @@ import java.util.*;
 public class WorksheetService {
 
     private final WorksheetRepository worksheetRepo;
-    private final TieredTaskSequenceRepository sequenceRepo;
-    private final TaskRepository taskRepo;
+    private final WorksheetCloneService cloneService;
 
     @Transactional
     public void createWorksheet(WorksheetDTO worksheet) {
@@ -171,72 +167,14 @@ public class WorksheetService {
     /**
      * Deep-copies a worksheet including all sequences and tasks.
      * The copy gets new UUIDs for everything and the specified newOwnerId.
+     *
+     * <p>Kept as the single entry point callers already know, but the work now lives in
+     * {@link WorksheetCloneService}. It used to be inline here and rebuilt sequences and tasks
+     * field by field, which meant every column added afterwards quietly stopped being copied.
      */
     @Transactional
     public WorksheetDTO copyWorksheet(UUID sourceWorksheetId, UUID newOwnerId) {
-        if (sourceWorksheetId == null) {
-            throw new DomainValidationException("Source worksheet ID must not be null.");
-        }
-        if (newOwnerId == null) {
-            throw new DomainValidationException("New owner ID must not be null.");
-        }
-
-        // 1. Load the source worksheet
-        WorksheetDTO source = loadWorksheetById(sourceWorksheetId);
-        if (source == null) {
-            throw new DomainValidationException("Source worksheet not found: " + sourceWorksheetId);
-        }
-
-        // 2. Create the new worksheet (copy metadata)
-        WorksheetDTO copy = WorksheetDTO.builder()
-                .name(source.getName())
-                .description(source.getDescription())
-                .ownerId(newOwnerId)
-                .build();
-        worksheetRepo.createWorksheet(copy);
-        log.info("Copied worksheet {} -> {} for owner {}", sourceWorksheetId, copy.getId(), newOwnerId);
-
-        // 3. Deep-copy each sequence and its tasks
-        if (source.getSequenceDTOS() != null) {
-            for (TieredTaskSequenceDTO seqRef : source.getSequenceDTOS()) {
-                TieredTaskSequenceDTO sourceSeq = TieredTaskSequenceDTO.builder().id(seqRef.getId()).build();
-                sequenceRepo.loadById(sourceSeq);
-
-                List<TaskDTO> sourceTasks = taskRepo.loadTasksBySequenceId(sourceSeq);
-
-                TieredTaskSequenceDTO seqCopy = TieredTaskSequenceDTO.builder()
-                        .programmingLanguage(sourceSeq.getProgrammingLanguage())
-                        .codeSnippet(sourceSeq.getCodeSnippet())
-                        .taskDescription(sourceSeq.getTaskDescription())
-                        .versionId(sourceSeq.getVersionId())
-                        .strategyName(sourceSeq.getStrategyName())
-                        .ownerId(newOwnerId)
-                        .build();
-                sequenceRepo.save(seqCopy);
-                log.debug("Copied sequence {} -> {}", seqRef.getId(), seqCopy.getId());
-
-                for (TaskDTO sourceTask : sourceTasks) {
-                    TaskDTO taskCopy = TaskDTO.builder()
-                            .statement(sourceTask.getStatement())
-                            .solution(sourceTask.getSolution())
-                            .tierLevel(sourceTask.getTierLevel())
-                            .cyclomaticComplexity(sourceTask.getCyclomaticComplexity())
-                            .linesOfCode(sourceTask.getLinesOfCode())
-                            .maximalNestingDepth(sourceTask.getMaximalNestingDepth())
-                            .methodCallCount(sourceTask.getMethodCallCount())
-                            .distinctIdentifierCount(sourceTask.getDistinctIdentifierCount())
-                            .sequenceId(seqCopy.getId())
-                            .build();
-                    taskRepo.save(taskCopy);
-                }
-
-                worksheetRepo.addSequenceToWorksheet(copy,
-                        TieredTaskSequenceDTO.builder().id(seqCopy.getId()).build());
-            }
-        }
-
-        // 4. Reload and return the complete copy
-        return loadWorksheetById(copy.getId());
+        return cloneService.copy(sourceWorksheetId, newOwnerId);
     }
 
     private void validateWorksheetForCreate(WorksheetDTO worksheet) {
