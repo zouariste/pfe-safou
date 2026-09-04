@@ -187,17 +187,16 @@ public class SequenceSearchService {
         // `-exclude`, and `or` — while still being safe on malformed input (it silently
         // tolerates unbalanced quotes etc).
         //
-        // NOTE: websearch_to_tsquery('simple', ?) is used directly (no CTE) so this
-        // WHERE fragment can be embedded in fetchTotal, fetchFacets, and fetchPage alike
-        // without each caller having to inject a surrounding CTE. Each usage is a bind
-        // parameter — never string-interpolated.
+        // NOTE: TSQUERY_EXPR (no CTE) so this WHERE fragment can be embedded in fetchTotal,
+        // fetchFacets, and fetchPage alike without each caller having to inject a surrounding
+        // CTE. Each usage is a bind parameter — never string-interpolated.
         if (q.q() != null && !q.q().isBlank()) {
-            sb.append(" AND ( s.search_vector @@ websearch_to_tsquery('simple', ?) ")
+            sb.append(" AND ( s.search_vector @@ ").append(TSQUERY_EXPR).append(' ')
               .append("       OR EXISTS (SELECT 1 FROM tasks t ")
               .append("                    WHERE t.sequence_id = s.id ")
-              .append("                      AND t.search_vector @@ websearch_to_tsquery('simple', ?))) ");
-            params.add(q.q().trim());
-            params.add(q.q().trim());
+              .append("                      AND t.search_vector @@ ").append(TSQUERY_EXPR).append(")) ");
+            addTsqueryParams(params, q.q().trim());
+            addTsqueryParams(params, q.q().trim());
         }
 
         return new WhereClause(sb.toString(), params, q, currentUserId);
@@ -267,7 +266,8 @@ public class SequenceSearchService {
                                    LIMIT 1),
                                 ''
                             ),
-                            websearch_to_tsquery('simple', ?),
+                    """).append(TSQUERY_EXPR).append("""
+                            ,
                             ?
                          ) AS highlight
                     """);
@@ -286,8 +286,8 @@ public class SequenceSearchService {
         String sort = q.sort();
         if ("relevance".equals(sort) && hasQuery) {
             sql.append(" ORDER BY ( ")
-               .append("     COALESCE(ts_rank_cd(s.search_vector, websearch_to_tsquery('simple', ?)), 0) ")
-               .append("     + COALESCE((SELECT MAX(ts_rank_cd(t.search_vector, websearch_to_tsquery('simple', ?))) ")
+               .append("     COALESCE(ts_rank_cd(s.search_vector, ").append(TSQUERY_EXPR).append("), 0) ")
+               .append("     + COALESCE((SELECT MAX(ts_rank_cd(t.search_vector, ").append(TSQUERY_EXPR).append(")) ")
                .append("                   FROM tasks t WHERE t.sequence_id = s.id), 0) ")
                .append(" ) DESC NULLS LAST, s.created_at DESC, s.id ");
         } else if ("popularity".equals(sort)) {
@@ -299,23 +299,25 @@ public class SequenceSearchService {
 
         sql.append(" LIMIT ? OFFSET ? ");
 
-        // Parameter assembly must match placeholder order in the generated SQL:
-        //   1. (optional) currentUserId       — alreadyInMyWorksheet EXISTS subquery in SELECT
-        //   2. (optional) q.q()               — websearch_to_tsquery in ts_headline
-        //   3. (optional) headlineOptions()   — ts_headline option string (StartSel/StopSel)
-        //   4. w.params                       — shared WHERE params (includes 2× q.q() for FTS)
-        //   5. (optional) q.q(), q.q()        — websearch_to_tsquery in ORDER BY relevance (×2)
-        //   6. size, offset                   — LIMIT / OFFSET
+        // Parameter assembly must match placeholder order in the generated SQL. Each TSQUERY_EXPR
+        // occupies TWO placeholders (query as typed, then its umlaut-folded form — see
+        // addTsqueryParams):
+        //   1. (optional) currentUserId          — alreadyInMyWorksheet EXISTS subquery in SELECT
+        //   2. (optional) TSQUERY_EXPR × 2        — ts_headline in SELECT
+        //   3. (optional) headlineOptions()       — ts_headline option string (StartSel/StopSel)
+        //   4. w.params                           — shared WHERE params (includes 2× TSQUERY_EXPR for FTS)
+        //   5. (optional) TSQUERY_EXPR × 2, × 2   — ORDER BY relevance (sequence vector, task vector)
+        //   6. size, offset                       — LIMIT / OFFSET
         List<Object> params = new ArrayList<>();
         if (hasUser) params.add(currentUserId);
         if (hasQuery) {
-            params.add(q.q().trim());     // ts_headline query param
-            params.add(headlineOptions()); // ts_headline options param
+            addTsqueryParams(params, q.q().trim()); // ts_headline query param
+            params.add(headlineOptions());          // ts_headline options param
         }
         params.addAll(w.params);
         if ("relevance".equals(sort) && hasQuery) {
-            params.add(q.q().trim()); // ORDER BY ts_rank_cd — sequence vector
-            params.add(q.q().trim()); // ORDER BY ts_rank_cd — task vector
+            addTsqueryParams(params, q.q().trim()); // ORDER BY ts_rank_cd — sequence vector
+            addTsqueryParams(params, q.q().trim()); // ORDER BY ts_rank_cd — task vector
         }
         params.add(size);
         params.add(page * size);
@@ -608,6 +610,48 @@ public class SequenceSearchService {
         v = SLUG_BAD.matcher(v).replaceAll("-");
         v = v.replaceAll("-+", "-").replaceAll("^-|-$", "");
         return v.isEmpty() ? null : v;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Umlaut-tolerant free-text search
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * SQL fragment for a free-text tsquery that matches a search term as typed OR its
+     * umlaut-folded form (see {@link #foldGermanUmlauts}), combined with the tsquery {@code ||}
+     * (OR) operator. Every occurrence takes two bind parameters, filled in by
+     * {@link #addTsqueryParams}.
+     *
+     * <p>Sequences tagged before the semantic-tagger prompt bug was fixed have
+     * task_description / semantic_summary written with "oe"/"ae"/"ue"/"ss" digraphs instead of
+     * real umlauts. Folding the query the same way and OR-ing it into the tsquery lets a search
+     * typed with proper umlauts (e.g. "Prüfung") still find that older data ("Pruefung"),
+     * without touching the stored text or rebuilding the FTS index.
+     */
+    private static final String TSQUERY_EXPR =
+            "(websearch_to_tsquery('simple', ?) || websearch_to_tsquery('simple', ?))";
+
+    /** Adds the two bind parameters one {@link #TSQUERY_EXPR} occurrence needs, in order. */
+    private static void addTsqueryParams(List<Object> params, String query) {
+        params.add(query);
+        params.add(foldGermanUmlauts(query));
+    }
+
+    /** ä/ö/ü/ß → ae/oe/ue/ss (both cases); every other character is left untouched. */
+    private static final Map<Character, String> UMLAUT_FOLD = Map.of(
+            'ä', "ae", 'ö', "oe", 'ü', "ue",
+            'Ä', "Ae", 'Ö', "Oe", 'Ü', "Ue",
+            'ß', "ss"
+    );
+
+    private static String foldGermanUmlauts(String s) {
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            String folded = UMLAUT_FOLD.get(c);
+            sb.append(folded != null ? folded : String.valueOf(c));
+        }
+        return sb.toString();
     }
 
     // ─────────────────────────────────────────────────────────────────────
