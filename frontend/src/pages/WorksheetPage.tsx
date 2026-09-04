@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, apiErrorMessage } from "../lib/api.ts";
-import type { Worksheet, ClassInfo } from "../types/models.ts";
+import type { Worksheet, ClassInfo, LibraryItem, LibrarySearchResponse } from "../types/models.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useHomePath } from "../hooks/useHomePath.ts";
 import { ListGroup } from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { useAuth } from "../context/AuthContext.tsx";
+import { renderHighlight } from "../lib/highlight.ts";
+import { prepareSequenceOptions, sequenceOptionTitle } from "../lib/sequencePicker.ts";
 import type { ExportableWorksheet, ExportableSequence } from "../lib/export.ts";
 import {
     exportWorksheetJSON,
@@ -31,8 +33,17 @@ export default function WorksheetPage() {
     const [sequenceId, setSequenceId] = useState("");
     const [adding, setAdding] = useState(false);
     const [modalError, setModalError] = useState<string | null>(null);
-    const [batchMode, setBatchMode] = useState(false);
+    const [addMode, setAddMode] = useState<"search" | "single" | "batch">("search");
     const [batchInput, setBatchInput] = useState("");
+
+    // Add-sequence-by-search: same live/debounced-search shape as the Library page, scoped to
+    // this modal. Own sequences are sorted first client-side (see searchSequences) — a teacher
+    // adding a sequence to their own worksheet is almost always looking for one of their own.
+    const [sequenceSearch, setSequenceSearch] = useState("");
+    const [selectedSequence, setSelectedSequence] = useState<LibraryItem | null>(null);
+    const [sequenceOptions, setSequenceOptions] = useState<LibraryItem[]>([]);
+    const [loadingSequenceOptions, setLoadingSequenceOptions] = useState(false);
+    const [showSequenceDropdown, setShowSequenceDropdown] = useState(false);
     const [copied, setCopied] = useState(false);
     const [tipsVisible, setTipsVisible] = useState(true);
 
@@ -262,10 +273,60 @@ export default function WorksheetPage() {
         }
     }
 
+    /**
+     * Fetches Library search results for the add-sequence dropdown.
+     *
+     * An empty query still fetches (sorted by recency) so opening the dropdown shows something
+     * to browse rather than a blank list. Sequences already on this worksheet are filtered out —
+     * re-adding one is either a no-op the backend would reject or, worse, a silent duplicate.
+     * Own sequences are bubbled to the top client-side (stable within each group) rather than via
+     * a backend sort mode, since that ranking only makes sense for this one picker, not the
+     * Library page's general search.
+     */
+    async function searchSequences(query: string) {
+        setLoadingSequenceOptions(true);
+        try {
+            const params: Record<string, string | number> = { size: 8 };
+            const trimmed = query.trim();
+            if (trimmed) params.q = trimmed;
+            else params.sort = "recent";
+
+            const { data } = await api.get<LibrarySearchResponse>("/library/sequences", { params });
+            const existingIds = (worksheet?.sequenceDTOS ?? []).map((s) => s.id);
+            setSequenceOptions(prepareSequenceOptions(data.items, existingIds, user?.userId));
+        } catch {
+            setSequenceOptions([]);
+        } finally {
+            setLoadingSequenceOptions(false);
+        }
+    }
+
+    // Debounced live search, matching the Library page's 300ms debounce. Re-fires whenever the
+    // modal opens in search mode too (dependencies include showModal/addMode), so opening it
+    // shows a starter list without the teacher having to type anything first.
+    useEffect(() => {
+        if (!showModal || addMode !== "search") return;
+        const handle = window.setTimeout(() => {
+            searchSequences(sequenceSearch);
+        }, 300);
+        return () => window.clearTimeout(handle);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sequenceSearch, addMode, showModal]);
+
+    function resetAddSequenceModal() {
+        setSequenceId("");
+        setBatchInput("");
+        setSequenceSearch("");
+        setSelectedSequence(null);
+        setSequenceOptions([]);
+        setShowSequenceDropdown(false);
+        setModalError(null);
+    }
+
     async function handleAddSequence() {
         setModalError(null);
 
-        if (batchMode) {
+        if (addMode === "batch") {
             // split CSV or newline/space separated values into UUIDs
             const ids = batchInput
                 .split(/[\s,;]+/)
@@ -283,9 +344,27 @@ export default function WorksheetPage() {
                 const { data } = await api.get(`/worksheets/${sheetId}`);
                 setWorksheet(data);
                 setShowModal(false);
-                setBatchInput("");
+                resetAddSequenceModal();
             } catch (err: any) {
                 setModalError(apiErrorMessage(err, "Error adding sequences."));
+            } finally {
+                setAdding(false);
+            }
+        } else if (addMode === "search") {
+            if (!selectedSequence) {
+                setModalError(t("worksheet.errorSelectSequence"));
+                return;
+            }
+
+            setAdding(true);
+            try {
+                await api.post(`/worksheets/${sheetId}/sequences/${selectedSequence.sequenceId}`);
+                const { data } = await api.get(`/worksheets/${sheetId}`);
+                setWorksheet(data);
+                setShowModal(false);
+                resetAddSequenceModal();
+            } catch (err: any) {
+                setModalError(apiErrorMessage(err, "Error adding sequence."));
             } finally {
                 setAdding(false);
             }
@@ -301,7 +380,7 @@ export default function WorksheetPage() {
                 const { data } = await api.get(`/worksheets/${sheetId}`);
                 setWorksheet(data);
                 setShowModal(false);
-                setSequenceId("");
+                resetAddSequenceModal();
             } catch (err: any) {
                 setModalError(apiErrorMessage(err, "Error adding sequence."));
             } finally {
@@ -594,51 +673,172 @@ export default function WorksheetPage() {
                             <div className="modal-content rounded-4 shadow">
                                 <div className="modal-header">
                                     <h5 className="modal-title">{t("worksheet.addSequenceTitle")}</h5>
-                                    <button type="button" className="btn-close" onClick={() => setShowModal(false)} />
+                                    <button
+                                        type="button"
+                                        className="btn-close"
+                                        onClick={() => {
+                                            setShowModal(false);
+                                            resetAddSequenceModal();
+                                        }}
+                                    />
                                 </div>
                                 <div className="modal-body">
                                     <div className="mb-3">
-                                        <div className="d-flex justify-content-between align-items-center">
-                                            <label className="form-label fw-semibold mb-0">
-                                                {batchMode ? t("worksheet.sequenceUuids") : t("worksheet.sequenceUuid")}
-                                            </label>
+                                        <div className="btn-group btn-group-sm mb-2" role="group">
                                             <button
                                                 type="button"
-                                                className="btn btn-sm btn-outline-secondary"
-                                                onClick={() => setBatchMode(!batchMode)}
+                                                className={`btn ${addMode === "search" ? "btn-secondary" : "btn-outline-secondary"}`}
+                                                onClick={() => setAddMode("search")}
                                                 disabled={adding}
                                             >
-                                                {batchMode ? t("worksheet.singleInsert") : t("worksheet.batchInsert")}
+                                                {t("worksheet.searchInsert")}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`btn ${addMode === "single" ? "btn-secondary" : "btn-outline-secondary"}`}
+                                                onClick={() => setAddMode("single")}
+                                                disabled={adding}
+                                            >
+                                                {t("worksheet.singleInsert")}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`btn ${addMode === "batch" ? "btn-secondary" : "btn-outline-secondary"}`}
+                                                onClick={() => setAddMode("batch")}
+                                                disabled={adding}
+                                            >
+                                                {t("worksheet.batchInsert")}
                                             </button>
                                         </div>
 
-                                        {batchMode ? (
-                                            <textarea
-                                                className="form-control mt-2"
-                                                rows={3}
-                                                value={batchInput}
-                                                onChange={(e) => setBatchInput(e.target.value)}
-                                                placeholder={t("worksheet.pasteUuids")}
-                                                disabled={adding}
-                                            />
+                                        {addMode === "search" ? (
+                                            <div className="position-relative">
+                                                <label className="form-label fw-semibold mb-1 d-block">
+                                                    {t("worksheet.searchSequenceLabel")}
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    value={sequenceSearch}
+                                                    onChange={(e) => {
+                                                        setSequenceSearch(e.target.value);
+                                                        setSelectedSequence(null);
+                                                        setShowSequenceDropdown(true);
+                                                    }}
+                                                    onFocus={() => setShowSequenceDropdown(true)}
+                                                    onBlur={() => setShowSequenceDropdown(false)}
+                                                    placeholder={t("worksheet.searchSequencePlaceholder")}
+                                                    autoComplete="off"
+                                                    disabled={adding}
+                                                />
+                                                {showSequenceDropdown && (
+                                                    <ul
+                                                        className="list-group position-absolute w-100 shadow-sm"
+                                                        style={{ zIndex: 1000, maxHeight: 280, overflowY: "auto" }}
+                                                    >
+                                                        {loadingSequenceOptions ? (
+                                                            <li className="list-group-item text-muted small">
+                                                                {t("worksheet.loadingSequences")}
+                                                            </li>
+                                                        ) : sequenceOptions.length === 0 ? (
+                                                            <li className="list-group-item text-muted small">
+                                                                {t("worksheet.noMatchingSequences")}
+                                                            </li>
+                                                        ) : (
+                                                            sequenceOptions.map((seq) => {
+                                                                const title = sequenceOptionTitle(seq, t("worksheet.untitledSequence"));
+                                                                return (
+                                                                <li
+                                                                    key={seq.sequenceId}
+                                                                    className="list-group-item list-group-item-action"
+                                                                    style={{ cursor: "pointer" }}
+                                                                    onMouseDown={(e) => e.preventDefault()}
+                                                                    onClick={() => {
+                                                                        setSelectedSequence(seq);
+                                                                        setSequenceSearch(title);
+                                                                        setShowSequenceDropdown(false);
+                                                                    }}
+                                                                >
+                                                                    <div className="d-flex justify-content-between align-items-start gap-2">
+                                                                        <div>
+                                                                            <div className="fw-semibold">{title}</div>
+                                                                            {/* Library search shows the ts_headline match snippet under
+                                                                                the title, not the semanticSummary paragraph (deliberately
+                                                                                dropped there — see LibraryPage.tsx) — mirrored here. */}
+                                                                            {seq.highlight && (
+                                                                                <small
+                                                                                    className="text-muted d-block"
+                                                                                    dangerouslySetInnerHTML={{ __html: renderHighlight(seq.highlight) }}
+                                                                                />
+                                                                            )}
+                                                                            <small className="text-muted">
+                                                                                {seq.programmingLanguage} &middot;{" "}
+                                                                                {t("worksheet.tierCount", { count: seq.tierCount })}
+                                                                            </small>
+                                                                        </div>
+                                                                        {user && seq.ownerId === user.userId && (
+                                                                            <span className="badge bg-primary-subtle text-primary flex-shrink-0">
+                                                                                {t("worksheet.ownSequence")}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </li>
+                                                                );
+                                                            })
+                                                        )}
+                                                    </ul>
+                                                )}
+                                            </div>
+                                        ) : addMode === "batch" ? (
+                                            <>
+                                                <label className="form-label fw-semibold mb-1 d-block">
+                                                    {t("worksheet.sequenceUuids")}
+                                                </label>
+                                                <textarea
+                                                    className="form-control"
+                                                    rows={3}
+                                                    value={batchInput}
+                                                    onChange={(e) => setBatchInput(e.target.value)}
+                                                    placeholder={t("worksheet.pasteUuids")}
+                                                    disabled={adding}
+                                                />
+                                            </>
                                         ) : (
-                                            <input
-                                                type="text"
-                                                className="form-control mt-2"
-                                                value={sequenceId}
-                                                onChange={(e) => setSequenceId(e.target.value)}
-                                                placeholder={t("worksheet.enterUuid")}
-                                                disabled={adding}
-                                            />
+                                            <>
+                                                <label className="form-label fw-semibold mb-1 d-block">
+                                                    {t("worksheet.sequenceUuid")}
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    value={sequenceId}
+                                                    onChange={(e) => setSequenceId(e.target.value)}
+                                                    placeholder={t("worksheet.enterUuid")}
+                                                    disabled={adding}
+                                                />
+                                            </>
                                         )}
                                     </div>
                                     {modalError && <div className="alert alert-danger py-2">{modalError}</div>}
                                 </div>
                                 <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={adding}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => {
+                                            setShowModal(false);
+                                            resetAddSequenceModal();
+                                        }}
+                                        disabled={adding}
+                                    >
                                         {t("common.cancel")}
                                     </button>
-                                    <button type="button" className="btn btn-primary" onClick={handleAddSequence} disabled={adding}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={handleAddSequence}
+                                        disabled={adding || (addMode === "search" && !selectedSequence)}
+                                    >
                                         {adding ? (
                                             <>
                                                 <span className="spinner-border spinner-border-sm me-2" />
