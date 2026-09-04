@@ -300,13 +300,13 @@ public class SequenceSearchService {
         sql.append(" LIMIT ? OFFSET ? ");
 
         // Parameter assembly must match placeholder order in the generated SQL. Each TSQUERY_EXPR
-        // occupies TWO placeholders (query as typed, then its umlaut-folded form — see
-        // addTsqueryParams):
+        // occupies FOUR placeholders (query as typed, its umlaut-folded form, then those two
+        // again for the prefix-match branch — see addTsqueryParams):
         //   1. (optional) currentUserId          — alreadyInMyWorksheet EXISTS subquery in SELECT
-        //   2. (optional) TSQUERY_EXPR × 2        — ts_headline in SELECT
+        //   2. (optional) TSQUERY_EXPR × 4        — ts_headline in SELECT
         //   3. (optional) headlineOptions()       — ts_headline option string (StartSel/StopSel)
         //   4. w.params                           — shared WHERE params (includes 2× TSQUERY_EXPR for FTS)
-        //   5. (optional) TSQUERY_EXPR × 2, × 2   — ORDER BY relevance (sequence vector, task vector)
+        //   5. (optional) TSQUERY_EXPR × 4, × 4   — ORDER BY relevance (sequence vector, task vector)
         //   6. size, offset                       — LIMIT / OFFSET
         List<Object> params = new ArrayList<>();
         if (hasUser) params.add(currentUserId);
@@ -617,24 +617,59 @@ public class SequenceSearchService {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * SQL fragment for a free-text tsquery that matches a search term as typed OR its
-     * umlaut-folded form (see {@link #foldGermanUmlauts}), combined with the tsquery {@code ||}
-     * (OR) operator. Every occurrence takes two bind parameters, filled in by
-     * {@link #addTsqueryParams}.
+     * SQL fragment for a free-text tsquery that ORs together four ways a search term can match,
+     * combined with the tsquery {@code ||} (OR) operator. Every occurrence takes four bind
+     * parameters, filled in by {@link #addTsqueryParams}, in this order:
      *
-     * <p>Sequences tagged before the semantic-tagger prompt bug was fixed have
-     * task_description / semantic_summary written with "oe"/"ae"/"ue"/"ss" digraphs instead of
-     * real umlauts. Folding the query the same way and OR-ing it into the tsquery lets a search
-     * typed with proper umlauts (e.g. "Prüfung") still find that older data ("Pruefung"),
-     * without touching the stored text or rebuilding the FTS index.
+     * <ol>
+     *   <li>{@code websearch_to_tsquery(query)} — the query as typed, with real operators
+     *       ("exact phrase", {@code -exclude}, {@code or}).</li>
+     *   <li>{@code websearch_to_tsquery(foldedQuery)} — see {@link #foldGermanUmlauts}: sequences
+     *       tagged before the semantic-tagger prompt bug was fixed have task_description /
+     *       semantic_summary written with "oe"/"ae"/"ue"/"ss" digraphs instead of real umlauts.
+     *       Folding the query the same way lets a search typed with proper umlauts (e.g.
+     *       "Prüfung") still find that older data ("Pruefung"), without touching the stored text
+     *       or rebuilding the FTS index.</li>
+     *   <li>a prefix match on every word of {@code query} (see {@link #PREFIX_TSQUERY_SUBEXPR}) —
+     *       the Library search box is live/debounced, so most keystrokes submit a word that is
+     *       still being typed ("pr" on the way to "prüfung"); {@code websearch_to_tsquery} only
+     *       matches whole words, so without this branch search-as-you-type would show nothing
+     *       until the last word of the query is finished. Loses websearch's operators (a prefix
+     *       match can't parse "exact phrase" or {@code -exclude}), which is why this is additive
+     *       to (1) rather than a replacement for it.</li>
+     *   <li>the same prefix match applied to {@code foldedQuery} — typing "prü" while an old row
+     *       only has "prue" needs both the fold and the prefix at once.</li>
+     * </ol>
      */
-    private static final String TSQUERY_EXPR =
-            "(websearch_to_tsquery('simple', ?) || websearch_to_tsquery('simple', ?))";
+    private static final String TSQUERY_EXPR = """
+            (websearch_to_tsquery('simple', ?) || websearch_to_tsquery('simple', ?) \
+            || %1$s || %1$s)\
+            """.formatted(prefixTsquerySubexpr());
 
-    /** Adds the two bind parameters one {@link #TSQUERY_EXPR} occurrence needs, in order. */
+    /**
+     * Builds an all-words-as-prefixes tsquery from arbitrary raw text — safe against tsquery
+     * syntax errors (and SQL injection, since the text only ever flows through as a bind
+     * parameter) because {@code to_tsvector} does the tokenizing: its output lexemes can never
+     * contain tsquery metacharacters ({@code & | ! ( ) :}), so joining them back together with
+     * {@code ':*'} suffixes and re-parsing with {@code to_tsquery} is always well-formed. Falls
+     * back to an empty (never-matching) tsquery for blank input rather than erroring.
+     */
+    private static String prefixTsquerySubexpr() {
+        return """
+                COALESCE(
+                    (SELECT to_tsquery('simple', string_agg(lexeme || ':*', ' & '))
+                       FROM unnest(to_tsvector('simple', ?)) AS u(lexeme, positions, weights)),
+                    ''::tsquery
+                )""";
+    }
+
+    /** Adds the four bind parameters one {@link #TSQUERY_EXPR} occurrence needs, in order. */
     private static void addTsqueryParams(List<Object> params, String query) {
+        String folded = foldGermanUmlauts(query);
         params.add(query);
-        params.add(foldGermanUmlauts(query));
+        params.add(folded);
+        params.add(query);
+        params.add(folded);
     }
 
     /** ä/ö/ü/ß → ae/oe/ue/ss (both cases); every other character is left untouched. */
