@@ -797,10 +797,22 @@ export default function ClassDetailPage() {
                                     </thead>
                                     <tbody>
                                         {progress.map((p, idx) => (
-                                            <tr key={p.userId || `anon-${idx}`}>
+                                            <tr
+                                                key={p.userId || `anon-${idx}`}
+                                                style={p.userId ? { cursor: "pointer" } : undefined}
+                                                onClick={() => {
+                                                    if (p.userId) navigate(`/classes/${id}/students/${p.userId}/progress`);
+                                                }}
+                                            >
                                                 <td>
                                                     {p.userId ? (
-                                                        <span>{p.studentName}</span>
+                                                        <Link
+                                                            to={`/classes/${id}/students/${p.userId}/progress`}
+                                                            className="text-decoration-none"
+                                                            title={t("studentProgress.viewDetails")}
+                                                        >
+                                                            {p.studentName}
+                                                        </Link>
                                                     ) : (
                                                         <span className="text-muted fst-italic">
                                                             {p.studentName}

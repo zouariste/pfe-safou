@@ -20,7 +20,11 @@ package de.uni_passau.fim.se2.application.service;
 
 import de.uni_passau.fim.se2.domain.entities.ClassDTO;
 import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
+import de.uni_passau.fim.se2.domain.entities.StudentProgressDetailDTO;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.UserDTO;
+import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
 import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
@@ -48,6 +52,8 @@ public class ClassService {
     private final FeedbackLogService feedbackLogService;
     private final TempPasswordGenerator tempPasswordGenerator;
     private final PasswordHasherService passwordHasher;
+    private final WorksheetService worksheetService;
+    private final TaskPersistenceService taskPersistenceService;
 
     // ── CRUD ──────────────────────────────────────────────────
 
@@ -492,5 +498,78 @@ public class ClassService {
         }
 
         return result;
+    }
+
+    /**
+     * One student's work across every worksheet assigned to this class: every
+     * task in it, how many feedback clicks they made, and whether one of
+     * those was correct.
+     *
+     * Scoped to this class's own assignments — the same worksheets the
+     * teacher already sees on the class page — rather than everything the
+     * student has ever touched, so a click from the class progress table
+     * lands on a page whose authorization matches the class the teacher owns.
+     */
+    public StudentProgressDetailDTO getStudentProgressDetail(UUID classId, UUID studentId) {
+        ClassDTO classDTO = classRepository.findByIdWithDetails(classId)
+                .orElseThrow(() -> new DomainValidationException("Klasse nicht gefunden."));
+
+        UUID userId = ownershipService.getCurrentUserId();
+        if (userId == null) {
+            throw new AccessDeniedException("Authentifizierung erforderlich.");
+        }
+        if (!ownershipService.isOwnerOrAdmin(classDTO.getOwnerId())) {
+            throw new AccessDeniedException("Kein Zugriff auf Fortschrittsdaten.");
+        }
+
+        ClassDTO.StudentInfo student = classDTO.getStudents().stream()
+                .filter(s -> s.getUserId().equals(studentId))
+                .findFirst()
+                .orElseThrow(() -> new DomainValidationException("Schüler ist nicht Mitglied dieser Klasse."));
+
+        Map<UUID, List<FeedbackLogDTO>> logsByTask = feedbackLogService.getFeedbackLogsForClass(classId).stream()
+                .filter(l -> studentId.equals(l.getUserId()))
+                .collect(Collectors.groupingBy(FeedbackLogDTO::getTaskId));
+
+        List<StudentProgressDetailDTO.WorksheetProgress> worksheetProgresses = new ArrayList<>();
+        for (ClassDTO.WorksheetInfo wsInfo : classDTO.getWorksheets()) {
+            WorksheetDTO worksheet = worksheetService.loadWorksheetById(wsInfo.getWorksheetId());
+
+            List<StudentProgressDetailDTO.SequenceProgress> sequenceProgresses = new ArrayList<>();
+            int index = 0;
+            for (TieredTaskSequenceDTO seqStub : worksheet.getSequenceDTOS()) {
+                index++;
+                TieredTaskSequenceDTO sequence = taskPersistenceService.loadSequenceById(seqStub.getId());
+
+                List<StudentProgressDetailDTO.TaskProgress> taskProgresses = new ArrayList<>();
+                for (TaskDTO task : sequence.getOrderedTasks()) {
+                    List<FeedbackLogDTO> taskLogs = logsByTask.getOrDefault(task.getId(), List.of());
+                    long correctAttempts = taskLogs.stream().filter(FeedbackLogDTO::isCorrect).count();
+                    taskProgresses.add(new StudentProgressDetailDTO.TaskProgress(
+                            task.getId(),
+                            task.getTierLevel(),
+                            task.getStatement(),
+                            taskLogs.size(),
+                            (int) correctAttempts,
+                            correctAttempts > 0));
+                }
+
+                sequenceProgresses.add(new StudentProgressDetailDTO.SequenceProgress(
+                        sequence.getId(),
+                        index,
+                        sequence.getProgrammingLanguage(),
+                        sequence.getConcepts(),
+                        sequence.getTaskDescription(),
+                        taskProgresses));
+            }
+
+            worksheetProgresses.add(new StudentProgressDetailDTO.WorksheetProgress(
+                    wsInfo.getWorksheetId(), wsInfo.getName(), sequenceProgresses));
+        }
+
+        return new StudentProgressDetailDTO(
+                studentId,
+                student.getFirstName() + " " + student.getLastName(),
+                worksheetProgresses);
     }
 }

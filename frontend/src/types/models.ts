@@ -153,6 +153,38 @@ export interface StudentProgress {
     correctAttempts: number;
 }
 
+export interface StudentProgressTask {
+    taskId: string;
+    tierLevel: number;
+    statement: string;
+    attempts: number;
+    correctAttempts: number;
+    solved: boolean;
+}
+
+/** `index` is the sequence's 1-based position in the worksheet — sequences have no name of their own. */
+export interface StudentProgressSequence {
+    sequenceId: string;
+    index: number;
+    programmingLanguage: string;
+    concepts: string[] | null;
+    taskDescription: string | null;
+    tasks: StudentProgressTask[];
+}
+
+export interface StudentProgressWorksheet {
+    worksheetId: string;
+    name: string;
+    sequences: StudentProgressSequence[];
+}
+
+/** One student's work across every worksheet assigned to one class. */
+export interface StudentProgressDetail {
+    studentId: string;
+    studentName: string;
+    worksheets: StudentProgressWorksheet[];
+}
+
 export interface StudentInfo {
     userId: string;
     firstName: string;

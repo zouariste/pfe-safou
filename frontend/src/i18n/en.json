@@ -622,6 +622,24 @@
     "downloadUnregisteredTitle": "Download a CSV of students who have not registered yet, with the link they use to claim their account."
   },
 
+  "studentProgress": {
+    "pageTitle": "Student progress",
+    "backToClass": "Back to class",
+    "title": "{{name}}'s progress",
+    "viewDetails": "View progress details",
+    "errorLoading": "Error loading progress data.",
+    "noWorksheets": "No worksheets assigned to this class yet.",
+    "noSequences": "No sequences in this worksheet.",
+    "sequenceHeading": "Sequence {{index}}",
+    "tierHeader": "Tier",
+    "statementHeader": "Task",
+    "attemptsHeader": "Attempts",
+    "statusHeader": "Status",
+    "solved": "Solved",
+    "attempted": "Attempted",
+    "notAttempted": "Not attempted"
+  },
+
   "csvImport": {
     "button": "Import CSV",
     "title": "Import students from a CSV file",

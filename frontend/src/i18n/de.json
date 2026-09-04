@@ -622,6 +622,24 @@
     "downloadUnregisteredTitle": "CSV mit noch nicht registrierten Schülern und ihrem Einladungslink herunterladen."
   },
 
+  "studentProgress": {
+    "pageTitle": "Schülerfortschritt",
+    "backToClass": "Zurück zur Klasse",
+    "title": "Fortschritt von {{name}}",
+    "viewDetails": "Fortschrittsdetails anzeigen",
+    "errorLoading": "Fehler beim Laden der Fortschrittsdaten.",
+    "noWorksheets": "Dieser Klasse sind noch keine Arbeitsblätter zugewiesen.",
+    "noSequences": "Keine Sequenzen in diesem Arbeitsblatt.",
+    "sequenceHeading": "Sequenz {{index}}",
+    "tierHeader": "Stufe",
+    "statementHeader": "Aufgabe",
+    "attemptsHeader": "Versuche",
+    "statusHeader": "Status",
+    "solved": "Gelöst",
+    "attempted": "Versucht",
+    "notAttempted": "Nicht versucht"
+  },
+
   "csvImport": {
     "button": "CSV importieren",
     "title": "Schüler aus einer CSV-Datei importieren",
