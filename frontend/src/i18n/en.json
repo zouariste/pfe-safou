@@ -617,7 +617,9 @@
     "resetPasswordSuccess": "Temporary password for {{name}}:",
     "resetPasswordOnce": "This password is shown only once and becomes invalid after the student changes it.",
     "resetPasswordBtn": "Generate password",
-    "errorResetPassword": "Error resetting password."
+    "errorResetPassword": "Error resetting password.",
+    "downloadUnregistered": "Download unregistered (CSV)",
+    "downloadUnregisteredTitle": "Download a CSV of students who have not registered yet, with the link they use to claim their account."
   },
 
   "csvImport": {

@@ -554,7 +554,7 @@
     "loading": "Laden...",
     "notFound": "Klasse nicht gefunden.",
     "back": "Zurück",
-    "backToOverview": "Zurück zur übersicht",
+    "backToOverview": "Zurück zur Übersicht",
     "updated": "Klasse aktualisiert.",
     "errorUpdating": "Fehler beim Aktualisieren.",
     "save": "Speichern",
@@ -617,7 +617,9 @@
     "resetPasswordSuccess": "Temporäres Passwort für {{name}}:",
     "resetPasswordOnce": "Dieses Passwort wird nur einmal angezeigt und ist nach der Änderung ungültig.",
     "resetPasswordBtn": "Passwort generieren",
-    "errorResetPassword": "Fehler beim Zurücksetzen des Passworts."
+    "errorResetPassword": "Fehler beim Zurücksetzen des Passworts.",
+    "downloadUnregistered": "Nicht Registrierte herunterladen (CSV)",
+    "downloadUnregisteredTitle": "CSV mit noch nicht registrierten Schülern und ihrem Einladungslink herunterladen."
   },
 
   "csvImport": {

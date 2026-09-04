@@ -340,6 +340,15 @@ export default function ClassDetailPage() {
         });
     };
 
+    const handleDownloadUnregistered = () => {
+        if (!classData) return;
+        const unregistered = classData.students.filter((s) => !s.email);
+        downloadInviteCsv(unregistered, classData.name, {
+            headers: csvHeaders(),
+            delimiter: csvDelimiterForLocale(i18n.language),
+        });
+    };
+
     const handleDownloadTemplate = () => {
         const [first, last] = csvHeaders();
         downloadTemplateCsv([first, last], csvDelimiterForLocale(i18n.language));
@@ -503,6 +512,15 @@ export default function ClassDetailPage() {
                         >
                             <i className="bi bi-filetype-csv me-1"></i> {t("csvImport.button")}
                         </button>
+                        {classData.students.some((s) => !s.email) && (
+                            <button
+                                className="btn btn-sm btn-outline-secondary"
+                                onClick={handleDownloadUnregistered}
+                                title={t("classDetail.downloadUnregisteredTitle")}
+                            >
+                                <i className="bi bi-download me-1"></i> {t("classDetail.downloadUnregistered")}
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div className="card-body">
