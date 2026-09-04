@@ -352,6 +352,8 @@
     "shareWorksheet": "Share worksheet",
     "copied": "Copied!",
     "addSequence": "Add sequence",
+    "sequenceLabel": "Sequence {{index}}",
+    "sequenceIdTooltip": "Sequence ID: {{id}}",
     "sequences": "Sequences in this worksheet",
     "noSequences": "This worksheet does not contain any sequences yet.",
     "removeSequence": "Remove sequence from worksheet",

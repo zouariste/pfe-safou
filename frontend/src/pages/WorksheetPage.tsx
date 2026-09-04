@@ -548,7 +548,7 @@ export default function WorksheetPage() {
                         <ListGroup.Item
                             key={s.id}
                             className="d-flex justify-content-between align-items-center"
-                            title={teacherViewEnabled ? `Sequence ID: ${s.id}` : undefined}
+                            title={teacherViewEnabled ? t("worksheet.sequenceIdTooltip", { id: s.id }) : undefined}
                         >
                             <div
                                 style={{ cursor: "pointer" }}
@@ -558,7 +558,7 @@ export default function WorksheetPage() {
                                     })
                                 }
                             >
-                                Sequence {idx + 1}
+                                {t("worksheet.sequenceLabel", { index: idx + 1 })}
                                 {teacherViewEnabled && (
                                     <small className="text-muted ms-2">
                                         ({s.id ? s.id.slice(0, 8) : "?"}...)
