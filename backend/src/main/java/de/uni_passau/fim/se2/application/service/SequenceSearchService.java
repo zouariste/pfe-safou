@@ -630,7 +630,7 @@ public class SequenceSearchService {
      *       Folding the query the same way lets a search typed with proper umlauts (e.g.
      *       "Prüfung") still find that older data ("Pruefung"), without touching the stored text
      *       or rebuilding the FTS index.</li>
-     *   <li>a prefix match on every word of {@code query} (see {@link #PREFIX_TSQUERY_SUBEXPR}) —
+     *   <li>a prefix match on every word of {@code query} (see {@link #prefixTsquerySubexpr()}) —
      *       the Library search box is live/debounced, so most keystrokes submit a word that is
      *       still being typed ("pr" on the way to "prüfung"); {@code websearch_to_tsquery} only
      *       matches whole words, so without this branch search-as-you-type would show nothing
@@ -641,7 +641,7 @@ public class SequenceSearchService {
      *       only has "prue" needs both the fold and the prefix at once.</li>
      * </ol>
      */
-    private static final String TSQUERY_EXPR = """
+    static final String TSQUERY_EXPR = """
             (websearch_to_tsquery('simple', ?) || websearch_to_tsquery('simple', ?) \
             || %1$s || %1$s)\
             """.formatted(prefixTsquerySubexpr());
@@ -663,8 +663,13 @@ public class SequenceSearchService {
                 )""";
     }
 
-    /** Adds the four bind parameters one {@link #TSQUERY_EXPR} occurrence needs, in order. */
-    private static void addTsqueryParams(List<Object> params, String query) {
+    /**
+     * Adds the four bind parameters one {@link #TSQUERY_EXPR} occurrence needs, in order.
+     * Package-private (not {@code private}) so {@code SequenceSearchServiceTest} can pin the
+     * exact ordering down — the SQL placeholders are position-based, so a reorder here silently
+     * breaks every query that uses TSQUERY_EXPR without a compiler error to catch it.
+     */
+    static void addTsqueryParams(List<Object> params, String query) {
         String folded = foldGermanUmlauts(query);
         params.add(query);
         params.add(folded);
@@ -679,7 +684,8 @@ public class SequenceSearchService {
             'ß', "ss"
     );
 
-    private static String foldGermanUmlauts(String s) {
+    /** Package-private (not {@code private}) so {@code SequenceSearchServiceTest} can unit-test the mapping directly. */
+    static String foldGermanUmlauts(String s) {
         StringBuilder sb = new StringBuilder(s.length());
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
