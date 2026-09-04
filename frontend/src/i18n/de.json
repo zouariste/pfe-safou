@@ -352,6 +352,8 @@
     "shareWorksheet": "Arbeitsblatt teilen",
     "copied": "Kopiert!",
     "addSequence": "Sequenz hinzufügen",
+    "sequenceLabel": "Sequenz {{index}}",
+    "sequenceIdTooltip": "Sequenz-ID: {{id}}",
     "sequences": "Sequenzen in diesem Arbeitsblatt",
     "noSequences": "Dieses Arbeitsblatt enthält noch keine Sequenzen.",
     "removeSequence": "Sequenz aus Arbeitsblatt entfernen",
