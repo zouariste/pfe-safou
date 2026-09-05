@@ -5,6 +5,7 @@ import { api, apiErrorMessage, isNotFound } from "../lib/api.ts";
 import type { Worksheet, ClassInfo, LibraryItem, LibrarySearchResponse, WorksheetVisibility } from "../types/models.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useHomePath } from "../hooks/useHomePath.ts";
+import { marketplaceBackLink } from "../lib/worksheetBackLink.ts";
 import { ListGroup } from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { useAuth } from "../context/AuthContext.tsx";
@@ -31,6 +32,10 @@ export default function WorksheetPage() {
     // Only show "back to class" when navigated FROM a class (via location.state),
     // the same way the sequence page decides on "back to worksheet".
     const fromClass = (location.state as { fromClass?: string })?.fromClass ?? null;
+
+    // The marketplace is a third way in, and it carries its filters along so returning lands
+    // on the list the teacher was reading rather than an unfiltered one.
+    const marketplaceBack = marketplaceBackLink(location.state);
     const { user, isLoggedIn, isTeacher, isAdmin } = useAuth();
     const [worksheet, setWorksheet] = useState<Worksheet | null>(null);
     const [loading, setLoading] = useState(true);
@@ -437,6 +442,14 @@ export default function WorksheetPage() {
                         onClick={() => navigate(`/classes/${fromClass}`)}
                     >
                         ← {t("worksheet.backToClass")}
+                    </button>
+                )}
+                {marketplaceBack && (
+                    <button
+                        className="btn btn-link"
+                        onClick={() => navigate(marketplaceBack.to)}
+                    >
+                        ← {t(marketplaceBack.labelKey)}
                     </button>
                 )}
             </div>

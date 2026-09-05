@@ -49,9 +49,31 @@ function httpError(status: number, data?: unknown) {
     };
 }
 
-function renderPage() {
+const WORKSHEET = {
+    id: "w-1",
+    name: "Rekursion Klasse 10",
+    description: "Einstieg",
+    sequenceDTOS: [],
+    ownerId: "someone-else",
+    hintsEnabled: false,
+    hintCreditsPerTask: null,
+    visibility: "PUBLIC",
+    createdAt: null,
+    copiedFrom: null,
+    copiedAt: null,
+};
+
+/** api.get is called for more than the worksheet once it loads; only that one needs a body. */
+function serveWorksheet() {
+    get.mockImplementation((url: string) =>
+        url.includes("/worksheets/")
+            ? Promise.resolve({ data: WORKSHEET })
+            : Promise.resolve({ data: [] }));
+}
+
+function renderPage(state?: unknown) {
     return render(
-        <MemoryRouter initialEntries={["/worksheets/w-1"]}>
+        <MemoryRouter initialEntries={[{ pathname: "/worksheets/w-1", state }]}>
             <Routes>
                 <Route path="/worksheets/:sheetId" element={<WorksheetPage />} />
             </Routes>
@@ -97,5 +119,38 @@ describe("WorksheetPage, when the worksheet does not load", () => {
         renderPage();
 
         expect(screen.getByText("common.loading")).toBeInTheDocument();
+    });
+});
+
+describe("WorksheetPage, the way back", () => {
+    beforeEach(() => {
+        get.mockReset();
+        serveWorksheet();
+    });
+
+    it("offers the marketplace alongside home to a visitor who came from it", async () => {
+        renderPage({ from: "marketplace", search: "?q=rekursion" });
+
+        await waitFor(() =>
+            expect(screen.getByText(/marketplace\.backToMarketplace/)).toBeInTheDocument());
+        // Home stays. A worksheet copied from the marketplace is now yours, and wanting to go
+        // to your own list rather than back to the shop is the ordinary case.
+        expect(screen.getByText(/common\.home/)).toBeInTheDocument();
+    });
+
+    it("offers home alone when there is nowhere to go back to", async () => {
+        // A pasted link or a bookmark carries no provenance, so there is no history to claim.
+        renderPage();
+
+        await waitFor(() => expect(screen.getByText(/common\.home/)).toBeInTheDocument());
+        expect(screen.queryByText(/marketplace\.backToMarketplace/)).not.toBeInTheDocument();
+    });
+
+    it("leaves the class button to the class page's own marker", async () => {
+        // Two independent entry points share this row. Neither may claim the other's visitor.
+        renderPage({ fromClass: "c-1" });
+
+        await waitFor(() => expect(screen.getByText(/worksheet\.backToClass/)).toBeInTheDocument());
+        expect(screen.queryByText(/marketplace\.backToMarketplace/)).not.toBeInTheDocument();
     });
 });

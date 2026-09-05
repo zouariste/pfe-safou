@@ -159,6 +159,48 @@ export interface Worksheet {
  */
 export type WorksheetVisibility = "PRIVATE" | "UNLISTED" | "PUBLIC";
 
+// ── Marketplace ─────────────────────────────────────────
+
+/** One published worksheet as the marketplace lists it. Mirrors `WorksheetSearchResult.Item`. */
+export interface MarketplaceItem {
+    worksheetId: string;
+    name: string;
+    description: string | null;
+    ownerId: string | null;
+    /** ISO-8601 instant. */
+    createdAt: string | null;
+    sequenceCount: number;
+    /** Distinct programming languages of the sequences inside, sorted. */
+    languages: string[];
+    /** How often this worksheet has been copied. */
+    copyCount: number;
+    /** Whether the current user already copied it, so the card can say so. */
+    alreadyCopied: boolean;
+    /**
+     * A `ts_headline` snippet with the match wrapped in control-character markers, or null when
+     * there was no query. Render it with {@link renderHighlight}, never as raw HTML.
+     */
+    highlight: string | null;
+}
+
+export interface MarketplaceFacetBucket {
+    name: string;
+    count: number;
+}
+
+/** Mirrors `WorksheetSearchResult`. */
+export interface MarketplaceSearchResponse {
+    items: MarketplaceItem[];
+    page: number;
+    size: number;
+    total: number;
+    facets: {
+        languages: MarketplaceFacetBucket[];
+        mine: number;
+        others: number;
+    };
+}
+
 // ── Class Types ─────────────────────────────────────────
 
 export interface ClassInfo {
