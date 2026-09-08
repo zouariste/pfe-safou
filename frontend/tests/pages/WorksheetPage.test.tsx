@@ -29,11 +29,17 @@ vi.mock("../../src/lib/api.ts", async (importOriginal) => {
     };
 });
 
+/**
+ * Who is looking. Mutable because the page behaves quite differently for a signed-out visitor
+ * following a link and for the teacher who owns the worksheet, and both are worth covering.
+ */
+let currentUser: { userId: string } | null = null;
+
 vi.mock("../../src/context/AuthContext.tsx", () => ({
     useAuth: () => ({
-        user: null,
-        isLoggedIn: false,
-        isTeacher: false,
+        user: currentUser,
+        isLoggedIn: currentUser !== null,
+        isTeacher: currentUser !== null,
         isAdmin: false,
         isStudent: false,
     }),
@@ -83,6 +89,7 @@ function renderPage(state?: unknown) {
 
 describe("WorksheetPage, when the worksheet does not load", () => {
     beforeEach(() => {
+        currentUser = null;
         get.mockReset();
     });
 
@@ -124,6 +131,7 @@ describe("WorksheetPage, when the worksheet does not load", () => {
 
 describe("WorksheetPage, the way back", () => {
     beforeEach(() => {
+        currentUser = null;
         get.mockReset();
         serveWorksheet();
     });
@@ -152,5 +160,47 @@ describe("WorksheetPage, the way back", () => {
 
         await waitFor(() => expect(screen.getByText(/worksheet\.backToClass/)).toBeInTheDocument());
         expect(screen.queryByText(/marketplace\.backToMarketplace/)).not.toBeInTheDocument();
+    });
+});
+
+describe("WorksheetPage, whose material is in here", () => {
+    const MINE = "me";
+    const sheetWith = (sequences: { id: string; ownerId: string | null }[]) => ({
+        ...WORKSHEET, ownerId: MINE, sequenceDTOS: sequences,
+    });
+
+    beforeEach(() => {
+        currentUser = { userId: MINE };
+        get.mockReset();
+    });
+
+    it("marks the sequences that belong to somebody else", async () => {
+        // The complaint this answers: after forking a sequence the list looked exactly as it
+        // had before, so the fork appeared to have done nothing at all.
+        get.mockImplementation((url: string) =>
+            url.includes("/worksheets/")
+                ? Promise.resolve({ data: sheetWith([
+                    { id: "s-1", ownerId: "someone-else" },
+                    { id: "s-2", ownerId: null },
+                    { id: "s-3", ownerId: MINE }]) })
+                : Promise.resolve({ data: [] }));
+
+        renderPage();
+
+        // Two foreign: one owned by another teacher, one seed material owned by nobody.
+        await waitFor(() =>
+            expect(screen.getAllByText("worksheet.foreignSequence")).toHaveLength(2));
+    });
+
+    it("marks nothing once everything in the worksheet is the teacher's own", async () => {
+        get.mockImplementation((url: string) =>
+            url.includes("/worksheets/")
+                ? Promise.resolve({ data: sheetWith([{ id: "s-1", ownerId: MINE }]) })
+                : Promise.resolve({ data: [] }));
+
+        renderPage();
+
+        await waitFor(() => expect(screen.getByText(/worksheet\.sequenceLabel/)).toBeInTheDocument());
+        expect(screen.queryByText("worksheet.foreignSequence")).not.toBeInTheDocument();
     });
 });

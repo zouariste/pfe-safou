@@ -209,6 +209,11 @@
   },
 
   "sequence": {
+    "curatorNoticeTitle": "This sequence belongs to someone else.",
+    "curatorNoticeBody": "You can see it because it is in one of your worksheets. Editing it would change it in other teachers' worksheets too, so make your own copy first.",
+    "forkToEdit": "Make my own copy",
+    "forking": "Copying …",
+    "forkFailed": "The copy could not be created.",
     "pageTitle": "Sequence Page",
     "devTemplate": "DEV Template",
     "teacherBanner": "Teacher Mode",
@@ -416,6 +421,7 @@
     },
     "copied": "Copied!",
     "addSequence": "Add sequence",
+    "foreignSequence": "not yours",
     "sequenceLabel": "Sequence {{index}}",
     "sequenceIdTooltip": "Sequence ID: {{id}}",
     "sequences": "Sequences in this worksheet",
