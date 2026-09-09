@@ -112,6 +112,10 @@ export interface CurriculumTopic {
     nameEn: string | null;
     descriptionEn: string | null;
     trackEn: string | null;
+    // "SCHOOL" (Jahrgangsstufe) or "UNIVERSITY" (module), from
+    // db/init/12_migration_curriculum_education_level.sql. Read it through
+    // src/lib/curriculumFilter.ts, which treats anything else as SCHOOL.
+    educationLevel: string | null;
 }
 
 export interface CurriculumCodeExample {

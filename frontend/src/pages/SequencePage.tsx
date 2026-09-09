@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TieredTaskSequence, Task } from "../types/models.ts";
-import { api } from "../lib/api.ts";
+import { api, apiErrorMessage } from "../lib/api.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useHomePath } from "../hooks/useHomePath.ts";
 import {PersistentLogger} from "../PersistentLogger.ts";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.tsx";
 import TaskEditModal from "../components/TaskEditModal.tsx";
+import ConceptPicker from "../components/ConceptPicker.tsx";
+import { useConceptCatalogue } from "../hooks/useConceptCatalogue.ts";
 import { useEventTracker } from "../hooks/useEventTracker.ts";
 import { useProgressiveTags } from "../hooks/useProgressiveTags.ts";
 import TagChip from "../components/TagChip.tsx";
@@ -46,6 +48,13 @@ export default function SequencePage() {
     const [seq, setSeq] = useState<TieredTaskSequence | null>(null);
     const [errorMsg, setErrorMsg] = useState("");
     const [teacherViewEnabled, setTeacherViewEnabled] = useState(false);
+
+    // Editing the sequence's concepts. The catalogue is only fetched to power
+    // the picker's suggestions; a failure there costs autocomplete, nothing more.
+    const conceptCatalogue = useConceptCatalogue();
+    const [editingConcepts, setEditingConcepts] = useState(false);
+    const [savingConcepts, setSavingConcepts] = useState(false);
+    const [conceptError, setConceptError] = useState("");
     const [copied, setCopied] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [editIsFirstEdit, setEditIsFirstEdit] = useState(true);
@@ -113,6 +122,30 @@ export default function SequencePage() {
             ownerId: raw?.ownerId ?? null,
             constraints: raw?.constraints ?? null,
         };
+    }
+
+    /**
+     * Each add or remove writes the whole set, matching how TagEditor saves a
+     * tag change immediately — an explicit Save button on a two-field row is
+     * more ceremony than the edit deserves. The server answers with the stored
+     * names, which may differ in case from what was typed, so its reply wins
+     * over the optimistic value.
+     */
+    async function saveConcepts(next: string[]) {
+        if (!seq) return;
+        const previous = seq.concepts;
+        setSeq({ ...seq, concepts: next });   // optimistic, so chips react at once
+        setSavingConcepts(true);
+        setConceptError("");
+        try {
+            const res = await api.put<string[]>(`/sequence/${seq.id}/concepts`, { concepts: next });
+            setSeq((current) => (current ? { ...current, concepts: res.data } : current));
+        } catch (e) {
+            setSeq((current) => (current ? { ...current, concepts: previous } : current));
+            setConceptError(apiErrorMessage(e, t("sequence.conceptsSaveError")));
+        } finally {
+            setSavingConcepts(false);
+        }
     }
 
     async function handleOpenEdit(task: Task) {
@@ -358,23 +391,68 @@ export default function SequencePage() {
                 <strong>{t("sequence.language")}:</strong> {seq.programmingLanguage}
             </p>
 
-            {seq.concepts.length > 0 && (
-                <p style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {seq.concepts.map((c) => (
-                        <span
-                            key={c}
-                            style={{ border: "1px solid #ddd", borderRadius: 999, padding: "2px 10px" }}
-                        >
-                            {c}
+            {/* The concepts the sequence was generated for. Teacher view only: on a
+                Parsons puzzle "recursion" or "for-loop" names the shape of the
+                solution, which is a hint the solver has not earned yet. Teacher
+                view is itself owner/admin-only, so anything shown here is editable. */}
+            {teacherViewEnabled && (
+                <div className="mb-3">
+                    <div className="d-flex flex-wrap gap-1 align-items-center">
+                        <span className="me-1 text-muted small">
+                            <i className="bi bi-diagram-3 me-1"></i>
+                            {t("sequence.concepts", "Concepts")}:
                         </span>
-                    ))}
-                </p>
+                        {!editingConcepts && seq.concepts.map((c) => (
+                            <span key={c} className="badge bg-secondary-subtle text-secondary-emphasis">
+                                {c}
+                            </span>
+                        ))}
+                        {!editingConcepts && seq.concepts.length === 0 && (
+                            <span className="text-muted small fst-italic">{t("sequence.conceptsNone")}</span>
+                        )}
+                        {!editingConcepts && (
+                            <button
+                                className="btn btn-sm btn-link text-secondary p-0 ms-1"
+                                title={t("sequence.conceptsEdit")}
+                                aria-label={t("sequence.conceptsEdit")}
+                                onClick={() => { setConceptError(""); setEditingConcepts(true); }}
+                            >
+                                <i className="bi bi-pencil"></i>
+                            </button>
+                        )}
+                    </div>
+
+                    {editingConcepts && (
+                        <div className="mt-2" style={{ maxWidth: 520 }}>
+                            <ConceptPicker
+                                inputId="sequenceConcepts"
+                                value={seq.concepts}
+                                catalogue={conceptCatalogue}
+                                onChange={saveConcepts}
+                            />
+                            {conceptError && <div className="text-danger small mt-1">{conceptError}</div>}
+                            <div className="d-flex gap-2 align-items-center mt-2">
+                                <button
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={() => { setConceptError(""); setEditingConcepts(false); }}
+                                    disabled={savingConcepts}
+                                >
+                                    {t("sequence.conceptsDone")}
+                                </button>
+                                {savingConcepts && (
+                                    <span className="spinner-border spinner-border-sm text-secondary" role="status" />
+                                )}
+                                <span className="form-text m-0">{t("sequence.conceptsEditHint")}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
             )}
 
-            {/* AP19 Teil A (A13): Library tags. Shown in teacher view only — students see the
-                curated `concepts` list above. LLM / manual / auto sources are colour-coded via
-                TagChip, and a pulsing skeleton appears while the async LLM tagger is still
-                working on freshly-generated sequences. */}
+            {/* AP19 Teil A (A13): Library tags, teacher view only. LLM / manual / auto
+                sources are colour-coded via TagChip, and a pulsing skeleton appears
+                while the async LLM tagger is still working on freshly-generated
+                sequences. */}
             {teacherViewEnabled && (sequenceTags.length > 0 || isWaitingForLlm) && (
                 <div className="mb-3 d-flex flex-wrap gap-1 align-items-center">
                     <span className="me-1 text-muted small">

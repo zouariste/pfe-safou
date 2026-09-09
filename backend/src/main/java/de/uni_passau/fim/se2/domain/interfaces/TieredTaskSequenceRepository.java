@@ -91,6 +91,17 @@ public interface TieredTaskSequenceRepository {
      */
     void linkConceptsBatch(UUID sequenceId, List<UUID> conceptIds);
 
+    /**
+     * Replaces every concept linked to a sequence with the given set. Used when
+     * a teacher edits the concepts on the sequence page, where the edit is a new
+     * set rather than a series of add/remove operations.
+     *
+     * @param sequenceId the sequence whose concepts are being replaced
+     * @param conceptIds the concept IDs that should remain linked; an empty list
+     *                   leaves the sequence with none
+     */
+    void replaceConcepts(UUID sequenceId, List<UUID> conceptIds);
+
     void tagSequence(UUID sequenceId, UUID evalInputId, String mode, UUID runId);
 
     /**

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, apiErrorMessage } from "../lib/api.ts";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -6,6 +6,8 @@ import { SequenceView } from "../components/SequenceView.tsx";
 import type { TieredTaskSequence } from "../types/models.ts";
 import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
+import ConceptPicker from "../components/ConceptPicker";
+import { useConceptCatalogue } from "../hooks/useConceptCatalogue";
 
 export default function HomePage() {
     const { t } = useTranslation();
@@ -15,7 +17,8 @@ export default function HomePage() {
     const [problemStatement, setProblemStatement] = useState("");
     const [language, setLanguage] = useState("");
     const [targetLanguage, setTargetLanguage] = useState("de");
-    const [concepts, setConcepts] = useState("");
+    const [concepts, setConcepts] = useState<string[]>([]);
+    const conceptCatalogue = useConceptCatalogue();
     const [distractorsEnabled, setDistractorsEnabled] = useState(false);
     const [contextModeEnabled, setContextModeEnabled] = useState(false);
     const [splitEnabled, setSplitEnabled] = useState(false); // AP31
@@ -79,14 +82,9 @@ export default function HomePage() {
         return () => window.removeEventListener("keydown", onKey);
     }, [loading, codeSnippet, problemStatement, language, concepts]);
 
-    const conceptTokens = useMemo(
-        () =>
-            concepts
-                .split(",")
-                .map((c) => c.trim())
-                .filter(Boolean),
-        [concepts]
-    );
+    // Kept as a name so the rest of the file reads unchanged; the picker
+    // already hands over a clean, de-duplicated list.
+    const conceptTokens = concepts;
 
     const handleSubmit = async (e?: React.FormEvent) => {
         e?.preventDefault();
@@ -137,7 +135,7 @@ export default function HomePage() {
         setProblemStatement("");
         setLanguage("");
         setTargetLanguage("de");
-        setConcepts("");
+        setConcepts([]);
         setDistractorsEnabled(false);
         setContextModeEnabled(false);
         setBlacklist("");
@@ -246,26 +244,16 @@ export default function HomePage() {
                                     </div>
                                 </div>
 
-                                {/* Concepts with chips */}
-                                <div className="input-group">
-                                    <span className="input-group-text">🏷️</span>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        value={concepts}
-                                        onChange={(e) => setConcepts(e.target.value)}
-                                        placeholder={t("home.concepts")}
-                                    />
-                                </div>
-                                {conceptTokens.length > 0 && (
-                                    <div className="mt-2">
-                                        {conceptTokens.map((c, i) => (
-                                            <span key={`${c}-${i}`} className="badge rounded-pill text-bg-light me-2 mb-2 border">
-                        {c}
-                      </span>
-                                        ))}
-                                    </div>
-                                )}
+                                {/* Concepts — picked from the catalogue, or typed in full */}
+                                <label className="form-label" htmlFor="homeConcepts">
+                                    🏷️ {t("home.concepts")}
+                                </label>
+                                <ConceptPicker
+                                    inputId="homeConcepts"
+                                    value={concepts}
+                                    catalogue={conceptCatalogue}
+                                    onChange={setConcepts}
+                                />
 
                                 {/* AP15: Distractors toggle */}
                                 <div className="form-check form-switch mt-3 mb-0">

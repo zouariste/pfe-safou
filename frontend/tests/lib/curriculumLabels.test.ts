@@ -17,6 +17,7 @@ const topic = (over: Partial<CurriculumTopic> = {}): CurriculumTopic => ({
     nameEn: "Binary trees",
     descriptionEn: "Binary search tree, traversals",
     trackEn: "Foundation",
+    educationLevel: "SCHOOL",
     ...over,
 });
 

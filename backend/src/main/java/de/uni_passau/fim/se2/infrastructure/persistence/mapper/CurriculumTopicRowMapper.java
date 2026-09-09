@@ -46,6 +46,7 @@ public class CurriculumTopicRowMapper implements RowMapper<CurriculumTopicDTO> {
         dto.setNameEn(rs.getString("name_en"));
         dto.setDescriptionEn(rs.getString("description_en"));
         dto.setTrackEn(rs.getString("track_en"));
+        dto.setEducationLevel(rs.getString("education_level"));
         return dto;
     }
 }
