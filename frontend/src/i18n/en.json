@@ -939,7 +939,12 @@
     "levelSchool": "School",
     "levelUniversity": "University",
     "levelAll": "All",
-    "filterLevel": "Education level"
+    "filterLevel": "Education level",
+    "editTopLevel": "Edit entry",
+    "editArea": "Edit learning area",
+    "editEntry": "Edit",
+    "kindSwitchHint": "The type can be changed: without a grade level the entry becomes a module.",
+    "cascadeHint": "Grade level, track and education level are passed down to the learning areas below."
   },
 
   "common": {

@@ -182,6 +182,25 @@ public class CurriculumController {
     }
 
     /**
+     * Admin: edit a curriculum entry, at either level — the endpoint reads the
+     * level off the stored topic. A top-level entry may also change shape
+     * between Jahrgangsstufe and module; a sub-topic keeps the grade level,
+     * track and education level it inherits. See CurriculumTopicAdminService.
+     * Allowed: Admin only.
+     */
+    @PutMapping("/topics/{topicId}")
+    public ResponseEntity<?> updateTopic(@PathVariable UUID topicId,
+                                         @RequestBody CurriculumTopicDTO body) {
+        requireAdmin();
+        try {
+            return ResponseEntity.ok(topicAdminService.update(topicId, body));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+        }
+    }
+
+    /**
      * AP32 admin: create a curated code example under a topic.
      * Allowed: Admin only.
      */

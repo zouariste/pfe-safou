@@ -939,7 +939,12 @@
     "levelSchool": "Schule",
     "levelUniversity": "Hochschule",
     "levelAll": "Alle",
-    "filterLevel": "Bildungsbereich"
+    "filterLevel": "Bildungsbereich",
+    "editTopLevel": "Eintrag bearbeiten",
+    "editArea": "Lernbereich bearbeiten",
+    "editEntry": "Bearbeiten",
+    "kindSwitchHint": "Die Art lässt sich ändern: ohne Jahrgangsstufe wird der Eintrag zu einem Modul.",
+    "cascadeHint": "Jahrgangsstufe, Ausbildungsrichtung und Bildungsbereich werden an die Lernbereiche darunter weitergegeben."
   },
 
   "common": {

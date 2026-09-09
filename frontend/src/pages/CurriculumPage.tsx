@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { CurriculumTopic, CurriculumCodeExample } from "../types/models";
 import { topicName, topicDescription, topicTrack } from "../lib/curriculumLabels";
 import {
+    educationLevelOf,
     filterByEducationLevel,
     hasMixedEducationLevels,
     type EducationLevel,
@@ -116,6 +117,8 @@ export default function CurriculumPage() {
     // and track, from which the backend derives its name, which is also what
     // the cards below display — or a module that carries its own name.
     interface TopLevelForm {
+        /** Set when editing an existing entry; absent when creating one. */
+        id?: string;
         kind: "GRADE" | "MODULE";
         educationLevel: EducationLevel;
         gradeLevel: string;
@@ -127,6 +130,8 @@ export default function CurriculumPage() {
         descriptionEn: string;
     }
     interface AreaForm {
+        /** Set when editing an existing learning area; absent when creating one. */
+        id?: string;
         name: string;
         nameEn: string;
         description: string;
@@ -150,6 +155,36 @@ export default function CurriculumPage() {
             nameEn: "",
             description: "",
             descriptionEn: "",
+        });
+    };
+
+    const openEditTopLevel = (topic: CurriculumTopic) => {
+        setTopicError("");
+        // Which shape the entry has follows from the stored grade level, the
+        // same rule the backend applies.
+        setTopLevelForm({
+            id: topic.id,
+            kind: topic.gradeLevel !== null ? "GRADE" : "MODULE",
+            educationLevel: educationLevelOf(topic),
+            gradeLevel: topic.gradeLevel !== null ? String(topic.gradeLevel) : "",
+            track: topic.track ?? "",
+            trackEn: topic.trackEn ?? "",
+            name: topic.name ?? "",
+            nameEn: topic.nameEn ?? "",
+            description: topic.description ?? "",
+            descriptionEn: topic.descriptionEn ?? "",
+        });
+    };
+
+    const openEditArea = (topic: CurriculumTopic) => {
+        setTopicError("");
+        setAreaForm({
+            id: topic.id,
+            name: topic.name ?? "",
+            nameEn: topic.nameEn ?? "",
+            description: topic.description ?? "",
+            descriptionEn: topic.descriptionEn ?? "",
+            learningArea: topic.learningArea ?? "",
         });
     };
 
@@ -184,7 +219,7 @@ export default function CurriculumPage() {
             // A grade level and a name are mutually exclusive server-side: the
             // presence of gradeLevel is what makes the entry a Jahrgangsstufe.
             const isGrade = topLevelForm.kind === "GRADE";
-            await api.post("/curriculum/topics", {
+            const payload = {
                 educationLevel: topLevelForm.educationLevel,
                 gradeLevel: isGrade ? Number(topLevelForm.gradeLevel) : null,
                 track: isGrade ? topLevelForm.track : "",
@@ -193,7 +228,12 @@ export default function CurriculumPage() {
                 nameEn: isGrade ? "" : topLevelForm.nameEn,
                 description: topLevelForm.description,
                 descriptionEn: topLevelForm.descriptionEn,
-            });
+            };
+            if (topLevelForm.id) {
+                await api.put(`/curriculum/topics/${topLevelForm.id}`, payload);
+            } else {
+                await api.post("/curriculum/topics", payload);
+            }
             setTopLevelForm(null);
             await loadTopLevelTopics();
         } catch (e) {
@@ -208,14 +248,20 @@ export default function CurriculumPage() {
         setSavingTopic(true);
         setTopicError("");
         try {
-            // Grade level and track are inherited from the parent server-side.
-            await api.post(`/curriculum/topics/${selectedGrade.id}/children`, {
+            // Grade level, track and education level are inherited from the
+            // parent server-side, on create and on edit alike.
+            const payload = {
                 name: areaForm.name,
                 nameEn: areaForm.nameEn,
                 description: areaForm.description,
                 descriptionEn: areaForm.descriptionEn,
                 learningArea: areaForm.learningArea,
-            });
+            };
+            if (areaForm.id) {
+                await api.put(`/curriculum/topics/${areaForm.id}`, payload);
+            } else {
+                await api.post(`/curriculum/topics/${selectedGrade.id}/children`, payload);
+            }
             setAreaForm(null);
             await loadSubTopics(selectedGrade.id);
         } catch (e) {
@@ -426,8 +472,8 @@ export default function CurriculumPage() {
                     {isAdmin && topLevelForm && (
                         <div className="border rounded p-3 mb-3 bg-light">
                             <h6 className="mb-3">
-                                <i className="bi bi-mortarboard me-2"></i>
-                                {t("curriculum.newTopLevel")}
+                                <i className={`bi ${topLevelForm.id ? "bi-pencil-square" : "bi-mortarboard"} me-2`}></i>
+                                {topLevelForm.id ? t("curriculum.editTopLevel") : t("curriculum.newTopLevel")}
                             </h6>
                             {topicError && <div className="alert alert-danger py-2">{topicError}</div>}
                             <div className="row g-2">
@@ -501,6 +547,11 @@ export default function CurriculumPage() {
                                 </div>
                                 <div className="col-12">
                                     <div className="form-text mt-0">{t("curriculum.englishHint")}</div>
+                                    {topLevelForm.id && (
+                                        <div className="form-text">
+                                            {t("curriculum.kindSwitchHint")} {t("curriculum.cascadeHint")}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="d-flex gap-2 mt-3">
@@ -527,9 +578,21 @@ export default function CurriculumPage() {
                                     onMouseLeave={e => (e.currentTarget.style.transform = "")}
                                 >
                                     <div className="card-body">
-                                        <h6 className="card-title fw-semibold">
-                                            <i className="bi bi-mortarboard me-2 text-primary"></i>
-                                            {topicLabel(topic)}
+                                        <h6 className="card-title fw-semibold d-flex align-items-start justify-content-between gap-2">
+                                            <span>
+                                                <i className="bi bi-mortarboard me-2 text-primary"></i>
+                                                {topicLabel(topic)}
+                                            </span>
+                                            {isAdmin && (
+                                                <button
+                                                    className="btn btn-sm btn-link text-secondary p-0"
+                                                    title={t("curriculum.editEntry")}
+                                                    aria-label={t("curriculum.editEntry")}
+                                                    onClick={e => { e.stopPropagation(); openEditTopLevel(topic); }}
+                                                >
+                                                    <i className="bi bi-pencil"></i>
+                                                </button>
+                                            )}
                                         </h6>
                                         {description(topic) && (
                                             <p className="card-text text-muted small mb-0">{description(topic)}</p>
@@ -560,8 +623,8 @@ export default function CurriculumPage() {
                     {isAdmin && areaForm && (
                         <div className="border rounded p-3 mb-3 bg-light">
                             <h6 className="mb-3">
-                                <i className="bi bi-list-check me-2"></i>
-                                {t("curriculum.newArea")}
+                                <i className={`bi ${areaForm.id ? "bi-pencil-square" : "bi-list-check"} me-2`}></i>
+                                {areaForm.id ? t("curriculum.editArea") : t("curriculum.newArea")}
                             </h6>
                             {topicError && <div className="alert alert-danger py-2">{topicError}</div>}
                             <div className="row g-2">
@@ -613,19 +676,30 @@ export default function CurriculumPage() {
                     ) : (
                         <div className="list-group">
                             {subTopics.map(topic => (
-                                <button
-                                    key={topic.id}
-                                    className="list-group-item list-group-item-action d-flex justify-content-between align-items-start"
-                                    onClick={() => selectTopic(topic)}
-                                >
-                                    <div>
-                                        <h6 className="mb-1 fw-semibold">{topicLabel(topic)}</h6>
-                                        {description(topic) && (
-                                            <p className="mb-0 text-muted small">{description(topic)}</p>
-                                        )}
-                                    </div>
-                                    <i className="bi bi-chevron-right text-muted"></i>
-                                </button>
+                                <div key={topic.id} className="list-group-item d-flex align-items-start gap-2">
+                                    <button
+                                        className="btn btn-link text-body text-decoration-none text-start flex-grow-1 p-0 d-flex justify-content-between align-items-start"
+                                        onClick={() => selectTopic(topic)}
+                                    >
+                                        <div>
+                                            <h6 className="mb-1 fw-semibold">{topicLabel(topic)}</h6>
+                                            {description(topic) && (
+                                                <p className="mb-0 text-muted small">{description(topic)}</p>
+                                            )}
+                                        </div>
+                                        <i className="bi bi-chevron-right text-muted ms-2"></i>
+                                    </button>
+                                    {isAdmin && (
+                                        <button
+                                            className="btn btn-sm btn-link text-secondary p-0"
+                                            title={t("curriculum.editEntry")}
+                                            aria-label={t("curriculum.editEntry")}
+                                            onClick={() => openEditArea(topic)}
+                                        >
+                                            <i className="bi bi-pencil"></i>
+                                        </button>
+                                    )}
+                                </div>
                             ))}
                         </div>
                     )}
