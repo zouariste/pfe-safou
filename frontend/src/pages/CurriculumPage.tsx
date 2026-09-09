@@ -4,27 +4,32 @@ import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import type { CurriculumTopic, CurriculumCodeExample } from "../types/models";
-
-/**
- * Top-level topics (parentId === null) have their display name derived
- * from gradeLevel + track instead of the DB `name` column, because the
- * name field can be corrupted by CP850 mojibake during seeding on some hosts
- * (e.g. "Jgst. 9 ÔÇö NTG" instead of "Jgst. 9 — NTG").
- * Sub-topics keep their DB name as-is (ASCII only).
- */
-function topicLabel(topic: CurriculumTopic): string {
-    if (topic.parentId === null && topic.gradeLevel !== null) {
-        return topic.track
-            ? `Jgst. ${topic.gradeLevel} — ${topic.track}`
-            : `Jgst. ${topic.gradeLevel}`;
-    }
-    return topic.name;
-}
+import { topicName, topicDescription, topicTrack } from "../lib/curriculumLabels";
 
 export default function CurriculumPage() {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const { isLoggedIn, isStudent, isAdmin } = useAuth();
     const navigate = useNavigate();
+
+    /**
+     * Topic text is translated in the database (German columns + `*_en`);
+     * see src/lib/curriculumLabels.ts. Top-level topics (parentId === null)
+     * are the exception: their label is built from gradeLevel + the track,
+     * so a newly seeded Jahrgangsstufe reads correctly in both languages
+     * without anyone writing a label for it.
+     */
+    const lang = i18n.language;
+    const trackLabel = (topic: CurriculumTopic): string => topicTrack(topic, lang);
+
+    const topicLabel = (topic: CurriculumTopic): string => {
+        if (topic.parentId === null && topic.gradeLevel !== null) {
+            const grade = t("curriculum.grade", { level: topic.gradeLevel });
+            return topic.track ? `${grade} — ${trackLabel(topic)}` : grade;
+        }
+        return topicName(topic, lang);
+    };
+
+    const description = (topic: CurriculumTopic): string => topicDescription(topic, lang);
 
     // Topic tree state
     const [topLevelTopics, setTopLevelTopics] = useState<CurriculumTopic[]>([]);
@@ -253,7 +258,7 @@ export default function CurriculumPage() {
                     </button>
                     <span className="ms-3 text-muted">
                         {selectedGrade && topicLabel(selectedGrade)}
-                        {selectedTopic && <> &rsaquo; {selectedTopic.name}</>}
+                        {selectedTopic && <> &rsaquo; {topicLabel(selectedTopic)}</>}
                     </span>
                 </nav>
             )}
@@ -277,11 +282,11 @@ export default function CurriculumPage() {
                                             <i className="bi bi-mortarboard me-2 text-primary"></i>
                                             {topicLabel(topic)}
                                         </h6>
-                                        {topic.description && (
-                                            <p className="card-text text-muted small mb-0">{topic.description}</p>
+                                        {description(topic) && (
+                                            <p className="card-text text-muted small mb-0">{description(topic)}</p>
                                         )}
                                         {topic.track && (
-                                            <span className="badge bg-secondary mt-2">{topic.track}</span>
+                                            <span className="badge bg-secondary mt-2">{trackLabel(topic)}</span>
                                         )}
                                     </div>
                                 </div>
@@ -306,9 +311,9 @@ export default function CurriculumPage() {
                                     onClick={() => selectTopic(topic)}
                                 >
                                     <div>
-                                        <h6 className="mb-1 fw-semibold">{topic.name}</h6>
-                                        {topic.description && (
-                                            <p className="mb-0 text-muted small">{topic.description}</p>
+                                        <h6 className="mb-1 fw-semibold">{topicLabel(topic)}</h6>
+                                        {description(topic) && (
+                                            <p className="mb-0 text-muted small">{description(topic)}</p>
                                         )}
                                     </div>
                                     <i className="bi bi-chevron-right text-muted"></i>

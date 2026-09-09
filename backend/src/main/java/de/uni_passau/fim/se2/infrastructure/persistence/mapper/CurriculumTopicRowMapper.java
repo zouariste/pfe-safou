@@ -41,6 +41,11 @@ public class CurriculumTopicRowMapper implements RowMapper<CurriculumTopicDTO> {
         String parentStr = rs.getString("parent_id");
         dto.setParentId(parentStr != null ? UUID.fromString(parentStr) : null);
         dto.setSortOrder(rs.getInt("sort_order"));
+        // English translations — null for a topic that has none; the columns
+        // themselves come from 11_migration_curriculum_i18n.sql, which is required.
+        dto.setNameEn(rs.getString("name_en"));
+        dto.setDescriptionEn(rs.getString("description_en"));
+        dto.setTrackEn(rs.getString("track_en"));
         return dto;
     }
 }

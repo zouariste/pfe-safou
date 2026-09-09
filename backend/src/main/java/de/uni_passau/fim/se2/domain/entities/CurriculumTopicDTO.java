@@ -34,4 +34,10 @@ public class CurriculumTopicDTO {
     private String learningArea;
     private UUID parentId;
     private int sortOrder;
+    // English translations (11_migration_curriculum_i18n.sql). German is the
+    // source language; these are overrides and may be null, in which case
+    // consumers fall back to the German column.
+    private String nameEn;
+    private String descriptionEn;
+    private String trackEn;
 }
