@@ -44,6 +44,10 @@ export default function CurriculumPage() {
     const [subTopics, setSubTopics] = useState<CurriculumTopic[]>([]);
     const [selectedTopic, setSelectedTopic] = useState<CurriculumTopic | null>(null);
     const [examples, setExamples] = useState<CurriculumCodeExample[]>([]);
+    // The concepts mapped to the selected learning area. Nobody picks these on
+    // this page — they come from the curriculum mapping and go into the
+    // generation prompt — so they are shown read-only, next to the form.
+    const [topicConcepts, setTopicConcepts] = useState<string[]>([]);
 
     // Generation form
     const [language, setLanguage] = useState("java");
@@ -98,9 +102,14 @@ export default function CurriculumPage() {
     const selectTopic = async (topic: CurriculumTopic) => {
         setSelectedTopic(topic);
         setExampleForm(null);
+        setTopicConcepts([]);
         try {
-            const res = await api.get<CurriculumCodeExample[]>(`/curriculum/topics/${topic.id}/examples`);
-            setExamples(res.data);
+            const [exampleRes, conceptRes] = await Promise.all([
+                api.get<CurriculumCodeExample[]>(`/curriculum/topics/${topic.id}/examples`),
+                api.get<string[]>(`/curriculum/topics/${topic.id}/concepts`),
+            ]);
+            setExamples(exampleRes.data);
+            setTopicConcepts(conceptRes.data);
         } catch {
             setError(t("curriculum.errorLoading"));
         }
@@ -132,6 +141,8 @@ export default function CurriculumPage() {
     interface AreaForm {
         /** Set when editing an existing learning area; absent when creating one. */
         id?: string;
+        /** Comma-separated concept names, the same shape the Home page uses. */
+        concepts: string;
         name: string;
         nameEn: string;
         description: string;
@@ -142,6 +153,18 @@ export default function CurriculumPage() {
     const [areaForm, setAreaForm] = useState<AreaForm | null>(null);
     const [savingTopic, setSavingTopic] = useState(false);
     const [topicError, setTopicError] = useState("");
+    // The whole concept catalogue, fetched once, to suggest from while typing.
+    const [conceptCatalogue, setConceptCatalogue] = useState<string[]>([]);
+
+    const loadConceptCatalogue = async () => {
+        if (conceptCatalogue.length > 0) return;
+        try {
+            const res = await api.get<string[]>("/curriculum/concepts");
+            setConceptCatalogue(res.data);
+        } catch {
+            // Only the autocomplete suggestions are lost; typing still works.
+        }
+    };
 
     const openNewTopLevel = () => {
         setTopicError("");
@@ -176,7 +199,7 @@ export default function CurriculumPage() {
         });
     };
 
-    const openEditArea = (topic: CurriculumTopic) => {
+    const openEditArea = async (topic: CurriculumTopic) => {
         setTopicError("");
         setAreaForm({
             id: topic.id,
@@ -185,8 +208,21 @@ export default function CurriculumPage() {
             description: topic.description ?? "",
             descriptionEn: topic.descriptionEn ?? "",
             learningArea: topic.learningArea ?? "",
+            concepts: "",
         });
+        void loadConceptCatalogue();
+        // The mapping is a relation, so it does not come with the topic.
+        try {
+            const res = await api.get<string[]>(`/curriculum/topics/${topic.id}/concepts`);
+            setAreaForm(form => (form && form.id === topic.id ? { ...form, concepts: res.data.join(", ") } : form));
+        } catch {
+            setTopicError(t("curriculum.errorLoading"));
+        }
     };
+
+    /** "array, for-loop , " -> ["array", "for-loop"] */
+    const conceptTokens = (raw: string): string[] =>
+        raw.split(",").map(c => c.trim()).filter(Boolean);
 
     /**
      * Switching the type moves the education level with it, since that is the
@@ -208,7 +244,8 @@ export default function CurriculumPage() {
 
     const openNewArea = () => {
         setTopicError("");
-        setAreaForm({ name: "", nameEn: "", description: "", descriptionEn: "", learningArea: "" });
+        setAreaForm({ name: "", nameEn: "", description: "", descriptionEn: "", learningArea: "", concepts: "" });
+        void loadConceptCatalogue();
     };
 
     const saveTopLevel = async () => {
@@ -256,6 +293,8 @@ export default function CurriculumPage() {
                 description: areaForm.description,
                 descriptionEn: areaForm.descriptionEn,
                 learningArea: areaForm.learningArea,
+                // Always sent, so clearing the field clears the mapping.
+                concepts: conceptTokens(areaForm.concepts),
             };
             if (areaForm.id) {
                 await api.put(`/curriculum/topics/${areaForm.id}`, payload);
@@ -389,6 +428,7 @@ export default function CurriculumPage() {
         if (selectedTopic) {
             setSelectedTopic(null);
             setExamples([]);
+            setTopicConcepts([]);
         } else if (selectedGrade) {
             setSelectedGrade(null);
             setSubTopics([]);
@@ -657,6 +697,36 @@ export default function CurriculumPage() {
                                         onChange={e => setAreaForm({ ...areaForm, learningArea: e.target.value })} />
                                     <div className="form-text">{t("curriculum.fieldLearningAreaHint")}</div>
                                 </div>
+                                <div className="col-12">
+                                    <label className="form-label small fw-semibold" htmlFor="areaConcepts">
+                                        {t("curriculum.fieldConcepts")}
+                                    </label>
+                                    <input
+                                        id="areaConcepts"
+                                        className="form-control form-control-sm"
+                                        list="curriculumConceptCatalogue"
+                                        value={areaForm.concepts}
+                                        placeholder={t("curriculum.conceptsPlaceholder")}
+                                        onChange={e => setAreaForm({ ...areaForm, concepts: e.target.value })}
+                                    />
+                                    {/* Suggestions only — a name outside the catalogue is allowed
+                                        and is created as a new concept. */}
+                                    <datalist id="curriculumConceptCatalogue">
+                                        {conceptCatalogue.map(c => <option key={c} value={c} />)}
+                                    </datalist>
+                                    <div className="form-text">{t("curriculum.conceptsHint")}</div>
+                                    {conceptTokens(areaForm.concepts).length > 0 ? (
+                                        <div className="d-flex flex-wrap gap-1 mt-2">
+                                            {conceptTokens(areaForm.concepts).map((c, i) => (
+                                                <span key={`${c}-${i}`} className="badge bg-secondary-subtle text-secondary-emphasis">
+                                                    {c}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="form-text fst-italic">{t("curriculum.conceptsEmpty")}</div>
+                                    )}
+                                </div>
                             </div>
                             <div className="d-flex gap-2 mt-3">
                                 <button className="btn btn-sm btn-primary" onClick={saveArea}
@@ -839,6 +909,28 @@ export default function CurriculumPage() {
                                 </h6>
                             </div>
                             <div className="card-body">
+                                <div className="mb-3">
+                                    <label className="form-label fw-semibold">
+                                        <i className="bi bi-diagram-3 me-2"></i>
+                                        {t("curriculum.fieldConcepts")}
+                                    </label>
+                                    {topicConcepts.length > 0 ? (
+                                        <div className="d-flex flex-wrap gap-1">
+                                            {topicConcepts.map(c => (
+                                                <span key={c} className="badge bg-secondary-subtle text-secondary-emphasis">
+                                                    {c}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-muted small fst-italic">{t("curriculum.conceptsEmpty")}</div>
+                                    )}
+                                    <div className="form-text">
+                                        {t("curriculum.conceptsAuto")}
+                                        {isAdmin && ` ${t("curriculum.conceptsAdminHint")}`}
+                                    </div>
+                                </div>
+
                                 <div className="row g-3 mb-3">
                                     <div className="col-md-4">
                                         <label className="form-label fw-semibold">{t("curriculum.language")}</label>
@@ -967,23 +1059,43 @@ export default function CurriculumPage() {
                                     </div>
                                 )}
 
-                                <button
-                                    className="btn btn-primary w-100"
-                                    onClick={handleGenerate}
-                                    disabled={generating}
+                                {/* Generation needs curated seed examples: without them the
+                                    backend answers 422 no_examples. Saying so on the button beats
+                                    letting a teacher press it and read an error. The title sits on
+                                    the wrapper because a disabled button fires no hover events. */}
+                                <span
+                                    className="d-inline-block w-100"
+                                    title={examples.length === 0
+                                        ? (isAdmin
+                                            ? t("curriculum.generateDisabledNoExamplesAdmin")
+                                            : t("curriculum.generateDisabledNoExamples"))
+                                        : undefined}
                                 >
-                                    {generating ? (
-                                        <>
-                                            <span className="spinner-border spinner-border-sm me-2" />
-                                            {t("curriculum.generating")}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="bi bi-lightning-charge me-2"></i>
-                                            {t("curriculum.generate")}
-                                        </>
-                                    )}
-                                </button>
+                                    <button
+                                        className="btn btn-primary w-100"
+                                        onClick={handleGenerate}
+                                        disabled={generating || examples.length === 0}
+                                    >
+                                        {generating ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" />
+                                                {t("curriculum.generating")}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="bi bi-lightning-charge me-2"></i>
+                                                {t("curriculum.generate")}
+                                            </>
+                                        )}
+                                    </button>
+                                </span>
+                                {examples.length === 0 && (
+                                    <div className="form-text text-center mt-2">
+                                        {isAdmin
+                                            ? t("curriculum.generateDisabledNoExamplesAdmin")
+                                            : t("curriculum.generateDisabledNoExamples")}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

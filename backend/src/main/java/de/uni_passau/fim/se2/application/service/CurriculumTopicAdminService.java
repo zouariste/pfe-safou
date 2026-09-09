@@ -18,16 +18,22 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import de.uni_passau.fim.se2.domain.entities.ConceptCurriculumTopicDTO;
+import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
 import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.ConceptCurriculumTopicRepository;
+import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
 import de.uni_passau.fim.se2.domain.interfaces.CurriculumTopicRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Admin use case: extend and edit the curriculum tree — top-level entries
@@ -64,9 +70,34 @@ public class CurriculumTopicAdminService {
     private static final String DEFAULT_EDUCATION_LEVEL = "SCHOOL";
 
     private final CurriculumTopicRepository topicRepo;
+    private final ConceptRepository conceptRepo;
+    private final ConceptCurriculumTopicRepository conceptTopicRepo;
 
-    public CurriculumTopicAdminService(CurriculumTopicRepository topicRepo) {
+    public CurriculumTopicAdminService(CurriculumTopicRepository topicRepo,
+                                       ConceptRepository conceptRepo,
+                                       ConceptCurriculumTopicRepository conceptTopicRepo) {
         this.topicRepo = topicRepo;
+        this.conceptRepo = conceptRepo;
+        this.conceptTopicRepo = conceptTopicRepo;
+    }
+
+    /** The concept names mapped to a topic, for the edit form to start from. */
+    public List<String> getConceptNames(UUID topicId) {
+        CurriculumTopicDTO topic = topicRepo.findById(topicId)
+                .orElseThrow(() -> new IllegalArgumentException("Curriculum topic not found: " + topicId));
+        return conceptTopicRepo.findAllByCurriculumTopic(topic).stream()
+                .map(ConceptDTO::getName)
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
+    }
+
+    /** The whole concept catalogue, for the picker to suggest from. */
+    public List<String> getConceptCatalogue() {
+        return conceptRepo.loadAll().stream()
+                .map(ConceptDTO::getName)
+                .filter(n -> n != null && !n.isBlank())
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
     }
 
     /**
@@ -155,6 +186,7 @@ public class CurriculumTopicAdminService {
 
         requireNameIsFree(topic.getName(), null);
         topicRepo.save(topic);
+        applyConcepts(topic, dto.getConcepts());
         return topic;
     }
 
@@ -247,6 +279,7 @@ public class CurriculumTopicAdminService {
 
         requireNameIsFree(topic.getName(), existing.getId());
         topicRepo.save(topic);
+        applyConcepts(topic, dto.getConcepts());
         return topic;
     }
 
@@ -272,6 +305,60 @@ public class CurriculumTopicAdminService {
             child.setEducationLevel(parent.getEducationLevel());
             topicRepo.save(child);
         }
+    }
+
+    /**
+     * Replaces a topic's concept mapping with the given names. Null means the
+     * request did not mention concepts, so the mapping is left alone; an empty
+     * list clears it.
+     *
+     * <p>Names are matched against the catalogue and created when they are not
+     * in it yet, which is what a new module's vocabulary needs — the catalogue
+     * was written for the school curriculum. Matching is the repository's
+     * insert-or-select on the unique name, so an existing concept is reused
+     * rather than duplicated. Only the difference is written, so re-saving a
+     * form without touching the concepts writes nothing.
+     */
+    private void applyConcepts(CurriculumTopicDTO topic, List<String> requested) {
+        if (requested == null) {
+            return;
+        }
+
+        // Dedupe case-insensitively but keep what the admin typed: "Arrays" and
+        // "arrays" are one concept, and the catalogue's name is authoritative.
+        LinkedHashMap<String, String> wanted = new LinkedHashMap<>();
+        for (String raw : requested) {
+            String name = trimToNull(raw);
+            if (name != null) {
+                wanted.putIfAbsent(name.toLowerCase(Locale.ROOT), name);
+            }
+        }
+
+        List<ConceptDTO> existing = conceptTopicRepo.findAllByCurriculumTopic(topic);
+        Set<String> existingKeys = existing.stream()
+                .map(c -> c.getName().toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+
+        for (ConceptDTO concept : existing) {
+            if (!wanted.containsKey(concept.getName().toLowerCase(Locale.ROOT))) {
+                conceptTopicRepo.delete(link(concept.getId(), topic.getId()));
+            }
+        }
+        for (var entry : wanted.entrySet()) {
+            if (existingKeys.contains(entry.getKey())) {
+                continue;
+            }
+            ConceptDTO concept = new ConceptDTO();
+            concept.setName(entry.getValue());
+            conceptTopicRepo.save(link(conceptRepo.save(concept), topic.getId()));
+        }
+    }
+
+    private static ConceptCurriculumTopicDTO link(UUID conceptId, UUID topicId) {
+        ConceptCurriculumTopicDTO dto = new ConceptCurriculumTopicDTO();
+        dto.setConceptId(conceptId);
+        dto.setTopicId(topicId);
+        return dto;
     }
 
     private static String gradeLabel(String prefix, int grade, String track) {

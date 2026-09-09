@@ -55,6 +55,14 @@ public interface ConceptRepository {
      */
     List<ConceptDTO> loadAllOriginal();
     /**
+     * Loads every programming concept, whether curated or generated. Unlike
+     * {@link #loadAllOriginal()} this does not filter on the {@code generated}
+     * flag, so it is the complete catalogue a concept may be picked from.
+     *
+     * @return all concepts, or an empty list if there are none
+     */
+    List<ConceptDTO> loadAll();
+    /**
      * Saves the specified programming concept to the repository.
      * This method persists the provided ConceptDTO object, allowing
      * it to be retrieved or modified at a later time.

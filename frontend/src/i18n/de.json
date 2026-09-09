@@ -944,7 +944,15 @@
     "editArea": "Lernbereich bearbeiten",
     "editEntry": "Bearbeiten",
     "kindSwitchHint": "Die Art lässt sich ändern: ohne Jahrgangsstufe wird der Eintrag zu einem Modul.",
-    "cascadeHint": "Jahrgangsstufe, Ausbildungsrichtung und Bildungsbereich werden an die Lernbereiche darunter weitergegeben."
+    "cascadeHint": "Jahrgangsstufe, Ausbildungsrichtung und Bildungsbereich werden an die Lernbereiche darunter weitergegeben.",
+    "fieldConcepts": "Konzepte",
+    "conceptsPlaceholder": "z. B. array, for-loop, recursion",
+    "conceptsHint": "Kommagetrennt. Diese Konzepte gehen als Zielkonzepte in den Generierungsprompt ein. Unbekannte Namen werden als neues Konzept angelegt.",
+    "conceptsAuto": "Automatisch aus der Lehrplan-Zuordnung dieses Lernbereichs übernommen.",
+    "conceptsAdminHint": "Änderbar über „Lernbereich bearbeiten“ in der Übersicht.",
+    "conceptsEmpty": "Ohne Konzepte wird bei der Generierung „general-programming“ verwendet.",
+    "generateDisabledNoExamples": "Für dieses Thema ist noch kein Referenz-Codebeispiel hinterlegt — ohne Beispiel kann keine Aufgabe generiert werden.",
+    "generateDisabledNoExamplesAdmin": "Für dieses Thema ist noch kein Referenz-Codebeispiel hinterlegt — lege oben eines an, um die Generierung freizuschalten."
   },
 
   "common": {

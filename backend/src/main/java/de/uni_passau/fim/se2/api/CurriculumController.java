@@ -182,6 +182,26 @@ public class CurriculumController {
     }
 
     /**
+     * The concept names mapped to a topic. Feeds the admin form; the mapping is
+     * a relation, so it does not ride along on the topic itself.
+     */
+    @GetMapping("/topics/{topicId}/concepts")
+    public ResponseEntity<?> getTopicConcepts(@PathVariable UUID topicId) {
+        try {
+            return ResponseEntity.ok(topicAdminService.getConceptNames(topicId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+        }
+    }
+
+    /** The whole concept catalogue, for the admin form to suggest from. */
+    @GetMapping("/concepts")
+    public ResponseEntity<List<String>> getConceptCatalogue() {
+        return ResponseEntity.ok(topicAdminService.getConceptCatalogue());
+    }
+
+    /**
      * Admin: edit a curriculum entry, at either level — the endpoint reads the
      * level off the stored topic. A top-level entry may also change shape
      * between Jahrgangsstufe and module; a sub-topic keeps the grade level,

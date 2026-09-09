@@ -944,7 +944,15 @@
     "editArea": "Edit learning area",
     "editEntry": "Edit",
     "kindSwitchHint": "The type can be changed: without a grade level the entry becomes a module.",
-    "cascadeHint": "Grade level, track and education level are passed down to the learning areas below."
+    "cascadeHint": "Grade level, track and education level are passed down to the learning areas below.",
+    "fieldConcepts": "Concepts",
+    "conceptsPlaceholder": "e.g. array, for-loop, recursion",
+    "conceptsHint": "Comma-separated. These go into the generation prompt as the target concepts. A name that is not in the catalogue is created as a new concept.",
+    "conceptsAuto": "Taken automatically from this learning area's curriculum mapping.",
+    "conceptsAdminHint": "Change them via “Edit learning area” in the overview.",
+    "conceptsEmpty": "Without concepts, generation falls back to “general-programming”.",
+    "generateDisabledNoExamples": "This topic has no reference code example yet — without one, no task can be generated.",
+    "generateDisabledNoExamplesAdmin": "This topic has no reference code example yet — add one above to enable generation."
   },
 
   "common": {

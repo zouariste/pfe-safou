@@ -46,4 +46,12 @@ public class CurriculumTopicDTO {
      * parent's value, so a row can be classified without looking at its parent.
      */
     private String educationLevel;
+    /**
+     * Concept names mapped to this topic through concept_curriculum_topic —
+     * a relation, not a column, so the row mappers never fill it and it stays
+     * null on an ordinary read. Admin requests carry it to set the mapping:
+     * null leaves the mapping alone, a list replaces it (an empty one clears
+     * it). Read it back through /api/curriculum/topics/{id}/concepts.
+     */
+    private java.util.List<String> concepts;
 }

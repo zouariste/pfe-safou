@@ -79,6 +79,19 @@ public class PostgreConceptDAO implements ConceptRepository {
     }
 
     /**
+     * Loads every programming concept, whether curated or generated. Unlike
+     * {@link #loadAllOriginal()} this does not filter on the {@code generated}
+     * flag, so it is the complete catalogue a concept may be picked from.
+     *
+     * @return all concepts, ordered by name
+     */
+    @Override
+    public List<ConceptDTO> loadAll() {
+        String sql = "SELECT id, name, description, generated FROM concepts ORDER BY name";
+        return jdbc.query(sql, new ConceptRowMapper());
+    }
+
+    /**
      * Saves the specified programming concept to the repository.
      * This method persists the provided ConceptDTO object, allowing
      * it to be retrieved or modified at a later time.
