@@ -30,6 +30,8 @@ import org.springframework.dao.*;
 import org.springframework.jdbc.core.*;
 import org.springframework.stereotype.*;
 
+import java.sql.Array;
+import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -146,25 +148,15 @@ public class PostgreWorksheetDao implements WorksheetRepository {
         try {
             WorksheetDTO result = jdbc.queryForObject(
                     sql,
-                    (rs, rowNum) -> {
-                        List<TieredTaskSequenceDTO> sequences = new ArrayList<>();
-                        UUID[] seqArray = (UUID[]) rs.getArray("sequence_ids").getArray();
-                        for (UUID seqId : seqArray) {
-                            if (seqId != null) {
-                                sequences.add(TieredTaskSequenceDTO.builder().id(seqId).build());
-                            }
-                        }
-
-                        return WorksheetDTO.builder()
-                                .id(UUID.fromString(rs.getString("id")))
-                                .name(rs.getString("name"))
-                                .description(rs.getString("description"))
-                                .ownerId(rs.getObject("owner_id", UUID.class))
-                                .hintsEnabled(rs.getBoolean("hints_enabled"))
-                                .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
-                                .sequenceDTOS(sequences)
-                                .build();
-                    },
+                    (rs, rowNum) -> WorksheetDTO.builder()
+                            .id(UUID.fromString(rs.getString("id")))
+                            .name(rs.getString("name"))
+                            .description(rs.getString("description"))
+                            .ownerId(rs.getObject("owner_id", UUID.class))
+                            .hintsEnabled(rs.getBoolean("hints_enabled"))
+                            .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
+                            .sequenceDTOS(sequenceReferences(rs.getArray("sequence_ids")))
+                            .build(),
                     worksheet.getId()
             );
 
@@ -312,12 +304,19 @@ public class PostgreWorksheetDao implements WorksheetRepository {
         }
     }
 
+    /**
+     * Lists a user's worksheets, each with the identifiers of its sequences.
+     *
+     * Like {@link #getWorksheetById} this loads sequence references only, not the
+     * sequences themselves — enough for the overview to say how many there are
+     * and for a caller to check whether a given sequence is already filed.
+     */
     @Override
     public List<WorksheetDTO> findByOwnerId(UUID ownerId) {
         String sql = """
             SELECT w.id, w.name, w.description, w.owner_id,
                    w.hints_enabled, w.hint_credits_per_task,
-                   COUNT(ws.sequence_id) AS sequence_count
+                   COALESCE(array_agg(ws.sequence_id ORDER BY ws.sequence_id), '{}') AS sequence_ids
             FROM worksheets w
             LEFT JOIN worksheets_sequence ws ON ws.worksheet_id = w.id
             WHERE w.owner_id = ?
@@ -333,7 +332,25 @@ public class PostgreWorksheetDao implements WorksheetRepository {
                 .ownerId(rs.getObject("owner_id", UUID.class))
                 .hintsEnabled(rs.getBoolean("hints_enabled"))
                 .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
+                .sequenceDTOS(sequenceReferences(rs.getArray("sequence_ids")))
                 .build(), ownerId);
+    }
+
+    /**
+     * Turns an aggregated {@code sequence_id} array into id-only sequence DTOs.
+     *
+     * A worksheet with no sequences aggregates to a single NULL element rather
+     * than an empty array, so nulls are dropped instead of becoming DTOs
+     * without an id.
+     */
+    private static List<TieredTaskSequenceDTO> sequenceReferences(Array column) throws SQLException {
+        List<TieredTaskSequenceDTO> sequences = new ArrayList<>();
+        for (UUID seqId : (UUID[]) column.getArray()) {
+            if (seqId != null) {
+                sequences.add(TieredTaskSequenceDTO.builder().id(seqId).build());
+            }
+        }
+        return sequences;
     }
 
     private void validateId(WorksheetDTO worksheet) {
