@@ -877,8 +877,8 @@
 
   "curriculum": {
     "title": "Curriculum Library",
-    "subtitle": "Generate Parsons tasks directly from the Bavarian computer science curriculum (LehrplanPLUS G9).",
-    "selectGrade": "Select grade level",
+    "subtitle": "Generate Parsons tasks straight from the curriculum: the Bavarian computer science curriculum (LehrplanPLUS G9) and university modules.",
+    "selectGrade": "Select a grade level or module",
     "selectTopic": "Select learning area",
     "noSubTopics": "No sub-topics available for this topic.",
     "examples": "Code examples ({{count}})",
@@ -1312,12 +1312,12 @@
         "Manual tags are always blue and are never overwritten by the auto-tagger."
       ],
       "curriculumTitle": "Library + Curriculum",
-      "curriculumBody": "From the Curriculum page, \"View existing sequences\" redirects to the Library with the curriculum topic pre-filled as a filter — so you instantly see all relevant material for a given LehrplanPLUS topic."
+      "curriculumBody": "From the Curriculum page, “View existing sequences” redirects to the Library with the curriculum topic pre-filled as a filter — so you instantly see all relevant material for a given topic, whether it is a grade level or a module."
     },
     "curriculum": {
       "title": "Curriculum Help",
-      "intro": "The Curriculum page maps CodeOwl directly onto the Bavarian LehrplanPLUS G9 Informatik. Browse by grade and learning area, then generate a sequence whose difficulty and concepts are automatically calibrated to that topic — no manual setup needed.",
-      "betaNote": "<strong>Beta feature.</strong> Curriculum-generated sequences use a dedicated prompt tuned for the Bavarian curriculum. The underlying code examples are curated by hand.",
+      "intro": "The Curriculum page maps CodeOwl onto a topic tree: Bavarian grade levels (LehrplanPLUS G9 Informatik) and university modules such as “Programmieren 1”. Browse by entry and learning area, then generate a sequence whose difficulty and concepts are automatically calibrated to that topic — no manual setup needed.",
+      "betaNote": "<strong>Beta feature.</strong> Curriculum-generated sequences use a dedicated prompt that takes the topic's education level into account — school or university. The underlying code examples are curated by hand and exist for only some topics so far; without one, generation is disabled.",
       "treeTitle": "Topic Tree",
       "tree": [
         "Topics are organised by grade (Jgst. 7, 9, 10, 11, 12/13) and learning area.",

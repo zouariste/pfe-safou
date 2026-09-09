@@ -877,8 +877,8 @@
 
   "curriculum": {
     "title": "Lehrplan-Bibliothek",
-    "subtitle": "Generiere Parsons-Aufgaben direkt aus dem bayerischen Informatik-Lehrplan (LehrplanPLUS G9).",
-    "selectGrade": "Jahrgangsstufe wählen",
+    "subtitle": "Generiere Parsons-Aufgaben direkt aus dem Lehrplan: bayerischer Informatik-Lehrplan (LehrplanPLUS G9) und Hochschulmodule.",
+    "selectGrade": "Jahrgangsstufe oder Modul wählen",
     "selectTopic": "Lernbereich wählen",
     "noSubTopics": "Keine Unterthemen für dieses Thema verfügbar.",
     "examples": "Beispielaufgaben ({{count}})",
@@ -1312,12 +1312,12 @@
         "Manuelle Tags sind immer blau und werden vom Auto-Tagger nie überschrieben."
       ],
       "curriculumTitle": "Bibliothek und Lehrplan",
-      "curriculumBody": "Über \"Vorhandene Sequenzen ansehen\" auf der Lehrplan-Seite gelangst du in die Bibliothek, bereits nach dem Lehrplanthema gefiltert — so siehst du sofort das gesamte relevante Material zu einem LehrplanPLUS-Thema."
+      "curriculumBody": "Über „Vorhandene Sequenzen ansehen“ auf der Lehrplan-Seite gelangst du in die Bibliothek, bereits nach dem Lehrplanthema gefiltert — so siehst du sofort das gesamte relevante Material zu einem Thema, ob Jahrgangsstufe oder Modul."
     },
     "curriculum": {
       "title": "Hilfe zum Lehrplan",
-      "intro": "Die Lehrplan-Seite bildet CodeOwl direkt auf den bayerischen LehrplanPLUS G9 Informatik ab. Navigiere nach Jahrgangsstufe und Lernbereich und generiere dann eine Sequenz, deren Schwierigkeit und Konzepte automatisch auf dieses Thema kalibriert sind — ganz ohne manuelle Einrichtung.",
-      "betaNote": "<strong>Beta-Funktion.</strong> Aus dem Lehrplan generierte Sequenzen nutzen einen eigenen, auf den bayerischen Lehrplan abgestimmten Prompt. Die zugrunde liegenden Codebeispiele sind handkuratiert.",
+      "intro": "Die Lehrplan-Seite bildet CodeOwl auf einen Themenbaum ab: bayerische Jahrgangsstufen (LehrplanPLUS G9 Informatik) und Hochschulmodule wie „Programmieren 1“. Navigiere nach Eintrag und Lernbereich und generiere dann eine Sequenz, deren Schwierigkeit und Konzepte automatisch auf dieses Thema kalibriert sind — ganz ohne manuelle Einrichtung.",
+      "betaNote": "<strong>Beta-Funktion.</strong> Aus dem Lehrplan generierte Sequenzen nutzen einen eigenen Prompt, der den Bildungsbereich des Themas berücksichtigt — Schule oder Hochschule. Die zugrunde liegenden Codebeispiele sind handkuratiert und bisher nur für einzelne Themen hinterlegt; ohne Beispiel ist die Generierung deaktiviert.",
       "treeTitle": "Themenbaum",
       "tree": [
         "Die Themen sind nach Jahrgangsstufe (Jgst. 7, 9, 10, 11, 12/13) und Lernbereich gegliedert.",
