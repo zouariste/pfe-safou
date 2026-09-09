@@ -995,7 +995,9 @@ export default function SolvePage() {
         return (
             <div className="container py-4">
                 <div className="alert alert-warning">{t("solve.noTaskId")}</div>
-                <button className="btn btn-link" onClick={() => navigate(homePath)}>{t("solve.home")}</button>
+                <button className="btn btn-link" onClick={() => navigate(homePath)}>
+                    ← {t("solve.home")}
+                </button>
             </div>
         );
     }
@@ -1004,6 +1006,9 @@ export default function SolvePage() {
 
         <div className="container-fluid py-4" style={{maxWidth: "90%"}}>
             <div className="mb-3 d-flex gap-2">
+                <button className="btn btn-link" onClick={() => navigate(homePath)}>
+                    ← {t("solve.home")}
+                </button>
                 <button
                     className="btn btn-link"
                     onClick={() => {
@@ -1012,14 +1017,16 @@ export default function SolvePage() {
                         if (!sequenceId) return navigate(homePath);
 
                         navigate(`/sequence/${sequenceId}`, {
-                            state: { fromWorksheet: location.state?.fromWorksheet },
+                            state: {
+                                fromWorksheet: location.state?.fromWorksheet,
+                                fromClass: location.state?.fromClass,
+                            },
                         });
                     }}
                     disabled={!sequenceId}
                 >
                     ← {t("solve.backToSequence")}
                 </button>
-                <button className="btn btn-link" onClick={() => navigate(homePath)}>{t("solve.home")}</button>
             </div>
             {canToggleTeacherView && (
                 <div className="d-flex justify-content-end mb-3">
