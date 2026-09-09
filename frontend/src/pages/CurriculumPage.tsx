@@ -5,6 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import type { CurriculumTopic, CurriculumCodeExample } from "../types/models";
 import { topicName, topicDescription, topicTrack } from "../lib/curriculumLabels";
+import ConceptPicker from "../components/ConceptPicker";
+import { useConceptCatalogue } from "../hooks/useConceptCatalogue";
 import {
     educationLevelOf,
     filterByEducationLevel,
@@ -141,8 +143,8 @@ export default function CurriculumPage() {
     interface AreaForm {
         /** Set when editing an existing learning area; absent when creating one. */
         id?: string;
-        /** Comma-separated concept names, the same shape the Home page uses. */
-        concepts: string;
+        /** Selected concept names, in the catalogue's spelling. */
+        concepts: string[];
         name: string;
         nameEn: string;
         description: string;
@@ -153,18 +155,8 @@ export default function CurriculumPage() {
     const [areaForm, setAreaForm] = useState<AreaForm | null>(null);
     const [savingTopic, setSavingTopic] = useState(false);
     const [topicError, setTopicError] = useState("");
-    // The whole concept catalogue, fetched once, to suggest from while typing.
-    const [conceptCatalogue, setConceptCatalogue] = useState<string[]>([]);
-
-    const loadConceptCatalogue = async () => {
-        if (conceptCatalogue.length > 0) return;
-        try {
-            const res = await api.get<string[]>("/curriculum/concepts");
-            setConceptCatalogue(res.data);
-        } catch {
-            // Only the autocomplete suggestions are lost; typing still works.
-        }
-    };
+    // The whole concept catalogue, to suggest from while typing.
+    const conceptCatalogue = useConceptCatalogue();
 
     const openNewTopLevel = () => {
         setTopicError("");
@@ -208,21 +200,16 @@ export default function CurriculumPage() {
             description: topic.description ?? "",
             descriptionEn: topic.descriptionEn ?? "",
             learningArea: topic.learningArea ?? "",
-            concepts: "",
+            concepts: [],
         });
-        void loadConceptCatalogue();
         // The mapping is a relation, so it does not come with the topic.
         try {
             const res = await api.get<string[]>(`/curriculum/topics/${topic.id}/concepts`);
-            setAreaForm(form => (form && form.id === topic.id ? { ...form, concepts: res.data.join(", ") } : form));
+            setAreaForm(form => (form && form.id === topic.id ? { ...form, concepts: res.data } : form));
         } catch {
             setTopicError(t("curriculum.errorLoading"));
         }
     };
-
-    /** "array, for-loop , " -> ["array", "for-loop"] */
-    const conceptTokens = (raw: string): string[] =>
-        raw.split(",").map(c => c.trim()).filter(Boolean);
 
     /**
      * Switching the type moves the education level with it, since that is the
@@ -244,8 +231,7 @@ export default function CurriculumPage() {
 
     const openNewArea = () => {
         setTopicError("");
-        setAreaForm({ name: "", nameEn: "", description: "", descriptionEn: "", learningArea: "", concepts: "" });
-        void loadConceptCatalogue();
+        setAreaForm({ name: "", nameEn: "", description: "", descriptionEn: "", learningArea: "", concepts: [] });
     };
 
     const saveTopLevel = async () => {
@@ -294,7 +280,7 @@ export default function CurriculumPage() {
                 descriptionEn: areaForm.descriptionEn,
                 learningArea: areaForm.learningArea,
                 // Always sent, so clearing the field clears the mapping.
-                concepts: conceptTokens(areaForm.concepts),
+                concepts: areaForm.concepts,
             };
             if (areaForm.id) {
                 await api.put(`/curriculum/topics/${areaForm.id}`, payload);
@@ -701,29 +687,14 @@ export default function CurriculumPage() {
                                     <label className="form-label small fw-semibold" htmlFor="areaConcepts">
                                         {t("curriculum.fieldConcepts")}
                                     </label>
-                                    <input
-                                        id="areaConcepts"
-                                        className="form-control form-control-sm"
-                                        list="curriculumConceptCatalogue"
+                                    <ConceptPicker
+                                        inputId="areaConcepts"
                                         value={areaForm.concepts}
-                                        placeholder={t("curriculum.conceptsPlaceholder")}
-                                        onChange={e => setAreaForm({ ...areaForm, concepts: e.target.value })}
+                                        catalogue={conceptCatalogue}
+                                        onChange={concepts => setAreaForm({ ...areaForm, concepts })}
                                     />
-                                    {/* Suggestions only — a name outside the catalogue is allowed
-                                        and is created as a new concept. */}
-                                    <datalist id="curriculumConceptCatalogue">
-                                        {conceptCatalogue.map(c => <option key={c} value={c} />)}
-                                    </datalist>
                                     <div className="form-text">{t("curriculum.conceptsHint")}</div>
-                                    {conceptTokens(areaForm.concepts).length > 0 ? (
-                                        <div className="d-flex flex-wrap gap-1 mt-2">
-                                            {conceptTokens(areaForm.concepts).map((c, i) => (
-                                                <span key={`${c}-${i}`} className="badge bg-secondary-subtle text-secondary-emphasis">
-                                                    {c}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    ) : (
+                                    {areaForm.concepts.length === 0 && (
                                         <div className="form-text fst-italic">{t("curriculum.conceptsEmpty")}</div>
                                     )}
                                 </div>

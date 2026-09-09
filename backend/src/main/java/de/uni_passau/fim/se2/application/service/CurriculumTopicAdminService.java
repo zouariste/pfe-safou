@@ -91,15 +91,6 @@ public class CurriculumTopicAdminService {
                 .toList();
     }
 
-    /** The whole concept catalogue, for the picker to suggest from. */
-    public List<String> getConceptCatalogue() {
-        return conceptRepo.loadAll().stream()
-                .map(ConceptDTO::getName)
-                .filter(n -> n != null && !n.isBlank())
-                .sorted(String.CASE_INSENSITIVE_ORDER)
-                .toList();
-    }
-
     /**
      * Creates a top-level curriculum entry: a Jahrgangsstufe when a grade level
      * is given, otherwise a named module. A Jahrgangsstufe's name is derived

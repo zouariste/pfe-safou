@@ -195,12 +195,6 @@ public class CurriculumController {
         }
     }
 
-    /** The whole concept catalogue, for the admin form to suggest from. */
-    @GetMapping("/concepts")
-    public ResponseEntity<List<String>> getConceptCatalogue() {
-        return ResponseEntity.ok(topicAdminService.getConceptCatalogue());
-    }
-
     /**
      * Admin: edit a curriculum entry, at either level — the endpoint reads the
      * level off the stored topic. A top-level entry may also change shape

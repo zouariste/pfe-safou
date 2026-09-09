@@ -8,6 +8,8 @@ import { renderGapLine } from "../lib/gapMarkers";
 import CodeSolutionEditor from "../components/CodeSolutionEditor";
 import type { SplitEntry } from "../types/models";
 import "bootstrap/dist/css/bootstrap.min.css";
+import ConceptPicker from "../components/ConceptPicker";
+import { useConceptCatalogue } from "../hooks/useConceptCatalogue";
 
 /* ────────────────────────────────────────────────────────────── */
 /*  Types                                                        */
@@ -40,7 +42,8 @@ export default function ManualTaskCreator() {
 
     // ── Form state ──────────────────────────────────────────
     const [language, setLanguage] = useState("");
-    const [concepts, setConcepts] = useState("");
+    const [concepts, setConcepts] = useState<string[]>([]);
+    const conceptCatalogue = useConceptCatalogue();
     const [tiers, setTiers] = useState<TierEntry[]>([
         EMPTY_TIER(1),
         EMPTY_TIER(2),
@@ -54,10 +57,9 @@ export default function ManualTaskCreator() {
     const [previewLines, setPreviewLines] = useState<string[]>([]);
 
     // ── Derived ─────────────────────────────────────────────
-    const conceptTokens = concepts
-        .split(",")
-        .map((c) => c.trim())
-        .filter(Boolean);
+    // Kept as a name so the rest of the file reads unchanged; the picker
+    // already hands over a clean, de-duplicated list.
+    const conceptTokens = concepts;
 
     // ── Tier helpers ────────────────────────────────────────
     const updateTier = useCallback(
@@ -214,32 +216,18 @@ export default function ManualTaskCreator() {
                                     </div>
                                 </div>
 
-                                {/* Concepts */}
-                                <div className="input-group">
-                                    <span className="input-group-text">
-                                        <i className="bi bi-tags"></i>
-                                    </span>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        value={concepts}
-                                        onChange={(e) => setConcepts(e.target.value)}
-                                        placeholder={t("manual.conceptsLabel")}
-                                        required
-                                    />
-                                </div>
-                                {conceptTokens.length > 0 && (
-                                    <div className="mt-2">
-                                        {conceptTokens.map((c, i) => (
-                                            <span
-                                                key={`${c}-${i}`}
-                                                className="badge rounded-pill text-bg-light me-2 mb-1 border"
-                                            >
-                                                {c}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
+                                {/* Concepts — picked from the catalogue, or typed in full.
+                                    At least one is required; the check lives in handleSubmit. */}
+                                <label className="form-label" htmlFor="manualConcepts">
+                                    <i className="bi bi-tags me-1"></i>
+                                    {t("manual.conceptsLabel")}
+                                </label>
+                                <ConceptPicker
+                                    inputId="manualConcepts"
+                                    value={concepts}
+                                    catalogue={conceptCatalogue}
+                                    onChange={setConcepts}
+                                />
                             </div>
                         </div>
 
