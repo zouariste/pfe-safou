@@ -106,6 +106,12 @@ export interface CurriculumTopic {
     learningArea: string | null;
     parentId: string | null;
     sortOrder: number;
+    // English translations (db/init/11_migration_curriculum_i18n.sql). German
+    // is the source language; these are null for a topic added without a
+    // translation, so read them through src/lib/curriculumLabels.ts.
+    nameEn: string | null;
+    descriptionEn: string | null;
+    trackEn: string | null;
 }
 
 export interface CurriculumCodeExample {
