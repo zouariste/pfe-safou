@@ -37,6 +37,8 @@ export default function SequencePage() {
     // Do NOT persist in localStorage — a direct URL visit should never show the button.
     const fromWorksheet =
         (location.state as { fromWorksheet?: string })?.fromWorksheet ?? null;
+    // Not rendered here — only forwarded, so the worksheet still knows its class.
+    const fromClass = (location.state as { fromClass?: string })?.fromClass ?? null;
 
     // Clean up stale localStorage entry from previous implementation
     useEffect(() => { localStorage.removeItem("lastFromWorksheet"); }, []);
@@ -312,7 +314,9 @@ export default function SequencePage() {
                     <button
                         className="btn btn-link"
                         onClick={() =>
-                            navigate(`/worksheets/${fromWorksheet}`)
+                            navigate(`/worksheets/${fromWorksheet}`, {
+                                state: { fromClass },
+                            })
                         }
                     >
                         ← {t("sequence.backToWorksheet")}
@@ -673,6 +677,7 @@ export default function SequencePage() {
                                                     lang: seq?.programmingLanguage,
                                                     task,
                                                     fromWorksheet,
+                                                    fromClass,
                                                 },
                                             });
                                         }}

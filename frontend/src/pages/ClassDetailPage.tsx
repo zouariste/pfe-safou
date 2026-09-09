@@ -993,6 +993,7 @@ export default function ClassDetailPage() {
                                     <div>
                                         <Link
                                             to={`/worksheets/${w.worksheetId}`}
+                                            state={{ fromClass: id }}
                                             className="fw-semibold text-decoration-none"
                                         >
                                             {w.name}
@@ -1032,6 +1033,7 @@ export default function ClassDetailPage() {
                                     <div className="d-flex gap-2">
                                         <Link
                                             to={`/worksheets/${w.worksheetId}`}
+                                            state={{ fromClass: id }}
                                             className="btn btn-sm btn-outline-secondary"
                                             title={t("classDetail.openWorksheet")}
                                         >

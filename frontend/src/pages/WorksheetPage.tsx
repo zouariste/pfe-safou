@@ -25,6 +25,10 @@ export default function WorksheetPage() {
     const navigate = useNavigate();
     const location = useLocation();
     const justCopied = (location.state as any)?.justCopied === true;
+
+    // Only show "back to class" when navigated FROM a class (via location.state),
+    // the same way the sequence page decides on "back to worksheet".
+    const fromClass = (location.state as { fromClass?: string })?.fromClass ?? null;
     const { user, isLoggedIn, isTeacher, isAdmin } = useAuth();
     const [worksheet, setWorksheet] = useState<Worksheet | null>(null);
     const [loading, setLoading] = useState(true);
@@ -402,9 +406,19 @@ export default function WorksheetPage() {
 
     return (
         <div className="container py-4" style={{ maxWidth: 900 }}>
-            <button className="btn btn-link mb-3" onClick={() => navigate(homePath)}>
-                &larr; {t("common.home")}
-            </button>
+            <div className="mb-3 d-flex gap-2">
+                <button className="btn btn-link" onClick={() => navigate(homePath)}>
+                    ← {t("common.home")}
+                </button>
+                {fromClass && (
+                    <button
+                        className="btn btn-link"
+                        onClick={() => navigate(`/classes/${fromClass}`)}
+                    >
+                        ← {t("worksheet.backToClass")}
+                    </button>
+                )}
+            </div>
             {canToggleTeacherView && (
                 <div className="d-flex justify-content-end mb-3">
                     <button
@@ -633,7 +647,9 @@ export default function WorksheetPage() {
                                 style={{ cursor: "pointer" }}
                                 onClick={() =>
                                     navigate(`/sequence/${s.id}`, {
-                                        state: { fromWorksheet: worksheet.id },
+                                        // fromClass rides along so the class link
+                                        // survives a detour into a sequence.
+                                        state: { fromWorksheet: worksheet.id, fromClass },
                                     })
                                 }
                             >

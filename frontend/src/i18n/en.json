@@ -336,6 +336,7 @@
     "was": "Deadline was {{when}}"
   },
   "worksheet": {
+    "backToClass": "Back to class",
     "unlimitedHints": "Unlimited hints",
     "creditsPerTask": "Credits per task",
     "creditsHelp": "Level 1 costs 1, level 2 costs 2.",

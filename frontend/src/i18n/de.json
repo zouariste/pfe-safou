@@ -336,6 +336,7 @@
     "was": "Frist war {{when}}"
   },
   "worksheet": {
+    "backToClass": "Zurück zur Klasse",
     "unlimitedHints": "Unbegrenzte Hinweise",
     "creditsPerTask": "Credits pro Aufgabe",
     "creditsHelp": "Stufe 1 kostet 1, Stufe 2 kostet 2.",
