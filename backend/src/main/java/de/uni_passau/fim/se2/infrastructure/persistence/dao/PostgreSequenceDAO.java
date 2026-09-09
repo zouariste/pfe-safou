@@ -28,6 +28,7 @@ import org.postgresql.util.PGobject;
 import org.springframework.dao.*;
 import org.springframework.jdbc.core.*;
 import org.springframework.stereotype.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.SQLException;
 import java.util.*;
@@ -71,10 +72,31 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                 target.setConstraints(db.getConstraints());
                 target.setTierCount(db.getTierCount());
                 target.setCurriculumTopicId(db.getCurriculumTopicId());
+                target.setConcepts(loadConceptNames(target.getId()));
             }
         } catch (EmptyResultDataAccessException e) {
             throw new IllegalArgumentException("Sequence not found: " + target.getId());
         }
+    }
+
+    /**
+     * Concepts live in a junction table, so they need their own read. Save has
+     * always written them; nothing read them back, which is why every sequence
+     * arrived at the client with an empty concept list and the page had nothing
+     * to show.
+     *
+     * <p>Deliberately not done in {@link #loadAll()} or {@link #findByOwnerId}:
+     * those back list screens that show tags rather than concepts, and a query
+     * per row would be an N+1 for something nobody displays there.
+     */
+    private List<String> loadConceptNames(UUID sequenceId) {
+        return jdbc.queryForList("""
+                SELECT c.name
+                FROM tiered_task_sequence_concepts link
+                JOIN concepts c ON c.id = link.concept_id
+                WHERE link.sequence_id = ?
+                ORDER BY c.name
+                """, String.class, sequenceId);
     }
 
     @Override
@@ -173,6 +195,21 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                 return conceptIds.size();
             }
         });
+    }
+
+    /**
+     * Replaces a sequence's concept links wholesale. Editing concepts is a
+     * "here is the new set" operation rather than add/remove one at a time, so
+     * the delete and the insert belong in one call — and in one transaction, or
+     * a failed insert would leave the sequence with no concepts at all.
+     */
+    @Override
+    @Transactional
+    public void replaceConcepts(UUID sequenceId, List<UUID> conceptIds) {
+        if (sequenceId == null) throw new DomainValidationException("Sequence ID cannot be null");
+
+        jdbc.update("DELETE FROM tiered_task_sequence_concepts WHERE sequence_id = ?", sequenceId);
+        linkConceptsBatch(sequenceId, conceptIds);
     }
 
     @Override

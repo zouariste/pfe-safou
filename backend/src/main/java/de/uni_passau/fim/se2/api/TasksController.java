@@ -147,6 +147,27 @@ public class TasksController {
     }
 
     /**
+     * Replace a sequence's concepts. The teacher view on the sequence page
+     * edits them as a set, so this is a PUT of the whole list rather than
+     * add/remove endpoints.
+     * Allowed: the sequence's owner, and admins.
+     */
+    @PutMapping("/sequence/{id}/concepts")
+    public ResponseEntity<List<String>> updateSequenceConcepts(
+            @PathVariable UUID id,
+            @RequestBody UpdateConceptsRequest request) {
+
+        TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(id);
+        if (seq == null) {
+            return ResponseEntity.notFound().build();
+        }
+        ownershipService.checkOwnership(seq.getOwnerId(), "sequence concepts");
+
+        return ResponseEntity.ok(
+                taskPersistenceService.updateSequenceConcepts(id, request == null ? null : request.getConcepts()));
+    }
+
+    /**
      * Get a single task by ID. Public endpoint.
      * AP15: If distractorsEnabled=false and requester is not the owner/admin,
      * distractors are stripped from the response (kept in DB, not delivered).
@@ -460,6 +481,13 @@ public class TasksController {
         // Reload to get updated data
         TieredTaskSequenceDTO updated = taskPersistenceService.loadSequenceById(seqId);
         return ResponseEntity.ok(updated);
+    }
+
+    /** Body of PUT /api/sequence/{id}/concepts — the full new set of names. */
+    @Setter
+    @Getter
+    public static class UpdateConceptsRequest {
+        private List<String> concepts;
     }
 
     @Setter

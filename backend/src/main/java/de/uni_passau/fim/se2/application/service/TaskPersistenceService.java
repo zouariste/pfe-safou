@@ -36,6 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -178,6 +179,53 @@ public class TaskPersistenceService {
         getTasksForSequence(sequence);
 
         return sequence;
+    }
+
+    /**
+     * Replaces a sequence's concepts with the given names, and returns them as
+     * stored. Names are resolved against the catalogue and created when absent,
+     * the same rule the curriculum learning-area form follows;
+     * {@code PostgreConceptDAO} lowercases them on the way in, so what comes
+     * back may differ in case from what was sent.
+     *
+     * <p>An empty set is refused rather than accepted: the persistence path
+     * has always required a sequence to carry at least one concept, and letting
+     * an edit strip the last one would leave a sequence that could never have
+     * been created that way.
+     *
+     * @param sequenceId the sequence to edit
+     * @param names      the concept names that should remain
+     * @return the sequence's concept names after the change, sorted
+     */
+    @Transactional
+    public List<String> updateSequenceConcepts(UUID sequenceId, List<String> names) {
+        if (sequenceId == null) {
+            throw new DomainValidationException("Sequence ID must not be null.");
+        }
+        List<String> cleaned = names == null ? List.of() : names.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(name -> !name.isEmpty())
+                .distinct()
+                .toList();
+        if (cleaned.isEmpty()) {
+            throw new DomainValidationException("Sequence concepts must not be empty.");
+        }
+
+        List<ConceptDTO> dtos = cleaned.stream()
+                .map(name -> {
+                    ConceptDTO dto = new ConceptDTO();
+                    dto.setName(name);
+                    return dto;
+                })
+                .toList();
+
+        sequenceRepo.replaceConcepts(sequenceId, conceptRepo.saveAll(dtos));
+
+        TieredTaskSequenceDTO reloaded = new TieredTaskSequenceDTO();
+        reloaded.setId(sequenceId);
+        sequenceRepo.loadById(reloaded);
+        return reloaded.getConcepts();
     }
 
     /**
