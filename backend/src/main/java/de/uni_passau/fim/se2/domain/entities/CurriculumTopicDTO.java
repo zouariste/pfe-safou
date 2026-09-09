@@ -40,4 +40,10 @@ public class CurriculumTopicDTO {
     private String nameEn;
     private String descriptionEn;
     private String trackEn;
+    /**
+     * SCHOOL (Jahrgangsstufen) or UNIVERSITY (modules), from
+     * 12_migration_curriculum_education_level.sql. Sub-topics repeat their
+     * parent's value, so a row can be classified without looking at its parent.
+     */
+    private String educationLevel;
 }

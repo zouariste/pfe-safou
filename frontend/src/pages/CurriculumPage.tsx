@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, apiErrorMessage } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import type { CurriculumTopic, CurriculumCodeExample } from "../types/models";
 import { topicName, topicDescription, topicTrack } from "../lib/curriculumLabels";
+import {
+    filterByEducationLevel,
+    hasMixedEducationLevels,
+    type EducationLevel,
+    type EducationLevelFilter,
+} from "../lib/curriculumFilter";
 
 export default function CurriculumPage() {
     const { t, i18n } = useTranslation();
@@ -72,16 +78,20 @@ export default function CurriculumPage() {
         }
     };
 
-    const selectGrade = async (topic: CurriculumTopic) => {
-        setSelectedGrade(topic);
-        setSelectedTopic(null);
-        setExamples([]);
+    const loadSubTopics = async (parentId: string) => {
         try {
-            const res = await api.get<CurriculumTopic[]>(`/curriculum/topics/${topic.id}/children`);
+            const res = await api.get<CurriculumTopic[]>(`/curriculum/topics/${parentId}/children`);
             setSubTopics(res.data);
         } catch {
             setError(t("curriculum.errorLoading"));
         }
+    };
+
+    const selectGrade = async (topic: CurriculumTopic) => {
+        setSelectedGrade(topic);
+        setSelectedTopic(null);
+        setExamples([]);
+        await loadSubTopics(topic.id);
     };
 
     const selectTopic = async (topic: CurriculumTopic) => {
@@ -92,6 +102,126 @@ export default function CurriculumPage() {
             setExamples(res.data);
         } catch {
             setError(t("curriculum.errorLoading"));
+        }
+    };
+
+    // Which education level the overview is showing. Kept in component state
+    // rather than persisted: a filter that silently survives a reload is how a
+    // teacher ends up convinced their curriculum has disappeared.
+    const [levelFilter, setLevelFilter] = useState<EducationLevelFilter>("ALL");
+    const visibleTopics = filterByEducationLevel(topLevelTopics, levelFilter);
+
+    // ── Admin: extend the curriculum tree (admin-only) ──────────────────
+    // A top-level entry is either a Jahrgangsstufe — described by grade level
+    // and track, from which the backend derives its name, which is also what
+    // the cards below display — or a module that carries its own name.
+    interface TopLevelForm {
+        kind: "GRADE" | "MODULE";
+        educationLevel: EducationLevel;
+        gradeLevel: string;
+        track: string;
+        trackEn: string;
+        name: string;
+        nameEn: string;
+        description: string;
+        descriptionEn: string;
+    }
+    interface AreaForm {
+        name: string;
+        nameEn: string;
+        description: string;
+        descriptionEn: string;
+        learningArea: string;
+    }
+    const [topLevelForm, setTopLevelForm] = useState<TopLevelForm | null>(null);
+    const [areaForm, setAreaForm] = useState<AreaForm | null>(null);
+    const [savingTopic, setSavingTopic] = useState(false);
+    const [topicError, setTopicError] = useState("");
+
+    const openNewTopLevel = () => {
+        setTopicError("");
+        setTopLevelForm({
+            kind: "GRADE",
+            educationLevel: "SCHOOL",
+            gradeLevel: "",
+            track: "",
+            trackEn: "",
+            name: "",
+            nameEn: "",
+            description: "",
+            descriptionEn: "",
+        });
+    };
+
+    /**
+     * Switching the type moves the education level with it, since that is the
+     * pairing in practice — Jahrgangsstufen are school, modules are university.
+     * The select stays editable for the cases where it is not.
+     */
+    const setTopLevelKind = (kind: TopLevelForm["kind"]) => {
+        if (!topLevelForm) return;
+        setTopLevelForm({
+            ...topLevelForm,
+            kind,
+            educationLevel: kind === "MODULE" ? "UNIVERSITY" : "SCHOOL",
+        });
+    };
+
+    /** A Jahrgangsstufe needs its number, a module its name. */
+    const topLevelFormIsComplete = (form: TopLevelForm): boolean =>
+        form.kind === "GRADE" ? Number(form.gradeLevel) >= 1 : form.name.trim() !== "";
+
+    const openNewArea = () => {
+        setTopicError("");
+        setAreaForm({ name: "", nameEn: "", description: "", descriptionEn: "", learningArea: "" });
+    };
+
+    const saveTopLevel = async () => {
+        if (!topLevelForm) return;
+        setSavingTopic(true);
+        setTopicError("");
+        try {
+            // A grade level and a name are mutually exclusive server-side: the
+            // presence of gradeLevel is what makes the entry a Jahrgangsstufe.
+            const isGrade = topLevelForm.kind === "GRADE";
+            await api.post("/curriculum/topics", {
+                educationLevel: topLevelForm.educationLevel,
+                gradeLevel: isGrade ? Number(topLevelForm.gradeLevel) : null,
+                track: isGrade ? topLevelForm.track : "",
+                trackEn: isGrade ? topLevelForm.trackEn : "",
+                name: isGrade ? "" : topLevelForm.name,
+                nameEn: isGrade ? "" : topLevelForm.nameEn,
+                description: topLevelForm.description,
+                descriptionEn: topLevelForm.descriptionEn,
+            });
+            setTopLevelForm(null);
+            await loadTopLevelTopics();
+        } catch (e) {
+            setTopicError(apiErrorMessage(e, t("curriculum.topicSaveError")));
+        } finally {
+            setSavingTopic(false);
+        }
+    };
+
+    const saveArea = async () => {
+        if (!areaForm || !selectedGrade) return;
+        setSavingTopic(true);
+        setTopicError("");
+        try {
+            // Grade level and track are inherited from the parent server-side.
+            await api.post(`/curriculum/topics/${selectedGrade.id}/children`, {
+                name: areaForm.name,
+                nameEn: areaForm.nameEn,
+                description: areaForm.description,
+                descriptionEn: areaForm.descriptionEn,
+                learningArea: areaForm.learningArea,
+            });
+            setAreaForm(null);
+            await loadSubTopics(selectedGrade.id);
+        } catch (e) {
+            setTopicError(apiErrorMessage(e, t("curriculum.topicSaveError")));
+        } finally {
+            setSavingTopic(false);
         }
     };
 
@@ -266,9 +396,128 @@ export default function CurriculumPage() {
             {/* Level 1: Grade selection */}
             {!selectedGrade && (
                 <div>
-                    <h5 className="mb-3">{t("curriculum.selectGrade")}</h5>
+                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <h5 className="mb-0">{t("curriculum.selectGrade")}</h5>
+                        <div className="d-flex align-items-center gap-2">
+                            {hasMixedEducationLevels(topLevelTopics) && (
+                                <div className="btn-group btn-group-sm" role="group" aria-label={t("curriculum.filterLevel")}>
+                                    {(["ALL", "SCHOOL", "UNIVERSITY"] as const).map(level => (
+                                        <button
+                                            key={level}
+                                            type="button"
+                                            className={`btn ${levelFilter === level ? "btn-secondary" : "btn-outline-secondary"}`}
+                                            onClick={() => setLevelFilter(level)}
+                                        >
+                                            {level === "ALL" && t("curriculum.levelAll")}
+                                            {level === "SCHOOL" && t("curriculum.levelSchool")}
+                                            {level === "UNIVERSITY" && t("curriculum.levelUniversity")}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {isAdmin && !topLevelForm && (
+                                <button className="btn btn-sm btn-outline-primary" onClick={openNewTopLevel}>
+                                    <i className="bi bi-plus-lg me-1"></i>{t("curriculum.addTopLevel")}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {isAdmin && topLevelForm && (
+                        <div className="border rounded p-3 mb-3 bg-light">
+                            <h6 className="mb-3">
+                                <i className="bi bi-mortarboard me-2"></i>
+                                {t("curriculum.newTopLevel")}
+                            </h6>
+                            {topicError && <div className="alert alert-danger py-2">{topicError}</div>}
+                            <div className="row g-2">
+                                <div className="col-md-6">
+                                    <label className="form-label small fw-semibold">{t("curriculum.topLevelKind")}</label>
+                                    <select className="form-select form-select-sm" value={topLevelForm.kind}
+                                        onChange={e => setTopLevelKind(e.target.value as TopLevelForm["kind"])}>
+                                        <option value="GRADE">{t("curriculum.kindGrade")}</option>
+                                        <option value="MODULE">{t("curriculum.kindModule")}</option>
+                                    </select>
+                                </div>
+                                <div className="col-md-6">
+                                    <label className="form-label small fw-semibold">{t("curriculum.fieldEducationLevel")}</label>
+                                    <select className="form-select form-select-sm" value={topLevelForm.educationLevel}
+                                        onChange={e => setTopLevelForm({ ...topLevelForm, educationLevel: e.target.value as EducationLevel })}>
+                                        <option value="SCHOOL">{t("curriculum.levelSchool")}</option>
+                                        <option value="UNIVERSITY">{t("curriculum.levelUniversity")}</option>
+                                    </select>
+                                </div>
+
+                                {topLevelForm.kind === "GRADE" ? (
+                                    <>
+                                        <div className="col-md-3">
+                                            <label className="form-label small fw-semibold">{t("curriculum.fieldGradeLevel")}</label>
+                                            <input className="form-control form-control-sm" type="number" min={1} max={99}
+                                                value={topLevelForm.gradeLevel}
+                                                onChange={e => setTopLevelForm({ ...topLevelForm, gradeLevel: e.target.value })} />
+                                        </div>
+                                        <div className="col-md-4">
+                                            <label className="form-label small fw-semibold">{t("curriculum.fieldTrack")}</label>
+                                            <input className="form-control form-control-sm" maxLength={30} value={topLevelForm.track}
+                                                onChange={e => setTopLevelForm({ ...topLevelForm, track: e.target.value })} />
+                                        </div>
+                                        <div className="col-md-5">
+                                            <label className="form-label small fw-semibold">{t("curriculum.fieldTrackEn")}</label>
+                                            <input className="form-control form-control-sm" maxLength={30} value={topLevelForm.trackEn}
+                                                onChange={e => setTopLevelForm({ ...topLevelForm, trackEn: e.target.value })} />
+                                        </div>
+                                        <div className="col-12">
+                                            <div className="form-text mt-0">{t("curriculum.gradeLabelHint")}</div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="col-md-6">
+                                            <label className="form-label small fw-semibold">{t("curriculum.fieldName")}</label>
+                                            <input className="form-control form-control-sm" value={topLevelForm.name}
+                                                placeholder="Programmieren 1"
+                                                onChange={e => setTopLevelForm({ ...topLevelForm, name: e.target.value })} />
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="form-label small fw-semibold">{t("curriculum.fieldNameEn")}</label>
+                                            <input className="form-control form-control-sm" value={topLevelForm.nameEn}
+                                                onChange={e => setTopLevelForm({ ...topLevelForm, nameEn: e.target.value })} />
+                                        </div>
+                                        <div className="col-12">
+                                            <div className="form-text mt-0">{t("curriculum.kindModuleHint")}</div>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="col-md-6">
+                                    <label className="form-label small fw-semibold">{t("curriculum.fieldDescription")}</label>
+                                    <textarea className="form-control form-control-sm" rows={2} value={topLevelForm.description}
+                                        onChange={e => setTopLevelForm({ ...topLevelForm, description: e.target.value })} />
+                                </div>
+                                <div className="col-md-6">
+                                    <label className="form-label small fw-semibold">{t("curriculum.fieldDescriptionEn")}</label>
+                                    <textarea className="form-control form-control-sm" rows={2} value={topLevelForm.descriptionEn}
+                                        onChange={e => setTopLevelForm({ ...topLevelForm, descriptionEn: e.target.value })} />
+                                </div>
+                                <div className="col-12">
+                                    <div className="form-text mt-0">{t("curriculum.englishHint")}</div>
+                                </div>
+                            </div>
+                            <div className="d-flex gap-2 mt-3">
+                                <button className="btn btn-sm btn-primary" onClick={saveTopLevel}
+                                    disabled={savingTopic || !topLevelFormIsComplete(topLevelForm)}>
+                                    {savingTopic && <span className="spinner-border spinner-border-sm me-1" role="status" />}
+                                    {t("curriculum.saveTopic")}
+                                </button>
+                                <button className="btn btn-sm btn-outline-secondary" onClick={() => setTopLevelForm(null)} disabled={savingTopic}>
+                                    {t("curriculum.exampleCancel")}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="row g-3">
-                        {topLevelTopics.map(topic => (
+                        {visibleTopics.map(topic => (
                             <div key={topic.id} className="col-md-6 col-lg-4">
                                 <div
                                     className="card h-100 border-0 shadow-sm"
@@ -299,7 +548,66 @@ export default function CurriculumPage() {
             {/* Level 2: Sub-topic selection */}
             {selectedGrade && !selectedTopic && (
                 <div>
-                    <h5 className="mb-3">{t("curriculum.selectTopic")}</h5>
+                    <div className="d-flex align-items-center justify-content-between mb-3">
+                        <h5 className="mb-0">{t("curriculum.selectTopic")}</h5>
+                        {isAdmin && !areaForm && (
+                            <button className="btn btn-sm btn-outline-primary" onClick={openNewArea}>
+                                <i className="bi bi-plus-lg me-1"></i>{t("curriculum.addArea")}
+                            </button>
+                        )}
+                    </div>
+
+                    {isAdmin && areaForm && (
+                        <div className="border rounded p-3 mb-3 bg-light">
+                            <h6 className="mb-3">
+                                <i className="bi bi-list-check me-2"></i>
+                                {t("curriculum.newArea")}
+                            </h6>
+                            {topicError && <div className="alert alert-danger py-2">{topicError}</div>}
+                            <div className="row g-2">
+                                <div className="col-md-6">
+                                    <label className="form-label small fw-semibold">{t("curriculum.fieldName")}</label>
+                                    <input className="form-control form-control-sm" value={areaForm.name}
+                                        onChange={e => setAreaForm({ ...areaForm, name: e.target.value })} />
+                                </div>
+                                <div className="col-md-6">
+                                    <label className="form-label small fw-semibold">{t("curriculum.fieldNameEn")}</label>
+                                    <input className="form-control form-control-sm" value={areaForm.nameEn}
+                                        onChange={e => setAreaForm({ ...areaForm, nameEn: e.target.value })} />
+                                </div>
+                                <div className="col-md-6">
+                                    <label className="form-label small fw-semibold">{t("curriculum.fieldDescription")}</label>
+                                    <textarea className="form-control form-control-sm" rows={2} value={areaForm.description}
+                                        onChange={e => setAreaForm({ ...areaForm, description: e.target.value })} />
+                                </div>
+                                <div className="col-md-6">
+                                    <label className="form-label small fw-semibold">{t("curriculum.fieldDescriptionEn")}</label>
+                                    <textarea className="form-control form-control-sm" rows={2} value={areaForm.descriptionEn}
+                                        onChange={e => setAreaForm({ ...areaForm, descriptionEn: e.target.value })} />
+                                </div>
+                                <div className="col-12">
+                                    <div className="form-text mt-0">{t("curriculum.englishHint")}</div>
+                                </div>
+                                <div className="col-12">
+                                    <label className="form-label small fw-semibold">{t("curriculum.fieldLearningArea")}</label>
+                                    <input className="form-control form-control-sm" maxLength={255} value={areaForm.learningArea}
+                                        onChange={e => setAreaForm({ ...areaForm, learningArea: e.target.value })} />
+                                    <div className="form-text">{t("curriculum.fieldLearningAreaHint")}</div>
+                                </div>
+                            </div>
+                            <div className="d-flex gap-2 mt-3">
+                                <button className="btn btn-sm btn-primary" onClick={saveArea}
+                                    disabled={savingTopic || !areaForm.name.trim()}>
+                                    {savingTopic && <span className="spinner-border spinner-border-sm me-1" role="status" />}
+                                    {t("curriculum.saveTopic")}
+                                </button>
+                                <button className="btn btn-sm btn-outline-secondary" onClick={() => setAreaForm(null)} disabled={savingTopic}>
+                                    {t("curriculum.exampleCancel")}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {subTopics.length === 0 ? (
                         <p className="text-muted">{t("curriculum.noSubTopics")}</p>
                     ) : (

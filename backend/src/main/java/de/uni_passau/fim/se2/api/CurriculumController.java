@@ -20,6 +20,7 @@ package de.uni_passau.fim.se2.api;
 
 import de.uni_passau.fim.se2.application.service.CurriculumExampleAdminService;
 import de.uni_passau.fim.se2.application.service.CurriculumGenerationService;
+import de.uni_passau.fim.se2.application.service.CurriculumTopicAdminService;
 import de.uni_passau.fim.se2.application.service.OwnershipService;
 import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
@@ -57,6 +58,7 @@ public class CurriculumController {
     private final TaskPersistenceService taskPersistenceService;
     private final OwnershipService ownershipService;
     private final CurriculumExampleAdminService exampleAdminService;
+    private final CurriculumTopicAdminService topicAdminService;
 
     /**
      * Get all top-level curriculum topics (Jahrgangsstufen).
@@ -148,6 +150,38 @@ public class CurriculumController {
     }
 
     /**
+     * Admin: add a top-level entry to the curriculum tree — a Jahrgangsstufe
+     * when the body carries a grade level, otherwise a named module such as
+     * "Programmieren 1". See CurriculumTopicAdminService.
+     * Allowed: Admin only.
+     */
+    @PostMapping("/topics")
+    public ResponseEntity<CurriculumTopicDTO> createTopLevelTopic(@RequestBody CurriculumTopicDTO body) {
+        requireAdmin();
+        CurriculumTopicDTO created = topicAdminService.createTopLevelTopic(body);
+        var location = java.net.URI.create("/api/curriculum/topics/" + created.getId() + "/children");
+        return ResponseEntity.created(location).body(created);
+    }
+
+    /**
+     * Admin: add a Lernbereich under an existing Jahrgangsstufe or module.
+     * Allowed: Admin only.
+     */
+    @PostMapping("/topics/{parentId}/children")
+    public ResponseEntity<?> createSubTopic(@PathVariable UUID parentId,
+                                            @RequestBody CurriculumTopicDTO body) {
+        requireAdmin();
+        try {
+            CurriculumTopicDTO created = topicAdminService.createSubTopic(parentId, body);
+            var location = java.net.URI.create("/api/curriculum/topics/" + created.getId() + "/examples");
+            return ResponseEntity.created(location).body(created);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+        }
+    }
+
+    /**
      * AP32 admin: create a curated code example under a topic.
      * Allowed: Admin only.
      */
@@ -198,11 +232,11 @@ public class CurriculumController {
         }
     }
 
-    /** Curriculum examples are shared curriculum assets — only admins may manage them. */
+    /** The curriculum tree and its examples are shared assets — only admins may manage them. */
     private void requireAdmin() {
         if (!ownershipService.isAdmin()) {
             throw new org.springframework.security.access.AccessDeniedException(
-                    "Only admins may manage curriculum examples.");
+                    "Only admins may manage the curriculum.");
         }
     }
 

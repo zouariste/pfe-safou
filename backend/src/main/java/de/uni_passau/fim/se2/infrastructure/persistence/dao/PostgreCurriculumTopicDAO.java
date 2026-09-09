@@ -38,7 +38,7 @@ public class PostgreCurriculumTopicDAO implements CurriculumTopicRepository {
     /** Every column CurriculumTopicRowMapper reads — keep the two in step. */
     private static final String[] COLUMN_NAMES = {
         "id", "name", "description", "grade_level", "track", "learning_area", "parent_id", "sort_order",
-        "name_en", "description_en", "track_en"
+        "name_en", "description_en", "track_en", "education_level"
     };
 
     static final String COLUMNS = String.join(", ", COLUMN_NAMES);
@@ -58,18 +58,20 @@ public class PostgreCurriculumTopicDAO implements CurriculumTopicRepository {
     public void save(CurriculumTopicDTO topic) {
         jdbc.update("""
             INSERT INTO curriculum_topics (id, name, description, grade_level, track, learning_area, parent_id, sort_order,
-                                           name_en, description_en, track_en)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                           name_en, description_en, track_en, education_level)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description,
                 grade_level = EXCLUDED.grade_level, track = EXCLUDED.track,
                 learning_area = EXCLUDED.learning_area, parent_id = EXCLUDED.parent_id,
                 sort_order = EXCLUDED.sort_order, name_en = EXCLUDED.name_en,
-                description_en = EXCLUDED.description_en, track_en = EXCLUDED.track_en
+                description_en = EXCLUDED.description_en, track_en = EXCLUDED.track_en,
+                education_level = EXCLUDED.education_level
             """,
             topic.getId(), topic.getName(), topic.getDescription(),
             topic.getGradeLevel(), topic.getTrack(), topic.getLearningArea(),
             topic.getParentId(), topic.getSortOrder(),
-            topic.getNameEn(), topic.getDescriptionEn(), topic.getTrackEn());
+            topic.getNameEn(), topic.getDescriptionEn(), topic.getTrackEn(),
+            topic.getEducationLevel());
     }
 
     @Override
