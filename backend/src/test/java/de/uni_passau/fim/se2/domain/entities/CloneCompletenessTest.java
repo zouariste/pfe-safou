@@ -70,13 +70,18 @@ class CloneCompletenessTest {
      * <p>{@code id} and {@code ownerId} for the same reasons as above, {@code createdAt} because
      * the copy is new and the database stamps it, and {@code tasks} because the caller refills
      * it with task copies — leaving it would have both sequences pointing at the same task
-     * objects.
+     * objects. {@code divergedAt} because a copy starts out unedited.
      */
     private static final Set<String> RESET_BY_SEQUENCE_COPY =
             Set.of("id", "ownerId", "createdAt", "tasks",
                    // copiedFrom is not carried over but rewritten: the copy came from the
                    // sequence being copied, not from wherever that one came from.
-                   "copiedFrom");
+                   "copiedFrom",
+                   // divergedAt belongs to the sequence that was edited, not to a copy of it.
+                   // A fresh copy has been edited by nobody, however much its source had been;
+                   // carrying it would list an untouched clone in the library immediately,
+                   // which is the rule it exists to enforce, inverted.
+                   "divergedAt");
 
     @Test
     @DisplayName("a task copy carries every field except the two that identify it")

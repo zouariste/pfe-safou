@@ -119,6 +119,22 @@ public interface WorksheetRepository {
     void removeSequenceFromWorksheet(WorksheetDTO worksheet, TieredTaskSequenceDTO sequence);
 
     /**
+     * Whether {@code ownerId} owns any worksheet that contains {@code sequenceId}.
+     *
+     * <p>This is the "curator" relation behind {@link
+     * de.uni_passau.fim.se2.domain.model.SequenceCuratorPolicy}: a teacher who put a sequence
+     * into a worksheet of theirs may inspect it, whoever generated it. The same predicate
+     * already drives {@code alreadyInMyWorksheet} in the library listing; it lives here so
+     * both read the relation from one place rather than from two hand-written joins that can
+     * disagree.
+     *
+     * @param sequenceId the sequence in question; {@code null} yields {@code false}
+     * @param ownerId    the candidate curator; {@code null} yields {@code false}, because
+     *                   anonymous visitors curate nothing
+     */
+    boolean isCuratedBy(UUID sequenceId, UUID ownerId);
+
+    /**
      * Finds all worksheets owned by the specified user.
      */
     List<WorksheetDTO> findByOwnerId(UUID ownerId);

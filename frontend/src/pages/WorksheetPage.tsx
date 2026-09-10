@@ -5,6 +5,7 @@ import { api, apiErrorMessage, isNotFound } from "../lib/api.ts";
 import type { Worksheet, ClassInfo, LibraryItem, LibrarySearchResponse, WorksheetVisibility } from "../types/models.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useHomePath } from "../hooks/useHomePath.ts";
+import { marketplaceBackLink } from "../lib/worksheetBackLink.ts";
 import { ListGroup } from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { useAuth } from "../context/AuthContext.tsx";
@@ -31,6 +32,10 @@ export default function WorksheetPage() {
     // Only show "back to class" when navigated FROM a class (via location.state),
     // the same way the sequence page decides on "back to worksheet".
     const fromClass = (location.state as { fromClass?: string })?.fromClass ?? null;
+
+    // The marketplace is a third way in, and it carries its filters along so returning lands
+    // on the list the teacher was reading rather than an unfiltered one.
+    const marketplaceBack = marketplaceBackLink(location.state);
     const { user, isLoggedIn, isTeacher, isAdmin } = useAuth();
     const [worksheet, setWorksheet] = useState<Worksheet | null>(null);
     const [loading, setLoading] = useState(true);
@@ -439,6 +444,14 @@ export default function WorksheetPage() {
                         ← {t("worksheet.backToClass")}
                     </button>
                 )}
+                {marketplaceBack && (
+                    <button
+                        className="btn btn-link"
+                        onClick={() => navigate(marketplaceBack.to)}
+                    >
+                        ← {t(marketplaceBack.labelKey)}
+                    </button>
+                )}
             </div>
             {canToggleTeacherView && (
                 <div className="d-flex justify-content-end mb-3">
@@ -674,14 +687,23 @@ export default function WorksheetPage() {
                             <div
                                 style={{ cursor: "pointer" }}
                                 onClick={() =>
-                                    navigate(`/sequence/${s.id}`, {
-                                        // fromClass rides along so the class link
-                                        // survives a detour into a sequence.
+                                    navigate(`/sequence/${s.id}?fromWorksheet=${worksheet.id}`, {
+                                        // The worksheet also rides in the state, and fromClass
+                                        // with it, so the class link survives a detour into a
+                                        // sequence. The query parameter is what survives F5.
                                         state: { fromWorksheet: worksheet.id, fromClass },
                                     })
                                 }
                             >
                                 {t("worksheet.sequenceLabel", { index: idx + 1 })}
+                                {/* Marks material the reader did not make. Without it the list
+                                    is identical before and after forking a sequence, which
+                                    makes the fork look like it did nothing. */}
+                                {teacherViewEnabled && s.ownerId !== user?.userId && (
+                                    <span className="badge bg-secondary-subtle text-secondary-emphasis ms-2">
+                                        {t("worksheet.foreignSequence")}
+                                    </span>
+                                )}
                                 {teacherViewEnabled && (
                                     <small className="text-muted ms-2">
                                         ({s.id ? s.id.slice(0, 8) : "?"}...)

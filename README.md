@@ -80,6 +80,11 @@ For local development outside Docker you additionally need:
 > ships native libraries for Linux and macOS, so `./mvnw spring-boot:run` cannot
 > start natively on Windows. Run the backend under **WSL2**, or via **Docker
 > Compose**, instead — see the note in [Local development](#local-development).
+>
+> Running the backend's **tests** under WSL2 additionally needs Docker Desktop's
+> **WSL Integration** enabled for that distro. Without it the Testcontainers-backed
+> database tests skip and the build still reports success — see
+> [`db/init/README.md`](db/init/README.md#on-windows-enable-docker-desktops-wsl-integration-first).
 
 ---
 

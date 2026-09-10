@@ -134,7 +134,11 @@ export interface Worksheet {
     id: string;
     name: string;
     description: string;
-    sequenceDTOS: { id: string }[];
+    /**
+     * The sequences in this worksheet, as shells. `ownerId` is null for seed material nobody
+     * owns; it is here so the list can mark which of them are the reader's own.
+     */
+    sequenceDTOS: { id: string; ownerId?: string | null }[];
     ownerId: string | null;
     hintsEnabled: boolean;
     /** Hint credits each student gets per task; null means unlimited. */
@@ -158,6 +162,48 @@ export interface Worksheet {
  * PUBLIC — listed in the marketplace for other teachers to find and copy.
  */
 export type WorksheetVisibility = "PRIVATE" | "UNLISTED" | "PUBLIC";
+
+// ── Marketplace ─────────────────────────────────────────
+
+/** One published worksheet as the marketplace lists it. Mirrors `WorksheetSearchResult.Item`. */
+export interface MarketplaceItem {
+    worksheetId: string;
+    name: string;
+    description: string | null;
+    ownerId: string | null;
+    /** ISO-8601 instant. */
+    createdAt: string | null;
+    sequenceCount: number;
+    /** Distinct programming languages of the sequences inside, sorted. */
+    languages: string[];
+    /** How often this worksheet has been copied. */
+    copyCount: number;
+    /** Whether the current user already copied it, so the card can say so. */
+    alreadyCopied: boolean;
+    /**
+     * A `ts_headline` snippet with the match wrapped in control-character markers, or null when
+     * there was no query. Render it with {@link renderHighlight}, never as raw HTML.
+     */
+    highlight: string | null;
+}
+
+export interface MarketplaceFacetBucket {
+    name: string;
+    count: number;
+}
+
+/** Mirrors `WorksheetSearchResult`. */
+export interface MarketplaceSearchResponse {
+    items: MarketplaceItem[];
+    page: number;
+    size: number;
+    total: number;
+    facets: {
+        languages: MarketplaceFacetBucket[];
+        mine: number;
+        others: number;
+    };
+}
 
 // ── Class Types ─────────────────────────────────────────
 

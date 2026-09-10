@@ -29,11 +29,17 @@ vi.mock("../../src/lib/api.ts", async (importOriginal) => {
     };
 });
 
+/**
+ * Who is looking. Mutable because the page behaves quite differently for a signed-out visitor
+ * following a link and for the teacher who owns the worksheet, and both are worth covering.
+ */
+let currentUser: { userId: string } | null = null;
+
 vi.mock("../../src/context/AuthContext.tsx", () => ({
     useAuth: () => ({
-        user: null,
-        isLoggedIn: false,
-        isTeacher: false,
+        user: currentUser,
+        isLoggedIn: currentUser !== null,
+        isTeacher: currentUser !== null,
         isAdmin: false,
         isStudent: false,
     }),
@@ -49,9 +55,31 @@ function httpError(status: number, data?: unknown) {
     };
 }
 
-function renderPage() {
+const WORKSHEET = {
+    id: "w-1",
+    name: "Rekursion Klasse 10",
+    description: "Einstieg",
+    sequenceDTOS: [],
+    ownerId: "someone-else",
+    hintsEnabled: false,
+    hintCreditsPerTask: null,
+    visibility: "PUBLIC",
+    createdAt: null,
+    copiedFrom: null,
+    copiedAt: null,
+};
+
+/** api.get is called for more than the worksheet once it loads; only that one needs a body. */
+function serveWorksheet() {
+    get.mockImplementation((url: string) =>
+        url.includes("/worksheets/")
+            ? Promise.resolve({ data: WORKSHEET })
+            : Promise.resolve({ data: [] }));
+}
+
+function renderPage(state?: unknown) {
     return render(
-        <MemoryRouter initialEntries={["/worksheets/w-1"]}>
+        <MemoryRouter initialEntries={[{ pathname: "/worksheets/w-1", state }]}>
             <Routes>
                 <Route path="/worksheets/:sheetId" element={<WorksheetPage />} />
             </Routes>
@@ -61,6 +89,7 @@ function renderPage() {
 
 describe("WorksheetPage, when the worksheet does not load", () => {
     beforeEach(() => {
+        currentUser = null;
         get.mockReset();
     });
 
@@ -97,5 +126,81 @@ describe("WorksheetPage, when the worksheet does not load", () => {
         renderPage();
 
         expect(screen.getByText("common.loading")).toBeInTheDocument();
+    });
+});
+
+describe("WorksheetPage, the way back", () => {
+    beforeEach(() => {
+        currentUser = null;
+        get.mockReset();
+        serveWorksheet();
+    });
+
+    it("offers the marketplace alongside home to a visitor who came from it", async () => {
+        renderPage({ from: "marketplace", search: "?q=rekursion" });
+
+        await waitFor(() =>
+            expect(screen.getByText(/marketplace\.backToMarketplace/)).toBeInTheDocument());
+        // Home stays. A worksheet copied from the marketplace is now yours, and wanting to go
+        // to your own list rather than back to the shop is the ordinary case.
+        expect(screen.getByText(/common\.home/)).toBeInTheDocument();
+    });
+
+    it("offers home alone when there is nowhere to go back to", async () => {
+        // A pasted link or a bookmark carries no provenance, so there is no history to claim.
+        renderPage();
+
+        await waitFor(() => expect(screen.getByText(/common\.home/)).toBeInTheDocument());
+        expect(screen.queryByText(/marketplace\.backToMarketplace/)).not.toBeInTheDocument();
+    });
+
+    it("leaves the class button to the class page's own marker", async () => {
+        // Two independent entry points share this row. Neither may claim the other's visitor.
+        renderPage({ fromClass: "c-1" });
+
+        await waitFor(() => expect(screen.getByText(/worksheet\.backToClass/)).toBeInTheDocument());
+        expect(screen.queryByText(/marketplace\.backToMarketplace/)).not.toBeInTheDocument();
+    });
+});
+
+describe("WorksheetPage, whose material is in here", () => {
+    const MINE = "me";
+    const sheetWith = (sequences: { id: string; ownerId: string | null }[]) => ({
+        ...WORKSHEET, ownerId: MINE, sequenceDTOS: sequences,
+    });
+
+    beforeEach(() => {
+        currentUser = { userId: MINE };
+        get.mockReset();
+    });
+
+    it("marks the sequences that belong to somebody else", async () => {
+        // The complaint this answers: after forking a sequence the list looked exactly as it
+        // had before, so the fork appeared to have done nothing at all.
+        get.mockImplementation((url: string) =>
+            url.includes("/worksheets/")
+                ? Promise.resolve({ data: sheetWith([
+                    { id: "s-1", ownerId: "someone-else" },
+                    { id: "s-2", ownerId: null },
+                    { id: "s-3", ownerId: MINE }]) })
+                : Promise.resolve({ data: [] }));
+
+        renderPage();
+
+        // Two foreign: one owned by another teacher, one seed material owned by nobody.
+        await waitFor(() =>
+            expect(screen.getAllByText("worksheet.foreignSequence")).toHaveLength(2));
+    });
+
+    it("marks nothing once everything in the worksheet is the teacher's own", async () => {
+        get.mockImplementation((url: string) =>
+            url.includes("/worksheets/")
+                ? Promise.resolve({ data: sheetWith([{ id: "s-1", ownerId: MINE }]) })
+                : Promise.resolve({ data: [] }));
+
+        renderPage();
+
+        await waitFor(() => expect(screen.getByText(/worksheet\.sequenceLabel/)).toBeInTheDocument());
+        expect(screen.queryByText("worksheet.foreignSequence")).not.toBeInTheDocument();
     });
 });

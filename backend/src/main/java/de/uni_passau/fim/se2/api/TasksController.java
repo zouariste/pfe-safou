@@ -31,17 +31,13 @@ import de.uni_passau.fim.se2.application.service.TaskEditService;
 import de.uni_passau.fim.se2.application.service.TaskEnricher;
 import de.uni_passau.fim.se2.application.service.TaskGeneratorService;
 import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
-import de.uni_passau.fim.se2.application.service.WorksheetService;
 import de.uni_passau.fim.se2.application.util.GapMarkers;
 import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
 import de.uni_passau.fim.se2.domain.interfaces.TaskOriginalRepository;
 import lombok.Getter;
-import de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy;
-import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.springframework.http.HttpStatus;
@@ -70,7 +66,6 @@ public class TasksController {
 
     private final TaskGeneratorService taskGeneratorService;
     private final TaskPersistenceService taskPersistenceService;
-    private final WorksheetService worksheetService;
     private final OwnershipService ownershipService;
     private final TaskEditService taskEditService;
     private final ManualTaskService manualTaskService;
@@ -216,15 +211,6 @@ public class TasksController {
         return ResponseEntity.created(location).body(seq);
     }
 
-    /**
-     * Get all worksheets owned by the current user.
-     */
-    @GetMapping("/worksheets/my")
-    public ResponseEntity<List<WorksheetDTO>> getMyWorksheets() {
-        UUID userId = ownershipService.getCurrentUserId();
-        if (userId == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(worksheetService.findByOwnerId(userId));
-    }
 
     /**
      * Whether the current user may still work on this task, or only read it.
@@ -281,180 +267,13 @@ public class TasksController {
         return ResponseEntity.ok(taskPersistenceService.findSequencesByOwnerId(userId));
     }
 
-    /**
-     * Get a worksheet by ID.
-     *
-     * <p>Still reachable without logging in — that is how a student opens a worksheet from a
-     * link their teacher sent — but no longer unconditionally. A PRIVATE worksheet answers 404
-     * rather than 403, so the endpoint does not confirm that an id someone guessed exists.
-     */
-    @GetMapping("/worksheets/{sheetId}")
-    public ResponseEntity<WorksheetDTO> getWorksheetById(@PathVariable UUID sheetId) {
-        WorksheetDTO worksheet = worksheetService.loadWorksheetById(sheetId);
-        if (worksheet == null) return ResponseEntity.notFound().build();
 
-        if (!WorksheetAccessPolicy.canView(worksheet.getVisibility(), worksheet.getOwnerId(),
-                ownershipService.getCurrentUserId(), ownershipService.getCurrentUserRole())) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(worksheet);
-    }
 
-    /**
-     * Publish a worksheet to the marketplace, or take it back out.
-     * Allowed: Owner, Admin — except for the Library Inbox, which is a scratch pile.
-     */
-    @PutMapping("/worksheets/{sheetId}/visibility")
-    public ResponseEntity<WorksheetDTO> setWorksheetVisibility(
-            @PathVariable UUID sheetId,
-            @RequestBody VisibilityRequest request) {
 
-        WorksheetVisibility visibility;
-        try {
-            visibility = WorksheetVisibility.parse(request == null ? null : request.visibility());
-        } catch (IllegalArgumentException e) {
-            // An unknown value is a client bug, not a server one, and must not be rounded down
-            // to something permissive.
-            return ResponseEntity.badRequest().build();
-        }
 
-        WorksheetDTO updated = worksheetService.setVisibility(
-                sheetId, visibility,
-                ownershipService.getCurrentUserId(), ownershipService.getCurrentUserRole());
-        return ResponseEntity.ok(updated);
-    }
 
-    /** Body of {@code PUT /worksheets/{id}/visibility}: {@code {"visibility": "PUBLIC"}}. */
-    public record VisibilityRequest(String visibility) {}
 
-    /**
-     * Create a new worksheet.
-     * Allowed: Teacher (becomes owner), Admin
-     * Denied: Anonymous, Students
-     */
-    @PostMapping("/worksheets")
-    public ResponseEntity<WorksheetDTO> createWorksheet(@RequestBody WorksheetDTO worksheet) {
-        ownershipService.denyStudents("create worksheets");
 
-        UUID currentUserId = ownershipService.getCurrentUserId();
-        if (currentUserId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        worksheet.setOwnerId(currentUserId);
-        worksheetService.createWorksheet(worksheet);
-        var location = java.net.URI.create("/api/worksheets/" + worksheet.getId());
-        return ResponseEntity.created(location).body(worksheet);
-    }
-
-    /**
-     * Update a worksheet.
-     * Allowed: Owner, Admin
-     * Denied: Everyone else
-     */
-    @PutMapping("/worksheets/{sheetId}")
-    public ResponseEntity<Void> updateWorksheet(@PathVariable UUID sheetId, @RequestBody WorksheetDTO worksheet) {
-        WorksheetDTO existing = worksheetService.loadWorksheetById(sheetId);
-        if (existing == null) return ResponseEntity.notFound().build();
-
-        ownershipService.checkOwnership(existing.getOwnerId(), "worksheet");
-
-        worksheet.setId(sheetId);
-        worksheet.setOwnerId(existing.getOwnerId()); // preserve owner
-        worksheetService.updateWorksheet(worksheet);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Delete a worksheet.
-     * Allowed: Owner, Admin
-     * Denied: Everyone else
-     */
-    @DeleteMapping("/worksheets/{sheetId}")
-    public ResponseEntity<Void> deleteWorksheet(@PathVariable UUID sheetId) {
-        WorksheetDTO existing = worksheetService.loadWorksheetById(sheetId);
-        if (existing == null) return ResponseEntity.notFound().build();
-
-        ownershipService.checkOwnership(existing.getOwnerId(), "worksheet");
-
-        worksheetService.deleteWorksheet(sheetId);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Add a single sequence to a worksheet.
-     * Allowed: Owner of worksheet, Admin
-     */
-    @PostMapping("/worksheets/{sheetId}/sequences/{sequenceId}")
-    public ResponseEntity<Void> addSequenceToWorksheet(@PathVariable UUID sheetId, @PathVariable UUID sequenceId) {
-        WorksheetDTO existing = worksheetService.loadWorksheetById(sheetId);
-        if (existing == null) return ResponseEntity.notFound().build();
-
-        ownershipService.checkOwnership(existing.getOwnerId(), "worksheet");
-
-        worksheetService.addSequenceToWorksheet(sheetId, sequenceId);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Add multiple sequences to a worksheet.
-     * Allowed: Owner of worksheet, Admin
-     */
-    @PostMapping("/worksheets/{sheetId}/sequences")
-    public ResponseEntity<Void> addSequencesToWorksheet(@PathVariable UUID sheetId,
-                                                        @RequestBody List<UUID> sequenceIds) {
-        WorksheetDTO existing = worksheetService.loadWorksheetById(sheetId);
-        if (existing == null) return ResponseEntity.notFound().build();
-
-        ownershipService.checkOwnership(existing.getOwnerId(), "worksheet");
-
-        worksheetService.addSequencesToWorksheet(sheetId, sequenceIds);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Remove a sequence from a worksheet.
-     * Allowed: Owner of worksheet, Admin
-     */
-    @DeleteMapping("/worksheets/{sheetId}/sequences/{sequenceId}")
-    public ResponseEntity<Void> removeSequenceFromWorksheet(@PathVariable UUID sheetId, @PathVariable UUID sequenceId) {
-        WorksheetDTO existing = worksheetService.loadWorksheetById(sheetId);
-        if (existing == null) return ResponseEntity.notFound().build();
-
-        ownershipService.checkOwnership(existing.getOwnerId(), "worksheet");
-
-        worksheetService.removeSequenceFromWorksheet(sheetId, sequenceId);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Deep-copy a worksheet (with all sequences and tasks).
-     * The copy belongs to the current authenticated user and starts out PRIVATE.
-     * Allowed: TEACHER, ADMIN, on a worksheet they are allowed to see
-     * Denied: Students, Anonymous
-     */
-    @PostMapping("/worksheets/{sheetId}/copy")
-    public ResponseEntity<WorksheetDTO> copyWorksheet(@PathVariable UUID sheetId) {
-        ownershipService.denyStudents("copy worksheets");
-
-        UUID currentUserId = ownershipService.getCurrentUserId();
-        if (currentUserId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        // Until now this endpoint checked only that the caller was a teacher, never anything
-        // about the source. That was harmless while every worksheet was readable by link; with
-        // PRIVATE in existence it would have been a way to read one by copying it.
-        WorksheetDTO source = worksheetService.loadWorksheetById(sheetId);
-        if (!WorksheetAccessPolicy.canCopy(source.getVisibility(), source.getOwnerId(),
-                currentUserId, ownershipService.getCurrentUserRole())) {
-            return ResponseEntity.notFound().build();
-        }
-
-        WorksheetDTO copy = worksheetService.copyWorksheet(sheetId, currentUserId);
-        var location = java.net.URI.create("/api/worksheets/" + copy.getId());
-        return ResponseEntity.created(location).body(copy);
-    }
 
     /**
      * AP15b: Generate distractors on-demand for a single existing task.

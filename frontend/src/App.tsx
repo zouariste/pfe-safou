@@ -30,6 +30,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ManualTaskCreator from "./pages/ManualTaskCreator";
 import CurriculumPage from "./pages/CurriculumPage";
 import LibraryPage from "./pages/LibraryPage";
+import MarketplacePage from "./pages/MarketplacePage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 
 
@@ -42,6 +43,7 @@ function FloatingHelpButton() {
     const matchSolve      = useMatch("/solve/:taskId");
     const matchSeq        = useMatch("/sequence/:id");
     const matchLibrary    = useMatch("/library");
+    const matchMarketplace = useMatch("/library/worksheets");
     const matchCurriculum = useMatch("/curriculum");
     const matchClasses    = useMatch("/classes");
     const matchClassDetail = useMatch("/classes/:id");
@@ -61,6 +63,7 @@ function FloatingHelpButton() {
     const context =
         matchSolve                        ? "solve"         :
         matchSeq                          ? "sequence"      :
+        matchMarketplace                  ? "marketplace"   :
         matchLibrary                      ? "library"       :
         matchCurriculum                   ? "curriculum"    :
         (matchClasses || matchClassDetail)? "classes"       :
@@ -161,6 +164,10 @@ function Navbar() {
                                 <Link to="/library" className="btn btn-sm btn-outline-primary">
                                     <i className="bi bi-collection me-1"></i>
                                     {t("nav.library")}
+                                </Link>
+                                <Link to="/library/worksheets" className="btn btn-sm btn-outline-primary">
+                                    <i className="bi bi-shop me-1"></i>
+                                    {t("nav.marketplace")}
                                 </Link>
                                 <Link to="/" className="btn btn-sm btn-outline-success">
                                     <i className="bi bi-magic me-1"></i>
@@ -356,6 +363,7 @@ export default function App() {
                                 <Route path="/manual-create" element={<ProtectedRoute><ManualTaskCreator /></ProtectedRoute>} />
                                 <Route path="/curriculum" element={<ProtectedRoute><CurriculumPage /></ProtectedRoute>} />
                                 <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
+                                <Route path="/library/worksheets" element={<ProtectedRoute><MarketplacePage /></ProtectedRoute>} />
                             </Routes>
                         </RouteErrorBoundary>
                     </main>
