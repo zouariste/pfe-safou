@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { apiErrorMessage, isNotFound } from "../../src/lib/api.ts";
+import { apiErrorMessage, isNotFound, signalsSessionLoss } from "../../src/lib/api.ts";
 
 /**
  * The backend's GlobalExceptionHandler always replies with an ApiErrorResponse
@@ -92,5 +92,31 @@ describe("isNotFound", () => {
         expect(apiErrorMessage(emptyNotFound, "eine deutsche Meldung"))
             .toBe("Request failed with status code 404");
         expect(isNotFound(emptyNotFound)).toBe(true);
+    });
+});
+
+describe("signalsSessionLoss", () => {
+    it("is true when a stored token is rejected", () => {
+        // The case the auto-logout exists for: the token expired or was revoked while the
+        // teacher was working, so the session really is gone.
+        expect(signalsSessionLoss(401, true)).toBe(true);
+        expect(signalsSessionLoss(403, true)).toBe(true);
+    });
+
+    it("is false for a visitor with no token, whatever the status", () => {
+        // The bug this closes. An anonymous student opening a worksheet triggers requests they
+        // are not entitled to make -- the concept catalogue among them -- and the refusal meant
+        // "you are logged out", which sent someone who had never logged in to /login. Both codes
+        // are covered because the backend answers 403, not 401, when there is no principal.
+        expect(signalsSessionLoss(401, false)).toBe(false);
+        expect(signalsSessionLoss(403, false)).toBe(false);
+    });
+
+    it("ignores failures that say nothing about the session", () => {
+        // A 404 or a 500 is the caller's problem. Redirecting on those would hide real errors
+        // behind a login page.
+        expect(signalsSessionLoss(404, true)).toBe(false);
+        expect(signalsSessionLoss(500, true)).toBe(false);
+        expect(signalsSessionLoss(undefined, true)).toBe(false);
     });
 });
