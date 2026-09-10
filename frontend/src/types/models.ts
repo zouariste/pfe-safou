@@ -134,7 +134,11 @@ export interface Worksheet {
     id: string;
     name: string;
     description: string;
-    sequenceDTOS: { id: string }[];
+    /**
+     * The sequences in this worksheet, as shells. `ownerId` is null for seed material nobody
+     * owns; it is here so the list can mark which of them are the reader's own.
+     */
+    sequenceDTOS: { id: string; ownerId?: string | null }[];
     ownerId: string | null;
     hintsEnabled: boolean;
     /** Hint credits each student gets per task; null means unlimited. */

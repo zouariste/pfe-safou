@@ -19,8 +19,14 @@
 package de.uni_passau.fim.se2.api;
 
 import de.uni_passau.fim.se2.application.service.OwnershipService;
+import de.uni_passau.fim.se2.application.service.SequenceForkService;
+import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
 import de.uni_passau.fim.se2.application.service.WorksheetService;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.entities.UserDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
+import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
+import de.uni_passau.fim.se2.domain.model.SequenceCuratorPolicy;
 import de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy;
 import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -65,6 +72,9 @@ public class WorksheetController {
 
     private final WorksheetService worksheetService;
     private final OwnershipService ownershipService;
+    private final SequenceForkService sequenceForkService;
+    private final TaskPersistenceService taskPersistenceService;
+    private final WorksheetRepository worksheetRepository;
 
     /**
      * Get all worksheets owned by the current user.
@@ -259,5 +269,90 @@ public class WorksheetController {
         WorksheetDTO copy = worksheetService.copyWorksheet(sheetId, currentUserId);
         var location = java.net.URI.create("/api/worksheets/" + copy.getId());
         return ResponseEntity.created(location).body(copy);
+    }
+
+    // ── Curating someone else's sequence ──────────────────────────────────
+
+    /**
+     * What the current user may do with one sequence inside one of their worksheets.
+     *
+     * <p>Worksheet-scoped on purpose. The claim being answered is "I put this in my worksheet",
+     * so the worksheet is part of the question rather than context the server has to guess.
+     *
+     * <p>Answers rather than refuses when the user may do nothing: the page uses this to decide
+     * what to render, and a 403 would turn an ordinary "no teacher view for you" into an error
+     * the client has to special-case.
+     */
+    @GetMapping("/worksheets/{sheetId}/sequences/{sequenceId}/access")
+    public ResponseEntity<SequenceAccessResponse> sequenceAccess(
+            @PathVariable UUID sheetId, @PathVariable UUID sequenceId) {
+
+        UUID userId = ownershipService.getCurrentUserId();
+        UserDTO.UserRole role = ownershipService.getCurrentUserRole();
+
+        TieredTaskSequenceDTO sequence = taskPersistenceService.loadSequenceById(sequenceId);
+        if (sequence == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // The curator relation is asked of the worksheet the caller named, not of all their
+        // worksheets: someone who owns a different worksheet containing this sequence has no
+        // business forking it into this one.
+        boolean curator = worksheetService.findWorksheetById(sheetId)
+                .map(sheet -> userId != null && userId.equals(sheet.getOwnerId())
+                        && worksheetRepository.isCuratedBy(sequenceId, userId))
+                .orElse(false);
+
+        UUID ownerId = sequence.getOwnerId();
+        return ResponseEntity.ok(new SequenceAccessResponse(
+                SequenceCuratorPolicy.canInspect(ownerId, userId, role, curator),
+                SequenceCuratorPolicy.canEditInPlace(ownerId, userId, role),
+                SequenceCuratorPolicy.mustForkToEdit(ownerId, userId, role, curator)));
+    }
+
+    /**
+     * Takes a private copy of a sequence and repoints this worksheet at it.
+     *
+     * <p>How a curator edits material that is not theirs. The original stays untouched and
+     * stays in everyone else's worksheets; only this worksheet moves to the copy.
+     *
+     * @return the id of the copy, so the client can navigate to it
+     */
+    @PostMapping("/worksheets/{sheetId}/sequences/{sequenceId}/fork")
+    public ResponseEntity<Map<String, UUID>> forkSequence(
+            @PathVariable UUID sheetId, @PathVariable UUID sequenceId) {
+
+        ownershipService.denyStudents("fork sequences");
+
+        UUID userId = ownershipService.getCurrentUserId();
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        WorksheetDTO sheet = worksheetService.findWorksheetById(sheetId).orElse(null);
+        if (sheet == null || !userId.equals(sheet.getOwnerId())) {
+            // Forking writes to the worksheet, so this needs ownership of it and not merely
+            // permission to read it. Same 404 for both, as everywhere else here.
+            return ResponseEntity.notFound().build();
+        }
+
+        TieredTaskSequenceDTO sequence = taskPersistenceService.loadSequenceById(sequenceId);
+        if (sequence == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (!SequenceCuratorPolicy.mustForkToEdit(sequence.getOwnerId(), userId,
+                ownershipService.getCurrentUserRole(), true)) {
+            // Already editable in place. Forking would hand back a duplicate nobody asked for.
+            return ResponseEntity.badRequest().build();
+        }
+
+        UUID copyId = sequenceForkService.forkForEditing(sheetId, sequenceId, userId);
+        return ResponseEntity.ok(Map.of("sequenceId", copyId));
+    }
+
+    /** What the current user may do with a sequence in a worksheet of theirs. */
+    public record SequenceAccessResponse(boolean canInspect, boolean canEditInPlace,
+                                         boolean mustForkToEdit) {
     }
 }

@@ -155,8 +155,16 @@ public class WorksheetCloneService {
      * <p>The reference passed in from the worksheet carries only an id, so the sequence is
      * re-read in full first — otherwise the copy would be made from a shell and lose everything
      * the worksheet listing does not itself select.
+     *
+     * <p>Public because {@link SequenceForkService} needs exactly this when a curator takes a
+     * private copy of someone else's sequence in order to edit it. Sharing the implementation
+     * is the point: a fork that copied fewer fields than a worksheet copy would be the same
+     * silent data loss this class was written to end, arriving through a second door.
+     *
+     * @return the id of the new sequence
      */
-    private void copySequenceInto(WorksheetDTO targetWorksheet, UUID sourceSequenceId, UUID newOwnerId) {
+    @Transactional
+    public UUID copySequenceInto(WorksheetDTO targetWorksheet, UUID sourceSequenceId, UUID newOwnerId) {
         TieredTaskSequenceDTO source = TieredTaskSequenceDTO.builder().id(sourceSequenceId).build();
         sequenceRepo.loadById(source);
 
@@ -179,6 +187,7 @@ public class WorksheetCloneService {
                 TieredTaskSequenceDTO.builder().id(newSequenceId).build());
 
         log.debug("Copied sequence {} -> {} ({} tasks)", sourceSequenceId, newSequenceId, sourceTasks.size());
+        return newSequenceId;
     }
 
     /**

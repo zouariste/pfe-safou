@@ -221,6 +221,7 @@ public class TaskPersistenceService {
                 .toList();
 
         sequenceRepo.replaceConcepts(sequenceId, conceptRepo.saveAll(dtos));
+        sequenceRepo.markDiverged(sequenceId);
 
         TieredTaskSequenceDTO reloaded = new TieredTaskSequenceDTO();
         reloaded.setId(sequenceId);
@@ -417,6 +418,7 @@ public class TaskPersistenceService {
     public void updateDistractors(UUID taskId, String distractors) {
         if (taskId == null) throw new DomainValidationException("Task ID must not be null.");
         taskRepo.updateDistractors(taskId, distractors);
+        sequenceRepo.markDivergedByTaskId(taskId);
     }
 
     /**
@@ -426,6 +428,7 @@ public class TaskPersistenceService {
     public void updateDistractorsEnabled(UUID taskId, boolean enabled) {
         if (taskId == null) throw new DomainValidationException("Task ID must not be null.");
         taskRepo.updateDistractorsEnabled(taskId, enabled);
+        sequenceRepo.markDivergedByTaskId(taskId);
     }
 
     public void tagSequence(UUID sequenceId, UUID evalInputId, String mode, UUID runId) {

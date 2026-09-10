@@ -54,7 +54,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
         String sql = """
                          SELECT id, programming_language, code_snippet, created_at, task_description,
                                 version_id, strategyname, owner_id, target_language, constraint_config, tier_count,
-                                curriculum_topic_id, copied_from
+                                curriculum_topic_id, copied_from, diverged_at
                          FROM tiered_task_sequences
                          WHERE id = ?
                      """;
@@ -73,6 +73,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                 target.setTierCount(db.getTierCount());
                 target.setCurriculumTopicId(db.getCurriculumTopicId());
                 target.setCopiedFrom(db.getCopiedFrom());
+                target.setDivergedAt(db.getDivergedAt());
                 target.setConcepts(loadConceptNames(target.getId()));
             }
         } catch (EmptyResultDataAccessException e) {
@@ -289,6 +290,36 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                     .curriculumTopicId(rs.getObject("curriculum_topic_id", UUID.class))
                     .build();
         }, ownerId);
+    }
+
+    @Override
+    public boolean markDiverged(UUID sequenceId) {
+        if (sequenceId == null) return false;
+        // copied_from IS NOT NULL: an original is already listed, and stamping one would claim
+        // it came from somewhere. diverged_at IS NULL: keep the first edit, not the latest.
+        int updated = jdbc.update("""
+                UPDATE tiered_task_sequences
+                   SET diverged_at = now()
+                 WHERE id = ?
+                   AND copied_from IS NOT NULL
+                   AND diverged_at IS NULL
+                """, sequenceId);
+        return updated == 1;
+    }
+
+    @Override
+    public boolean markDivergedByTaskId(UUID taskId) {
+        if (taskId == null) return false;
+        int updated = jdbc.update("""
+                UPDATE tiered_task_sequences s
+                   SET diverged_at = now()
+                  FROM tasks t
+                 WHERE t.id = ?
+                   AND s.id = t.sequence_id
+                   AND s.copied_from IS NOT NULL
+                   AND s.diverged_at IS NULL
+                """, taskId);
+        return updated == 1;
     }
 
     @Override

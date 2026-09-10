@@ -25,6 +25,8 @@ import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.model.SequenceCuratorPolicy;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
 import de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy;
 import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
@@ -45,6 +47,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.MountableFile;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -53,6 +56,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -95,6 +100,7 @@ class MarketplaceJourneyDatabaseTest {
     private static WorksheetService worksheetService;
     private static WorksheetSearchService marketplace;
     private static SequenceSearchService library;
+    private static SequenceForkService forkService;
 
     /** Anna publishes; Ben finds and copies. */
     private static UUID anna;
@@ -122,6 +128,8 @@ class MarketplaceJourneyDatabaseTest {
                 new WorksheetCloneService(worksheetDao, sequenceDao, taskDao, tagDao));
         marketplace = new WorksheetSearchService(jdbc);
         library = new SequenceSearchService(jdbc, tagDao);
+        forkService = new SequenceForkService(worksheetDao,
+                new WorksheetCloneService(worksheetDao, sequenceDao, taskDao, tagDao));
 
         versionId = jdbc.queryForObject("SELECT id FROM versions LIMIT 1", UUID.class);
         anna = teacher("anna@example.invalid");
@@ -367,7 +375,158 @@ class MarketplaceJourneyDatabaseTest {
                         "typed without it, and consequently not found"));
     }
 
+    @Test
+    @Order(12)
+    @DisplayName("12. Anna forks Ben's sequence to edit it, and Ben's own copy survives untouched")
+    void curatorForksBeforeEditing() {
+        // Anna curates: she adds a sequence of Ben's into a worksheet of her own. She may look
+        // at it -- she chose it -- but editing it in place would rewrite it inside Ben's
+        // worksheet too, which is what forking exists to prevent.
+        UUID bensSequence = copiedSequenceOf(bensCopy);
+        // createWorksheet assigns the id itself, so read it back rather than dictating one.
+        WorksheetDTO annasSecond = WorksheetDTO.builder()
+                .name("Annas Sammlung").description("kuratiert")
+                .ownerId(anna).visibility(WorksheetVisibility.PRIVATE).build();
+        worksheetDao.createWorksheet(annasSecond);
+        UUID annasSecondSheet = annasSecond.getId();
+        worksheetDao.addSequenceToWorksheet(
+                load(annasSecondSheet), TieredTaskSequenceDTO.builder().id(bensSequence).build());
+
+        assertAll("before the fork",
+                () -> assertTrue(worksheetDao.isCuratedBy(bensSequence, anna),
+                        "Anna put it in her worksheet, so she curates it"),
+                () -> assertTrue(worksheetDao.isCuratedBy(bensSequence, ben),
+                        "and Ben still has it in his"),
+                () -> assertTrue(SequenceCuratorPolicy.mustForkToEdit(
+                        ben, anna, UserRole.TEACHER, true),
+                        "which is exactly the case that must fork rather than edit"));
+
+        UUID fork = forkService.forkForEditing(annasSecondSheet, bensSequence, anna);
+
+        Integer tasksOnOriginal = jdbc.queryForObject(
+                "SELECT count(*) FROM tasks WHERE sequence_id = ?", Integer.class, bensSequence);
+        Integer tasksOnFork = jdbc.queryForObject(
+                "SELECT count(*) FROM tasks WHERE sequence_id = ?", Integer.class, fork);
+
+        assertAll("after the fork",
+                () -> assertEquals(anna, jdbc.queryForObject(
+                        "SELECT owner_id FROM tiered_task_sequences WHERE id = ?", UUID.class, fork),
+                        "the copy is Anna's, so her edits land on her own material"),
+                () -> assertEquals(bensSequence, jdbc.queryForObject(
+                        "SELECT copied_from FROM tiered_task_sequences WHERE id = ?", UUID.class, fork),
+                        "and says where it came from"),
+                () -> assertEquals(fork, copiedSequenceOfSheet(annasSecondSheet),
+                        "Anna's worksheet now points at the copy, and only at the copy"),
+                () -> assertEquals(ben, jdbc.queryForObject(
+                        "SELECT owner_id FROM tiered_task_sequences WHERE id = ?", UUID.class, bensSequence),
+                        "Ben still owns the original"),
+                () -> assertEquals(bensSequence, copiedSequenceOf(bensCopy),
+                        "and his worksheet still points at it -- the fork touched nobody else"),
+                () -> assertEquals(tasksOnOriginal, tasksOnFork,
+                        "the copy carries the same tasks; completeness itself is CloneCompletenessTest's job"),
+                () -> assertFalse(worksheetDao.isCuratedBy(bensSequence, anna),
+                        "and Anna no longer curates the original, having moved off it"));
+    }
+
+    @Test
+    @Order(12)
+    @DisplayName("12b. the worksheet knows who owns each sequence in it")
+    void worksheetCarriesSequenceOwners() {
+        // The page marks foreign material so that forking one sequence visibly changes the
+        // list. That only works if the worksheet query brings the owners along -- it used to
+        // return bare ids, and the two arrays it now aggregates have to stay in step.
+        WorksheetDTO bensSheet = load(bensCopy);
+
+        assertAll(
+                () -> assertEquals(1, bensSheet.getSequenceDTOS().size()),
+                () -> assertEquals(ben, bensSheet.getSequenceDTOS().get(0).getOwnerId(),
+                        "Ben copied it, so the sequence in his worksheet is his"),
+                () -> assertEquals(copiedSequenceOf(bensCopy), bensSheet.getSequenceDTOS().get(0).getId(),
+                        "and the id must still line up with the owner beside it"));
+    }
+
+    @Test
+    @Order(13)
+    @DisplayName("13. a teacher who never curated the sequence is offered no fork at all")
+    void strangersGetNoFork() {
+        // Forking writes into a worksheet. Somebody with no worksheet holding this sequence has
+        // nothing to write into, so the offer must not appear -- and the service refuses even
+        // if a crafted request reaches it.
+        UUID bensSequence = copiedSequenceOf(bensCopy);
+        WorksheetDTO strangers = WorksheetDTO.builder()
+                .name("Fremdes Blatt").description("ohne die Sequenz")
+                .ownerId(anna).visibility(WorksheetVisibility.PRIVATE).build();
+        worksheetDao.createWorksheet(strangers);
+        UUID strangersSheet = strangers.getId();
+
+        assertAll(
+                () -> assertFalse(SequenceCuratorPolicy.canInspect(
+                        ben, anna, UserRole.TEACHER, false)),
+                () -> assertThrows(DomainValidationException.class,
+                        () -> forkService.forkForEditing(strangersSheet, bensSequence, anna),
+                        "forking into a worksheet that does not contain the sequence would add material to it"));
+    }
+
+    @Test
+    @Order(14)
+    @DisplayName("14. Ben reworks his copy, and the library lists it as his own material")
+    void anEditedCopyIsListedAgain() {
+        UUID bensSequence = copiedSequenceOf(bensCopy);
+
+        // Searched by the title step 8 gave it: the sequence vector is generated from
+        // task_description, so Ben's copy stopped answering to "fakultaet" the moment he
+        // retitled it. Anna's original still does, which is what separates the two here.
+        assertFalse(listedInLibrary(bensSequence, "fassung"),
+                "an untouched copy stays out of the library");
+
+        assertTrue(sequenceDao.markDiverged(bensSequence),
+                "the first edit to a copy is what marks it");
+        assertTrue(listedInLibrary(bensSequence, "fassung"),
+                "once reworked it is Ben's own material, and he must be able to find it");
+
+        // Anna's original does not lose its place to the copy.
+        assertTrue(listedInLibrary(annasSequence, "fakultaet"), "the original stays listed too");
+    }
+
+    @Test
+    @Order(15)
+    @DisplayName("15. marking is idempotent, and an original is never marked at all")
+    void divergenceIsRecordedOnce() {
+        UUID bensSequence = copiedSequenceOf(bensCopy);
+        Instant first = divergedAt(bensSequence);
+
+        assertAll(
+                () -> assertNotNull(first, "step 14 marked it"),
+                // "First edited" is the question diverged_at answers, so a second edit must not
+                // move it -- otherwise every save would rewrite the sequence's own history.
+                () -> assertFalse(sequenceDao.markDiverged(bensSequence),
+                        "a second edit reports that it changed nothing"),
+                () -> assertEquals(first, divergedAt(bensSequence),
+                        "and leaves the original timestamp alone"),
+                // An original has nothing to diverge from; stamping one would claim it was
+                // copied from somewhere.
+                () -> assertFalse(sequenceDao.markDiverged(annasSequence),
+                        "an original is not a copy and cannot diverge"),
+                () -> assertNull(divergedAt(annasSequence)),
+                () -> assertFalse(sequenceDao.markDiverged(UUID.randomUUID()),
+                        "an unknown id is a no-op, not a failure"));
+    }
+
     // ─────────────────────────────────────────────────────────────────────
+
+    /** Whether the library's own query returns this sequence when searched for {@code text}. */
+    private static boolean listedInLibrary(UUID sequenceId, String text) {
+        return library.search(new SequenceSearchService.SearchQuery().q(text), ben)
+                .items().stream()
+                .anyMatch(i -> sequenceId.equals(i.sequenceId()));
+    }
+
+    private static Instant divergedAt(UUID sequenceId) {
+        var ts = jdbc.queryForObject(
+                "SELECT diverged_at FROM tiered_task_sequences WHERE id = ?",
+                java.sql.Timestamp.class, sequenceId);
+        return ts == null ? null : ts.toInstant();
+    }
 
     private static void assertThrowsAccessDenied(Runnable action) {
         try {
@@ -376,6 +535,11 @@ class MarketplaceJourneyDatabaseTest {
         } catch (org.springframework.security.access.AccessDeniedException expected) {
             // exactly what should happen
         }
+    }
+
+    /** The single sequence a worksheet links to; fails loudly if there is more than one. */
+    private static UUID copiedSequenceOfSheet(UUID worksheetId) {
+        return copiedSequenceOf(worksheetId);
     }
 
     private static UUID copiedSequenceOf(UUID worksheetId) {

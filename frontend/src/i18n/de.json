@@ -209,6 +209,11 @@
   },
 
   "sequence": {
+    "curatorNoticeTitle": "Diese Sequenz gehört jemand anderem.",
+    "curatorNoticeBody": "Du siehst sie, weil sie in einem deiner Arbeitsblätter liegt. Änderungen würden sie auch in den Arbeitsblättern anderer verändern — erstelle dafür eine eigene Kopie.",
+    "forkToEdit": "Eigene Kopie zum Bearbeiten",
+    "forking": "Wird kopiert …",
+    "forkFailed": "Die Kopie konnte nicht erstellt werden.",
     "pageTitle": "Sequenz-Seite",
     "devTemplate": "DEV-Vorlage",
     "teacherBanner": "Lehrer-Modus",
@@ -223,6 +228,7 @@
     "concepts": "Konzepte",
     "conceptsNone": "keine",
     "conceptsEdit": "Konzepte bearbeiten",
+    "conceptsEditLocked": "Nur die Besitzerin oder der Besitzer kann die Konzepte ändern. Erstelle zuerst eine eigene Kopie.",
     "conceptsDone": "Fertig",
     "conceptsEditHint": "Änderungen werden sofort gespeichert.",
     "conceptsSaveError": "Konzepte konnten nicht gespeichert werden.",
@@ -416,6 +422,7 @@
     },
     "copied": "Kopiert!",
     "addSequence": "Sequenz hinzufügen",
+    "foreignSequence": "fremd",
     "sequenceLabel": "Sequenz {{index}}",
     "sequenceIdTooltip": "Sequenz-ID: {{id}}",
     "sequences": "Sequenzen in diesem Arbeitsblatt",

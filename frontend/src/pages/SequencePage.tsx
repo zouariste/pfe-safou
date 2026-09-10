@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TieredTaskSequence, Task } from "../types/models.ts";
 import { api, apiErrorMessage } from "../lib/api.ts";
@@ -7,6 +7,7 @@ import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useHomePath } from "../hooks/useHomePath.ts";
 import {PersistentLogger} from "../PersistentLogger.ts";
 import { useLocation } from "react-router-dom";
+import { useSequenceAccess } from "../hooks/useSequenceAccess.ts";
 import { useAuth } from "../context/AuthContext.tsx";
 import TaskEditModal from "../components/TaskEditModal.tsx";
 import ConceptPicker from "../components/ConceptPicker.tsx";
@@ -33,10 +34,17 @@ export default function SequencePage() {
 
     const location = useLocation();
 
-    // Only show "back to worksheet" when navigated FROM a worksheet (via location.state).
-    // Do NOT persist in localStorage — a direct URL visit should never show the button.
+    // Which worksheet the teacher came from. Router state was enough while this only decided
+    // whether to show a "back to worksheet" button; it now also decides whether the teacher
+    // view opens, and router state does not survive a reload — pressing F5 made the teacher
+    // view and the fork offer disappear with no explanation. The query string survives a
+    // reload and a shared link, and still says nothing a direct visitor could abuse: the
+    // server checks the claim before granting anything.
+    const [searchParams] = useSearchParams();
     const fromWorksheet =
-        (location.state as { fromWorksheet?: string })?.fromWorksheet ?? null;
+        searchParams.get("fromWorksheet")
+        ?? (location.state as { fromWorksheet?: string })?.fromWorksheet
+        ?? null;
     // Not rendered here — only forwarded, so the worksheet still knows its class.
     const fromClass = (location.state as { fromClass?: string })?.fromClass ?? null;
 
@@ -79,16 +87,23 @@ export default function SequencePage() {
 
     // Role-based teacher view: show toggle for owners and admins
     const isOwnerOrAdmin = isLoggedIn && seq && user && (seq.ownerId === user.userId || isAdmin);
-    const canToggleTeacherView = !!isOwnerOrAdmin;
 
-    // Auto-enable teacher view when sequence loads and user is owner/admin
+    // A teacher who put this sequence into a worksheet of theirs may look at it too, even
+    // though they do not own it. Asked of the server rather than decided here, because it
+    // depends on a worksheet link the client cannot see. See useSequenceAccess.
+    const access = useSequenceAccess(id, fromWorksheet);
+
+    const canToggleTeacherView = !!isOwnerOrAdmin || access.canInspect;
+
+    // Writing stays with the owner. A curator's edit would rewrite the sequence inside every
+    // other worksheet using it, so they are offered a fork instead of edit controls.
+    const canEdit = !!isOwnerOrAdmin || access.canEditInPlace;
+
+    // Auto-enable teacher view for anyone entitled to it, so the material a teacher curated
+    // is visible without hunting for a toggle.
     useEffect(() => {
-        if (isOwnerOrAdmin) {
-            setTeacherViewEnabled(true);
-        } else {
-            setTeacherViewEnabled(false);
-        }
-    }, [isOwnerOrAdmin]);
+        setTeacherViewEnabled(canToggleTeacherView);
+    }, [canToggleTeacherView]);
 
     const isTemplate = id?.toLowerCase().includes("template");
 
@@ -124,6 +139,30 @@ export default function SequencePage() {
             ownerId: raw?.ownerId ?? null,
             constraints: raw?.constraints ?? null,
         };
+    }
+
+    const [forking, setForking] = useState(false);
+
+    /**
+     * Takes a private copy and moves the worksheet onto it, then navigates there.
+     *
+     * <p>Navigating is the point rather than a nicety: after the fork the sequence in the URL is
+     * no longer the one the teacher's worksheet contains, so staying put would leave them
+     * editing a page whose changes their worksheet no longer sees.
+     */
+    async function handleFork() {
+        if (!fromWorksheet || !id) return;
+        setForking(true);
+        try {
+            const { data } = await api.post<{ sequenceId: string }>(
+                `/worksheets/${fromWorksheet}/sequences/${id}/fork`);
+            navigate(`/sequence/${data.sequenceId}?fromWorksheet=${fromWorksheet}`,
+                { state: { fromWorksheet }, replace: true });
+        } catch (err) {
+            alert(apiErrorMessage(err, t("sequence.forkFailed")));
+        } finally {
+            setForking(false);
+        }
     }
 
     /**
@@ -330,6 +369,22 @@ export default function SequencePage() {
                 </div>
             )}
 
+            {access.mustForkToEdit && teacherViewEnabled && (
+                <div className="alert alert-info d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <div className="flex-grow-1">
+                        <strong>{t("sequence.curatorNoticeTitle")}</strong>
+                        <div className="small">{t("sequence.curatorNoticeBody")}</div>
+                    </div>
+                    <button
+                        className="btn btn-sm btn-primary"
+                        disabled={forking}
+                        onClick={handleFork}
+                    >
+                        {forking ? t("sequence.forking") : t("sequence.forkToEdit")}
+                    </button>
+                </div>
+            )}
+
             {canToggleTeacherView && (
                 <div className="d-flex justify-content-end mb-3">
                     <button
@@ -397,8 +452,13 @@ export default function SequencePage() {
 
             {/* The concepts the sequence was generated for. Teacher view only: on a
                 Parsons puzzle "recursion" or "for-loop" names the shape of the
-                solution, which is a hint the solver has not earned yet. Teacher
-                view is itself owner/admin-only, so anything shown here is editable. */}
+                solution, which is a hint the solver has not earned yet.
+
+                Teacher view is no longer owner-only — a curator inspecting someone
+                else's sequence sees it too — so editing is gated on canEdit
+                separately. Concepts are part of the shared sequence, so a curator's
+                change would rewrite them in every other worksheet using it, exactly
+                what the fork exists to avoid. */}
             {teacherViewEnabled && (
                 <div className="mb-3">
                     <div className="d-flex flex-wrap gap-1 align-items-center">
@@ -417,8 +477,9 @@ export default function SequencePage() {
                         {!editingConcepts && (
                             <button
                                 className="btn btn-sm btn-link text-secondary p-0 ms-1"
-                                title={t("sequence.conceptsEdit")}
-                                aria-label={t("sequence.conceptsEdit")}
+                                disabled={!canEdit}
+                                title={canEdit ? t("sequence.conceptsEdit") : t("sequence.conceptsEditLocked")}
+                                aria-label={canEdit ? t("sequence.conceptsEdit") : t("sequence.conceptsEditLocked")}
                                 onClick={() => { setConceptError(""); setEditingConcepts(true); }}
                             >
                                 <i className="bi bi-pencil"></i>
@@ -426,7 +487,7 @@ export default function SequencePage() {
                         )}
                     </div>
 
-                    {editingConcepts && (
+                    {canEdit && editingConcepts && (
                         <div className="mt-2" style={{ maxWidth: 520 }}>
                             <ConceptPicker
                                 inputId="sequenceConcepts"
@@ -561,7 +622,7 @@ export default function SequencePage() {
                 <div className="mb-3 d-flex justify-content-end">
                     <button
                         className="btn btn-outline-danger fw-semibold"
-                        disabled={generatingDistractors !== null}
+                        disabled={!canEdit || generatingDistractors !== null}
                         onClick={async () => {
                             setGeneratingDistractors("batch");
                             try {
@@ -623,6 +684,7 @@ export default function SequencePage() {
                                         <>
                                         <button
                                             className="btn btn-sm btn-outline-secondary fw-semibold"
+                                            disabled={!canEdit}
                                             onClick={() => handleOpenEdit(task)}
                                             title={t("sequence.editTask")}
                                         >
@@ -631,7 +693,7 @@ export default function SequencePage() {
                                         {/* AP15b: On-demand distractor generation */}
                                         <button
                                             className={`btn btn-sm fw-semibold ${task.distractors ? "btn-outline-danger" : "btn-outline-info"}`}
-                                            disabled={generatingDistractors !== null}
+                                            disabled={!canEdit || generatingDistractors !== null}
                                             title={task.distractors ? t("sequence.regenerateDistractors") : t("sequence.generateDistractors")}
                                             onClick={async () => {
                                                 setGeneratingDistractors(task.id);
@@ -746,6 +808,7 @@ export default function SequencePage() {
                                                                     className="form-check-input"
                                                                     type="checkbox"
                                                                     role="switch"
+                                                                    disabled={!canEdit}
                                                                     id={`distractors-toggle-${task.id}`}
                                                                     checked={task.distractorsEnabled !== false}
                                                                     onChange={async (e) => {

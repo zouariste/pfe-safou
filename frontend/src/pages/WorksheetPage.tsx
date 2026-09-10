@@ -687,14 +687,23 @@ export default function WorksheetPage() {
                             <div
                                 style={{ cursor: "pointer" }}
                                 onClick={() =>
-                                    navigate(`/sequence/${s.id}`, {
-                                        // fromClass rides along so the class link
-                                        // survives a detour into a sequence.
+                                    navigate(`/sequence/${s.id}?fromWorksheet=${worksheet.id}`, {
+                                        // The worksheet also rides in the state, and fromClass
+                                        // with it, so the class link survives a detour into a
+                                        // sequence. The query parameter is what survives F5.
                                         state: { fromWorksheet: worksheet.id, fromClass },
                                     })
                                 }
                             >
                                 {t("worksheet.sequenceLabel", { index: idx + 1 })}
+                                {/* Marks material the reader did not make. Without it the list
+                                    is identical before and after forking a sequence, which
+                                    makes the fork look like it did nothing. */}
+                                {teacherViewEnabled && s.ownerId !== user?.userId && (
+                                    <span className="badge bg-secondary-subtle text-secondary-emphasis ms-2">
+                                        {t("worksheet.foreignSequence")}
+                                    </span>
+                                )}
                                 {teacherViewEnabled && (
                                     <small className="text-muted ms-2">
                                         ({s.id ? s.id.slice(0, 8) : "?"}...)
