@@ -16,6 +16,7 @@ import { useEventTracker } from "../hooks/useEventTracker.ts";
 import { useProgressiveTags } from "../hooks/useProgressiveTags.ts";
 import TagChip from "../components/TagChip.tsx";
 import TagChipSkeleton from "../components/TagChipSkeleton.tsx";
+import TagEditor from "../components/TagEditor.tsx";
 import SimilarSequencesPanel from "../components/SimilarSequencesPanel.tsx";
 import {
     exportSequenceJSON,
@@ -83,7 +84,8 @@ export default function SequencePage() {
     // AP19 tags, so we let the hook do a one-shot fetch on mount. No `createdAt` is passed (the
     // domain type doesn't track it), which effectively disables the poll loop — acceptable here
     // since the teacher is looking at a single sequence and can refresh if the LLM is late.
-    const { tags: sequenceTags, isWaitingForLlm } = useProgressiveTags(id, undefined, undefined);
+    const { tags: sequenceTags, isWaitingForLlm, setTags } = useProgressiveTags(id, undefined, undefined);
+    const [editingTags, setEditingTags] = useState(false);
 
     // Role-based teacher view: show toggle for owners and admins
     const isOwnerOrAdmin = isLoggedIn && seq && user && (seq.ownerId === user.userId || isAdmin);
@@ -517,22 +519,59 @@ export default function SequencePage() {
             {/* AP19 Teil A (A13): Library tags, teacher view only. LLM / manual / auto
                 sources are colour-coded via TagChip, and a pulsing skeleton appears
                 while the async LLM tagger is still working on freshly-generated
-                sequences. */}
-            {teacherViewEnabled && (sequenceTags.length > 0 || isWaitingForLlm) && (
-                <div className="mb-3 d-flex flex-wrap gap-1 align-items-center">
-                    <span className="me-1 text-muted small">
-                        <i className="bi bi-tag-fill me-1"></i>
-                        {t("sequence.libraryTags", "Library tags")}:
-                    </span>
-                    {sequenceTags.map((tag) => (
-                        <TagChip
-                            key={`${tag.tagName}-${tag.source}`}
-                            tag={tag}
-                            fadeIn={tag.source === "llm"}
-                        />
-                    ))}
-                    {isWaitingForLlm && (
-                        <TagChipSkeleton ariaLabel={t("sequence.llmTagLoading", "Waiting for semantic tag") as string} />
+                sequences. Teacher view is owner/admin-only — the same condition the
+                tag endpoints enforce — so the row is editable, as in the library. */}
+            {teacherViewEnabled && (
+                <div className="mb-3">
+                    <div className="d-flex flex-wrap gap-1 align-items-center">
+                        <span className="me-1 text-muted small">
+                            <i className="bi bi-tag-fill me-1"></i>
+                            {t("sequence.libraryTags", "Library tags")}:
+                        </span>
+                        {!editingTags && sequenceTags.map((tag) => (
+                            <TagChip
+                                key={`${tag.tagName}-${tag.source}`}
+                                tag={tag}
+                                fadeIn={tag.source === "llm"}
+                            />
+                        ))}
+                        {!editingTags && sequenceTags.length === 0 && !isWaitingForLlm && (
+                            <span className="text-muted small fst-italic">{t("library.tagEditor.noTags")}</span>
+                        )}
+                        {isWaitingForLlm && (
+                            <TagChipSkeleton ariaLabel={t("sequence.llmTagLoading", "Waiting for semantic tag") as string} />
+                        )}
+                        {!editingTags && (
+                            <button
+                                className="btn btn-sm btn-link text-secondary p-0 ms-1"
+                                title={t("library.editTags")}
+                                aria-label={t("library.editTags")}
+                                onClick={() => setEditingTags(true)}
+                            >
+                                <i className="bi bi-pencil"></i>
+                            </button>
+                        )}
+                    </div>
+
+                    {/* The same editor the library cards use, so a tag added here
+                        behaves exactly as one added there. Its response is the full
+                        server-side list, which outranks whatever the poll last saw. */}
+                    {editingTags && (
+                        <div className="mt-2" style={{ maxWidth: 520 }}>
+                            <TagEditor
+                                sequenceId={seq.id}
+                                tags={sequenceTags}
+                                onTagsChanged={setTags}
+                            />
+                            <div className="mt-2">
+                                <button
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={() => setEditingTags(false)}
+                                >
+                                    {t("library.doneEditing")}
+                                </button>
+                            </div>
+                        </div>
                     )}
                 </div>
             )}
