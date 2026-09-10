@@ -18,8 +18,10 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
+import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
 import lombok.*;
 
+import java.time.Instant;
 import java.util.*;
 
 /**
@@ -82,4 +84,33 @@ public class WorksheetDTO {
      * every worksheet had before budgets existed.
      */
     private Integer hintCreditsPerTask;
+
+    /**
+     * How far this worksheet reaches beyond its owner.
+     *
+     * <p>Defaults to {@link WorksheetVisibility#UNLISTED}, which is what every worksheet was
+     * before the marketplace: readable by anyone holding the link, listed nowhere.
+     */
+    @Builder.Default
+    private WorksheetVisibility visibility = WorksheetVisibility.DEFAULT;
+
+    /**
+     * When the worksheet was created. Stamped by the database.
+     *
+     * <p>An {@code Instant} because the column is {@code timestamptz} — the marketplace orders
+     * by it across users who are not necessarily in the same offset.
+     */
+    private Instant createdAt;
+
+    /**
+     * The worksheet this one was copied from, if it was.
+     *
+     * <p>Nothing displays it. It exists so a copy can be told apart from an original, which the
+     * library search needs in order not to fill up with duplicates. The foreign key is
+     * {@code ON DELETE SET NULL}: deleting an original leaves its copies alone.
+     */
+    private UUID copiedFrom;
+
+    /** When this worksheet was copied, if it was. */
+    private Instant copiedAt;
 }

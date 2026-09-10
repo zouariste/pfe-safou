@@ -130,6 +130,15 @@ public class TieredTaskSequenceDTO {
     private UUID curriculumTopicId;
 
     /**
+     * The sequence this one was copied from, if it was.
+     *
+     * <p>Never displayed. It is there so the library search can tell an original from a clone:
+     * copying a worksheet duplicates its sequences, and a marketplace that makes copying routine
+     * would otherwise fill the library with near-identical entries nobody can tell apart.
+     */
+    private UUID copiedFrom;
+
+    /**
      * Returns the task for a given tier level, if present.
      *
      * @param tierLevel the tier level (e.g. 1, 2, 3)
@@ -194,6 +203,10 @@ public class TieredTaskSequenceDTO {
                 .id(null)
                 .ownerId(newOwnerId)
                 .createdAt(null)
+                // Provenance points at the immediate source, not at the root of a copy chain.
+                // A copy of a copy came from the copy; that is the honest answer, and following
+                // the chain back is the reader's business, not this method's.
+                .copiedFrom(id)
                 .tasks(new ArrayList<>())
                 .concepts(concepts == null ? null : new ArrayList<>(concepts))
                 .build();

@@ -139,7 +139,25 @@ export interface Worksheet {
     hintsEnabled: boolean;
     /** Hint credits each student gets per task; null means unlimited. */
     hintCreditsPerTask: number | null;
+    /** How far the worksheet reaches beyond its owner. See {@link WorksheetVisibility}. */
+    visibility: WorksheetVisibility;
+    /** ISO-8601 instant. */
+    createdAt: string | null;
+    /**
+     * The worksheet this one was copied from. Never shown — it exists so the backend can tell
+     * a copy from an original.
+     */
+    copiedFrom: string | null;
+    copiedAt: string | null;
 }
+
+/**
+ * PRIVATE — owner and admins only, not even readable by link.
+ * UNLISTED — readable by anyone holding the link, listed nowhere. What every worksheet was
+ *   before the marketplace, and still the default.
+ * PUBLIC — listed in the marketplace for other teachers to find and copy.
+ */
+export type WorksheetVisibility = "PRIVATE" | "UNLISTED" | "PUBLIC";
 
 // ── Class Types ─────────────────────────────────────────
 

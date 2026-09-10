@@ -27,11 +27,13 @@ import de.uni_passau.fim.se2.domain.interfaces.SequenceTagRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
 import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
+import de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -137,6 +139,12 @@ public class WorksheetCloneService {
                 .ownerId(newOwnerId)
                 .hintsEnabled(source.isHintsEnabled())
                 .hintCreditsPerTask(source.getHintCreditsPerTask())
+                // Never the source's visibility. Copying is how you take someone else's material
+                // to adapt it, and a half-adapted worksheet appearing in the marketplace under
+                // your name is not what pressing "copy" meant. Publishing it is a separate act.
+                .visibility(WorksheetAccessPolicy.visibilityForCopy())
+                .copiedFrom(source.getId())
+                .copiedAt(Instant.now())
                 .build();
     }
 

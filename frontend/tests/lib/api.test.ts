@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { apiErrorMessage } from "../../src/lib/api.ts";
+import { apiErrorMessage, isNotFound } from "../../src/lib/api.ts";
 
 /**
  * The backend's GlobalExceptionHandler always replies with an ApiErrorResponse
@@ -66,5 +66,31 @@ describe("apiErrorMessage", () => {
             expect(typeof result).toBe("string");
             expect(result.length).toBeGreaterThan(0);
         }
+    });
+});
+
+describe("isNotFound", () => {
+    it("recognises a 404", () => {
+        expect(isNotFound({ response: { status: 404 } })).toBe(true);
+    });
+
+    it("is false for every other status, and for no response at all", () => {
+        expect(isNotFound({ response: { status: 400 } })).toBe(false);
+        expect(isNotFound({ response: { status: 403 } })).toBe(false);
+        expect(isNotFound({ response: { status: 500 } })).toBe(false);
+        expect(isNotFound({ message: "Network Error" })).toBe(false);
+        expect(isNotFound(undefined)).toBe(false);
+        expect(isNotFound(null)).toBe(false);
+    });
+
+    it("is why a 404 is asked about separately", () => {
+        // The worksheet endpoints answer 404 with no body, on purpose: "no such worksheet" and
+        // "not yours to see" must look identical. With nothing in the body apiErrorMessage
+        // reaches past the caller's fallback for axios's own English message, so a page that
+        // wants to say something sensible has to check the status itself.
+        const emptyNotFound = { response: { status: 404, data: "" }, message: "Request failed with status code 404" };
+        expect(apiErrorMessage(emptyNotFound, "eine deutsche Meldung"))
+            .toBe("Request failed with status code 404");
+        expect(isNotFound(emptyNotFound)).toBe(true);
     });
 });

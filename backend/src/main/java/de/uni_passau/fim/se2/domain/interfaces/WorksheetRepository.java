@@ -22,6 +22,7 @@ import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.exceptions.*;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
+import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 
 import java.util.*;
@@ -70,6 +71,20 @@ public interface WorksheetRepository {
      */
     void getWorksheetById(WorksheetDTO worksheet);
 
+    /**
+     * A worksheet, if there is one with that id.
+     *
+     * <p>The non-throwing counterpart to {@link #getWorksheetById(WorksheetDTO)}, which raises
+     * a validation error for an id that does not exist. That distinction leaks: an endpoint
+     * built on it answers 400 with "not found" for an unknown worksheet and 404 for one the
+     * caller may not see, which tells an unauthorised caller exactly which ids are real. With
+     * an empty result instead, both cases can answer the same way.
+     *
+     * @param worksheetId the worksheet to look for; {@code null} yields an empty result
+     * @return the worksheet with its sequence references, or empty
+     */
+    Optional<WorksheetDTO> findById(UUID worksheetId);
+
 
     /**
      * Associates a single {@link TieredTaskSequenceDTO} with the specified {@link WorksheetDTO}.
@@ -107,5 +122,20 @@ public interface WorksheetRepository {
      * Finds all worksheets owned by the specified user.
      */
     List<WorksheetDTO> findByOwnerId(UUID ownerId);
+
+    /**
+     * Sets a worksheet's visibility.
+     *
+     * <p>Its own method rather than a field on {@code updateWorksheet}, because publishing is a
+     * different act from editing: it is authorised differently, it is triggered from a separate
+     * control, and a full update would let a stale form overwrite a visibility the teacher had
+     * just changed in another tab.
+     *
+     * @param worksheetId the worksheet to change
+     * @param visibility  the new visibility
+     * @throws de.uni_passau.fim.se2.domain.exceptions.DomainValidationException
+     *         if no worksheet has that id
+     */
+    void updateVisibility(UUID worksheetId, WorksheetVisibility visibility);
 
 }

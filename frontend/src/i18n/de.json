@@ -357,6 +357,24 @@
     "copying": "Kopiere...",
     "assign": "Zuweisen",
     "shareWorksheet": "Arbeitsblatt teilen",
+    "notAvailable": "Dieses Arbeitsblatt gibt es nicht (mehr), oder es ist nicht für dich freigegeben.",
+    "visibility": {
+      "legend": "Sichtbarkeit",
+      "saving": "Wird gespeichert …",
+      "error": "Die Sichtbarkeit konnte nicht geändert werden. Bitte erneut versuchen.",
+      "PRIVATE": {
+        "label": "Nur ich",
+        "hint": "Niemand sonst kann das Arbeitsblatt öffnen — auch nicht über einen Link."
+      },
+      "UNLISTED": {
+        "label": "Über Link",
+        "hint": "Wer den Link hat, kann es öffnen. Es taucht in keiner Suche auf. So verhielten sich Arbeitsblätter bisher."
+      },
+      "PUBLIC": {
+        "label": "Im Marktplatz",
+        "hint": "Andere Lehrkräfte finden es über die Suche und können es in ihren eigenen Bereich kopieren."
+      }
+    },
     "copied": "Kopiert!",
     "addSequence": "Sequenz hinzufügen",
     "sequenceLabel": "Sequenz {{index}}",

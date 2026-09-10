@@ -73,7 +73,10 @@ class CloneCompletenessTest {
      * objects.
      */
     private static final Set<String> RESET_BY_SEQUENCE_COPY =
-            Set.of("id", "ownerId", "createdAt", "tasks");
+            Set.of("id", "ownerId", "createdAt", "tasks",
+                   // copiedFrom is not carried over but rewritten: the copy came from the
+                   // sequence being copied, not from wherever that one came from.
+                   "copiedFrom");
 
     @Test
     @DisplayName("a task copy carries every field except the two that identify it")
@@ -103,6 +106,8 @@ class CloneCompletenessTest {
         assertNull(copy.getCreatedAt(), "the database stamps the copy's creation time");
         assertEquals(newOwnerId, copy.getOwnerId(), "the copy belongs to whoever made it");
         assertTrue(copy.getTasks().isEmpty(), "the caller refills the task list with copies");
+        assertEquals(source.getId(), copy.getCopiedFrom(),
+                "provenance points at the immediate source, not at the source's own origin");
     }
 
     @Test
