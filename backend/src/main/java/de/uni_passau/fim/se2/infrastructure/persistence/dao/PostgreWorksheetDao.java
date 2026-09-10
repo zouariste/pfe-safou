@@ -144,16 +144,36 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             w.created_at,
             w.copied_from,
             w.copied_at,
-            COALESCE(array_agg(ws.sequence_id ORDER BY ws.sequence_id), '{}') AS sequence_ids
+            COALESCE(array_agg(ws.sequence_id ORDER BY ws.sequence_id), '{}') AS sequence_ids,
+            -- Ordered by the same key as the ids above, so the two arrays zip position by
+            -- position. The page needs it to mark which sequences belong to the reader: a
+            -- worksheet that shows nothing but "Sequenz 1, Sequenz 2" cannot tell anybody
+            -- that forking one of them changed something.
+            COALESCE(array_agg(s.owner_id ORDER BY ws.sequence_id), '{}') AS sequence_owner_ids
         FROM worksheets w
         LEFT JOIN worksheets_sequence ws ON ws.worksheet_id = w.id
+        LEFT JOIN tiered_task_sequences s ON s.id = ws.sequence_id
         WHERE w.id = ?
         GROUP BY w.id, w.name, w.description, w.owner_id, w.hints_enabled,
                  w.hint_credits_per_task, w.visibility, w.created_at, w.copied_from, w.copied_at
         """;
 
-    private static final RowMapper<WorksheetDTO> WORKSHEET_MAPPER = (rs, rowNum) ->
-            WorksheetDTO.builder()
+    private static final RowMapper<WorksheetDTO> WORKSHEET_MAPPER = (rs, rowNum) -> {
+        List<TieredTaskSequenceDTO> sequences = new ArrayList<>();
+        UUID[] seqArray = (UUID[]) rs.getArray("sequence_ids").getArray();
+        UUID[] ownerArray = (UUID[]) rs.getArray("sequence_owner_ids").getArray();
+        for (int i = 0; i < seqArray.length; i++) {
+            if (seqArray[i] == null) {
+                // A worksheet with no sequences still produces one all-null row from the
+                // LEFT JOIN.
+                continue;
+            }
+            // Seed sequences have no owner, so a null here is data rather than a mismatch.
+            UUID ownerId = i < ownerArray.length ? ownerArray[i] : null;
+            sequences.add(TieredTaskSequenceDTO.builder().id(seqArray[i]).ownerId(ownerId).build());
+        }
+
+        return WorksheetDTO.builder()
                 .id(UUID.fromString(rs.getString("id")))
                 .name(rs.getString("name"))
                 .description(rs.getString("description"))
@@ -164,8 +184,9 @@ public class PostgreWorksheetDao implements WorksheetRepository {
                 .createdAt(toInstant(rs.getTimestamp("created_at")))
                 .copiedFrom(rs.getObject("copied_from", UUID.class))
                 .copiedAt(toInstant(rs.getTimestamp("copied_at")))
-                    .sequenceDTOS(sequenceReferences(rs.getArray("sequence_ids")))
-                    .build();
+                .sequenceDTOS(sequences)
+                .build();
+    };
 
     @Override
     public Optional<WorksheetDTO> findById(UUID worksheetId) {
@@ -331,6 +352,31 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             log.error("Error unlinking sequence id={} from worksheet id={}", sequence.getId(), worksheet.getId(), e);
             throw new DomainValidationException("Failed to remove sequence from worksheet: " + e.getMessage());
         }
+    }
+
+    /**
+     * The curator relation: does this user own a worksheet that contains this sequence?
+     *
+     * <p>{@code EXISTS} rather than a count — the question is boolean, and Postgres can stop at
+     * the first matching row instead of walking every worksheet a prolific teacher owns.
+     */
+    @Override
+    public boolean isCuratedBy(UUID sequenceId, UUID ownerId) {
+        if (sequenceId == null || ownerId == null) {
+            // Anonymous visitors curate nothing, and a missing sequence is curated by no one.
+            // Returning false beats raising: callers ask this to decide what to render.
+            return false;
+        }
+
+        String sql = """
+            SELECT EXISTS (
+                SELECT 1 FROM worksheets_sequence ws
+                  JOIN worksheets w ON w.id = ws.worksheet_id
+                 WHERE ws.sequence_id = ? AND w.owner_id = ?
+            )
+            """;
+
+        return Boolean.TRUE.equals(jdbc.queryForObject(sql, Boolean.class, sequenceId, ownerId));
     }
 
     /**

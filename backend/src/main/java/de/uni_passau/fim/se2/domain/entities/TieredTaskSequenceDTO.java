@@ -139,6 +139,19 @@ public class TieredTaskSequenceDTO {
     private UUID copiedFrom;
 
     /**
+     * When this copy was first edited, or {@code null} if it never was.
+     *
+     * <p>Only ever set on a copy. {@link #copiedFrom} alone cannot distinguish a clone nobody
+     * has touched from one its new owner has reworked into different material, because it is
+     * written once and never cleared — so an edited copy stayed out of the library for good.
+     * The library lists a sequence when it is an original <em>or</em> has diverged.
+     *
+     * <p>A timestamp rather than a flag: it is the same cost to store and it answers "since
+     * when", which a boolean throws away.
+     */
+    private Instant divergedAt;
+
+    /**
      * Returns the task for a given tier level, if present.
      *
      * @param tierLevel the tier level (e.g. 1, 2, 3)
@@ -189,6 +202,9 @@ public class TieredTaskSequenceDTO {
      *   <li>{@code id} — a copy is a new row</li>
      *   <li>{@code ownerId} — the copy belongs to whoever made it</li>
      *   <li>{@code createdAt} — the copy is new; the database stamps it</li>
+     *   <li>{@code divergedAt} — the copy has not been edited yet, however much the sequence
+     *       it came from had been; inheriting it would put an untouched clone straight into
+     *       the library, which is the listing rule inverted</li>
      *   <li>{@code tasks} — emptied, because the caller refills it with task copies rather
      *       than letting both sequences point at the same task objects</li>
      * </ul>
@@ -203,6 +219,7 @@ public class TieredTaskSequenceDTO {
                 .id(null)
                 .ownerId(newOwnerId)
                 .createdAt(null)
+                .divergedAt(null)
                 // Provenance points at the immediate source, not at the root of a copy chain.
                 // A copy of a copy came from the copy; that is the honest answer, and following
                 // the chain back is the reader's business, not this method's.

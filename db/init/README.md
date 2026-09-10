@@ -33,6 +33,42 @@ docker compose down -v && docker compose up -d db
 
 That deletes all local data, so use it on development volumes only.
 
+## The tests run against this directory too
+
+`WorksheetSearchDatabaseTest` and `MarketplaceJourneyDatabaseTest` start a Postgres container
+from these exact scripts, so the schema they test is the schema that ships. A migration that
+breaks a fresh bootstrap therefore breaks those tests rather than only breaking the next person
+to clone the repository.
+
+**But only locally.** Both classes are skipped where there is no Docker daemon, and the shared
+CI runner is unprivileged, so a `docker:dind` service cannot start there. A green pipeline
+consequently says nothing about whether these scripts still bootstrap. Run `mvn test` with
+Docker up after changing anything in this directory, and do not take CI's word for it.
+
+### On Windows: enable Docker Desktop's WSL integration first
+
+"Docker up" means up *inside the distro you build in*. Docker Desktop running on Windows is
+not enough: without integration the distro has no `docker` CLI and no `/var/run/docker.sock`,
+Testcontainers finds no Docker environment, and the two classes above skip — leaving a green
+`BUILD SUCCESS` that has verified nothing. It is the same false green as CI, on your own
+machine, which makes it much easier to trust by mistake.
+
+Enable it under **Settings → Resources → WSL Integration**, for the distro holding the
+checkout. Then `ls -la /var/run/docker.sock` inside that distro should show a socket owned by
+`root:docker`, and your user should appear in `id -nG`.
+
+Two things to expect:
+
+- Toggling it **restarts the Docker engine**, which stops running containers. Anything without
+  a `restart:` policy stays down until started again.
+- Confirm the tests actually ran. `Tests run: N, ... Skipped: 0` is the thing to look for;
+  `Skipped: 11` with a green build is the failure mode this whole section is about.
+
+Separately, the daemon's API version is handled in `backend/pom.xml`: Docker Engine 29 refuses
+the API 1.32 that docker-java defaults to, so Surefire pins `api.version` via the
+`docker.api.version` property. On a daemon older than Docker 25, override it with
+`-Ddocker.api.version=1.41` or similar.
+
 ## Writing a migration
 
 Make it re-runnable. `ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`, and a
