@@ -29,7 +29,7 @@ import java.util.*;
 @Setter
 @ToString
 @EqualsAndHashCode(of = "id")
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class TaskDTO {
@@ -154,5 +154,28 @@ public class TaskDTO {
      * (no answer-stripping on delivery).
      */
     private String splitPlan;
+
+    /**
+     * A detached copy of this task, belonging to a different sequence.
+     *
+     * <p>Built from {@code toBuilder()} rather than by naming fields one by one. That is the
+     * whole point: every field travels with the copy automatically, so a column added later
+     * cannot silently fall out of it. Naming fields is how the distractors, the context blocks
+     * and the AP31 split plan were lost by the worksheet copy for as long as they existed.
+     *
+     * <p>Only identity is reset — the id because a copy is a new row, and the sequence id
+     * because the copy belongs to a different parent. Everything else, including the
+     * {@code distractorsEnabled} flag whose {@code @Builder.Default} would otherwise silently
+     * flip a disabled task back to enabled, is carried over as-is.
+     *
+     * @param newSequenceId the sequence the copy belongs to
+     * @return a new task, ready to be persisted
+     */
+    public TaskDTO copyFor(UUID newSequenceId) {
+        return toBuilder()
+                .id(null)
+                .sequenceId(newSequenceId)
+                .build();
+    }
 
 }

@@ -297,6 +297,25 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                 trimmed, sequenceId);
     }
 
+    @Override
+    public String findSemanticSummary(UUID sequenceId) {
+        if (sequenceId == null) return null;
+        // queryForList rather than queryForObject: an unknown id is an ordinary outcome for a
+        // copy operation, not an exception worth unwinding a transaction for.
+        List<String> rows = jdbc.queryForList(
+                "SELECT semantic_summary FROM tiered_task_sequences WHERE id = ?",
+                String.class, sequenceId);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    @Override
+    public List<UUID> findConceptIdsBySequenceId(UUID sequenceId) {
+        if (sequenceId == null) return List.of();
+        return jdbc.queryForList(
+                "SELECT concept_id FROM tiered_task_sequence_concepts WHERE sequence_id = ?",
+                UUID.class, sequenceId);
+    }
+
     /**
      * AP19 Teil A: single-query retag-candidate loader. Uses {@code string_agg} so we don't
      * N+1 over tasks per sequence. Always LEFT JOIN so sequences without tasks still show up
