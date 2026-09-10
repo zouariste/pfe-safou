@@ -74,6 +74,11 @@ public class TieredTaskSequenceRowMapper implements RowMapper<TieredTaskSequence
         if (hasColumn(rs, "copied_from")) {
             dto.setCopiedFrom(rs.getObject("copied_from", UUID.class));
         }
+        // Whether that copy has since been edited. Same guard, same reason.
+        if (hasColumn(rs, "diverged_at")) {
+            var diverged = rs.getTimestamp("diverged_at");
+            dto.setDivergedAt(diverged == null ? null : diverged.toInstant());
+        }
 
         return dto;
     }

@@ -128,6 +128,32 @@ public interface TieredTaskSequenceRepository {
     UUID findOwnerIdByTaskId(UUID taskId);
 
     /**
+     * Records that a copied sequence has been edited, so the library starts listing it.
+     *
+     * <p>Sets {@code diverged_at} only on a copy that has not already diverged: an original has
+     * nothing to record, and a second edit must not move the timestamp — "first edited" is the
+     * question it answers. Both conditions live in the statement's WHERE rather than in a
+     * read-then-write, so concurrent edits cannot race into two different answers.
+     *
+     * <p>No-op for an unknown id, an original, or a copy already marked.
+     *
+     * @return whether this call is what marked it
+     */
+    boolean markDiverged(UUID sequenceId);
+
+    /**
+     * {@link #markDiverged(UUID)} reached through one of the sequence's tasks.
+     *
+     * <p>Editing a task edits the sequence that holds it — the material a teacher changes is
+     * almost always a task's statement, solution or distractors, not a sequence-level field. A
+     * single statement rather than a lookup followed by a mark, so the task's parent is resolved
+     * and stamped atomically.
+     *
+     * @return whether this call is what marked it
+     */
+    boolean markDivergedByTaskId(UUID taskId);
+
+    /**
      * AP19 Teil A: Updates the semantic_summary column with an LLM-generated one-line description.
      * No-op if the sequence doesn't exist.
      */

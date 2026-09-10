@@ -130,15 +130,21 @@ public class SequenceSearchService {
         StringBuilder sb = new StringBuilder(" WHERE 1=1 ");
         List<Object> params = new ArrayList<>();
 
-        // Originals only. Copying a worksheet duplicates every sequence in it, and the
-        // marketplace turns copying from something a teacher does occasionally into the main
-        // way material spreads — so without this the library would fill up with clones of the
-        // very sequences it is meant to help people find. The copy stays perfectly usable in
-        // the worksheet it belongs to; it just does not get listed a second time.
+        // Originals, plus copies that have since been edited. Copying a worksheet duplicates
+        // every sequence in it, and the marketplace turns copying from something a teacher does
+        // occasionally into the main way material spreads — so listing every copy would fill the
+        // library with clones of the very sequences it is meant to help people find.
         //
-        // Rows predating the column have copied_from NULL and are treated as originals, which
-        // is right: nothing knew they were copies either.
-        sb.append(" AND s.copied_from IS NULL ");
+        // But a copy stops being a clone the moment its new owner reworks it. Filtering on
+        // copied_from alone could not tell those apart, because it is written once at copy time
+        // and never cleared: a teacher who copied a worksheet and then rewrote a sequence could
+        // not find their own work in the library, ever. diverged_at is stamped by the first edit
+        // and lets it back in, while an untouched clone stays out — still perfectly usable in
+        // the worksheet it belongs to, just not listed a second time.
+        //
+        // Rows predating either column have both NULL and are treated as originals, which is
+        // right: nothing knew they were copies either.
+        sb.append(" AND (s.copied_from IS NULL OR s.diverged_at IS NOT NULL) ");
 
         // Language filter
         if (q.lang() != null && !q.lang().isBlank()) {

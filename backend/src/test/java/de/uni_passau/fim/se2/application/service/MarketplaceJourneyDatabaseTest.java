@@ -47,6 +47,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.MountableFile;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -55,6 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -465,7 +467,66 @@ class MarketplaceJourneyDatabaseTest {
                         "forking into a worksheet that does not contain the sequence would add material to it"));
     }
 
+    @Test
+    @Order(14)
+    @DisplayName("14. Ben reworks his copy, and the library lists it as his own material")
+    void anEditedCopyIsListedAgain() {
+        UUID bensSequence = copiedSequenceOf(bensCopy);
+
+        // Searched by the title step 8 gave it: the sequence vector is generated from
+        // task_description, so Ben's copy stopped answering to "fakultaet" the moment he
+        // retitled it. Anna's original still does, which is what separates the two here.
+        assertFalse(listedInLibrary(bensSequence, "fassung"),
+                "an untouched copy stays out of the library");
+
+        assertTrue(sequenceDao.markDiverged(bensSequence),
+                "the first edit to a copy is what marks it");
+        assertTrue(listedInLibrary(bensSequence, "fassung"),
+                "once reworked it is Ben's own material, and he must be able to find it");
+
+        // Anna's original does not lose its place to the copy.
+        assertTrue(listedInLibrary(annasSequence, "fakultaet"), "the original stays listed too");
+    }
+
+    @Test
+    @Order(15)
+    @DisplayName("15. marking is idempotent, and an original is never marked at all")
+    void divergenceIsRecordedOnce() {
+        UUID bensSequence = copiedSequenceOf(bensCopy);
+        Instant first = divergedAt(bensSequence);
+
+        assertAll(
+                () -> assertNotNull(first, "step 14 marked it"),
+                // "First edited" is the question diverged_at answers, so a second edit must not
+                // move it -- otherwise every save would rewrite the sequence's own history.
+                () -> assertFalse(sequenceDao.markDiverged(bensSequence),
+                        "a second edit reports that it changed nothing"),
+                () -> assertEquals(first, divergedAt(bensSequence),
+                        "and leaves the original timestamp alone"),
+                // An original has nothing to diverge from; stamping one would claim it was
+                // copied from somewhere.
+                () -> assertFalse(sequenceDao.markDiverged(annasSequence),
+                        "an original is not a copy and cannot diverge"),
+                () -> assertNull(divergedAt(annasSequence)),
+                () -> assertFalse(sequenceDao.markDiverged(UUID.randomUUID()),
+                        "an unknown id is a no-op, not a failure"));
+    }
+
     // ─────────────────────────────────────────────────────────────────────
+
+    /** Whether the library's own query returns this sequence when searched for {@code text}. */
+    private static boolean listedInLibrary(UUID sequenceId, String text) {
+        return library.search(new SequenceSearchService.SearchQuery().q(text), ben)
+                .items().stream()
+                .anyMatch(i -> sequenceId.equals(i.sequenceId()));
+    }
+
+    private static Instant divergedAt(UUID sequenceId) {
+        var ts = jdbc.queryForObject(
+                "SELECT diverged_at FROM tiered_task_sequences WHERE id = ?",
+                java.sql.Timestamp.class, sequenceId);
+        return ts == null ? null : ts.toInstant();
+    }
 
     private static void assertThrowsAccessDenied(Runnable action) {
         try {
