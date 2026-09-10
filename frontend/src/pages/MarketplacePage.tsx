@@ -23,7 +23,7 @@ export default function MarketplacePage() {
     const { t } = useTranslation();
     usePageTitle(t("marketplace.pageTitle"));
     const navigate = useNavigate();
-    const { isLoggedIn, isTeacher, isAdmin } = useAuth();
+    const { user, isLoggedIn, isTeacher, isAdmin } = useAuth();
 
     const filters = useMarketplaceFilters();
 
@@ -101,6 +101,15 @@ export default function MarketplacePage() {
     }
 
     const canCopy = isLoggedIn && (isTeacher || isAdmin);
+
+    // Your own worksheet is offered without a copy button. Copying it would hand you a second
+    // worksheet identical to one you already own and can edit in place, and every sequence in
+    // it would be duplicated too — clutter in your own library, from a button whose whole
+    // purpose is acquiring material you do not have yet. The marketplace lists your worksheets
+    // deliberately (the "mine" facet counts them), so this is about the action, not the row.
+    //
+    // ownerId is null for seed material nobody owns, which is not yours and stays copyable.
+    const isOwn = (item: MarketplaceItem) => !!user && item.ownerId === user.userId;
     const totalPages = data ? Math.max(1, Math.ceil(data.total / data.size)) : 1;
 
     return (
@@ -219,7 +228,7 @@ export default function MarketplacePage() {
                             <div className="col" key={item.worksheetId}>
                                 <WorksheetCard
                                     item={item}
-                                    canCopy={!!canCopy}
+                                    canCopy={!!canCopy && !isOwn(item)}
                                     onCopy={handleCopy}
                                     copying={copyingId === item.worksheetId}
                                 />

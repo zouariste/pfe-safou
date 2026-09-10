@@ -26,7 +26,11 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("../../src/hooks/usePageTitle.ts", () => ({ usePageTitle: () => undefined }));
 
-let auth = { isLoggedIn: true, isTeacher: true, isAdmin: false };
+type Auth = {
+    isLoggedIn: boolean; isTeacher: boolean; isAdmin: boolean;
+    user: { userId: string } | null;
+};
+let auth: Auth = { isLoggedIn: true, isTeacher: true, isAdmin: false, user: null };
 vi.mock("../../src/context/AuthContext.tsx", () => ({ useAuth: () => auth }));
 
 vi.mock("react-router-dom", async () => {
@@ -79,7 +83,7 @@ const lastRequest = () => apiGet.mock.calls.at(-1)?.[1]?.params as Record<string
 describe("MarketplacePage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        auth = { isLoggedIn: true, isTeacher: true, isAdmin: false };
+        auth = { isLoggedIn: true, isTeacher: true, isAdmin: false, user: null };
         apiGet.mockResolvedValue({ data: response() });
     });
 
@@ -236,11 +240,39 @@ describe("MarketplacePage", () => {
         });
 
         it("is not offered to viewers who may not copy", async () => {
-            auth = { isLoggedIn: false, isTeacher: false, isAdmin: false };
+            auth = { isLoggedIn: false, isTeacher: false, isAdmin: false, user: null };
             renderPage();
 
             await waitFor(() => expect(screen.getByText("Rekursion")).toBeInTheDocument());
             expect(screen.queryByRole("button", { name: /marketplace\.copy/ })).not.toBeInTheDocument();
+        });
+
+        it("is not offered on your own worksheet, which leaves only the way in to open it", async () => {
+            // Same id as the item's ownerId: this row is the viewer's own worksheet. Copying it
+            // would duplicate something they already own and can edit where it stands.
+            auth = { ...auth, user: { userId: "22222222-2222-2222-2222-222222222222" } };
+            renderPage();
+
+            await waitFor(() => expect(screen.getByText("Rekursion")).toBeInTheDocument());
+            expect(screen.queryByRole("button", { name: /marketplace\.copy/ })).not.toBeInTheDocument();
+            expect(screen.getByRole("link", { name: /marketplace\.open/ })).toBeInTheDocument();
+        });
+
+        it("is still offered on a worksheet somebody else owns", async () => {
+            auth = { ...auth, user: { userId: "99999999-9999-9999-9999-999999999999" } };
+            renderPage();
+
+            await waitFor(() => expect(screen.getByText("Rekursion")).toBeInTheDocument());
+            expect(screen.getByRole("button", { name: /marketplace\.copy/ })).toBeInTheDocument();
+        });
+
+        it("is offered on seed material, which has no owner and so is nobody's own", async () => {
+            auth = { ...auth, user: { userId: "22222222-2222-2222-2222-222222222222" } };
+            apiGet.mockResolvedValue({ data: response({ items: [item({ ownerId: null })] }) });
+            renderPage();
+
+            await waitFor(() => expect(screen.getByText("Rekursion")).toBeInTheDocument());
+            expect(screen.getByRole("button", { name: /marketplace\.copy/ })).toBeInTheDocument();
         });
     });
 
