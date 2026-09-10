@@ -228,6 +228,7 @@
     "concepts": "Konzepte",
     "conceptsNone": "keine",
     "conceptsEdit": "Konzepte bearbeiten",
+    "conceptsEditLocked": "Nur die Besitzerin oder der Besitzer kann die Konzepte ändern. Erstelle zuerst eine eigene Kopie.",
     "conceptsDone": "Fertig",
     "conceptsEditHint": "Änderungen werden sofort gespeichert.",
     "conceptsSaveError": "Konzepte konnten nicht gespeichert werden.",

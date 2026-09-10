@@ -452,8 +452,13 @@ export default function SequencePage() {
 
             {/* The concepts the sequence was generated for. Teacher view only: on a
                 Parsons puzzle "recursion" or "for-loop" names the shape of the
-                solution, which is a hint the solver has not earned yet. Teacher
-                view is itself owner/admin-only, so anything shown here is editable. */}
+                solution, which is a hint the solver has not earned yet.
+
+                Teacher view is no longer owner-only — a curator inspecting someone
+                else's sequence sees it too — so editing is gated on canEdit
+                separately. Concepts are part of the shared sequence, so a curator's
+                change would rewrite them in every other worksheet using it, exactly
+                what the fork exists to avoid. */}
             {teacherViewEnabled && (
                 <div className="mb-3">
                     <div className="d-flex flex-wrap gap-1 align-items-center">
@@ -472,8 +477,9 @@ export default function SequencePage() {
                         {!editingConcepts && (
                             <button
                                 className="btn btn-sm btn-link text-secondary p-0 ms-1"
-                                title={t("sequence.conceptsEdit")}
-                                aria-label={t("sequence.conceptsEdit")}
+                                disabled={!canEdit}
+                                title={canEdit ? t("sequence.conceptsEdit") : t("sequence.conceptsEditLocked")}
+                                aria-label={canEdit ? t("sequence.conceptsEdit") : t("sequence.conceptsEditLocked")}
                                 onClick={() => { setConceptError(""); setEditingConcepts(true); }}
                             >
                                 <i className="bi bi-pencil"></i>
@@ -481,7 +487,7 @@ export default function SequencePage() {
                         )}
                     </div>
 
-                    {editingConcepts && (
+                    {canEdit && editingConcepts && (
                         <div className="mt-2" style={{ maxWidth: 520 }}>
                             <ConceptPicker
                                 inputId="sequenceConcepts"

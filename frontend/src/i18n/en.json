@@ -228,6 +228,7 @@
     "concepts": "Concepts",
     "conceptsNone": "none",
     "conceptsEdit": "Edit concepts",
+    "conceptsEditLocked": "Only the owner can change the concepts. Make your own copy first.",
     "conceptsDone": "Done",
     "conceptsEditHint": "Changes are saved immediately.",
     "conceptsSaveError": "Could not save the concepts.",
