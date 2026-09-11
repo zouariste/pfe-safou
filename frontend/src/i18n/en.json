@@ -83,6 +83,7 @@
     "alreadyInLibrary": "In your library",
     "alreadyInLibraryTooltip": "This sequence is already in one of your worksheets.",
     "copyLoginRequired": "Log in to copy sequences",
+    "addToWorksheetLoginRequired": "Log in to add sequences to a worksheet",
     "copyToast": {
       "addedTitle": "Added to \"{{name}}\"",
       "alreadyTitle": "Already in \"{{name}}\"",

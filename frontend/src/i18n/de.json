@@ -83,6 +83,7 @@
     "alreadyInLibrary": "In deiner Bibliothek",
     "alreadyInLibraryTooltip": "Diese Sequenz liegt bereits in einem deiner Arbeitsblätter.",
     "copyLoginRequired": "Bitte anmelden, um Sequenzen zu kopieren",
+    "addToWorksheetLoginRequired": "Bitte anmelden, um Sequenzen zu einem Arbeitsblatt hinzuzufügen",
     "copyToast": {
       "addedTitle": "Zu „{{name}}“ hinzugefügt",
       "alreadyTitle": "Bereits in „{{name}}“ vorhanden",
