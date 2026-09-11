@@ -871,6 +871,25 @@
         "colStatus": "Status",
         "colProgress": "Fortschritt",
         "colStarted": "Gestartet"
+      },
+      "reclassifyConcepts": {
+        "title": "Bulk-Konzept-Neuklassifizierung",
+        "subtitle": "Startet einen Hintergrund-Job, der die LLM-Konzepterkennung erneut ausführt — nützlich, wenn das Konzept-Arsenal gewachsen ist (ein neu getipptes Konzept oder ein neu zugeordnetes Lehrplan-Konzept), damit ältere Sequenzen es ebenfalls erhalten können. Antwortet sofort mit einer Job-ID — Fortschritt wird alle 2 Sekunden aktualisiert.",
+        "filterLabel": "Filter",
+        "filterMissing": "Nur Sequenzen ganz ohne Konzepte (empfohlen)",
+        "filterAll": "Alle Sequenzen (überschreibt bestehende Konzepte, wenn das LLM welche findet)",
+        "warningAll": "Achtung: \"Alle\" klassifiziert neu und kann bestehende Konzepte überschreiben, und verbraucht für jede Sequenz LLM-Credits (~0,5 ct/Sequenz). Die meisten Sequenzen haben bereits Konzepte aus der Generierung — deshalb ist diese Option, nicht \"fehlende Konzepte\", diejenige, die Material tatsächlich gegen ein erweitertes Konzept-Arsenal neu prüft.",
+        "start": "Job starten",
+        "starting": "Startet…",
+        "errorStart": "Job konnte nicht gestartet werden — bitte erneut versuchen.",
+        "activeJob": "Aktiver Job",
+        "progress": "{{processed}} / {{total}} Sequenzen",
+        "recentJobs": "Letzte Jobs (dieser Session)",
+        "noRecentJobs": "Noch keine Jobs in dieser Session.",
+        "colFilter": "Filter",
+        "colStatus": "Status",
+        "colProgress": "Fortschritt",
+        "colStarted": "Gestartet"
       }
     }
   },

@@ -871,6 +871,25 @@
         "colStatus": "Status",
         "colProgress": "Progress",
         "colStarted": "Started"
+      },
+      "reclassifyConcepts": {
+        "title": "Bulk Concept Re-classifier",
+        "subtitle": "Starts a background job that re-runs LLM concept detection — useful after the concept arsenal has grown (a new manually-typed concept, or a curriculum topic mapped to one), so older sequences get a chance to pick it up too. Returns immediately with a job ID — progress is polled every 2 seconds.",
+        "filterLabel": "Filter",
+        "filterMissing": "Sequences with no concepts at all only (recommended)",
+        "filterAll": "All sequences (overwrites existing concepts when the LLM finds any)",
+        "warningAll": "Warning: \"All\" re-classifies and can overwrite existing concepts, and consumes LLM credits for every sequence (~$0.005/sequence). Most sequences already have concepts from generation time, so this — not \"missing concepts\" — is the option that actually re-checks material against an extended concept arsenal.",
+        "start": "Start job",
+        "starting": "Starting…",
+        "errorStart": "Could not start job — please try again.",
+        "activeJob": "Active job",
+        "progress": "{{processed}} / {{total}} sequences",
+        "recentJobs": "Recent jobs (this session)",
+        "noRecentJobs": "No jobs started in this session yet.",
+        "colFilter": "Filter",
+        "colStatus": "Status",
+        "colProgress": "Progress",
+        "colStarted": "Started"
       }
     }
   },

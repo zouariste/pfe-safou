@@ -191,6 +191,22 @@ public interface TieredTaskSequenceRepository {
     List<RetagCandidate> findRetagCandidates(boolean onlyMissingLlmTags, List<UUID> specificIds, int limit);
 
     /**
+     * Concept-facet mirror of {@link #findRetagCandidates}, for the bulk concept re-classifier:
+     * same payload shape (a {@link RetagCandidate} is reused as-is — {@code combinedStatement}
+     * goes unused here, but a second near-identical record would only cost more to keep in
+     * step), same {@code specificIds}-overrides-filter rule, same safety cap. "Missing" means no
+     * row at all in {@code tiered_task_sequence_concepts} for that sequence, the concept-table
+     * analogue of "no {@code source='llm'} tag row".
+     *
+     * @param onlyMissingConcepts if true, restricts to sequences with no linked concept yet
+     * @param specificIds         if non-null and non-empty, restricts to just these IDs
+     *                            (overrides {@code onlyMissingConcepts})
+     * @param limit                safety cap on rows returned; negative/zero → no limit
+     * @return list of candidates, newest first
+     */
+    List<RetagCandidate> findConceptReclassifyCandidates(boolean onlyMissingConcepts, List<UUID> specificIds, int limit);
+
+    /**
      * Minimal payload for bulk-retagging: everything the LLM tagger needs and nothing else.
      * Deliberately flat (record) so it can cross async boundaries cheaply.
      */
