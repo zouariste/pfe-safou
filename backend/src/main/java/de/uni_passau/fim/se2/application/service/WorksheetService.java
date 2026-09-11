@@ -180,6 +180,18 @@ public class WorksheetService {
         log.debug("Unlinked sequence id={} from worksheet id={}", sequenceId, worksheetId);
     }
 
+    @Transactional
+    public void reorderSequences(UUID worksheetId, List<UUID> orderedSequenceIds) {
+        if (worksheetId == null) {
+            throw new DomainValidationException("Worksheet ID must not be null.");
+        }
+        if (orderedSequenceIds == null || orderedSequenceIds.isEmpty()) {
+            throw new DomainValidationException("Sequence order list must not be null or empty.");
+        }
+        worksheetRepo.reorderSequences(worksheetId, orderedSequenceIds);
+        log.debug("Reordered {} sequences on worksheet id={}", orderedSequenceIds.size(), worksheetId);
+    }
+
     /**
      * Deep-copies a worksheet including all sequences and tasks.
      * The copy gets new UUIDs for everything and the specified newOwnerId.

@@ -119,6 +119,18 @@ public interface WorksheetRepository {
     void removeSequenceFromWorksheet(WorksheetDTO worksheet, TieredTaskSequenceDTO sequence);
 
     /**
+     * Rewrites the display order of the sequences on a worksheet.
+     *
+     * @param worksheetId        the worksheet whose sequences are being reordered
+     * @param orderedSequenceIds every sequence currently on the worksheet, in the order they
+     *                           should appear — must be exactly the worksheet's current set,
+     *                           neither more nor fewer
+     * @throws DomainValidationException if the id is null, the list is null/empty, or the id set
+     *                                   does not exactly match the worksheet's current sequences
+     */
+    void reorderSequences(UUID worksheetId, List<UUID> orderedSequenceIds);
+
+    /**
      * Whether {@code ownerId} owns any worksheet that contains {@code sequenceId}.
      *
      * <p>This is the "curator" relation behind {@link

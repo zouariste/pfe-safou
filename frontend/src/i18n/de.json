@@ -438,6 +438,8 @@
     "sequences": "Sequenzen in diesem Arbeitsblatt",
     "noSequences": "Dieses Arbeitsblatt enthält noch keine Sequenzen.",
     "removeSequence": "Sequenz aus Arbeitsblatt entfernen",
+    "dragToReorder": "Zum Umsortieren ziehen",
+    "errorReordering": "Die neue Reihenfolge konnte nicht gespeichert werden.",
     "addSequenceTitle": "Sequenz zum Arbeitsblatt hinzufügen",
     "sequenceUuid": "Sequenz-UUID",
     "sequenceUuids": "Sequenz-UUIDs (Komma, Leerzeichen oder Zeilenumbruch getrennt)",

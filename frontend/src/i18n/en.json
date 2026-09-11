@@ -438,6 +438,8 @@
     "sequences": "Sequences in this worksheet",
     "noSequences": "This worksheet does not contain any sequences yet.",
     "removeSequence": "Remove sequence from worksheet",
+    "dragToReorder": "Drag to reorder",
+    "errorReordering": "Could not save the new order.",
     "addSequenceTitle": "Add sequence to worksheet",
     "sequenceUuid": "Sequence UUID",
     "sequenceUuids": "Sequence UUIDs (comma, space or newline separated)",

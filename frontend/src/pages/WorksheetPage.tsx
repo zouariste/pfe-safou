@@ -19,6 +19,16 @@ import {
     exportWorksheetCSV,
     exportWorksheetPDF,
 } from "../lib/export.ts";
+import {
+    DndContext,
+    closestCenter,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import SortableSequenceRow from "../components/SortableSequenceRow.tsx";
 
 export default function WorksheetPage() {
     const { t } = useTranslation();
@@ -188,6 +198,40 @@ export default function WorksheetPage() {
         } catch (err: any) {
             alert(apiErrorMessage(err, "Error removing sequence."));
         }
+    }
+
+    // Manual reordering of a worksheet's sequences, teacher-view only (see canEdit below). The
+    // drag itself only touches client state; the new order is persisted as a whole so a page
+    // reload — or another tab — sees the same order the teacher left it in.
+    const dndSensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
+    );
+
+    async function persistSequenceOrder(orderedIds: string[], previous: Worksheet["sequenceDTOS"]) {
+        try {
+            await api.put(`/worksheets/${sheetId}/sequences/order`, orderedIds);
+        } catch (err: any) {
+            // Revert: the drag already moved the row optimistically, and a rejected reorder
+            // (stale data — a sequence added or removed elsewhere mid-drag) must not leave the
+            // page showing an order the server never accepted.
+            setWorksheet((current) => (current ? { ...current, sequenceDTOS: previous } : current));
+            alert(apiErrorMessage(err, t("worksheet.errorReordering")));
+        }
+    }
+
+    function handleSequenceDragEnd(event: DragEndEvent) {
+        const { active, over } = event;
+        if (!worksheet || !over || active.id === over.id) return;
+
+        const previous = worksheet.sequenceDTOS;
+        const ids = previous.map((s) => s.id);
+        const oldIndex = ids.indexOf(String(active.id));
+        const newIndex = ids.indexOf(String(over.id));
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const reordered = arrayMove(previous, oldIndex, newIndex);
+        setWorksheet({ ...worksheet, sequenceDTOS: reordered }); // optimistic
+        persistSequenceOrder(reordered.map((s) => s.id), previous);
     }
 
 
@@ -677,55 +721,68 @@ export default function WorksheetPage() {
                 )}
             </div>
             {worksheet.sequenceDTOS?.length ? (
-                <ListGroup>
-                    {worksheet.sequenceDTOS.map((s, idx) => (
-                        <ListGroup.Item
-                            key={s.id}
-                            className="d-flex justify-content-between align-items-center"
-                            title={teacherViewEnabled ? t("worksheet.sequenceIdTooltip", { id: s.id }) : undefined}
-                        >
-                            <div
-                                style={{ cursor: "pointer" }}
-                                onClick={() =>
-                                    navigate(`/sequence/${s.id}?fromWorksheet=${worksheet.id}`, {
-                                        // The worksheet also rides in the state, and fromClass
-                                        // with it, so the class link survives a detour into a
-                                        // sequence. The query parameter is what survives F5.
-                                        state: { fromWorksheet: worksheet.id, fromClass },
-                                    })
-                                }
-                            >
-                                {t("worksheet.sequenceLabel", { index: idx + 1 })}
-                                {/* Marks material the reader did not make. Without it the list
-                                    is identical before and after forking a sequence, which
-                                    makes the fork look like it did nothing. */}
-                                {teacherViewEnabled && s.ownerId !== user?.userId && (
-                                    <span className="badge bg-secondary-subtle text-secondary-emphasis ms-2">
-                                        {t("worksheet.foreignSequence")}
-                                    </span>
-                                )}
-                                {teacherViewEnabled && (
-                                    <small className="text-muted ms-2">
-                                        ({s.id ? s.id.slice(0, 8) : "?"}...)
-                                    </small>
-                                )}
-                            </div>
-
-                            {teacherViewEnabled && (
-                                <button
-                                    className="btn btn-sm btn-outline-danger"
-                                    title={t("worksheet.removeSequence")}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleRemoveSequence(s.id);
-                                    }}
+                <DndContext
+                    sensors={dndSensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleSequenceDragEnd}
+                >
+                    <SortableContext
+                        items={worksheet.sequenceDTOS.map((s) => s.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        <ListGroup>
+                            {worksheet.sequenceDTOS.map((s, idx) => (
+                                <SortableSequenceRow
+                                    key={s.id}
+                                    id={s.id}
+                                    draggable={!!canEdit}
+                                    dragHandleLabel={t("worksheet.dragToReorder")}
+                                    title={teacherViewEnabled ? t("worksheet.sequenceIdTooltip", { id: s.id }) : undefined}
                                 >
-                                    <i className="bi bi-trash"></i>
-                                </button>
-                            )}
-                        </ListGroup.Item>
-                    ))}
-                </ListGroup>
+                                    <div
+                                        style={{ cursor: "pointer" }}
+                                        onClick={() =>
+                                            navigate(`/sequence/${s.id}?fromWorksheet=${worksheet.id}`, {
+                                                // The worksheet also rides in the state, and fromClass
+                                                // with it, so the class link survives a detour into a
+                                                // sequence. The query parameter is what survives F5.
+                                                state: { fromWorksheet: worksheet.id, fromClass },
+                                            })
+                                        }
+                                    >
+                                        {t("worksheet.sequenceLabel", { index: idx + 1 })}
+                                        {/* Marks material the reader did not make. Without it the list
+                                            is identical before and after forking a sequence, which
+                                            makes the fork look like it did nothing. */}
+                                        {teacherViewEnabled && s.ownerId !== user?.userId && (
+                                            <span className="badge bg-secondary-subtle text-secondary-emphasis ms-2">
+                                                {t("worksheet.foreignSequence")}
+                                            </span>
+                                        )}
+                                        {teacherViewEnabled && (
+                                            <small className="text-muted ms-2">
+                                                ({s.id ? s.id.slice(0, 8) : "?"}...)
+                                            </small>
+                                        )}
+                                    </div>
+
+                                    {teacherViewEnabled && (
+                                        <button
+                                            className="btn btn-sm btn-outline-danger"
+                                            title={t("worksheet.removeSequence")}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleRemoveSequence(s.id);
+                                            }}
+                                        >
+                                            <i className="bi bi-trash"></i>
+                                        </button>
+                                    )}
+                                </SortableSequenceRow>
+                            ))}
+                        </ListGroup>
+                    </SortableContext>
+                </DndContext>
             ) : (
                 <div className="alert alert-info mt-3">
                     {t("worksheet.noSequences")}
