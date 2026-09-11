@@ -54,4 +54,11 @@ public class CurriculumTopicDTO {
      * it). Read it back through /api/curriculum/topics/{id}/concepts.
      */
     private java.util.List<String> concepts;
+    /**
+     * How many sequences match this topic's mapped concepts (any of them) — the same set "View
+     * sequences" on the Curriculum page opens the Library filtered to. Computed alongside {@link
+     * #concepts}, not stored on the row, so it defaults to 0 and is only ever non-zero when a
+     * caller explicitly asked for it (currently {@code CurriculumGenerationService.getSubTopics}).
+     */
+    private int sequenceCount;
 }

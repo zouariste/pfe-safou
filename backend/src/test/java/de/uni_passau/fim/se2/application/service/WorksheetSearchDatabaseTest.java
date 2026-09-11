@@ -536,7 +536,13 @@ class WorksheetSearchDatabaseTest {
     }
 
     private static void link(UUID worksheetId, UUID sequenceId) {
-        jdbc.update("INSERT INTO worksheets_sequence (worksheet_id, sequence_id) VALUES (?, ?)",
-                worksheetId, sequenceId);
+        // position is NOT NULL; mirror PostgreWorksheetDao's append-at-the-end computation
+        // rather than hand-picking a value that would drift from it.
+        jdbc.update("""
+                INSERT INTO worksheets_sequence (worksheet_id, sequence_id, position)
+                SELECT ?, ?, COALESCE(MAX(position) + 1, 0)
+                FROM worksheets_sequence WHERE worksheet_id = ?
+                """,
+                worksheetId, sequenceId, worksheetId);
     }
 }

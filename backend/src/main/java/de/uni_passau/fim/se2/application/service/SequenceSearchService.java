@@ -59,8 +59,23 @@ public class SequenceSearchService {
     private static final int MAX_PAGE_SIZE = 100;
     private static final int DEFAULT_PAGE_SIZE = 20;
 
-    /** How many top tags to report in the facet sidebar. */
-    private static final int FACET_TOP_TAGS = 30;
+    /**
+     * Default and per-step size for the tag facet: how many top tags a request returns when the
+     * caller does not ask for more via {@code tagsLimit}, and the amount the sidebar's "Show
+     * more" adds on each click — it re-requests with {@code tagsLimit} raised by exactly this
+     * much, so "50, then 100, then 150…" instead of dumping every tag in one response nobody
+     * asked to see yet.
+     */
+    private static final int FACET_TOP_TAGS_DEFAULT = 50;
+
+    /** Upper bound on {@code tagsLimit}, so a client cannot ask for the whole tag table in one go. */
+    private static final int FACET_TOP_TAGS_MAX = 1000;
+
+    /** Same idea as {@link #FACET_TOP_TAGS_DEFAULT}, for the concept facet's {@code conceptsLimit}. */
+    private static final int FACET_TOP_CONCEPTS_DEFAULT = 50;
+
+    /** Same idea as {@link #FACET_TOP_TAGS_MAX}, for {@code conceptsLimit}. */
+    private static final int FACET_TOP_CONCEPTS_MAX = 1000;
 
     /** Minimum similarity for fuzzy "Meintest du…" tag suggestions. */
     private static final float TRIGRAM_SIMILARITY_THRESHOLD = 0.3f;
@@ -99,6 +114,10 @@ public class SequenceSearchService {
         SearchQuery q = rawQuery == null ? new SearchQuery() : rawQuery.normalized();
         int page = Math.max(0, q.page());
         int size = clamp(q.size() <= 0 ? DEFAULT_PAGE_SIZE : q.size(), 1, MAX_PAGE_SIZE);
+        int tagsLimit = clamp(q.tagsLimit() == null || q.tagsLimit() <= 0
+                ? FACET_TOP_TAGS_DEFAULT : q.tagsLimit(), 1, FACET_TOP_TAGS_MAX);
+        int conceptsLimit = clamp(q.conceptsLimit() == null || q.conceptsLimit() <= 0
+                ? FACET_TOP_CONCEPTS_DEFAULT : q.conceptsLimit(), 1, FACET_TOP_CONCEPTS_MAX);
 
         // Build the shared WHERE clause once. Used by count / page / facet queries so they all see
         // exactly the same filter set.
@@ -108,7 +127,7 @@ public class SequenceSearchService {
         List<LibraryItemDTO> items = total == 0 ? List.of()
                 : fetchPage(q, where, page, size, currentUserId);
 
-        Facets facets = fetchFacets(where, currentUserId);
+        Facets facets = fetchFacets(where, currentUserId, tagsLimit, conceptsLimit);
 
         // Only compute fuzzy suggestions when FTS returned nothing — it's an expensive call.
         List<String> suggestions = (total == 0 && q.q() != null && !q.q().isBlank())
@@ -193,6 +212,38 @@ public class SequenceSearchService {
                   .append(placeholders(tags.size()))
                   .append(")) ");
                 params.addAll(tags);
+            }
+        }
+
+        // Concept filter. Unlike tags (a flat tag_name column) concepts are normalized: the link
+        // table only carries a concept_id, so matching by name means joining tiered_task_sequence
+        // _concepts to concepts on both sides of the EXISTS/NOT EXISTS, everything else mirrors
+        // the tag filter exactly.
+        List<String> concepts = q.concepts();
+        if (concepts != null && !concepts.isEmpty()) {
+            if (q.conceptModeAll()) {
+                sb.append("""
+        AND NOT EXISTS (
+            SELECT 1
+            FROM unnest(?::text[]) t(concept)
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM tiered_task_sequence_concepts tsc
+                JOIN concepts c ON c.id = tsc.concept_id
+                WHERE tsc.sequence_id = s.id
+                  AND c.name = t.concept
+            )
+        )
+    """);
+                params.add(concepts.toArray(new String[0]));
+            } else {
+                // ANY: sequence must have at least one requested concept.
+                sb.append(" AND EXISTS (SELECT 1 FROM tiered_task_sequence_concepts tsc ")
+                  .append("     JOIN concepts c ON c.id = tsc.concept_id ")
+                  .append("     WHERE tsc.sequence_id = s.id AND c.name IN (")
+                  .append(placeholders(concepts.size()))
+                  .append(")) ");
+                params.addAll(concepts);
             }
         }
 
@@ -499,11 +550,16 @@ public class SequenceSearchService {
     // Facets
     // ─────────────────────────────────────────────────────────────────────
 
-    private Facets fetchFacets(WhereClause base, UUID currentUserId) {
-        List<FacetBucket> languages = fetchLanguageFacets(base.withoutLanguage());
-        List<FacetBucket> topTags   = fetchTagFacets(base.withoutTags());
-        Ownership ownership         = fetchOwnershipFacets(base, currentUserId);
-        return new Facets(languages, topTags, ownership);
+    private Facets fetchFacets(WhereClause base, UUID currentUserId, int tagsLimit, int conceptsLimit) {
+        WhereClause tagWhere     = base.withoutTags();
+        WhereClause conceptWhere = base.withoutConcepts();
+        List<FacetBucket> languages    = fetchLanguageFacets(base.withoutLanguage());
+        List<FacetBucket> topTags      = fetchTagFacets(tagWhere, tagsLimit);
+        long totalTagCount             = fetchTotalTagCount(tagWhere);
+        List<FacetBucket> topConcepts  = fetchConceptFacets(conceptWhere, conceptsLimit);
+        long totalConceptCount         = fetchTotalConceptCount(conceptWhere);
+        Ownership ownership            = fetchOwnershipFacets(base, currentUserId);
+        return new Facets(languages, topTags, totalTagCount, topConcepts, totalConceptCount, ownership);
     }
 
     private List<FacetBucket> fetchLanguageFacets(WhereClause w) {
@@ -518,7 +574,7 @@ public class SequenceSearchService {
                 w.params.toArray());
     }
 
-    private List<FacetBucket> fetchTagFacets(WhereClause w) {
+    private List<FacetBucket> fetchTagFacets(WhereClause w, int limit) {
         String sql = """
                 SELECT tg.tag_name AS name, COUNT(*) AS cnt
                 FROM sequence_tags tg
@@ -529,9 +585,53 @@ public class SequenceSearchService {
                 LIMIT ?
                 """;
         List<Object> params = new ArrayList<>(w.params);
-        params.add(FACET_TOP_TAGS);
+        params.add(limit);
         return jdbc.query(sql, (rs, n) -> new FacetBucket(rs.getString("name"), rs.getLong("cnt")),
                 params.toArray());
+    }
+
+    /**
+     * How many distinct tags exist under the current filters — unbounded, unlike {@link
+     * #fetchTagFacets}, so the sidebar can tell whether "Show more" still has anything to reveal.
+     */
+    private long fetchTotalTagCount(WhereClause w) {
+        String sql = """
+                SELECT COUNT(DISTINCT tg.tag_name) AS cnt
+                FROM sequence_tags tg
+                JOIN tiered_task_sequences s ON s.id = tg.sequence_id
+                """ + w.sql;
+        Long count = jdbc.queryForObject(sql, Long.class, w.params.toArray());
+        return count == null ? 0L : count;
+    }
+
+    /** Concept-facet mirror of {@link #fetchTagFacets} — joins through the concepts catalogue. */
+    private List<FacetBucket> fetchConceptFacets(WhereClause w, int limit) {
+        String sql = """
+                SELECT c.name AS name, COUNT(*) AS cnt
+                FROM tiered_task_sequence_concepts tsc
+                JOIN concepts c ON c.id = tsc.concept_id
+                JOIN tiered_task_sequences s ON s.id = tsc.sequence_id
+                """ + w.sql + """
+                GROUP BY c.name
+                ORDER BY cnt DESC, c.name
+                LIMIT ?
+                """;
+        List<Object> params = new ArrayList<>(w.params);
+        params.add(limit);
+        return jdbc.query(sql, (rs, n) -> new FacetBucket(rs.getString("name"), rs.getLong("cnt")),
+                params.toArray());
+    }
+
+    /** Concept-facet mirror of {@link #fetchTotalTagCount}. */
+    private long fetchTotalConceptCount(WhereClause w) {
+        String sql = """
+                SELECT COUNT(DISTINCT c.name) AS cnt
+                FROM tiered_task_sequence_concepts tsc
+                JOIN concepts c ON c.id = tsc.concept_id
+                JOIN tiered_task_sequences s ON s.id = tsc.sequence_id
+                """ + w.sql;
+        Long count = jdbc.queryForObject(sql, Long.class, w.params.toArray());
+        return count == null ? 0L : count;
     }
 
     private Ownership fetchOwnershipFacets(WhereClause w, UUID currentUserId) {
@@ -628,6 +728,18 @@ public class SequenceSearchService {
         return v.isEmpty() ? null : v;
     }
 
+    /**
+     * Normalize a concept name to the same lowercase form {@code 14_migration_lowercase_concept
+     * _names.sql} put in the {@code concepts} table. Unlike {@link #normalizeTag}, concept names
+     * are not slugs — "return values" is a real, space-containing concept name, and slugifying it
+     * to "return-values" would stop it from ever matching.
+     */
+    static String normalizeConcept(String raw) {
+        if (raw == null) return null;
+        String v = raw.trim().toLowerCase(Locale.ROOT);
+        return v.isEmpty() ? null : v;
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // Umlaut-tolerant free-text search
     // ─────────────────────────────────────────────────────────────────────
@@ -662,12 +774,16 @@ public class SequenceSearchService {
         private String q;
         private List<String> tags;
         private String tagMode = "any"; // "any" | "all"
+        private List<String> concepts;
+        private String conceptMode = "any"; // "any" | "all"
         private String lang;
         private String owner = "any";   // "any" | "me"
         private Integer tierCount;
         private String sort = "recent"; // "recent" | "relevance" | "popularity"
         private int page = 0;
         private int size = DEFAULT_PAGE_SIZE;
+        private Integer tagsLimit;
+        private Integer conceptsLimit;
 
         public SearchQuery() {}
 
@@ -675,38 +791,52 @@ public class SequenceSearchService {
         public String q() { return q; }
         public List<String> tags() { return tags; }
         public boolean tagModeAll() { return "all".equalsIgnoreCase(tagMode); }
+        public List<String> concepts() { return concepts; }
+        public boolean conceptModeAll() { return "all".equalsIgnoreCase(conceptMode); }
         public String lang() { return lang; }
         public String owner() { return owner; }
         public Integer tierCount() { return tierCount; }
         public String sort() { return sort; }
         public int page() { return page; }
         public int size() { return size; }
+        public Integer tagsLimit() { return tagsLimit; }
+        public Integer conceptsLimit() { return conceptsLimit; }
 
         // Fluent setters
-        public SearchQuery q(String v)           { this.q = v; return this; }
-        public SearchQuery tags(List<String> v)  { this.tags = v; return this; }
-        public SearchQuery tagMode(String v)     { this.tagMode = v; return this; }
-        public SearchQuery lang(String v)        { this.lang = v; return this; }
-        public SearchQuery owner(String v)       { this.owner = v; return this; }
-        public SearchQuery tierCount(Integer v)  { this.tierCount = v; return this; }
-        public SearchQuery sort(String v)        { this.sort = v; return this; }
-        public SearchQuery page(int v)           { this.page = v; return this; }
-        public SearchQuery size(int v)           { this.size = v; return this; }
+        public SearchQuery q(String v)             { this.q = v; return this; }
+        public SearchQuery tags(List<String> v)    { this.tags = v; return this; }
+        public SearchQuery tagMode(String v)       { this.tagMode = v; return this; }
+        public SearchQuery concepts(List<String> v) { this.concepts = v; return this; }
+        public SearchQuery conceptMode(String v)   { this.conceptMode = v; return this; }
+        public SearchQuery lang(String v)          { this.lang = v; return this; }
+        public SearchQuery owner(String v)         { this.owner = v; return this; }
+        public SearchQuery tierCount(Integer v)    { this.tierCount = v; return this; }
+        public SearchQuery sort(String v)          { this.sort = v; return this; }
+        public SearchQuery page(int v)             { this.page = v; return this; }
+        public SearchQuery size(int v)             { this.size = v; return this; }
+        public SearchQuery tagsLimit(Integer v)    { this.tagsLimit = v; return this; }
+        public SearchQuery conceptsLimit(Integer v) { this.conceptsLimit = v; return this; }
 
-        /** Returns a cleaned-up copy: tag slugs normalized, sort/tagMode/owner coerced to the whitelist. */
+        /**
+         * Returns a cleaned-up copy: tag slugs and concept names normalized, sort/tagMode
+         * /conceptMode/owner coerced to the whitelist.
+         */
         SearchQuery normalized() {
             SearchQuery n = new SearchQuery()
                     .q(q == null ? null : q.trim())
                     .lang(lang == null ? null : lang.trim())
                     .owner("me".equalsIgnoreCase(owner) ? "me" : "any")
                     .tagMode("all".equalsIgnoreCase(tagMode) ? "all" : "any")
+                    .conceptMode("all".equalsIgnoreCase(conceptMode) ? "all" : "any")
                     .sort(switch (sort == null ? "recent" : sort.toLowerCase(Locale.ROOT)) {
                         case "relevance", "popularity" -> sort.toLowerCase(Locale.ROOT);
                         default -> "recent";
                     })
                     .tierCount(tierCount)
                     .page(page)
-                    .size(size);
+                    .size(size)
+                    .tagsLimit(tagsLimit)
+                    .conceptsLimit(conceptsLimit);
 
             if (tags != null && !tags.isEmpty()) {
                 Set<String> clean = new LinkedHashSet<>();
@@ -716,14 +846,23 @@ public class SequenceSearchService {
                 }
                 n.tags(clean.isEmpty() ? null : new ArrayList<>(clean));
             }
+
+            if (concepts != null && !concepts.isEmpty()) {
+                Set<String> clean = new LinkedHashSet<>();
+                for (String c : concepts) {
+                    String name = normalizeConcept(c);
+                    if (name != null) clean.add(name);
+                }
+                n.concepts(clean.isEmpty() ? null : new ArrayList<>(clean));
+            }
             return n;
         }
     }
 
     /**
      * A prepared WHERE fragment + its parameter list. Also carries the original {@link SearchQuery}
-     * so {@link #withoutLanguage()} / {@link #withoutTags()} can rebuild a version of the fragment
-     * minus one specific filter (for facet queries).
+     * so {@link #withoutLanguage()} / {@link #withoutTags()} / {@link #withoutConcepts()} can
+     * rebuild a version of the fragment minus one specific filter (for facet queries).
      */
     private final class WhereClause {
         final String sql;
@@ -738,21 +877,24 @@ public class SequenceSearchService {
             this.currentUserId = currentUserId;
         }
 
-        WhereClause rebuild(boolean includeLang, boolean includeTags) {
+        WhereClause rebuild(boolean includeLang, boolean includeTags, boolean includeConcepts) {
             SearchQuery copy = new SearchQuery()
                     .q(query.q())
                     .lang(includeLang ? query.lang() : null)
                     .owner(query.owner())
                     .tagMode(query.tagMode)
+                    .conceptMode(query.conceptMode)
                     .tierCount(query.tierCount())
                     .sort(query.sort())
                     .page(query.page())
                     .size(query.size());
             copy.tags(includeTags ? query.tags() : null);
+            copy.concepts(includeConcepts ? query.concepts() : null);
             return buildWhere(copy, currentUserId);
         }
 
-        WhereClause withoutLanguage() { return rebuild(false, true); }
-        WhereClause withoutTags()     { return rebuild(true, false); }
+        WhereClause withoutLanguage() { return rebuild(false, true, true); }
+        WhereClause withoutTags()     { return rebuild(true, false, true); }
+        WhereClause withoutConcepts() { return rebuild(true, true, false); }
     }
 }

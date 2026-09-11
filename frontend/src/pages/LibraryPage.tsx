@@ -62,6 +62,15 @@ interface BulkCopyToastState {
 }
 
 /**
+ * Default tag-facet page size, and the amount "Show more" adds each click — must match the
+ * backend's SequenceSearchService.FACET_TOP_TAGS_DEFAULT so the two "50"s can't drift apart.
+ */
+const TAG_FACET_STEP = 50;
+
+/** Concept-facet mirror of {@link TAG_FACET_STEP} — must match FACET_TOP_CONCEPTS_DEFAULT. */
+const CONCEPT_FACET_STEP = 50;
+
+/**
  * AP19 Teil A: The Library (A9 skeleton + A10 filters + URL-state).
  *
  * <p>Architecture:
@@ -124,6 +133,12 @@ export default function LibraryPage() {
     const [bulkCopying, setBulkCopying] = useState(false);
     const [bulkToast, setBulkToast] = useState<BulkCopyToastState | null>(null);
 
+    // Sidebar tag/concept facets: how many top entries the backend should return for each.
+    // "Show more" bumps the relevant one by its *_FACET_STEP and re-fetches — the backend never
+    // sends the whole tag or concept table unasked.
+    const [tagsLimit, setTagsLimit] = useState(TAG_FACET_STEP);
+    const [conceptsLimit, setConceptsLimit] = useState(CONCEPT_FACET_STEP);
+
     const fetchPage = useCallback(async () => {
         setLoading(true);
         setError("");
@@ -132,6 +147,8 @@ export default function LibraryPage() {
                 page: filters.page,
                 size: 20,
                 sort: filters.sort,
+                tagsLimit,
+                conceptsLimit,
             };
             if (filters.q) params.q = filters.q;
             if (filters.lang) params.lang = filters.lang;
@@ -139,6 +156,10 @@ export default function LibraryPage() {
             if (filters.tags.length > 0) {
                 params.tags = filters.tags.join(",");
                 if (filters.tagMode === "all") params.tagMode = "all";
+            }
+            if (filters.concepts.length > 0) {
+                params.concepts = filters.concepts.join(",");
+                if (filters.conceptMode === "all") params.conceptMode = "all";
             }
             if (filters.tierCount != null) params.tierCount = filters.tierCount;
 
@@ -157,7 +178,11 @@ export default function LibraryPage() {
         filters.owner,
         filters.tags,
         filters.tagMode,
+        filters.concepts,
+        filters.conceptMode,
         filters.tierCount,
+        tagsLimit,
+        conceptsLimit,
         t,
     ]);
 
@@ -377,6 +402,8 @@ export default function LibraryPage() {
                         facets={data?.facets}
                         filters={filters}
                         isLoggedIn={isLoggedIn}
+                        onShowMoreTags={() => setTagsLimit((prev) => prev + TAG_FACET_STEP)}
+                        onShowMoreConcepts={() => setConceptsLimit((prev) => prev + CONCEPT_FACET_STEP)}
                     />
                 </aside>
 
@@ -468,6 +495,43 @@ export default function LibraryPage() {
                                                 onClick={() => filters.setTagMode("all")}
                                             >
                                                 {t("library.tagMode.all")}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Active-concept chip row — same shape as the tag row above. */}
+                            {filters.concepts.length > 0 && (
+                                <div className="mt-3 d-flex flex-wrap gap-1 align-items-center">
+                                    <span className="small text-muted me-1">
+                                        {t("library.activeConcepts")}:
+                                    </span>
+                                    {filters.concepts.map((concept) => (
+                                        <button
+                                            key={concept}
+                                            className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1"
+                                            onClick={() => filters.removeConcept(concept)}
+                                            title={t("library.removeConcept", { concept }) as string}
+                                        >
+                                            {concept}
+                                            <i className="bi bi-x-circle-fill"></i>
+                                        </button>
+                                    ))}
+
+                                    {filters.concepts.length > 1 && (
+                                        <div className="btn-group btn-group-sm ms-2" role="group">
+                                            <button
+                                                className={`btn ${filters.conceptMode === "any" ? "btn-secondary" : "btn-outline-secondary"}`}
+                                                onClick={() => filters.setConceptMode("any")}
+                                            >
+                                                {t("library.conceptMode.any")}
+                                            </button>
+                                            <button
+                                                className={`btn ${filters.conceptMode === "all" ? "btn-secondary" : "btn-outline-secondary"}`}
+                                                onClick={() => filters.setConceptMode("all")}
+                                            >
+                                                {t("library.conceptMode.all")}
                                             </button>
                                         </div>
                                     )}
@@ -745,12 +809,30 @@ function FilterSidebar({
     facets,
     filters,
     isLoggedIn,
+    onShowMoreTags,
+    onShowMoreConcepts,
 }: {
     facets: import("../types/models").LibraryFacets | undefined;
     filters: ReturnType<typeof useLibraryFilters>;
     isLoggedIn: boolean;
+    /** Asks the parent to re-fetch with a higher tagsLimit — "Show more" is a real request. */
+    onShowMoreTags: () => void;
+    /** Concept-facet mirror of {@link onShowMoreTags}. */
+    onShowMoreConcepts: () => void;
 }) {
     const { t } = useTranslation();
+
+    // Whether the tag/concept cloud sections are shown at all — pure display state, independent
+    // of how many entries the backend sent (that's tagsLimit/conceptsLimit, owned by the parent).
+    const [tagsVisible, setTagsVisible] = useState(true);
+    const allTags = facets?.topTags ?? [];
+    const totalTagCount = facets?.totalTagCount ?? 0;
+    const hasMoreTags = allTags.length < totalTagCount;
+
+    const [conceptsVisible, setConceptsVisible] = useState(true);
+    const allConcepts = facets?.topConcepts ?? [];
+    const totalConceptCount = facets?.totalConceptCount ?? 0;
+    const hasMoreConcepts = allConcepts.length < totalConceptCount;
 
     return (
         <div className="card sticky-top" style={{ top: "1rem" }}>
@@ -814,24 +896,99 @@ function FilterSidebar({
                     <TierButton value={5} filters={filters} label="5" />
                 </div>
 
-                {/* ── Tag cloud ── */}
+                {/* ── Tag cloud ──
+                    tagsLimit (owned by the parent) bounds what the backend sends; totalTagCount
+                    is the true count regardless of that limit, so "Show more" knows whether
+                    there's actually anything left and re-requests for exactly TAG_FACET_STEP
+                    more when clicked. */}
                 <h6 className="text-uppercase text-muted small mb-2 d-flex justify-content-between align-items-center">
                     <span>
                         <i className="bi bi-tags me-1"></i>
                         {t("library.tagsLabel")}
                     </span>
-                    {facets && facets.topTags.length > 0 && (
-                        <span className="text-muted">{facets.topTags.length}</span>
-                    )}
+                    <span className="d-flex align-items-center gap-2">
+                        {totalTagCount > 0 && (
+                            <span className="text-muted">{totalTagCount}</span>
+                        )}
+                        {totalTagCount > 0 && (
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-link text-muted p-0 text-decoration-none"
+                                style={{ fontSize: "0.78rem" }}
+                                onClick={() => setTagsVisible((v) => !v)}
+                                aria-expanded={tagsVisible}
+                            >
+                                {tagsVisible ? t("library.hideTags") : t("library.showTags")}
+                            </button>
+                        )}
+                    </span>
                 </h6>
-                {facets?.topTags.length === 0 && (
+                {totalTagCount === 0 && (
                     <div className="small text-muted">{t("library.noTagsYet")}</div>
                 )}
-                <div className="d-flex flex-wrap gap-1" style={{ maxHeight: "22rem", overflowY: "auto" }}>
-                    {facets?.topTags.map((b) => (
-                        <TagFacetChip key={b.name} bucket={b} filters={filters} />
-                    ))}
-                </div>
+                {tagsVisible && totalTagCount > 0 && (
+                    <>
+                        <div className="d-flex flex-wrap gap-1" style={{ maxHeight: "22rem", overflowY: "auto" }}>
+                            {allTags.map((b) => (
+                                <TagFacetChip key={b.name} bucket={b} filters={filters} />
+                            ))}
+                        </div>
+                        {hasMoreTags && (
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-outline-secondary w-100 mt-2"
+                                onClick={onShowMoreTags}
+                            >
+                                {t("library.showMoreTags")}
+                            </button>
+                        )}
+                    </>
+                )}
+
+                {/* ── Concept cloud — same shape as the tag cloud above. ── */}
+                <h6 className="text-uppercase text-muted small mb-2 mt-3 d-flex justify-content-between align-items-center">
+                    <span>
+                        <i className="bi bi-diagram-3 me-1"></i>
+                        {t("library.conceptsLabel")}
+                    </span>
+                    <span className="d-flex align-items-center gap-2">
+                        {totalConceptCount > 0 && (
+                            <span className="text-muted">{totalConceptCount}</span>
+                        )}
+                        {totalConceptCount > 0 && (
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-link text-muted p-0 text-decoration-none"
+                                style={{ fontSize: "0.78rem" }}
+                                onClick={() => setConceptsVisible((v) => !v)}
+                                aria-expanded={conceptsVisible}
+                            >
+                                {conceptsVisible ? t("library.hideConcepts") : t("library.showConcepts")}
+                            </button>
+                        )}
+                    </span>
+                </h6>
+                {totalConceptCount === 0 && (
+                    <div className="small text-muted">{t("library.noConceptsYet")}</div>
+                )}
+                {conceptsVisible && totalConceptCount > 0 && (
+                    <>
+                        <div className="d-flex flex-wrap gap-1" style={{ maxHeight: "22rem", overflowY: "auto" }}>
+                            {allConcepts.map((b) => (
+                                <ConceptFacetChip key={b.name} bucket={b} filters={filters} />
+                            ))}
+                        </div>
+                        {hasMoreConcepts && (
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-outline-secondary w-100 mt-2"
+                                onClick={onShowMoreConcepts}
+                            >
+                                {t("library.showMoreConcepts")}
+                            </button>
+                        )}
+                    </>
+                )}
             </div>
         </div>
     );
@@ -869,6 +1026,29 @@ function TagFacetChip({
         <button
             className={`btn btn-sm ${active ? "btn-primary" : "btn-outline-secondary"} d-inline-flex align-items-center gap-1`}
             onClick={() => filters.toggleTag(bucket.name)}
+            style={{ fontSize: "0.78rem" }}
+        >
+            <span>{bucket.name}</span>
+            <span className={`badge ${active ? "text-bg-light text-dark" : "text-bg-secondary"}`}>
+                {bucket.count}
+            </span>
+        </button>
+    );
+}
+
+/** Concept-facet mirror of {@link TagFacetChip}. */
+function ConceptFacetChip({
+    bucket,
+    filters,
+}: {
+    bucket: LibraryFacetBucket;
+    filters: ReturnType<typeof useLibraryFilters>;
+}) {
+    const active = filters.concepts.includes(bucket.name);
+    return (
+        <button
+            className={`btn btn-sm ${active ? "btn-primary" : "btn-outline-secondary"} d-inline-flex align-items-center gap-1`}
+            onClick={() => filters.toggleConcept(bucket.name)}
             style={{ fontSize: "0.78rem" }}
         >
             <span>{bucket.name}</span>

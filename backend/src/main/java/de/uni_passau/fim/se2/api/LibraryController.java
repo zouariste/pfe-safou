@@ -74,15 +74,21 @@ public class LibraryController {
     /**
      * Endpoint for searching sequences in the library with various filters.
      *
-     * @param q         Query string for search, optional.
-     * @param tagsCsv   Comma-separated tags, optional.
-     * @param tagMode   Tag matching mode, defaults to "any".
-     * @param lang      Language filter, optional.
-     * @param owner     Owner filter, defaults to "any".
-     * @param tierCount Tier count filter, optional.
-     * @param sort      Sort order, defaults to "recent".
-     * @param page      Page number, defaults to 0.
-     * @param size      Page size, defaults to 20.
+     * @param q             Query string for search, optional.
+     * @param tagsCsv       Comma-separated tags, optional.
+     * @param tagMode       Tag matching mode, defaults to "any".
+     * @param conceptsCsv   Comma-separated concepts, optional.
+     * @param conceptMode   Concept matching mode, defaults to "any".
+     * @param lang          Language filter, optional.
+     * @param owner         Owner filter, defaults to "any".
+     * @param tierCount     Tier count filter, optional.
+     * @param sort          Sort order, defaults to "recent".
+     * @param page          Page number, defaults to 0.
+     * @param size          Page size, defaults to 20.
+     * @param tagsLimit     How many top tags the facet sidebar gets back, defaults to 50. The
+     *                      sidebar's "Show more" re-requests with this raised by the same amount
+     *                      each time, rather than the server ever sending the whole tag table.
+     * @param conceptsLimit The concept-facet mirror of {@code tagsLimit}.
      * @return LibrarySearchResponse containing search results.
      */
     @GetMapping("/sequences")
@@ -90,25 +96,33 @@ public class LibraryController {
             @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "tags", required = false) String tagsCsv,
             @RequestParam(name = "tagMode", required = false, defaultValue = "any") String tagMode,
+            @RequestParam(name = "concepts", required = false) String conceptsCsv,
+            @RequestParam(name = "conceptMode", required = false, defaultValue = "any") String conceptMode,
             @RequestParam(name = "lang", required = false) String lang,
             @RequestParam(name = "owner", required = false, defaultValue = "any") String owner,
             @RequestParam(name = "tierCount", required = false) Integer tierCount,
             @RequestParam(name = "sort", required = false, defaultValue = "recent") String sort,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
-            @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
+            @RequestParam(name = "size", required = false, defaultValue = "20") int size,
+            @RequestParam(name = "tagsLimit", required = false) Integer tagsLimit,
+            @RequestParam(name = "conceptsLimit", required = false) Integer conceptsLimit) {
 
         UUID currentUserId = ownershipService.getCurrentUserId();
 
         SearchQuery query = new SearchQuery()
                 .q(q)
-                .tags(parseTagsCsv(tagsCsv))
+                .tags(parseCsvList(tagsCsv))
                 .tagMode(tagMode)
+                .concepts(parseCsvList(conceptsCsv))
+                .conceptMode(conceptMode)
                 .lang(lang)
                 .owner(owner)
                 .tierCount(tierCount)
                 .sort(sort)
                 .page(page)
-                .size(size);
+                .size(size)
+                .tagsLimit(tagsLimit)
+                .conceptsLimit(conceptsLimit);
 
         LibrarySearchResponse response = searchService.search(query, currentUserId);
         return ResponseEntity.ok(response);
@@ -221,12 +235,12 @@ public class LibraryController {
     }
 
     /**
-     * Parses a comma-separated tag list into a trimmed list of strings.
+     * Parses a comma-separated list (tags or concepts) into a trimmed list of strings.
      *
-     * @param csv Comma-separated tags as a single string.
-     * @return List of trimmed tag strings; null if input is empty or blank.
+     * @param csv Comma-separated values as a single string.
+     * @return List of trimmed strings; null if input is empty or blank.
      */
-    private static List<String> parseTagsCsv(String csv) {
+    private static List<String> parseCsvList(String csv) {
         if (csv == null || csv.isBlank()) {
             return null;
         }

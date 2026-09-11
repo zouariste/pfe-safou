@@ -402,6 +402,54 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                 params.toArray());
     }
 
+    @Override
+    public List<TieredTaskSequenceRepository.RetagCandidate> findConceptReclassifyCandidates(
+            boolean onlyMissingConcepts, List<UUID> specificIds, int limit) {
+
+        StringBuilder sql = new StringBuilder("""
+                SELECT s.id                   AS id,
+                       s.programming_language AS programming_language,
+                       COALESCE(string_agg(t.statement, E'\n---\n'              ORDER BY t.tier_level), '') AS combined_statement,
+                       COALESCE(string_agg(t.solution,  E'\n\n// --- next tier ---\n\n' ORDER BY t.tier_level), '') AS combined_code
+                FROM tiered_task_sequences s
+                LEFT JOIN tasks t ON t.sequence_id = s.id
+                """);
+
+        List<Object> params = new ArrayList<>();
+
+        boolean useSpecific = specificIds != null && !specificIds.isEmpty();
+        if (useSpecific) {
+            // Safety cap — avoid pathological IN lists from clients.
+            List<UUID> ids = specificIds.size() > 10_000 ? specificIds.subList(0, 10_000) : specificIds;
+            String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+            sql.append(" WHERE s.id IN (").append(placeholders).append(") ");
+            params.addAll(ids);
+        } else if (onlyMissingConcepts) {
+            sql.append("""
+                     WHERE NOT EXISTS (
+                         SELECT 1 FROM tiered_task_sequence_concepts tsc
+                         WHERE tsc.sequence_id = s.id
+                     )
+                    """);
+        }
+
+        sql.append(" GROUP BY s.id, s.programming_language, s.created_at ");
+        sql.append(" ORDER BY s.created_at DESC, s.id ");
+
+        if (limit > 0) {
+            sql.append(" LIMIT ? ");
+            params.add(limit);
+        }
+
+        return jdbc.query(sql.toString(),
+                (rs, n) -> new TieredTaskSequenceRepository.RetagCandidate(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("programming_language"),
+                        rs.getString("combined_statement"),
+                        rs.getString("combined_code")),
+                params.toArray());
+    }
+
     // ── AP20: JSONB helpers ──────────────────────────────────
 
     private PGobject toJsonb(GenerationConstraints constraints) {

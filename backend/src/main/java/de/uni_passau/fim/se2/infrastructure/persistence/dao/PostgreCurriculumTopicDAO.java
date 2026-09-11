@@ -24,8 +24,12 @@ import de.uni_passau.fim.se2.infrastructure.persistence.mapper.CurriculumTopicRo
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -106,5 +110,29 @@ public class PostgreCurriculumTopicDAO implements CurriculumTopicRepository {
     @Override
     public void delete(CurriculumTopicDTO topic) {
         jdbc.update("DELETE FROM curriculum_topics WHERE id = ?", topic.getId());
+    }
+
+    @Override
+    public Map<UUID, Integer> countSequencesByTopicIds(Collection<UUID> topicIds) {
+        if (topicIds == null || topicIds.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> ids = new ArrayList<>(topicIds);
+        String placeholders = ids.stream().map(id -> "?").collect(Collectors.joining(","));
+        String sql = """
+                SELECT cct.topic_id AS topic_id, COUNT(DISTINCT tsc.sequence_id) AS cnt
+                FROM concept_curriculum_topic cct
+                JOIN tiered_task_sequence_concepts tsc ON tsc.concept_id = cct.concept_id
+                JOIN tiered_task_sequences s ON s.id = tsc.sequence_id
+                WHERE cct.topic_id IN (""" + placeholders + """
+                )
+                  AND (s.copied_from IS NULL OR s.diverged_at IS NOT NULL)
+                GROUP BY cct.topic_id
+                """;
+        Map<UUID, Integer> counts = new HashMap<>();
+        jdbc.query(sql, rs -> {
+            counts.put((UUID) rs.getObject("topic_id"), rs.getInt("cnt"));
+        }, ids.toArray());
+        return counts;
     }
 }

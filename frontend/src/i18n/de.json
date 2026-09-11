@@ -121,6 +121,12 @@
       "any": "Beliebig",
       "all": "Alle"
     },
+    "activeConcepts": "Aktive Konzepte",
+    "removeConcept": "Konzept „{{concept}}“ entfernen",
+    "conceptMode": {
+      "any": "Beliebig",
+      "all": "Alle"
+    },
     "ownerLabel": "Besitzer",
     "ownerAny": "Alle",
     "ownerMe": "Nur meine",
@@ -129,6 +135,14 @@
     "tierAny": "Beliebig",
     "tagsLabel": "Tags",
     "noTagsYet": "Noch keine Tags verfügbar",
+    "hideTags": "Ausblenden",
+    "showTags": "Anzeigen",
+    "showMoreTags": "Mehr anzeigen",
+    "conceptsLabel": "Konzepte",
+    "noConceptsYet": "Noch keine Konzepte verfügbar",
+    "hideConcepts": "Ausblenden",
+    "showConcepts": "Anzeigen",
+    "showMoreConcepts": "Mehr anzeigen",
     "editTags": "Tags bearbeiten",
     "doneEditing": "Fertig",
     "addTags": "Tags hinzufügen",
@@ -857,6 +871,25 @@
         "colStatus": "Status",
         "colProgress": "Fortschritt",
         "colStarted": "Gestartet"
+      },
+      "reclassifyConcepts": {
+        "title": "Bulk-Konzept-Neuklassifizierung",
+        "subtitle": "Startet einen Hintergrund-Job, der die LLM-Konzepterkennung erneut ausführt — nützlich, wenn das Konzept-Arsenal gewachsen ist (ein neu getipptes Konzept oder ein neu zugeordnetes Lehrplan-Konzept), damit ältere Sequenzen es ebenfalls erhalten können. Antwortet sofort mit einer Job-ID — Fortschritt wird alle 2 Sekunden aktualisiert.",
+        "filterLabel": "Filter",
+        "filterMissing": "Nur Sequenzen ganz ohne Konzepte (empfohlen)",
+        "filterAll": "Alle Sequenzen (überschreibt bestehende Konzepte, wenn das LLM welche findet)",
+        "warningAll": "Achtung: \"Alle\" klassifiziert neu und kann bestehende Konzepte überschreiben, und verbraucht für jede Sequenz LLM-Credits (~0,5 ct/Sequenz). Die meisten Sequenzen haben bereits Konzepte aus der Generierung — deshalb ist diese Option, nicht \"fehlende Konzepte\", diejenige, die Material tatsächlich gegen ein erweitertes Konzept-Arsenal neu prüft.",
+        "start": "Job starten",
+        "starting": "Startet…",
+        "errorStart": "Job konnte nicht gestartet werden — bitte erneut versuchen.",
+        "activeJob": "Aktiver Job",
+        "progress": "{{processed}} / {{total}} Sequenzen",
+        "recentJobs": "Letzte Jobs (dieser Session)",
+        "noRecentJobs": "Noch keine Jobs in dieser Session.",
+        "colFilter": "Filter",
+        "colStatus": "Status",
+        "colProgress": "Fortschritt",
+        "colStarted": "Gestartet"
       }
     }
   },
@@ -966,6 +999,9 @@
     "noSubTopics": "Keine Unterthemen für dieses Thema verfügbar.",
     "examples": "Beispielaufgaben ({{count}})",
     "noExamples": "Keine Beispielaufgaben für dieses Thema vorhanden.",
+    "sequenceCountTooltip": "{{count}} Sequenz(en) existieren bereits für dieses Thema",
+    "viewSequences": "Sequenzen ansehen",
+    "viewSequencesDisabled": "Diesem Thema sind noch keine Konzepte zugeordnet, daher gibt es nichts, wonach die Bibliothek gefiltert werden könnte.",
     "generate": "Aufgabe generieren",
     "generating": "Wird generiert...",
     "language": "Programmiersprache",

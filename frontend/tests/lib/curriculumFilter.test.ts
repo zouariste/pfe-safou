@@ -20,6 +20,7 @@ const topic = (over: Partial<CurriculumTopic> = {}): CurriculumTopic => ({
     descriptionEn: "Getting started with programming",
     trackEn: "NTG",
     educationLevel: "SCHOOL",
+    sequenceCount: 0,
     ...over,
 });
 
