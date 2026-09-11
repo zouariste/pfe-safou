@@ -160,22 +160,18 @@ public class CurriculumGenerationService {
         TieredTaskSequenceDTO sequence = TaskSequenceMapper.mapToIncompleteSequence(
                 json, concepts, language, null, topic.getName(), tierCount);
 
-        // Set metadata
+        // Set metadata. Done before enrichment, not after: enrichWithSolutions now carries
+        // everything on `sequence` forward via toBuilder(), so this is where it has to land.
         sequence.setOwnerId(ownerId);
         sequence.setVersionId(versionId);
         sequence.setConstraints(constraints);
         sequence.setCurriculumTopicId(topicId);
+        sequence.setTargetLanguage(targetLanguage);
+        sequence.setTierCount(tierCount);
 
         // Enrich tasks (complexity analysis, distractors, AP22 context, AP31 splits)
         TieredTaskSequenceDTO enriched = taskEnricher.enrichWithSolutions(
                 sequence, distractorsEnabled, contextModeEnabled, splitEnabled);
-        // Preserve metadata that enrichWithSolutions does not copy
-        enriched.setOwnerId(ownerId);
-        enriched.setVersionId(versionId);
-        enriched.setConstraints(constraints);
-        enriched.setCurriculumTopicId(topicId);
-        enriched.setTargetLanguage(targetLanguage);
-        enriched.setTierCount(tierCount);
         // AP19/AP32: a curriculum sequence is anchored on curated seed examples rather than
         // a single input snippet, so the mapper leaves codeSnippet null. Persist the first
         // non-blank seed example's code as the sequence's representative snippet, otherwise
