@@ -83,6 +83,9 @@ public class LibraryController {
      * @param sort      Sort order, defaults to "recent".
      * @param page      Page number, defaults to 0.
      * @param size      Page size, defaults to 20.
+     * @param tagsLimit How many top tags the facet sidebar gets back, defaults to 50. The
+     *                  sidebar's "Show more" re-requests with this raised by the same amount
+     *                  each time, rather than the server ever sending the whole tag table.
      * @return LibrarySearchResponse containing search results.
      */
     @GetMapping("/sequences")
@@ -95,7 +98,8 @@ public class LibraryController {
             @RequestParam(name = "tierCount", required = false) Integer tierCount,
             @RequestParam(name = "sort", required = false, defaultValue = "recent") String sort,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
-            @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
+            @RequestParam(name = "size", required = false, defaultValue = "20") int size,
+            @RequestParam(name = "tagsLimit", required = false) Integer tagsLimit) {
 
         UUID currentUserId = ownershipService.getCurrentUserId();
 
@@ -108,7 +112,8 @@ public class LibraryController {
                 .tierCount(tierCount)
                 .sort(sort)
                 .page(page)
-                .size(size);
+                .size(size)
+                .tagsLimit(tagsLimit);
 
         LibrarySearchResponse response = searchService.search(query, currentUserId);
         return ResponseEntity.ok(response);

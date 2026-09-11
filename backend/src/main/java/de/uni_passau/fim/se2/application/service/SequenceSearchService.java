@@ -59,8 +59,17 @@ public class SequenceSearchService {
     private static final int MAX_PAGE_SIZE = 100;
     private static final int DEFAULT_PAGE_SIZE = 20;
 
-    /** How many top tags to report in the facet sidebar. */
-    private static final int FACET_TOP_TAGS = 30;
+    /**
+     * Default and per-step size for the tag facet: how many top tags a request returns when the
+     * caller does not ask for more via {@code tagsLimit}, and the amount the sidebar's "Show
+     * more" adds on each click — it re-requests with {@code tagsLimit} raised by exactly this
+     * much, so "50, then 100, then 150…" instead of dumping every tag in one response nobody
+     * asked to see yet.
+     */
+    private static final int FACET_TOP_TAGS_DEFAULT = 50;
+
+    /** Upper bound on {@code tagsLimit}, so a client cannot ask for the whole tag table in one go. */
+    private static final int FACET_TOP_TAGS_MAX = 1000;
 
     /** Minimum similarity for fuzzy "Meintest du…" tag suggestions. */
     private static final float TRIGRAM_SIMILARITY_THRESHOLD = 0.3f;
@@ -99,6 +108,8 @@ public class SequenceSearchService {
         SearchQuery q = rawQuery == null ? new SearchQuery() : rawQuery.normalized();
         int page = Math.max(0, q.page());
         int size = clamp(q.size() <= 0 ? DEFAULT_PAGE_SIZE : q.size(), 1, MAX_PAGE_SIZE);
+        int tagsLimit = clamp(q.tagsLimit() == null || q.tagsLimit() <= 0
+                ? FACET_TOP_TAGS_DEFAULT : q.tagsLimit(), 1, FACET_TOP_TAGS_MAX);
 
         // Build the shared WHERE clause once. Used by count / page / facet queries so they all see
         // exactly the same filter set.
@@ -108,7 +119,7 @@ public class SequenceSearchService {
         List<LibraryItemDTO> items = total == 0 ? List.of()
                 : fetchPage(q, where, page, size, currentUserId);
 
-        Facets facets = fetchFacets(where, currentUserId);
+        Facets facets = fetchFacets(where, currentUserId, tagsLimit);
 
         // Only compute fuzzy suggestions when FTS returned nothing — it's an expensive call.
         List<String> suggestions = (total == 0 && q.q() != null && !q.q().isBlank())
@@ -499,11 +510,13 @@ public class SequenceSearchService {
     // Facets
     // ─────────────────────────────────────────────────────────────────────
 
-    private Facets fetchFacets(WhereClause base, UUID currentUserId) {
+    private Facets fetchFacets(WhereClause base, UUID currentUserId, int tagsLimit) {
+        WhereClause tagWhere = base.withoutTags();
         List<FacetBucket> languages = fetchLanguageFacets(base.withoutLanguage());
-        List<FacetBucket> topTags   = fetchTagFacets(base.withoutTags());
+        List<FacetBucket> topTags   = fetchTagFacets(tagWhere, tagsLimit);
+        long totalTagCount          = fetchTotalTagCount(tagWhere);
         Ownership ownership         = fetchOwnershipFacets(base, currentUserId);
-        return new Facets(languages, topTags, ownership);
+        return new Facets(languages, topTags, totalTagCount, ownership);
     }
 
     private List<FacetBucket> fetchLanguageFacets(WhereClause w) {
@@ -518,7 +531,7 @@ public class SequenceSearchService {
                 w.params.toArray());
     }
 
-    private List<FacetBucket> fetchTagFacets(WhereClause w) {
+    private List<FacetBucket> fetchTagFacets(WhereClause w, int limit) {
         String sql = """
                 SELECT tg.tag_name AS name, COUNT(*) AS cnt
                 FROM sequence_tags tg
@@ -529,9 +542,23 @@ public class SequenceSearchService {
                 LIMIT ?
                 """;
         List<Object> params = new ArrayList<>(w.params);
-        params.add(FACET_TOP_TAGS);
+        params.add(limit);
         return jdbc.query(sql, (rs, n) -> new FacetBucket(rs.getString("name"), rs.getLong("cnt")),
                 params.toArray());
+    }
+
+    /**
+     * How many distinct tags exist under the current filters — unbounded, unlike {@link
+     * #fetchTagFacets}, so the sidebar can tell whether "Show more" still has anything to reveal.
+     */
+    private long fetchTotalTagCount(WhereClause w) {
+        String sql = """
+                SELECT COUNT(DISTINCT tg.tag_name) AS cnt
+                FROM sequence_tags tg
+                JOIN tiered_task_sequences s ON s.id = tg.sequence_id
+                """ + w.sql;
+        Long count = jdbc.queryForObject(sql, Long.class, w.params.toArray());
+        return count == null ? 0L : count;
     }
 
     private Ownership fetchOwnershipFacets(WhereClause w, UUID currentUserId) {
@@ -668,6 +695,7 @@ public class SequenceSearchService {
         private String sort = "recent"; // "recent" | "relevance" | "popularity"
         private int page = 0;
         private int size = DEFAULT_PAGE_SIZE;
+        private Integer tagsLimit;
 
         public SearchQuery() {}
 
@@ -681,6 +709,7 @@ public class SequenceSearchService {
         public String sort() { return sort; }
         public int page() { return page; }
         public int size() { return size; }
+        public Integer tagsLimit() { return tagsLimit; }
 
         // Fluent setters
         public SearchQuery q(String v)           { this.q = v; return this; }
@@ -692,6 +721,7 @@ public class SequenceSearchService {
         public SearchQuery sort(String v)        { this.sort = v; return this; }
         public SearchQuery page(int v)           { this.page = v; return this; }
         public SearchQuery size(int v)           { this.size = v; return this; }
+        public SearchQuery tagsLimit(Integer v)  { this.tagsLimit = v; return this; }
 
         /** Returns a cleaned-up copy: tag slugs normalized, sort/tagMode/owner coerced to the whitelist. */
         SearchQuery normalized() {
@@ -706,7 +736,8 @@ public class SequenceSearchService {
                     })
                     .tierCount(tierCount)
                     .page(page)
-                    .size(size);
+                    .size(size)
+                    .tagsLimit(tagsLimit);
 
             if (tags != null && !tags.isEmpty()) {
                 Set<String> clean = new LinkedHashSet<>();

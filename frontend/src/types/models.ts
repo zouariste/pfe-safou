@@ -325,7 +325,10 @@ export interface LibraryFacetBucket {
 
 export interface LibraryFacets {
     languages: LibraryFacetBucket[];
+    /** Up to the requested `tagsLimit` (see LibraryPage's tagsLimit param), sorted by count. */
     topTags: LibraryFacetBucket[];
+    /** How many distinct tags exist under the current filters, regardless of how many topTags carries. */
+    totalTagCount: number;
     ownership: { mine: number; others: number };
 }
 

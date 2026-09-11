@@ -62,6 +62,12 @@ interface BulkCopyToastState {
 }
 
 /**
+ * Default tag-facet page size, and the amount "Show more" adds each click — must match the
+ * backend's SequenceSearchService.FACET_TOP_TAGS_DEFAULT so the two "50"s can't drift apart.
+ */
+const TAG_FACET_STEP = 50;
+
+/**
  * AP19 Teil A: The Library (A9 skeleton + A10 filters + URL-state).
  *
  * <p>Architecture:
@@ -124,6 +130,10 @@ export default function LibraryPage() {
     const [bulkCopying, setBulkCopying] = useState(false);
     const [bulkToast, setBulkToast] = useState<BulkCopyToastState | null>(null);
 
+    // Sidebar tag facet: how many top tags the backend should return. "Show more" bumps this by
+    // TAG_FACET_STEP and re-fetches — the backend never sends the whole tag table unasked.
+    const [tagsLimit, setTagsLimit] = useState(TAG_FACET_STEP);
+
     const fetchPage = useCallback(async () => {
         setLoading(true);
         setError("");
@@ -132,6 +142,7 @@ export default function LibraryPage() {
                 page: filters.page,
                 size: 20,
                 sort: filters.sort,
+                tagsLimit,
             };
             if (filters.q) params.q = filters.q;
             if (filters.lang) params.lang = filters.lang;
@@ -158,6 +169,7 @@ export default function LibraryPage() {
         filters.tags,
         filters.tagMode,
         filters.tierCount,
+        tagsLimit,
         t,
     ]);
 
@@ -377,6 +389,7 @@ export default function LibraryPage() {
                         facets={data?.facets}
                         filters={filters}
                         isLoggedIn={isLoggedIn}
+                        onShowMoreTags={() => setTagsLimit((prev) => prev + TAG_FACET_STEP)}
                     />
                 </aside>
 
@@ -745,12 +758,22 @@ function FilterSidebar({
     facets,
     filters,
     isLoggedIn,
+    onShowMoreTags,
 }: {
     facets: import("../types/models").LibraryFacets | undefined;
     filters: ReturnType<typeof useLibraryFilters>;
     isLoggedIn: boolean;
+    /** Asks the parent to re-fetch with a higher tagsLimit — "Show more" is a real request. */
+    onShowMoreTags: () => void;
 }) {
     const { t } = useTranslation();
+
+    // Whether the tag cloud section is shown at all — pure display state, independent of how
+    // many tags the backend sent (that's tagsLimit, owned by the parent).
+    const [tagsVisible, setTagsVisible] = useState(true);
+    const allTags = facets?.topTags ?? [];
+    const totalTagCount = facets?.totalTagCount ?? 0;
+    const hasMoreTags = allTags.length < totalTagCount;
 
     return (
         <div className="card sticky-top" style={{ top: "1rem" }}>
@@ -814,24 +837,54 @@ function FilterSidebar({
                     <TierButton value={5} filters={filters} label="5" />
                 </div>
 
-                {/* ── Tag cloud ── */}
+                {/* ── Tag cloud ──
+                    tagsLimit (owned by the parent) bounds what the backend sends; totalTagCount
+                    is the true count regardless of that limit, so "Show more" knows whether
+                    there's actually anything left and re-requests for exactly TAG_FACET_STEP
+                    more when clicked. */}
                 <h6 className="text-uppercase text-muted small mb-2 d-flex justify-content-between align-items-center">
                     <span>
                         <i className="bi bi-tags me-1"></i>
                         {t("library.tagsLabel")}
                     </span>
-                    {facets && facets.topTags.length > 0 && (
-                        <span className="text-muted">{facets.topTags.length}</span>
-                    )}
+                    <span className="d-flex align-items-center gap-2">
+                        {totalTagCount > 0 && (
+                            <span className="text-muted">{totalTagCount}</span>
+                        )}
+                        {totalTagCount > 0 && (
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-link text-muted p-0 text-decoration-none"
+                                style={{ fontSize: "0.78rem" }}
+                                onClick={() => setTagsVisible((v) => !v)}
+                                aria-expanded={tagsVisible}
+                            >
+                                {tagsVisible ? t("library.hideTags") : t("library.showTags")}
+                            </button>
+                        )}
+                    </span>
                 </h6>
-                {facets?.topTags.length === 0 && (
+                {totalTagCount === 0 && (
                     <div className="small text-muted">{t("library.noTagsYet")}</div>
                 )}
-                <div className="d-flex flex-wrap gap-1" style={{ maxHeight: "22rem", overflowY: "auto" }}>
-                    {facets?.topTags.map((b) => (
-                        <TagFacetChip key={b.name} bucket={b} filters={filters} />
-                    ))}
-                </div>
+                {tagsVisible && totalTagCount > 0 && (
+                    <>
+                        <div className="d-flex flex-wrap gap-1" style={{ maxHeight: "22rem", overflowY: "auto" }}>
+                            {allTags.map((b) => (
+                                <TagFacetChip key={b.name} bucket={b} filters={filters} />
+                            ))}
+                        </div>
+                        {hasMoreTags && (
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-outline-secondary w-100 mt-2"
+                                onClick={onShowMoreTags}
+                            >
+                                {t("library.showMoreTags")}
+                            </button>
+                        )}
+                    </>
+                )}
             </div>
         </div>
     );
