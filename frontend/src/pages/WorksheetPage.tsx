@@ -812,8 +812,14 @@ export default function WorksheetPage() {
                                         {t("worksheet.sequenceLabel", { index: idx + 1 })}
                                         {/* Marks material the reader did not make. Without it the list
                                             is identical before and after forking a sequence, which
-                                            makes the fork look like it did nothing. */}
-                                        {teacherViewEnabled && s.ownerId !== user?.userId && (
+                                            makes the fork look like it did nothing. Admins are excluded:
+                                            SequenceCuratorPolicy.isOwnerOrAdmin treats them as the owner
+                                            of everything for editing purposes (they can edit any
+                                            sequence in place, no fork needed), so a raw ownerId
+                                            mismatch — including the null ownerId on unowned seed
+                                            material — would mislabel material they already fully
+                                            control as "not yours". */}
+                                        {teacherViewEnabled && !isAdmin && s.ownerId !== user?.userId && (
                                             <span className="badge bg-secondary-subtle text-secondary-emphasis ms-2">
                                                 {t("worksheet.foreignSequence")}
                                             </span>
