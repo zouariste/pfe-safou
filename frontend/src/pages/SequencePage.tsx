@@ -18,6 +18,7 @@ import TagChip from "../components/TagChip.tsx";
 import TagChipSkeleton from "../components/TagChipSkeleton.tsx";
 import TagEditor from "../components/TagEditor.tsx";
 import SimilarSequencesPanel from "../components/SimilarSequencesPanel.tsx";
+import AddToWorksheetModal from "../components/AddToWorksheetModal.tsx";
 import {
     exportSequenceJSON,
     exportSequenceCSV,
@@ -54,7 +55,7 @@ export default function SequencePage() {
 
 
 
-    const { user, isLoggedIn, isAdmin } = useAuth();
+    const { user, isLoggedIn, isAdmin, isTeacher } = useAuth();
     const [state, setState] = useState<LoadState>("idle");
     const [seq, setSeq] = useState<TieredTaskSequence | null>(null);
     const [errorMsg, setErrorMsg] = useState("");
@@ -144,6 +145,11 @@ export default function SequencePage() {
     }
 
     const [forking, setForking] = useState(false);
+
+    // Add-to-worksheet: the teacher picks which of their own worksheets this sequence should be
+    // linked into. The dialog itself is shared with the Library page — see AddToWorksheetModal.
+    const canAddToWorksheet = isLoggedIn && (isTeacher || isAdmin);
+    const [showAddToWorksheetModal, setShowAddToWorksheetModal] = useState(false);
 
     /**
      * Takes a private copy and moves the worksheet onto it, then navigates there.
@@ -425,6 +431,17 @@ export default function SequencePage() {
                     <i className="bi bi-link-45deg"></i>
                     {copied ? t("sequence.copied") : t("sequence.shareSequence")}
                 </button>
+
+                {canAddToWorksheet && (
+                    <button
+                        className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                        onClick={() => setShowAddToWorksheetModal(true)}
+                        title={t("sequence.addToWorksheetTitle")}
+                    >
+                        <i className="bi bi-journal-plus"></i>
+                        {t("sequence.addToWorksheet")}
+                    </button>
+                )}
 
                 {teacherViewEnabled && (
                     <div className="dropdown">
@@ -969,6 +986,14 @@ export default function SequencePage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* ADD TO WORKSHEET MODAL */}
+            {showAddToWorksheetModal && (
+                <AddToWorksheetModal
+                    sequenceId={seq.id}
+                    onClose={() => setShowAddToWorksheetModal(false)}
+                />
             )}
 
             {/* TaskEditModal */}

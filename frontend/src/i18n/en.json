@@ -83,6 +83,7 @@
     "alreadyInLibrary": "In your library",
     "alreadyInLibraryTooltip": "This sequence is already in one of your worksheets.",
     "copyLoginRequired": "Log in to copy sequences",
+    "addToWorksheetLoginRequired": "Log in to add sequences to a worksheet",
     "copyToast": {
       "addedTitle": "Added to \"{{name}}\"",
       "alreadyTitle": "Already in \"{{name}}\"",
@@ -270,7 +271,17 @@
     "batchGenerateDistractors": "Generate Distractors for All Tasks",
     "distractorsActive": "Active for students",
     "distractorsInactive": "Disabled for students",
-    "similarTitle": "You might also like"
+    "similarTitle": "You might also like",
+    "addToWorksheet": "Add to Worksheet",
+    "addToWorksheetTitle": "Add to one of your worksheets",
+    "loadingWorksheets": "Loading worksheets...",
+    "noWorksheets": "You haven't created any worksheets yet.",
+    "manageWorksheets": "Manage worksheets",
+    "errorLoadingWorksheets": "Could not load your worksheets.",
+    "addToWorksheetSuccess": "Added to \"{{name}}\"!",
+    "addToWorksheetError": "Could not add this sequence to the worksheet.",
+    "alreadyInWorksheet": "Already added",
+    "add": "Add"
   },
 
   "solve": {
@@ -428,6 +439,13 @@
     "sequences": "Sequences in this worksheet",
     "noSequences": "This worksheet does not contain any sequences yet.",
     "removeSequence": "Remove sequence from worksheet",
+    "dragToReorder": "Drag to reorder",
+    "errorReordering": "Could not save the new order.",
+    "detailLevelHeading": "Details",
+    "detailLevelLabel": "Level of detail shown per sequence",
+    "detailLevelNone": "None",
+    "detailLevelSome": "Some",
+    "detailLevelAll": "All",
     "addSequenceTitle": "Add sequence to worksheet",
     "sequenceUuid": "Sequence UUID",
     "sequenceUuids": "Sequence UUIDs (comma, space or newline separated)",

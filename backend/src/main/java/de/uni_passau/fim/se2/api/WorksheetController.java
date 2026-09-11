@@ -224,6 +224,28 @@ public class WorksheetController {
     }
 
     /**
+     * Reorder the sequences on a worksheet.
+     *
+     * <p>The body must list every sequence already on the worksheet, in the desired order — no
+     * more, no fewer. The DAO checks that and rejects a mismatched set rather than silently
+     * dropping or inventing a position, since a stale client is the likely cause and the
+     * worksheet should not end up half reordered.
+     *
+     * Allowed: Owner of worksheet, Admin
+     */
+    @PutMapping("/worksheets/{sheetId}/sequences/order")
+    public ResponseEntity<Void> reorderSequences(@PathVariable UUID sheetId,
+                                                 @RequestBody List<UUID> orderedSequenceIds) {
+        WorksheetDTO existing = worksheetService.findWorksheetById(sheetId).orElse(null);
+        if (existing == null) return ResponseEntity.notFound().build();
+
+        ownershipService.checkOwnership(existing.getOwnerId(), "worksheet");
+
+        worksheetService.reorderSequences(sheetId, orderedSequenceIds);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * Remove a sequence from a worksheet.
      * Allowed: Owner of worksheet, Admin
      */

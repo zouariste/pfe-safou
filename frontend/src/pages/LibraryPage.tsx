@@ -9,6 +9,7 @@ import TagChip from "../components/TagChip";
 import TagChipSkeleton from "../components/TagChipSkeleton";
 import TagEditor from "../components/TagEditor";
 import ToastMessage from "../components/ToastMessage";
+import AddToWorksheetModal from "../components/AddToWorksheetModal";
 import { useProgressiveTags } from "../hooks/useProgressiveTags";
 import type {
     LibraryItem,
@@ -109,6 +110,11 @@ export default function LibraryPage() {
 
     // A12: copy-to-worksheet toast state.
     const [copyToast, setCopyToast] = useState<CopyToastState | null>(null);
+
+    // "Add to worksheet": links an existing card's sequence into a worksheet the teacher picks,
+    // as opposed to Copy (above), which deep-copies it into the default inbox. One modal instance
+    // for the whole grid, addressed by sequence id — see AddToWorksheetModal.
+    const [addToWorksheetSequenceId, setAddToWorksheetSequenceId] = useState<string | null>(null);
 
     // A15c: bulk-copy state — `selectMode` flips checkboxes on every card, `selectedIds` tracks
     // picks across page loads (cleared on mode-off), `bulkCopying` disables the action button
@@ -521,10 +527,14 @@ export default function LibraryPage() {
                                             onTagClick={filters.toggleTag}
                                             canEdit={canEditTagsFor(item)}
                                             canCopy={isLoggedIn && !isStudent}
+                                            canAddToWorksheet={isLoggedIn && !isStudent}
                                             onTagsUpdated={(next) =>
                                                 updateItemTags(item.sequenceId, next)
                                             }
                                             onCopy={() => handleCopy(item)}
+                                            onAddToWorksheet={() =>
+                                                setAddToWorksheetSequenceId(item.sequenceId)
+                                            }
                                             selectMode={selectMode}
                                             isSelected={selectedIds.has(item.sequenceId)}
                                             onToggleSelected={() => toggleSelected(item.sequenceId)}
@@ -714,6 +724,14 @@ export default function LibraryPage() {
                     onClose={() => setBulkToast(null)}
                 />
             )}
+
+            {/* ── Add-to-worksheet modal ── */}
+            {addToWorksheetSequenceId && (
+                <AddToWorksheetModal
+                    sequenceId={addToWorksheetSequenceId}
+                    onClose={() => setAddToWorksheetSequenceId(null)}
+                />
+            )}
         </div>
     );
 }
@@ -874,8 +892,10 @@ function LibrarySequenceCard({
     onTagClick,
     canEdit,
     canCopy,
+    canAddToWorksheet,
     onTagsUpdated,
     onCopy,
+    onAddToWorksheet,
     selectMode,
     isSelected,
     onToggleSelected,
@@ -886,8 +906,10 @@ function LibrarySequenceCard({
     onTagClick: (tag: string) => void;
     canEdit: boolean;
     canCopy: boolean;
+    canAddToWorksheet: boolean;
     onTagsUpdated: (next: SequenceTag[]) => void;
     onCopy: () => void;
+    onAddToWorksheet: () => void;
     /** When true, the card shows a top-right checkbox and clicking the card body toggles selection. */
     selectMode: boolean;
     isSelected: boolean;
@@ -1089,17 +1111,18 @@ function LibrarySequenceCard({
                 <div className="mt-auto d-flex gap-2">
                     <Link
                         to={`/sequence/${item.sequenceId}`}
-                        className="btn btn-sm btn-outline-primary flex-fill"
+                        className="btn btn-sm btn-outline-primary flex-shrink-0"
+                        title={t("library.open") as string}
+                        aria-label={t("library.open") as string}
                         onClick={(e) => {
                             e.preventDefault();
                             onOpen();
                         }}
                     >
-                        <i className="bi bi-eye me-1"></i>
-                        {t("library.open")}
+                        <i className="bi bi-eye"></i>
                     </Link>
                     <button
-                        className="btn btn-sm btn-outline-success"
+                        className="btn btn-sm btn-outline-success flex-fill"
                         disabled={!canCopy || copying}
                         title={
                             !canCopy
@@ -1125,6 +1148,19 @@ function LibrarySequenceCard({
                             <i className="bi bi-clipboard-plus me-1"></i>
                         )}
                         {t("library.copy")}
+                    </button>
+                    <button
+                        className="btn btn-sm btn-outline-secondary flex-fill"
+                        disabled={!canAddToWorksheet}
+                        title={
+                            !canAddToWorksheet
+                                ? (t("library.addToWorksheetLoginRequired") as string)
+                                : (t("sequence.addToWorksheetTitle") as string)
+                        }
+                        onClick={onAddToWorksheet}
+                    >
+                        <i className="bi bi-journal-plus me-1"></i>
+                        {t("sequence.addToWorksheet")}
                     </button>
                 </div>
             </div>

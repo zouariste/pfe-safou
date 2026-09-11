@@ -144,12 +144,13 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             w.created_at,
             w.copied_from,
             w.copied_at,
-            COALESCE(array_agg(ws.sequence_id ORDER BY ws.sequence_id), '{}') AS sequence_ids,
+            COALESCE(array_agg(ws.sequence_id ORDER BY ws.position, ws.sequence_id), '{}') AS sequence_ids,
             -- Ordered by the same key as the ids above, so the two arrays zip position by
-            -- position. The page needs it to mark which sequences belong to the reader: a
+            -- position (in the array-index sense — unrelated to the ws.position column both are
+            -- sorted by). The page needs it to mark which sequences belong to the reader: a
             -- worksheet that shows nothing but "Sequenz 1, Sequenz 2" cannot tell anybody
             -- that forking one of them changed something.
-            COALESCE(array_agg(s.owner_id ORDER BY ws.sequence_id), '{}') AS sequence_owner_ids
+            COALESCE(array_agg(s.owner_id ORDER BY ws.position, ws.sequence_id), '{}') AS sequence_owner_ids
         FROM worksheets w
         LEFT JOIN worksheets_sequence ws ON ws.worksheet_id = w.id
         LEFT JOIN tiered_task_sequences s ON s.id = ws.sequence_id
@@ -251,15 +252,18 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             throw new DomainValidationException("Sequence or its ID cannot be null");
         }
 
-        // PostgreSQL idiom for idempotent insert
+        // Appends: the new row's position is one past the worksheet's current maximum (0 for the
+        // first sequence on it), computed in the same statement so a concurrent add cannot race
+        // it onto the same position. ON CONFLICT keeps this idempotent, same as before.
         String sql = """
-            INSERT INTO worksheets_sequence (worksheet_id, sequence_id)
-            VALUES (?, ?)
+            INSERT INTO worksheets_sequence (worksheet_id, sequence_id, position)
+            SELECT ?, ?, COALESCE(MAX(position) + 1, 0)
+            FROM worksheets_sequence WHERE worksheet_id = ?
             ON CONFLICT (worksheet_id, sequence_id) DO NOTHING
             """;
 
         try {
-            int rows = jdbc.update(sql, worksheet.getId(), sequence.getId());
+            int rows = jdbc.update(sql, worksheet.getId(), sequence.getId(), worksheet.getId());
 
             if (rows > 0) {
                 log.info("Linked sequence id={} to worksheet id={}", sequence.getId(), worksheet.getId());
@@ -303,9 +307,14 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             }
         }
 
+        // Same append-at-the-end position as the single-sequence insert above. The batch is
+        // still one row per statement, executed in list order on one connection, so each row's
+        // MAX(position) subquery sees the previous rows this same batch already inserted and the
+        // list order becomes the appended order.
         String sql = """
-            INSERT INTO worksheets_sequence (worksheet_id, sequence_id)
-            VALUES (?, ?)
+            INSERT INTO worksheets_sequence (worksheet_id, sequence_id, position)
+            SELECT ?, ?, COALESCE(MAX(position) + 1, 0)
+            FROM worksheets_sequence WHERE worksheet_id = ?
             ON CONFLICT (worksheet_id, sequence_id) DO NOTHING
             """;
 
@@ -314,6 +323,7 @@ public class PostgreWorksheetDao implements WorksheetRepository {
                              (ps, seq) -> {
                                  ps.setObject(1, worksheet.getId());
                                  ps.setObject(2, seq.getId());
+                                 ps.setObject(3, worksheet.getId());
                              });
 
             log.info("Linked {} sequences to worksheet id={}", sequences.size(), worksheet.getId());
@@ -355,6 +365,52 @@ public class PostgreWorksheetDao implements WorksheetRepository {
     }
 
     /**
+     * Rewrites the position of every sequence on a worksheet to match {@code orderedSequenceIds}.
+     *
+     * <p>The caller must name exactly the sequences already on the worksheet — no more, no fewer
+     * — so a stale client (a tab that missed an add or remove elsewhere) cannot silently drop a
+     * sequence's position or invent one for a sequence that was never linked. Checked up front so
+     * a bad request fails before any row is touched, rather than leaving the worksheet half
+     * reordered.
+     *
+     * @throws DomainValidationException if the id set does not exactly match the worksheet's
+     *                                   current sequences
+     */
+    @Override
+    public void reorderSequences(UUID worksheetId, List<UUID> orderedSequenceIds) {
+        if (worksheetId == null) {
+            throw new DomainValidationException("Worksheet ID cannot be null");
+        }
+        if (orderedSequenceIds == null || orderedSequenceIds.isEmpty()) {
+            throw new DomainValidationException("Sequence order list cannot be null or empty");
+        }
+
+        List<UUID> current = jdbc.queryForList(
+                "SELECT sequence_id FROM worksheets_sequence WHERE worksheet_id = ?",
+                UUID.class, worksheetId);
+
+        if (current.size() != orderedSequenceIds.size()
+                || !new HashSet<>(current).equals(new HashSet<>(orderedSequenceIds))) {
+            throw new DomainValidationException(
+                    "Reordering must include exactly the sequences already on the worksheet");
+        }
+
+        String sql = "UPDATE worksheets_sequence SET position = ? WHERE worksheet_id = ? AND sequence_id = ?";
+        List<Object[]> batchArgs = new ArrayList<>(orderedSequenceIds.size());
+        for (int i = 0; i < orderedSequenceIds.size(); i++) {
+            batchArgs.add(new Object[]{i, worksheetId, orderedSequenceIds.get(i)});
+        }
+
+        try {
+            jdbc.batchUpdate(sql, batchArgs);
+            log.info("Reordered {} sequences on worksheet id={}", orderedSequenceIds.size(), worksheetId);
+        } catch (DataAccessException e) {
+            log.error("Error reordering sequences on worksheet id={}", worksheetId, e);
+            throw new DomainValidationException("Failed to reorder sequences: " + e.getMessage());
+        }
+    }
+
+    /**
      * The curator relation: does this user own a worksheet that contains this sequence?
      *
      * <p>{@code EXISTS} rather than a count — the question is boolean, and Postgres can stop at
@@ -392,7 +448,7 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             SELECT w.id, w.name, w.description, w.owner_id,
                    w.hints_enabled, w.hint_credits_per_task,
                    w.visibility, w.created_at, w.copied_from, w.copied_at,
-                   COALESCE(array_agg(ws.sequence_id ORDER BY ws.sequence_id), '{}') AS sequence_ids
+                   COALESCE(array_agg(ws.sequence_id ORDER BY ws.position, ws.sequence_id), '{}') AS sequence_ids
             FROM worksheets w
             LEFT JOIN worksheets_sequence ws ON ws.worksheet_id = w.id
             WHERE w.owner_id = ?

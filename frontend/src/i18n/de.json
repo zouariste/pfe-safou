@@ -83,6 +83,7 @@
     "alreadyInLibrary": "In deiner Bibliothek",
     "alreadyInLibraryTooltip": "Diese Sequenz liegt bereits in einem deiner Arbeitsblätter.",
     "copyLoginRequired": "Bitte anmelden, um Sequenzen zu kopieren",
+    "addToWorksheetLoginRequired": "Bitte anmelden, um Sequenzen zu einem Arbeitsblatt hinzuzufügen",
     "copyToast": {
       "addedTitle": "Zu „{{name}}“ hinzugefügt",
       "alreadyTitle": "Bereits in „{{name}}“ vorhanden",
@@ -270,7 +271,17 @@
     "batchGenerateDistractors": "Distraktoren für alle Aufgaben generieren",
     "distractorsActive": "Aktiv für Schüler",
     "distractorsInactive": "Deaktiviert für Schüler",
-    "similarTitle": "Das könnte dich auch interessieren"
+    "similarTitle": "Das könnte dich auch interessieren",
+    "addToWorksheet": "Zu Arbeitsblatt hinzufügen",
+    "addToWorksheetTitle": "Zu einem deiner Arbeitsblätter hinzufügen",
+    "loadingWorksheets": "Arbeitsblätter werden geladen...",
+    "noWorksheets": "Du hast noch keine Arbeitsblätter erstellt.",
+    "manageWorksheets": "Arbeitsblätter verwalten",
+    "errorLoadingWorksheets": "Deine Arbeitsblätter konnten nicht geladen werden.",
+    "addToWorksheetSuccess": "Zu „{{name}}“ hinzugefügt!",
+    "addToWorksheetError": "Die Sequenz konnte nicht zum Arbeitsblatt hinzugefügt werden.",
+    "alreadyInWorksheet": "Bereits hinzugefügt",
+    "add": "Hinzufügen"
   },
 
   "solve": {
@@ -428,6 +439,13 @@
     "sequences": "Sequenzen in diesem Arbeitsblatt",
     "noSequences": "Dieses Arbeitsblatt enthält noch keine Sequenzen.",
     "removeSequence": "Sequenz aus Arbeitsblatt entfernen",
+    "dragToReorder": "Zum Umsortieren ziehen",
+    "errorReordering": "Die neue Reihenfolge konnte nicht gespeichert werden.",
+    "detailLevelHeading": "Details",
+    "detailLevelLabel": "Detailgrad pro Sequenz",
+    "detailLevelNone": "Keine",
+    "detailLevelSome": "Einige",
+    "detailLevelAll": "Alle",
     "addSequenceTitle": "Sequenz zum Arbeitsblatt hinzufügen",
     "sequenceUuid": "Sequenz-UUID",
     "sequenceUuids": "Sequenz-UUIDs (Komma, Leerzeichen oder Zeilenumbruch getrennt)",
