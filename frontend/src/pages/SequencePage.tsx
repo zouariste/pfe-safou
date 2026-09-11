@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { TieredTaskSequence, Task } from "../types/models.ts";
+import type { TieredTaskSequence, Task, Worksheet } from "../types/models.ts";
 import { api, apiErrorMessage } from "../lib/api.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useHomePath } from "../hooks/useHomePath.ts";
@@ -54,7 +54,7 @@ export default function SequencePage() {
 
 
 
-    const { user, isLoggedIn, isAdmin } = useAuth();
+    const { user, isLoggedIn, isAdmin, isTeacher } = useAuth();
     const [state, setState] = useState<LoadState>("idle");
     const [seq, setSeq] = useState<TieredTaskSequence | null>(null);
     const [errorMsg, setErrorMsg] = useState("");
@@ -144,6 +144,54 @@ export default function SequencePage() {
     }
 
     const [forking, setForking] = useState(false);
+
+    // Add-to-worksheet: the mirror image of WorksheetPage's "add sequence by search" — here the
+    // sequence is fixed and the teacher picks which of their own worksheets receives it, the
+    // same list/pick shape as WorksheetPage's "assign to class" modal.
+    const canAddToWorksheet = isLoggedIn && (isTeacher || isAdmin);
+    const [showAddToWorksheetModal, setShowAddToWorksheetModal] = useState(false);
+    const [myWorksheets, setMyWorksheets] = useState<Worksheet[]>([]);
+    const [loadingWorksheets, setLoadingWorksheets] = useState(false);
+    const [addingWorksheetId, setAddingWorksheetId] = useState<string | null>(null);
+    const [addToWorksheetError, setAddToWorksheetError] = useState<string | null>(null);
+    const [addToWorksheetSuccess, setAddToWorksheetSuccess] = useState<string | null>(null);
+
+    async function handleOpenAddToWorksheet() {
+        setShowAddToWorksheetModal(true);
+        setAddToWorksheetError(null);
+        setAddToWorksheetSuccess(null);
+        setLoadingWorksheets(true);
+        try {
+            const { data } = await api.get<Worksheet[]>("/worksheets/my");
+            setMyWorksheets(data);
+        } catch {
+            setAddToWorksheetError(t("sequence.errorLoadingWorksheets"));
+        } finally {
+            setLoadingWorksheets(false);
+        }
+    }
+
+    async function handleAddToWorksheet(worksheet: Worksheet) {
+        if (!seq) return;
+        setAddingWorksheetId(worksheet.id);
+        setAddToWorksheetError(null);
+        try {
+            await api.post(`/worksheets/${worksheet.id}/sequences/${seq.id}`);
+            setMyWorksheets((prev) =>
+                prev.map((w) =>
+                    w.id === worksheet.id
+                        ? { ...w, sequenceDTOS: [...w.sequenceDTOS, { id: seq.id, ownerId: seq.ownerId }] }
+                        : w
+                )
+            );
+            setAddToWorksheetSuccess(t("sequence.addToWorksheetSuccess", { name: worksheet.name }));
+            setTimeout(() => setAddToWorksheetSuccess(null), 3000);
+        } catch (err) {
+            setAddToWorksheetError(apiErrorMessage(err, t("sequence.addToWorksheetError")));
+        } finally {
+            setAddingWorksheetId(null);
+        }
+    }
 
     /**
      * Takes a private copy and moves the worksheet onto it, then navigates there.
@@ -425,6 +473,17 @@ export default function SequencePage() {
                     <i className="bi bi-link-45deg"></i>
                     {copied ? t("sequence.copied") : t("sequence.shareSequence")}
                 </button>
+
+                {canAddToWorksheet && (
+                    <button
+                        className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                        onClick={handleOpenAddToWorksheet}
+                        title={t("sequence.addToWorksheetTitle")}
+                    >
+                        <i className="bi bi-journal-plus"></i>
+                        {t("sequence.addToWorksheet")}
+                    </button>
+                )}
 
                 {teacherViewEnabled && (
                     <div className="dropdown">
@@ -969,6 +1028,101 @@ export default function SequencePage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* ADD TO WORKSHEET MODAL */}
+            {showAddToWorksheetModal && (
+                <>
+                    <div className="modal fade show" style={{ display: "block" }} tabIndex={-1}>
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content rounded-4 shadow">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">{t("sequence.addToWorksheetTitle")}</h5>
+                                    <button
+                                        type="button"
+                                        className="btn-close"
+                                        onClick={() => setShowAddToWorksheetModal(false)}
+                                    />
+                                </div>
+                                <div className="modal-body">
+                                    {addToWorksheetError && (
+                                        <div className="alert alert-danger py-2">{addToWorksheetError}</div>
+                                    )}
+                                    {addToWorksheetSuccess && (
+                                        <div className="alert alert-success py-2">{addToWorksheetSuccess}</div>
+                                    )}
+
+                                    {loadingWorksheets ? (
+                                        <div className="text-center py-3">
+                                            <span className="spinner-border spinner-border-sm me-2" />
+                                            {t("sequence.loadingWorksheets")}
+                                        </div>
+                                    ) : myWorksheets.length === 0 ? (
+                                        <div className="alert alert-info mb-0">
+                                            {t("sequence.noWorksheets")}
+                                            <br />
+                                            <button
+                                                className="btn btn-sm btn-outline-primary mt-2"
+                                                onClick={() => {
+                                                    setShowAddToWorksheetModal(false);
+                                                    navigate("/worksheets");
+                                                }}
+                                            >
+                                                {t("sequence.manageWorksheets")}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="list-group">
+                                            {myWorksheets.map((w) => {
+                                                const alreadyAdded = w.sequenceDTOS.some((s) => s.id === seq.id);
+                                                return (
+                                                    <div
+                                                        key={w.id}
+                                                        className="list-group-item d-flex justify-content-between align-items-center"
+                                                    >
+                                                        <div>
+                                                            <strong>{w.name}</strong>
+                                                            {w.description && (
+                                                                <small className="text-muted d-block">{w.description}</small>
+                                                            )}
+                                                        </div>
+                                                        {alreadyAdded ? (
+                                                            <span className="badge bg-secondary-subtle text-secondary-emphasis">
+                                                                {t("sequence.alreadyInWorksheet")}
+                                                            </span>
+                                                        ) : (
+                                                            <button
+                                                                className="btn btn-sm btn-outline-success"
+                                                                onClick={() => handleAddToWorksheet(w)}
+                                                                disabled={addingWorksheetId === w.id}
+                                                            >
+                                                                {addingWorksheetId === w.id ? (
+                                                                    <span className="spinner-border spinner-border-sm" />
+                                                                ) : (
+                                                                    t("sequence.add")
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="modal-footer">
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => setShowAddToWorksheetModal(false)}
+                                    >
+                                        {t("common.close")}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="modal-backdrop fade show"></div>
+                </>
             )}
 
             {/* TaskEditModal */}

@@ -270,7 +270,17 @@
     "batchGenerateDistractors": "Distraktoren für alle Aufgaben generieren",
     "distractorsActive": "Aktiv für Schüler",
     "distractorsInactive": "Deaktiviert für Schüler",
-    "similarTitle": "Das könnte dich auch interessieren"
+    "similarTitle": "Das könnte dich auch interessieren",
+    "addToWorksheet": "Zu Arbeitsblatt hinzufügen",
+    "addToWorksheetTitle": "Zu einem deiner Arbeitsblätter hinzufügen",
+    "loadingWorksheets": "Arbeitsblätter werden geladen...",
+    "noWorksheets": "Du hast noch keine Arbeitsblätter erstellt.",
+    "manageWorksheets": "Arbeitsblätter verwalten",
+    "errorLoadingWorksheets": "Deine Arbeitsblätter konnten nicht geladen werden.",
+    "addToWorksheetSuccess": "Zu „{{name}}“ hinzugefügt!",
+    "addToWorksheetError": "Die Sequenz konnte nicht zum Arbeitsblatt hinzugefügt werden.",
+    "alreadyInWorksheet": "Bereits hinzugefügt",
+    "add": "Hinzufügen"
   },
 
   "solve": {
