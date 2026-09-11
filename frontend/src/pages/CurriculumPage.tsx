@@ -723,7 +723,15 @@ export default function CurriculumPage() {
                                         onClick={() => selectTopic(topic)}
                                     >
                                         <div>
-                                            <h6 className="mb-1 fw-semibold">{topicLabel(topic)}</h6>
+                                            <h6 className="mb-1 fw-semibold">
+                                                {topicLabel(topic)}
+                                                <span
+                                                    className="badge bg-secondary-subtle text-secondary-emphasis ms-2"
+                                                    title={t("curriculum.sequenceCountTooltip", { count: topic.sequenceCount }) as string}
+                                                >
+                                                    {topic.sequenceCount}
+                                                </span>
+                                            </h6>
                                             {description(topic) && (
                                                 <p className="mb-0 text-muted small">{description(topic)}</p>
                                             )}
@@ -750,6 +758,31 @@ export default function CurriculumPage() {
             {/* Level 3: Topic detail + generation */}
             {selectedTopic && (
                 <div>
+                    {/* Jump to the Library, pre-filtered by this topic's mapped concepts — so it
+                        surfaces both sequences generated from this topic and any others manually
+                        tagged with the same concepts, not just this topic's own generations.
+                        Open to everyone, including students/anonymous — it's a read-only link,
+                        not a privileged action, so it sits outside the teacher-only generate card. */}
+                    <div className="d-flex justify-content-end mb-3">
+                        <span
+                            className="d-inline-block"
+                            title={topicConcepts.length === 0 ? (t("curriculum.viewSequencesDisabled") as string) : undefined}
+                        >
+                            <button
+                                className="btn btn-sm btn-outline-primary"
+                                disabled={topicConcepts.length === 0}
+                                onClick={() => {
+                                    const params = new URLSearchParams();
+                                    params.set("concepts", topicConcepts.join(","));
+                                    navigate(`/library?${params.toString()}`);
+                                }}
+                            >
+                                <i className="bi bi-collection me-1"></i>
+                                {t("curriculum.viewSequences")}
+                            </button>
+                        </span>
+                    </div>
+
                     {/* Code examples preview */}
                     <div className="card mb-4 border-0 shadow-sm">
                         <div className="card-header bg-light d-flex align-items-center justify-content-between">

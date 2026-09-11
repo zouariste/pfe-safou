@@ -190,9 +190,26 @@ public class CurriculumGenerationService {
         return topicRepo.findTopLevel();
     }
 
-    /** Returns sub-topics for a given parent topic. */
+    /**
+     * Returns sub-topics for a given parent topic, each carrying how many sequences match its
+     * mapped concepts — the Curriculum page's per-topic count badge.
+     */
     public List<CurriculumTopicDTO> getSubTopics(UUID parentId) {
-        return topicRepo.findByParentId(parentId);
+        List<CurriculumTopicDTO> topics = topicRepo.findByParentId(parentId);
+        attachSequenceCounts(topics);
+        return topics;
+    }
+
+    /** Fills in {@link CurriculumTopicDTO#getSequenceCount()} for a batch of topics in one query. */
+    private void attachSequenceCounts(List<CurriculumTopicDTO> topics) {
+        if (topics.isEmpty()) {
+            return;
+        }
+        List<UUID> ids = topics.stream().map(CurriculumTopicDTO::getId).toList();
+        Map<UUID, Integer> counts = topicRepo.countSequencesByTopicIds(ids);
+        for (CurriculumTopicDTO topic : topics) {
+            topic.setSequenceCount(counts.getOrDefault(topic.getId(), 0));
+        }
     }
 
     /** Returns code examples for a given topic and language. */

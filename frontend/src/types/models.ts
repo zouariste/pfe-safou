@@ -116,6 +116,12 @@ export interface CurriculumTopic {
     // db/init/12_migration_curriculum_education_level.sql. Read it through
     // src/lib/curriculumFilter.ts, which treats anything else as SCHOOL.
     educationLevel: string | null;
+    /**
+     * How many sequences match this topic's mapped concepts — the same set "View sequences"
+     * filters the Library by. Only populated on sub-topics (GET /curriculum/topics/{id}/children);
+     * top-level topics carry no concept mapping of their own and always read 0.
+     */
+    sequenceCount: number;
 }
 
 export interface CurriculumCodeExample {
