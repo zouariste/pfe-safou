@@ -796,6 +796,7 @@ export default function WorksheetPage() {
                                     id={s.id}
                                     draggable={!!canEdit}
                                     dragHandleLabel={t("worksheet.dragToReorder")}
+                                    multiline={teacherViewEnabled && detailLevel !== "none"}
                                     title={teacherViewEnabled ? t("worksheet.sequenceIdTooltip", { id: s.id }) : undefined}
                                 >
                                     <div

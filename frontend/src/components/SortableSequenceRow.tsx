@@ -14,6 +14,13 @@ interface SortableSequenceRowProps {
      */
     draggable: boolean;
     dragHandleLabel: string;
+    /**
+     * True when the row's content can span multiple lines (worksheet teacher view's "some"/"all"
+     * detail levels). Top-aligns the drag handle and content instead of vertically centering them,
+     * so the handle sits next to the title rather than drifting to the middle of a paragraph.
+     * False (default) keeps the plain single-line row centered, as it always was.
+     */
+    multiline?: boolean;
     className?: string;
     title?: string;
     children: ReactNode;
@@ -30,6 +37,7 @@ export default function SortableSequenceRow({
     id,
     draggable,
     dragHandleLabel,
+    multiline = false,
     className,
     title,
     children,
@@ -45,22 +53,28 @@ export default function SortableSequenceRow({
         opacity: isDragging ? 0.5 : 1,
     };
 
+    const alignClass = multiline ? "align-items-start" : "align-items-center";
+
     return (
         <ListGroup.Item ref={setNodeRef} style={style} className={className} title={title}>
-            <div className="d-flex align-items-start gap-2">
+            <div className={`d-flex ${alignClass} gap-2`}>
                 {draggable && (
                     <span
                         {...attributes}
                         {...listeners}
                         className="text-muted flex-shrink-0"
-                        style={{ cursor: isDragging ? "grabbing" : "grab", touchAction: "none", marginTop: "0.2rem" }}
+                        style={{
+                            cursor: isDragging ? "grabbing" : "grab",
+                            touchAction: "none",
+                            marginTop: multiline ? "0.2rem" : undefined,
+                        }}
                         aria-label={dragHandleLabel}
                         title={dragHandleLabel}
                     >
                         <i className="bi bi-list fs-5"></i>
                     </span>
                 )}
-                <div className="flex-grow-1 d-flex justify-content-between align-items-start">
+                <div className={`flex-grow-1 d-flex justify-content-between ${alignClass}`}>
                     {children}
                 </div>
             </div>
