@@ -82,6 +82,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/tasks/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/worksheets/**").permitAll()
 
+                        // The concept catalogue is a list of concept names, nothing more, and
+                        // pages an anonymous visitor can open fetch it on mount. Without this
+                        // it fell through to anyRequest().authenticated() and answered 403,
+                        // which the client read as an expired session.
+                        .requestMatchers(HttpMethod.GET, "/api/concepts").permitAll()
+
                         // Task generation: permitAll at HTTP level, student-check in controller
                         .requestMatchers(HttpMethod.POST, "/api/tasks/generate").permitAll()
 
