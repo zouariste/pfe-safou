@@ -121,6 +121,12 @@
       "any": "Beliebig",
       "all": "Alle"
     },
+    "activeConcepts": "Aktive Konzepte",
+    "removeConcept": "Konzept „{{concept}}“ entfernen",
+    "conceptMode": {
+      "any": "Beliebig",
+      "all": "Alle"
+    },
     "ownerLabel": "Besitzer",
     "ownerAny": "Alle",
     "ownerMe": "Nur meine",
@@ -132,6 +138,11 @@
     "hideTags": "Ausblenden",
     "showTags": "Anzeigen",
     "showMoreTags": "Mehr anzeigen",
+    "conceptsLabel": "Konzepte",
+    "noConceptsYet": "Noch keine Konzepte verfügbar",
+    "hideConcepts": "Ausblenden",
+    "showConcepts": "Anzeigen",
+    "showMoreConcepts": "Mehr anzeigen",
     "editTags": "Tags bearbeiten",
     "doneEditing": "Fertig",
     "addTags": "Tags hinzufügen",

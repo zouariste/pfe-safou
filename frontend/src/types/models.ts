@@ -329,6 +329,10 @@ export interface LibraryFacets {
     topTags: LibraryFacetBucket[];
     /** How many distinct tags exist under the current filters, regardless of how many topTags carries. */
     totalTagCount: number;
+    /** Concept-facet mirror of topTags, bounded by `conceptsLimit`. */
+    topConcepts: LibraryFacetBucket[];
+    /** Concept-facet mirror of totalTagCount. */
+    totalConceptCount: number;
     ownership: { mine: number; others: number };
 }
 

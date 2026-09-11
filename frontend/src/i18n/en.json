@@ -121,6 +121,12 @@
       "any": "Any",
       "all": "All"
     },
+    "activeConcepts": "Active concepts",
+    "removeConcept": "Remove concept \"{{concept}}\"",
+    "conceptMode": {
+      "any": "Any",
+      "all": "All"
+    },
     "ownerLabel": "Owner",
     "ownerAny": "All",
     "ownerMe": "Mine",
@@ -132,6 +138,11 @@
     "hideTags": "Hide",
     "showTags": "Show",
     "showMoreTags": "Show more",
+    "conceptsLabel": "Concepts",
+    "noConceptsYet": "No concepts yet",
+    "hideConcepts": "Hide",
+    "showConcepts": "Show",
+    "showMoreConcepts": "Show more",
     "editTags": "Edit tags",
     "doneEditing": "Done",
     "addTags": "Add tags",
