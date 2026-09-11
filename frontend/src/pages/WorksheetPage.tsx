@@ -29,6 +29,11 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import SortableSequenceRow from "../components/SortableSequenceRow.tsx";
+import TagChip from "../components/TagChip.tsx";
+import { useSequenceDetails } from "../hooks/useSequenceDetails.ts";
+
+/** How much per-sequence detail the teacher-view list shows. See useSequenceDetails. */
+type SequenceDetailLevel = "none" | "some" | "all";
 
 export default function WorksheetPage() {
     const { t } = useTranslation();
@@ -112,6 +117,18 @@ export default function WorksheetPage() {
     const canCopy = isLoggedIn && (isTeacher || isAdmin) && isForeignWorksheet;
     const canAssign = isLoggedIn && (isTeacher || isAdmin);
     const canEdit = teacherViewEnabled && isOwnerOrAdmin;
+
+    // How much per-sequence detail the teacher-view list shows below the "Sequence N" label.
+    // "some" (language + description) is the default — going by number and UUID alone is not
+    // enough to tell sequences apart at a glance. Fetching is lazy and level-gated: see
+    // useSequenceDetails.
+    const [detailLevel, setDetailLevel] = useState<SequenceDetailLevel>("some");
+    const sequenceIds = worksheet?.sequenceDTOS.map((s) => s.id) ?? [];
+    const { details: sequenceDetails, tags: sequenceTagsById } = useSequenceDetails(
+        sequenceIds,
+        teacherViewEnabled && detailLevel !== "none",
+        detailLevel === "all",
+    );
 
     // Edit worksheet state
     const [editing, setEditing] = useState(false);
@@ -699,26 +716,68 @@ export default function WorksheetPage() {
             )}
 
             <h3 className="mt-4">{t("worksheet.sequences")}</h3>
-            <div className="d-flex justify-content-end align-items-center gap-2 mb-3">
-                <button
-                    className={`btn btn-sm d-flex align-items-center gap-1 ${
-                        copied ? "btn-success" : "btn-outline-secondary"
-                    }`}
-                    onClick={handleCopyLink}
-                    title={t("worksheet.copyLinkTitle")}
-                >
-                    <i className="bi bi-link-45deg"></i>
-                    {copied ? t("worksheet.copied") : t("worksheet.shareWorksheet")}
-                </button>
+            <div className="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
+                <div>
+                    {teacherViewEnabled && (
+                        <div className="d-flex align-items-center gap-2">
+                            <span className="small text-muted fw-semibold">
+                                {t("worksheet.detailLevelHeading")}
+                            </span>
+                            <div
+                                className="btn-group btn-group-sm"
+                                role="group"
+                                aria-label={t("worksheet.detailLevelLabel") as string}
+                            >
+                                <button
+                                    type="button"
+                                    className={`btn ${detailLevel === "none" ? "btn-secondary" : "btn-outline-secondary"}`}
+                                    onClick={() => setDetailLevel("none")}
+                                    title={t("worksheet.detailLevelLabel") as string}
+                                >
+                                    {t("worksheet.detailLevelNone")}
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`btn ${detailLevel === "some" ? "btn-secondary" : "btn-outline-secondary"}`}
+                                    onClick={() => setDetailLevel("some")}
+                                    title={t("worksheet.detailLevelLabel") as string}
+                                >
+                                    {t("worksheet.detailLevelSome")}
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`btn ${detailLevel === "all" ? "btn-secondary" : "btn-outline-secondary"}`}
+                                    onClick={() => setDetailLevel("all")}
+                                    title={t("worksheet.detailLevelLabel") as string}
+                                >
+                                    {t("worksheet.detailLevelAll")}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
-                {teacherViewEnabled && (
+                <div className="d-flex align-items-center gap-2">
                     <button
-                        className="btn btn-outline-secondary btn-sm"
-                        onClick={() => setShowModal(true)}
+                        className={`btn btn-sm d-flex align-items-center gap-1 ${
+                            copied ? "btn-success" : "btn-outline-secondary"
+                        }`}
+                        onClick={handleCopyLink}
+                        title={t("worksheet.copyLinkTitle")}
                     >
-                        + {t("worksheet.addSequence")}
+                        <i className="bi bi-link-45deg"></i>
+                        {copied ? t("worksheet.copied") : t("worksheet.shareWorksheet")}
                     </button>
-                )}
+
+                    {teacherViewEnabled && (
+                        <button
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={() => setShowModal(true)}
+                        >
+                            + {t("worksheet.addSequence")}
+                        </button>
+                    )}
+                </div>
             </div>
             {worksheet.sequenceDTOS?.length ? (
                 <DndContext
@@ -763,6 +822,55 @@ export default function WorksheetPage() {
                                             <small className="text-muted ms-2">
                                                 ({s.id ? s.id.slice(0, 8) : "?"}...)
                                             </small>
+                                        )}
+
+                                        {/* Detail levels "some"/"all": going by number and UUID alone
+                                            told a teacher nothing about which sequence was which — see
+                                            useSequenceDetails for what's fetched at each level. */}
+                                        {teacherViewEnabled && detailLevel !== "none" && (
+                                            sequenceDetails[s.id] ? (
+                                                <div className="mt-1">
+                                                    <div className="d-flex flex-wrap gap-1 align-items-center mb-1">
+                                                        <span className="badge text-bg-primary text-uppercase">
+                                                            {sequenceDetails[s.id].programmingLanguage}
+                                                        </span>
+                                                        {detailLevel === "all" && (
+                                                            <span className="badge text-bg-light text-muted">
+                                                                {t("worksheet.tierCount", {
+                                                                    count: sequenceDetails[s.id].tierCount,
+                                                                })}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {sequenceDetails[s.id].taskDescription && (
+                                                        <p
+                                                            className="small text-muted mb-1"
+                                                            style={{ maxWidth: 560 }}
+                                                        >
+                                                            {sequenceDetails[s.id].taskDescription}
+                                                        </p>
+                                                    )}
+                                                    {detailLevel === "all" && (
+                                                        <div className="d-flex flex-wrap gap-1 align-items-center">
+                                                            {sequenceDetails[s.id].concepts.map((c) => (
+                                                                <span
+                                                                    key={c}
+                                                                    className="badge bg-secondary-subtle text-secondary-emphasis"
+                                                                >
+                                                                    {c}
+                                                                </span>
+                                                            ))}
+                                                            {(sequenceTagsById[s.id] ?? []).map((tag) => (
+                                                                <TagChip key={`${tag.tagName}-${tag.source}`} tag={tag} />
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="mt-1">
+                                                    <span className="spinner-border spinner-border-sm text-secondary" />
+                                                </div>
+                                            )
                                         )}
                                     </div>
 

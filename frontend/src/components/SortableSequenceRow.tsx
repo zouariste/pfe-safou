@@ -47,20 +47,20 @@ export default function SortableSequenceRow({
 
     return (
         <ListGroup.Item ref={setNodeRef} style={style} className={className} title={title}>
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-start gap-2">
                 {draggable && (
                     <span
                         {...attributes}
                         {...listeners}
                         className="text-muted flex-shrink-0"
-                        style={{ cursor: isDragging ? "grabbing" : "grab", touchAction: "none" }}
+                        style={{ cursor: isDragging ? "grabbing" : "grab", touchAction: "none", marginTop: "0.2rem" }}
                         aria-label={dragHandleLabel}
                         title={dragHandleLabel}
                     >
                         <i className="bi bi-list fs-5"></i>
                     </span>
                 )}
-                <div className="flex-grow-1 d-flex justify-content-between align-items-center">
+                <div className="flex-grow-1 d-flex justify-content-between align-items-start">
                     {children}
                 </div>
             </div>
