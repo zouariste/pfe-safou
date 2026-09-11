@@ -73,6 +73,32 @@ function forceLogout(): void {
     window.location.replace(`${uiBaseURL}login`);
 }
 
+/**
+ * Whether an auth failure means a session was lost, rather than there never having been one.
+ *
+ * <p>CodeOwl serves anonymous visitors on purpose: a student opens a worksheet by link, with no
+ * account, and solves it. Those pages also make requests that an anonymous caller is not
+ * entitled to make — the concept catalogue behind the picker's autocomplete, for one — and the
+ * answer means nothing more than "not for you".
+ *
+ * <p>Treating that as an expired session logged out someone who had never logged in and sent
+ * them to /login, which made the start page and every sequence unreachable without an account.
+ * Where there is no token there is no session to lose, so the failure belongs to the caller.
+ *
+ * <p>Both codes are checked because the backend answers 403, not 401, when there is no
+ * principal at all — an anonymous caller and a caller with a rejected token are indistinguishable
+ * from the status line, which is precisely why the token has to be consulted separately.
+ *
+ * @param status   HTTP status of the failed response, or undefined for a transport error
+ * @param hasToken whether a JWT is currently stored
+ */
+export function signalsSessionLoss(status: number | undefined, hasToken: boolean): boolean {
+    if (!hasToken) {
+        return false;
+    }
+    return status === 401 || status === 403;
+}
+
 /** Flag to prevent multiple concurrent /auth/me validation calls */
 let isValidatingSession = false;
 
@@ -83,6 +109,12 @@ api.interceptors.response.use(
         const status = error.response?.status;
 
         if (isOnAuthPage()) {
+            return Promise.reject(error);
+        }
+
+        // Anonymous visitors have no session to lose. Without this the 403 branch below would
+        // also evict them: it probes /auth/me, which cannot succeed without a token.
+        if (!signalsSessionLoss(status, !!localStorage.getItem("jwt"))) {
             return Promise.reject(error);
         }
 
