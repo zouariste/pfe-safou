@@ -19,7 +19,6 @@
 package de.uni_passau.fim.se2.application.service;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * The shape of a free-text query, shared by everything in the product that has a search box.
@@ -30,7 +29,7 @@ import java.util.Map;
  * different rules about umlauts or half-typed words, and two copies of this logic would have
  * drifted apart the first time somebody fixed one of them.
  *
- * <p>{@link SequenceSearchService} keeps thin delegates for the two members its own test pins
+ * <p>{@link SequenceSearchService} keeps a thin delegate for the member its own test pins
  * down, so that test still describes the behaviour where it was written.
  */
 final class FullTextSearch {
@@ -39,31 +38,28 @@ final class FullTextSearch {
     }
 
     /**
-     * SQL fragment for a free-text tsquery that ORs together four ways a search term can match,
-     * combined with the tsquery {@code ||} (OR) operator. Every occurrence takes four bind
+     * SQL fragment for a free-text tsquery that ORs together two ways a search term can match,
+     * combined with the tsquery {@code ||} (OR) operator. Every occurrence takes two bind
      * parameters, filled in by {@link #addTsqueryParams}, in this order:
      *
      * <ol>
-     *   <li>{@code websearch_to_tsquery(query)} — the query as typed, with real operators
-     *       ("exact phrase", {@code -exclude}, {@code or}).</li>
-     *   <li>{@code websearch_to_tsquery(foldedQuery)} — see {@link #foldGermanUmlauts}: rows
-     *       written before the semantic-tagger prompt bug was fixed spell umlauts as
-     *       "ae"/"oe"/"ue"/"ss" digraphs. Folding the query the same way lets a search typed
-     *       with proper umlauts still find that older data, without rewriting the stored text
-     *       or rebuilding the index.</li>
-     *   <li>a prefix match on every word of {@code query} (see {@link #prefixTsquerySubexpr()})
-     *       — the search boxes are live and debounced, so most keystrokes submit a word that is
-     *       still being typed. {@code websearch_to_tsquery} matches whole words only, so without
-     *       this branch search-as-you-type shows nothing until the last word is finished. It
-     *       loses websearch's operators, which is why it is additive rather than a
-     *       replacement.</li>
-     *   <li>the same prefix match on {@code foldedQuery} — typing "prü" while an old row holds
-     *       "prue" needs the fold and the prefix at once.</li>
+     *   <li>{@code websearch_to_tsquery(search_normalize(query))} — the query as typed, with
+     *       real operators ("exact phrase", {@code -exclude}, {@code or}), matched after the
+     *       same normalization {@code search_vector} was generated with (see
+     *       {@code db/init/19_migration_unaccent_search.sql}). {@code search_normalize} folds
+     *       German umlauts to their digraph spelling and strips every other language's accents
+     *       via the {@code unaccent} extension, so "fakultaet" and "Fakultät" — whichever one is
+     *       stored and whichever one is typed — normalize to the same lexeme.</li>
+     *   <li>a prefix match on every word of {@code search_normalize(query)} (see
+     *       {@link #prefixTsquerySubexpr()}) — the search boxes are live and debounced, so most
+     *       keystrokes submit a word that is still being typed. {@code websearch_to_tsquery}
+     *       matches whole words only, so without this branch search-as-you-type shows nothing
+     *       until the last word is finished. It loses websearch's operators, which is why it is
+     *       additive rather than a replacement.</li>
      * </ol>
      */
     static final String TSQUERY_EXPR = """
-            (websearch_to_tsquery('simple', ?) || websearch_to_tsquery('simple', ?) \
-            || %1$s || %1$s)\
+            (websearch_to_tsquery('simple', public.search_normalize(?)) || %1$s)\
             """.formatted(prefixTsquerySubexpr());
 
     /**
@@ -78,41 +74,21 @@ final class FullTextSearch {
         return """
                 COALESCE(
                     (SELECT to_tsquery('simple', string_agg(lexeme || ':*', ' & '))
-                       FROM unnest(to_tsvector('simple', ?)) AS u(lexeme, positions, weights)),
+                       FROM unnest(to_tsvector('simple', public.search_normalize(?))) AS u(lexeme, positions, weights)),
                     ''::tsquery
                 )""";
     }
 
     /**
-     * Adds the four bind parameters one {@link #TSQUERY_EXPR} occurrence needs, in order.
+     * Adds the two bind parameters one {@link #TSQUERY_EXPR} occurrence needs, in order.
      *
      * <p>The SQL placeholders are position-based, so a reorder here silently breaks every query
      * using the expression, with no compiler error to catch it. That is what
      * {@code SequenceSearchServiceTest} pins down.
      */
     static void addTsqueryParams(List<Object> params, String query) {
-        String folded = foldGermanUmlauts(query);
         params.add(query);
-        params.add(folded);
         params.add(query);
-        params.add(folded);
-    }
-
-    /** ä/ö/ü/ß → ae/oe/ue/ss (both cases); every other character is left untouched. */
-    private static final Map<Character, String> UMLAUT_FOLD = Map.of(
-            'ä', "ae", 'ö', "oe", 'ü', "ue",
-            'Ä', "Ae", 'Ö', "Oe", 'Ü', "Ue",
-            'ß', "ss"
-    );
-
-    static String foldGermanUmlauts(String s) {
-        StringBuilder sb = new StringBuilder(s.length());
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            String folded = UMLAUT_FOLD.get(c);
-            sb.append(folded != null ? folded : String.valueOf(c));
-        }
-        return sb.toString();
     }
 
     /** Clamps a requested page size into what the server is willing to serve. */

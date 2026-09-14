@@ -132,16 +132,15 @@ class WorksheetSearchServiceTest {
         }
 
         @Test
-        @DisplayName("a free-text query binds the umlaut and prefix variants the shared helper needs")
-        void freeTextBindsAllFourVariants() {
+        @DisplayName("a free-text query binds the prefix variant the shared helper needs")
+        void freeTextBindsBothVariants() {
             WhereClause clause = where("prüfung", null, false, USER);
 
-            // Three tsquery expressions (worksheet, sequence, task), four parameters each.
-            assertAll(
-                    () -> assertEquals(12, clause.params().stream()
-                            .filter(p -> "prüfung".equals(p) || "pruefung".equals(p)).count()),
-                    () -> assertTrue(clause.params().contains("pruefung"),
-                            "old rows spell it 'Pruefung'; without the fold they are unfindable"));
+            // Three tsquery expressions (worksheet, sequence, task), two parameters each —
+            // umlaut folding now happens in SQL via search_normalize, applied identically to
+            // both the query and the generated search_vector columns, so the query itself is
+            // bound as typed rather than pre-folded in Java.
+            assertEquals(6, clause.params().stream().filter("prüfung"::equals).count());
         }
     }
 
