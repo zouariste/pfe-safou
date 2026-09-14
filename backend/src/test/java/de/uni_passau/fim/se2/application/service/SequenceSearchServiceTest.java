@@ -26,18 +26,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The pure-logic pieces of the prefix-matching free-text search: the fixed parameter order every
- * {@link SequenceSearchService#TSQUERY_EXPR} occurrence relies on.
+ * {@link SequenceSearchService#TSQUERY_EXPR} / {@link SequenceSearchService#HIGHLIGHT_TSQUERY_EXPR}
+ * occurrence relies on.
  *
- * <p>Umlaut tolerance itself is no longer Java-side logic to unit test here — {@code
- * search_normalize} (folding German umlauts to their digraph spelling, then stripping every
- * other language's accents via the {@code unaccent} extension) runs in Postgres, applied
+ * <p>Umlaut tolerance for <em>matching</em> is no longer Java-side logic to unit test here —
+ * {@code search_normalize} (folding German umlauts to their digraph spelling, then stripping
+ * every other language's accents via the {@code unaccent} extension) runs in Postgres, applied
  * identically to the generated {@code search_vector} columns and to the query text. See {@code
  * db/init/19_migration_unaccent_search.sql} and {@code MarketplaceJourneyDatabaseTest} /
  * {@code WorksheetSearchDatabaseTest} for the behaviour that matters.
+ *
+ * <p><em>Highlighting</em> still has Java-side umlaut logic, because {@code ts_headline}
+ * re-tokenizes raw column text rather than reading {@code search_vector} and so cannot use the
+ * same normalized query — {@link SequenceSearchService#addHighlightTsqueryParams} folds and
+ * expands the query for that reason alone; see its tests below and
+ * {@code FullTextSearch#HIGHLIGHT_TSQUERY_EXPR}'s Javadoc for why.
  *
  * <p>What this class deliberately does NOT cover: whether the SQL itself actually matches rows in
  * Postgres. The project has no database-integration test setup (no Testcontainers, no live-DB
@@ -117,6 +125,59 @@ class SequenceSearchServiceTest {
                 assertTrue(depth >= 0, "unbalanced parentheses in TSQUERY_EXPR");
             }
             assertEquals(0, depth, "unbalanced parentheses in TSQUERY_EXPR");
+        }
+    }
+
+    @Nested
+    @DisplayName("addHighlightTsqueryParams")
+    class AddHighlightTsqueryParams {
+
+        @Test
+        @DisplayName("adds the query as typed, folded to digraphs, and expanded to umlauts — six params")
+        void addsSixParamsInOrder() {
+            List<Object> params = new ArrayList<>();
+            SequenceSearchService.addHighlightTsqueryParams(params, "Prüfung");
+
+            // Order matters: it must line up 1:1 with HIGHLIGHT_TSQUERY_EXPR's six '?'
+            // placeholders (as typed, folded, expanded — each with its own prefix-match
+            // sibling). Unlike addTsqueryParams, this is NOT search_normalize'd in SQL: ts_headline
+            // re-tokenizes the raw column text, so what it needs is the query in whichever raw
+            // spellings could plausibly appear in that raw text.
+            assertEquals(List.of("Prüfung", "Prüfung", "Pruefung", "Pruefung", "Prüfung", "Prüfung"), params);
+        }
+
+        @Test
+        @DisplayName("expands a digraph query to the umlaut spelling too, not just folds an umlaut one")
+        void expandsDigraphsAsWellAsFolding() {
+            List<Object> params = new ArrayList<>();
+            SequenceSearchService.addHighlightTsqueryParams(params, "fakultaet");
+
+            // This is the direction the old, Java-side fold never covered: a query typed without
+            // umlauts must still be able to highlight a row spelled with them.
+            assertEquals(List.of("fakultaet", "fakultaet", "fakultaet", "fakultaet", "fakultät", "fakultät"),
+                    params);
+        }
+    }
+
+    @Nested
+    @DisplayName("HIGHLIGHT_TSQUERY_EXPR")
+    class HighlightTsqueryExprShape {
+
+        @Test
+        @DisplayName("has exactly six '?' placeholders, matching addHighlightTsqueryParams' six params")
+        void hasExactlySixPlaceholders() {
+            long placeholderCount =
+                    SequenceSearchService.HIGHLIGHT_TSQUERY_EXPR.chars().filter(c -> c == '?').count();
+            assertEquals(6, placeholderCount);
+        }
+
+        @Test
+        @DisplayName("does not normalize the query, unlike TSQUERY_EXPR")
+        void doesNotNormalize() {
+            // ts_headline re-tokenizes the raw, un-normalized column text on every call rather
+            // than reading search_vector, so a search_normalize'd query would never match it in
+            // either direction. See FullTextSearch#HIGHLIGHT_TSQUERY_EXPR.
+            assertFalse(SequenceSearchService.HIGHLIGHT_TSQUERY_EXPR.contains("search_normalize"));
         }
     }
 }

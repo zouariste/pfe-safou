@@ -29,7 +29,7 @@ import java.util.List;
  * different rules about umlauts or half-typed words, and two copies of this logic would have
  * drifted apart the first time somebody fixed one of them.
  *
- * <p>{@link SequenceSearchService} keeps a thin delegate for the member its own test pins
+ * <p>{@link SequenceSearchService} keeps thin delegates for the members its own test pins
  * down, so that test still describes the behaviour where it was written.
  */
 final class FullTextSearch {
@@ -89,6 +89,77 @@ final class FullTextSearch {
     static void addTsqueryParams(List<Object> params, String query) {
         params.add(query);
         params.add(query);
+    }
+
+    /**
+     * SQL fragment for the tsquery {@code ts_headline} highlights against — deliberately
+     * <em>not</em> {@link #TSQUERY_EXPR}, and for a reason specific to how {@code ts_headline}
+     * works: it re-tokenizes the raw, un-normalized column text every time it runs, rather than
+     * reading the already-normalized {@code search_vector}. A query normalized through {@code
+     * search_normalize} (folding "Fakultät" and "fakultaet" to the same lexeme) therefore stops
+     * matching the raw text's own lexeme entirely — not "the wrong direction" but neither
+     * direction, including the query spelled exactly like the stored text. {@code TSQUERY_EXPR}
+     * decides <em>which rows</em> match, correctly, via the generated column; this decides which
+     * word in a row that already matched gets wrapped in {@code <mark>}, which needs its own
+     * tsquery built from the raw, un-normalized text on both sides instead.
+     *
+     * <p>ORs together three spellings of the query, each with its own prefix-match sibling (see
+     * {@link #prefixTsquerySubexpr()}), six bind parameters total, filled in by {@link
+     * #addHighlightTsqueryParams} in this order:
+     *
+     * <ol>
+     *   <li>the query as typed — matches a row spelled exactly the same way.</li>
+     *   <li>the query folded ä/ö/ü→ae/oe/ue (see {@link #foldToDigraphs}) — matches a row
+     *       written before the semantic-tagger prompt was fixed, which spells umlauts as
+     *       digraphs.</li>
+     *   <li>the query expanded ae/oe/ue→ä/ö/ü (see {@link #expandDigraphsToUmlauts}) — matches
+     *       a row spelled with real umlauts when the query was typed without them.</li>
+     * </ol>
+     *
+     * <p>The fold and the expansion are both ambiguous in the general case ("Aeon", "Klasse")
+     * the way {@code search_normalize} is not, which is exactly why they are confined to
+     * highlighting: which rows come back is decided by {@code TSQUERY_EXPR} alone, so the worst
+     * an ambiguous branch here can do is mark a coincidental word inside a row that already
+     * qualified on other grounds — never change the result set itself.
+     */
+    static final String HIGHLIGHT_TSQUERY_EXPR = """
+            (websearch_to_tsquery('simple', ?) || %1$s \
+            || websearch_to_tsquery('simple', ?) || %1$s \
+            || websearch_to_tsquery('simple', ?) || %1$s)\
+            """.formatted(prefixTsquerySubexprRaw());
+
+    /** Like {@link #prefixTsquerySubexpr()} but without the {@code search_normalize} wrapper — see {@link #HIGHLIGHT_TSQUERY_EXPR}. */
+    private static String prefixTsquerySubexprRaw() {
+        return """
+                COALESCE(
+                    (SELECT to_tsquery('simple', string_agg(lexeme || ':*', ' & '))
+                       FROM unnest(to_tsvector('simple', ?)) AS u(lexeme, positions, weights)),
+                    ''::tsquery
+                )""";
+    }
+
+    /** @see #HIGHLIGHT_TSQUERY_EXPR */
+    static void addHighlightTsqueryParams(List<Object> params, String query) {
+        String folded = foldToDigraphs(query);
+        String expanded = expandDigraphsToUmlauts(query);
+        params.add(query);
+        params.add(query);
+        params.add(folded);
+        params.add(folded);
+        params.add(expanded);
+        params.add(expanded);
+    }
+
+    /** ä/ö/ü → ae/oe/ue (both cases); every other character is left untouched. */
+    private static String foldToDigraphs(String s) {
+        return s.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue")
+                .replace("Ä", "Ae").replace("Ö", "Oe").replace("Ü", "Ue");
+    }
+
+    /** ae/oe/ue → ä/ö/ü (both cases); every other character is left untouched. */
+    private static String expandDigraphsToUmlauts(String s) {
+        return s.replace("ae", "ä").replace("oe", "ö").replace("ue", "ü")
+                .replace("Ae", "Ä").replace("Oe", "Ö").replace("Ue", "Ü");
     }
 
     /** Clamps a requested page size into what the server is willing to serve. */
