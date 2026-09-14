@@ -54261,7 +54261,6 @@ bed92a71-8489-4fa7-88bb-c970d0a18409	java	public class Contract {\n    public in
 --
 
 COPY public.users (user_id, email, first_name, last_name, password_hash, role, is_verified, is_active, created_at, updated_at) FROM stdin;
-8d47114c-4c0c-481b-bff3-b74faf8a8990	lucacisternino02@gmail.com	Luca	Cisternino	$argon2id$eSEi0iaRk02/6CR7Ur1HYw==$x8r6ZNVo8VdIyUn/Y1XWvYmYAB5eT54KxFRWxU5auvM=	ADMIN	t	t	2026-03-25 16:53:58.72849	2026-03-25 16:54:41.075131
 \.
 
 
