@@ -16,7 +16,34 @@
     "marketplace": "Marktplatz",
     "libraryAdmin": "Tag-Kuratierung",
     "databaseTools": "Datenbank-Tools",
-    "worksheets": "Arbeitsblätter"
+    "worksheets": "Arbeitsblätter",
+    "contact": "Kontakt",
+    "imprint": "Impressum"
+  },
+
+  "contactPage": {
+    "pageTitle": "Kontakt – CodeOwl",
+    "heading": "Kontakt",
+    "subheading": "Wer CodeOwl entwickelt, und wie Sie uns erreichen.",
+    "teamHeading": "Die Menschen hinter CodeOwl",
+    "teamBody": "CodeOwl entsteht an der Universität Passau am Lehrstuhl für Software Engineering II unter der Leitung von Prof. Dr. Gordon Fraser.",
+    "chairLink": "Lehrstuhl für Software Engineering II",
+    "questionsHeading": "Fragen, Probleme und Vorschläge",
+    "questionsBody": "Wenn eine generierte Aufgabe nicht passt, ein Hinweis verwirrend ist oder eine Funktion fehlt, eröffnen Sie bitte ein Issue. So ist die Antwort auch für alle anderen sichtbar, denen dieselbe Frage begegnet, statt in einer einzelnen E-Mail zu verschwinden.",
+    "issueLink": "Ein Issue auf GitHub melden",
+    "githubLink": "CodeOwl auf GitHub",
+    "institutionalHeading": "Kontaktdaten der Institution"
+  },
+
+  "imprintPage": {
+    "pageTitle": "Impressum – CodeOwl",
+    "heading": "Impressum",
+    "subheading": "Wer diese Website herausgibt, und wer für ihren Inhalt verantwortlich ist.",
+    "publisherHeading": "Herausgeber",
+    "structureHeading": "Struktur und Rechtsform",
+    "structureBody": "Die Universität Passau ist eine Körperschaft des öffentlichen Rechts und zugleich staatliche Einrichtung gemäß Art. 11 Abs. 1 des Bayerischen Hochschulgesetzes (BayHSchG). Die Universität untersteht der Rechts- und Fachaufsicht des Bayerischen Staatsministeriums für Wissenschaft und Kunst, Salvatorstr. 2, 80333 München.",
+    "representationHeading": "Vertretung",
+    "representationBody": "Die Universität Passau wird durch ihren Präsidenten, Prof. Dr. Jan Schumann, vertreten. Die Gesamtverantwortung für den Inhalt dieser Website trägt der Präsident der Universität Passau. Für Beiträge, die mit dem Namen einer Autorin oder eines Autors gekennzeichnet sind oder einem eigenen rechtlichen Hinweis unterliegen, sind die jeweiligen Autorinnen und Autoren verantwortlich."
   },
 
   "marketplace": {

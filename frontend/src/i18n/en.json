@@ -16,7 +16,34 @@
     "marketplace": "Marketplace",
     "libraryAdmin": "Tag Curation",
     "databaseTools": "Database Tools",
-    "worksheets": "Worksheets"
+    "worksheets": "Worksheets",
+    "contact": "Contact",
+    "imprint": "Imprint"
+  },
+
+  "contactPage": {
+    "pageTitle": "Contact – CodeOwl",
+    "heading": "Contact",
+    "subheading": "Who builds CodeOwl, and where to reach us.",
+    "teamHeading": "The people behind CodeOwl",
+    "teamBody": "CodeOwl is built at the University of Passau by the Chair of Software Engineering II, led by Prof. Dr. Gordon Fraser.",
+    "chairLink": "Chair of Software Engineering II",
+    "questionsHeading": "Questions, problems and suggestions",
+    "questionsBody": "If a generated task doesn't fit, a hint is confusing, or a feature is missing, please open an issue. Asking there rather than by email means the answer is visible to everyone else wondering the same thing.",
+    "issueLink": "Report an issue on GitHub",
+    "githubLink": "CodeOwl on GitHub",
+    "institutionalHeading": "Institutional contact details"
+  },
+
+  "imprintPage": {
+    "pageTitle": "Imprint – CodeOwl",
+    "heading": "Imprint",
+    "subheading": "Who publishes this website, and who is responsible for its content.",
+    "publisherHeading": "Published by",
+    "structureHeading": "Organisational structure and legal form",
+    "structureBody": "Universität Passau (the University of Passau) is a statutory corporation and a state institution in accordance with art. 11(1) of the Bavarian Higher Education Act (Bayerisches Hochschulgesetz; BayHSchG). The University is supervised by the Bavarian State Ministry of Science and the Arts (Bayerisches Staatsministerium für Wissenschaft und Kunst), Salvatorstr. 2, 80333 Munich.",
+    "representationHeading": "Representation",
+    "representationBody": "The University of Passau is represented by its President, Prof. Dr. Jan Schumann. Overall responsibility for the content of this website rests with the President of the University of Passau. Articles, posts or statements of any kind which bear the name of the author or authors or which are subject to a separate legal disclaimer are the responsibility of the respective authors."
   },
 
   "marketplace": {
