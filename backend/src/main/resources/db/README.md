@@ -38,6 +38,37 @@ that are not there and fail loudly (not silently corrupt anything). A database F
 tracks, and a genuinely empty one, both ignore this setting entirely: baselining only ever
 happens once, the first time `flyway_schema_history` does not exist yet.
 
+## Optional pre-filled content: `seed-data/`
+
+[`seed-data/pre-filled-content.sql`](seed-data/pre-filled-content.sql) holds the worksheets, task
+sequences and tasks, and the snippets/eval research dataset that a fresh install used to get by
+default via `migration/V1__codeowl_backup.sql`. It is **not** wired into Flyway — the file sits
+outside `db/migration/`, so `migrate()` never touches it — and applying it is a manual, one-time
+step against an already-migrated database:
+
+```bash
+psql "$DATABASE_URL" -f backend/src/main/resources/db/seed-data/pre-filled-content.sql
+```
+
+None of it is required for the application to run. `migration/V1__codeowl_backup.sql` still seeds
+`versions`, `strategies`, `concepts`, `curriculum_topics` and `concept_curriculum_topic` directly
+— generation depends on the first two through a hard foreign key (a fresh, schema-only database
+cannot generate anything without them), and the rest is curriculum data kept in place on purpose
+rather than moved out as optional content.
+
+[`seed-data/undo-pre-filled-content.sql`](seed-data/undo-pre-filled-content.sql) reverses it —
+every table `pre-filled-content.sql` inserts into, emptied in the reverse of its own
+FK-dependency order:
+
+```bash
+psql "$DATABASE_URL" -f backend/src/main/resources/db/seed-data/undo-pre-filled-content.sql
+```
+
+This is a blunt, all-or-nothing undo (it empties those tables outright, the same way
+`pre-filled-content.sql` assumes they were empty going in), not a surgical one keyed by the exact
+rows that file inserted — safe on a database where that file is the only source of rows in these
+tables, destructive on one that has since accumulated real data of its own alongside it.
+
 ## Undo scripts
 
 [`undo/`](undo) holds a hand-written rollback for most migrations, named to match
