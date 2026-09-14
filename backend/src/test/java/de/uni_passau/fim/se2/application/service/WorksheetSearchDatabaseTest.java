@@ -21,6 +21,7 @@ package de.uni_passau.fim.se2.application.service;
 import de.uni_passau.fim.se2.application.query.WorksheetSearchQuery;
 import de.uni_passau.fim.se2.application.query.WorksheetSearchResult;
 import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -106,16 +107,36 @@ class WorksheetSearchDatabaseTest {
         jdbc = new JdbcTemplate(ds);
         service = new WorksheetSearchService(jdbc);
 
-        teacher = jdbc.queryForObject("SELECT user_id FROM users LIMIT 1", UUID.class);
-        versionId = jdbc.queryForObject("SELECT id FROM versions LIMIT 1", UUID.class);
-        otherTeacher = UUID.randomUUID();
+        // Fixtures this class needs, not data the migrated schema happens to already carry --
+        // the schema is what V1...latest guarantees, not the pg_dump's row contents.
+        versionId = UUID.randomUUID();
+        jdbc.update("INSERT INTO versions (id, version_name) VALUES (?, ?)",
+                versionId, "database-test-version");
+        teacher = newTeacher("teacher@example.invalid");
+        otherTeacher = newTeacher("other@example.invalid");
+    }
+
+    @AfterAll
+    static void cleanup() {
+        clearFixtures();
+        jdbc.update("DELETE FROM users WHERE user_id IN (?, ?)", teacher, otherTeacher);
+        jdbc.update("DELETE FROM versions WHERE id = ?", versionId);
+    }
+
+    private static UUID newTeacher(String email) {
+        UUID id = UUID.randomUUID();
         jdbc.update("INSERT INTO users (user_id, email, first_name, last_name, password_hash,"
                         + " role, is_verified, is_active) VALUES (?,?,?,?,?,CAST(? AS user_role),?,?)",
-                otherTeacher, "other@example.invalid", "O", "T", "unused", "TEACHER", true, true);
+                id, email, "T", "T", "unused", "TEACHER", true, true);
+        return id;
     }
 
     @BeforeEach
     void resetFixtures() {
+        clearFixtures();
+    }
+
+    private static void clearFixtures() {
         jdbc.update("DELETE FROM worksheets_sequence");
         jdbc.update("DELETE FROM tasks");
         jdbc.update("DELETE FROM tiered_task_sequences");

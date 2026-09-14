@@ -35,6 +35,7 @@ import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreTaskDao;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreWorksheetDao;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.SequenceTagDAO;
 import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
@@ -130,6 +131,12 @@ class MarketplaceJourneyDatabaseTest {
 
         jdbc = new JdbcTemplate(ds);
 
+        // The container is bare except for what V1's pg_dump seeds -- a real snapshot, not
+        // fixture data. This class's steps depend on being the only worksheets/sequences in
+        // play, so start from an empty table rather than the dump's incidental content.
+        jdbc.update("DELETE FROM tiered_task_sequences");
+        jdbc.update("DELETE FROM worksheets");
+
         worksheetDao = new PostgreWorksheetDao(jdbc);
         sequenceDao = new PostgreSequenceDAO(jdbc, new ObjectMapper());
         taskDao = new PostgreTaskDao(jdbc);
@@ -142,9 +149,23 @@ class MarketplaceJourneyDatabaseTest {
         forkService = new SequenceForkService(worksheetDao,
                 new WorksheetCloneService(worksheetDao, sequenceDao, taskDao, tagDao));
 
-        versionId = jdbc.queryForObject("SELECT id FROM versions LIMIT 1", UUID.class);
+        // A fixture this class needs, not data the migrated schema happens to already carry --
+        // the schema is what V1...latest guarantees, not the pg_dump's row contents.
+        versionId = UUID.randomUUID();
+        jdbc.update("INSERT INTO versions (id, version_name) VALUES (?, ?)",
+                versionId, "database-test-version");
         anna = teacher("anna@example.invalid");
         ben = teacher("ben@example.invalid");
+    }
+
+    @AfterAll
+    static void cleanup() {
+        // tasks, sequence_tags, tiered_task_sequence_concepts and worksheets_sequence all
+        // cascade from these two, so nothing else needs an explicit delete.
+        jdbc.update("DELETE FROM tiered_task_sequences");
+        jdbc.update("DELETE FROM worksheets");
+        jdbc.update("DELETE FROM users WHERE user_id IN (?, ?)", anna, ben);
+        jdbc.update("DELETE FROM versions WHERE id = ?", versionId);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -311,15 +332,10 @@ class MarketplaceJourneyDatabaseTest {
                 () -> assertTrue(found.items().get(0).alreadyCopied(),
                         "and Ben is told he already has it"),
                 () -> assertEquals(1, found.items().get(0).copyCount()),
-                // The seeded database already contains sequences on this topic, so the claim is
-                // not "exactly one result" but "Anna's original is listed and Ben's clone is
-                // not" — which is the invariant the copied_from filter exists for.
-                () -> assertTrue(listed.items().stream()
-                                .anyMatch(i -> annasSequence.equals(i.sequenceId())),
-                        "the original stays findable"),
-                () -> assertFalse(listed.items().stream()
-                                .anyMatch(i -> copiedSequenceOf(bensCopy).equals(i.sequenceId())),
-                        "the clone does not appear beside it"));
+                () -> assertEquals(1, listed.total(), "only Anna's original is in the library"),
+                () -> assertEquals(annasSequence, listed.items().get(0).sequenceId(),
+                        "the clone does not appear beside it — the invariant the copied_from"
+                                + " filter exists for"));
     }
 
     @Test
