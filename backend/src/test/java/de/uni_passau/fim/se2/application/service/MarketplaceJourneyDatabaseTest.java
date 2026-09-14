@@ -374,7 +374,7 @@ class MarketplaceJourneyDatabaseTest {
         // someone typing properly, but did nothing for the reverse — the tagger now writes real
         // umlauts, and a teacher who typed "fakultaet" (quicker on many keyboards) found nothing.
         //
-        // Closed by search_normalize (db/init/19_migration_unaccent_search.sql), built on the
+        // Closed by search_normalize (db/migration/V19__unaccent_search.sql), built on the
         // unaccent extension and applied to both the generated search_vector columns and the
         // query, so it no longer matters which spelling was stored and which was typed.
         assertAll(

@@ -27,7 +27,7 @@
              reads the 400 as "no valid Docker environment", and because the database
              tests are @Testcontainers(disabledWithoutDocker = true) they then SKIP while
              the build still reports SUCCESS. The Surefire systemPropertyVariables block
-             below is what actually keeps them running. See db/init/README.md. -->
+             below is what actually keeps them running. See src/main/resources/db/README.md. -->
         <testcontainers.version>1.20.6</testcontainers.version>
         <!-- Docker API version the test JVM asks docker-java to speak. Needs to be >= the
              daemon's MinAPIVersion (1.40 on Docker Engine 29) and <= its ApiVersion.
