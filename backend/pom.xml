@@ -74,6 +74,29 @@
             <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
 
+        <!--
+            Flyway: automated schema migrations.
+
+            Replaces the old db/init bootstrap, which the official Postgres image only
+            ever runs against an empty data volume: a migration added there never
+            reached a database that already existed, only a fresh one. Flyway tracks
+            what has run in flyway_schema_history and applies exactly what is missing
+            on every backend startup, on any database, so a schema change reaches an
+            existing environment the same way it reaches a new one.
+
+            flyway-database-postgresql is not optional: Flyway 10 (the version the
+            Spring Boot 3.3 BOM manages) moved all vendor-specific support out of
+            flyway-core into per-database artifacts, PostgreSQL included.
+        -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -97,8 +120,9 @@
 
             The search services are the one place where the behaviour lives in the SQL rather
             than in Java - full-text vectors, tsquery, ts_headline, GIN indexes - so a mock can
-            only confirm that we wrote the string we wrote. These tests run the real queries
-            against the real db/init schema and throw the database away afterwards.
+            only confirm that we wrote the string we wrote. These tests run Flyway against a
+            fresh container to get the real schema, then run the real queries against it, and
+            throw the database away afterwards.
 
             Version comes from the Spring Boot parent's dependency management.
 
@@ -107,7 +131,7 @@
             shared runner is unprivileged and cannot host a daemon at all. Skipping is a
             concession: a search test that does not run proves nothing, and this one found a
             genuinely broken query the first time it ran. Run the suite locally with Docker up
-            before changing the search or db/init; see the CI follow-up issue.
+            before changing the search or the Flyway migrations; see the CI follow-up issue.
         -->
         <dependency>
             <groupId>org.testcontainers</groupId>

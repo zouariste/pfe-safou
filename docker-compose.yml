@@ -6,9 +6,12 @@ services:
       POSTGRES_DB: codeowl
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+    # Schema is Flyway's job now (backend/src/main/resources/db/migration), run
+    # automatically by the backend on every startup -- not this container's. No
+    # docker-entrypoint-initdb.d mount: that only ever ran against an empty
+    # volume anyway, which is exactly the limitation Flyway replaces.
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./db/init:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"   # optional, nur falls du von Host drauf willst
     healthcheck:
@@ -39,6 +42,11 @@ services:
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      # Only matters the first time Flyway meets a database it has never tracked
+      # but that already has tables in it (one migrated the old, pre-Flyway way).
+      # A fresh db_data volume ignores this and just runs every migration from
+      # V1. See backend/src/main/resources/db/README.md.
+      FLYWAY_BASELINE_VERSION: ${FLYWAY_BASELINE_VERSION:-6}
     ports:
       - "8080:8080"
     # Maven wird jetzt im Build ausgeführt → kein Volume mehr nötig

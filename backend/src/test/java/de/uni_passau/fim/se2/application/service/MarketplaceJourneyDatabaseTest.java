@@ -34,6 +34,7 @@ import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreSequenceDAO;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreTaskDao;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreWorksheetDao;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.SequenceTagDAO;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
@@ -45,7 +46,6 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.MountableFile;
 
 import java.time.Instant;
 import java.util.List;
@@ -88,9 +88,7 @@ class MarketplaceJourneyDatabaseTest {
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
             .withDatabaseName("codeowl")
             .withUsername("postgres")
-            .withPassword("postgres")
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath("../db/init"), "/docker-entrypoint-initdb.d/");
+            .withPassword("postgres");
 
     private static JdbcTemplate jdbc;
     private static PostgreWorksheetDao worksheetDao;
@@ -117,6 +115,19 @@ class MarketplaceJourneyDatabaseTest {
         DriverManagerDataSource ds = new DriverManagerDataSource(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
         ds.setDriverClassName("org.postgresql.Driver");
+
+        // Same migrations, same way the backend applies them -- default locations
+        // (classpath:db/migration), nothing to configure. The container is bare, so this
+        // always runs the full V1...latest chain rather than baselining.
+        Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                // See application.yml's spring.flyway.placeholder-replacement: V1 is a pg_dump
+                // containing a literal "${function_label}" in the data, which Flyway's
+                // placeholder scan otherwise trips over.
+                .placeholderReplacement(false)
+                .load()
+                .migrate();
+
         jdbc = new JdbcTemplate(ds);
 
         worksheetDao = new PostgreWorksheetDao(jdbc);

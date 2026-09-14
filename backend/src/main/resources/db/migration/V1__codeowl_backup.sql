@@ -2,8 +2,6 @@
 -- PostgreSQL database dump
 --
 
-\restrict qikXl3VNOIdaZJUZ8sqzq0R9LeWNIb7epwmzR9bP2l57W0zCawfhlj2oc1jGz4A
-
 -- Dumped from database version 17.9
 -- Dumped by pg_dump version 17.9
 
@@ -55302,6 +55300,4 @@ ALTER TABLE ONLY public.worksheets_sequence
 --
 -- PostgreSQL database dump complete
 --
-
-\unrestrict qikXl3VNOIdaZJUZ8sqzq0R9LeWNIb7epwmzR9bP2l57W0zCawfhlj2oc1jGz4A
 
