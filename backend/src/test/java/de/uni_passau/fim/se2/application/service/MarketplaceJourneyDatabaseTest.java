@@ -356,23 +356,21 @@ class MarketplaceJourneyDatabaseTest {
 
     @Test
     @Order(11)
-    @DisplayName("11. searching without umlauts does not find text written with them")
-    void umlautFoldingIsOneDirectional() {
-        // Recorded rather than fixed, because it is a real gap and not this feature's to close.
+    @DisplayName("11. searching without umlauts finds text written with them")
+    void umlautFoldingWorksBothWays() {
+        // Used to be recorded rather than fixed: the old fold rewrote only the *query* ä→ae,
+        // which made rows written before the tagger prompt was fixed ("Pruefung") findable by
+        // someone typing properly, but did nothing for the reverse — the tagger now writes real
+        // umlauts, and a teacher who typed "fakultaet" (quicker on many keyboards) found nothing.
         //
-        // The fold rewrites the *query* ä→ae, which is what makes rows written before the
-        // tagger prompt was fixed ("Pruefung") findable by someone typing properly. It does
-        // nothing for the reverse: the tagger now writes real umlauts, and a teacher who types
-        // "fakultaet" — quicker on many keyboards — will not find "Fakultät".
-        //
-        // Closing it means either the unaccent extension plus rebuilt vectors, or expanding the
-        // query into every umlaut variant, which is ambiguous for words like "Aeon". A decision
-        // for whoever owns the search, not a line to slip into a marketplace MR.
+        // Closed by search_normalize (db/init/19_migration_unaccent_search.sql), built on the
+        // unaccent extension and applied to both the generated search_vector columns and the
+        // query, so it no longer matters which spelling was stored and which was typed.
         assertAll(
                 () -> assertEquals(1, marketplace.search(query("Fakultät"), anna).total(),
                         "typed with the umlaut, as stored"),
-                () -> assertEquals(0, marketplace.search(query("Fakultaet"), anna).total(),
-                        "typed without it, and consequently not found"));
+                () -> assertEquals(1, marketplace.search(query("Fakultaet"), anna).total(),
+                        "and typed without it, too"));
     }
 
     @Test

@@ -208,6 +208,24 @@ class WorksheetSearchDatabaseTest {
         }
 
         @Test
+        @DisplayName("a search typed without umlauts finds and highlights a row spelled with them")
+        void umlautsHighlightBothWays() {
+            // The reverse of umlautsFoldBothWays: the tagger now writes real umlauts, and a
+            // teacher typing the ASCII spelling must both find and see it marked -- ts_headline
+            // re-tokenizes the raw name on every call rather than reading search_vector, so
+            // getting the row back is not enough on its own to prove the highlight works too.
+            worksheet("Prüfungsvorbereitung", "", teacher, "PUBLIC");
+
+            String highlight = search(query("Pruefungsvorbereitung")).items().get(0).highlight();
+            assertAll(
+                    () -> assertEquals(1, search(query("Pruefungsvorbereitung")).total()),
+                    () -> assertNotNull(highlight),
+                    () -> assertTrue(highlight.contains(SequenceSearchService.HIGHLIGHT_START_MARKER
+                                    + "Prüfungsvorbereitung" + SequenceSearchService.HIGHLIGHT_STOP_MARKER),
+                            "the umlaut spelling itself must be marked, not merely present: " + highlight));
+        }
+
+        @Test
         @DisplayName("a half-typed word still matches, because the search box is live")
         void prefixMatchingWorks() {
             worksheet("Rekursion", "", teacher, "PUBLIC");
@@ -489,6 +507,27 @@ class WorksheetSearchDatabaseTest {
         assertAll(
                 () -> assertEquals(1, found.total()),
                 () -> assertEquals(original, found.items().get(0).sequenceId()));
+    }
+
+    @Test
+    @DisplayName("a library search without umlauts still highlights the umlaut spelling stored in the row")
+    void libraryHighlightsTheStoredSpellingRegardlessOfHowTheQueryWasTyped() {
+        // ts_headline re-tokenizes the raw task_description on every call rather than reading
+        // search_vector, so the same search_normalize'd query that correctly finds this row
+        // would never match its raw "Fakultät" lexeme for highlighting -- the row would come
+        // back in the result list with nothing marked in its summary. HIGHLIGHT_TSQUERY_EXPR
+        // exists specifically to keep that from happening.
+        sequence("java", "Rekursive Berechnung der Fakultät.");
+
+        SequenceSearchService library = new SequenceSearchService(jdbc, new SequenceTagDAO(jdbc));
+        String highlight = library.search(new SequenceSearchService.SearchQuery().q("fakultaet"), teacher)
+                .items().get(0).highlight();
+
+        assertAll(
+                () -> assertNotNull(highlight),
+                () -> assertTrue(highlight.contains(SequenceSearchService.HIGHLIGHT_START_MARKER
+                                + "Fakultät" + SequenceSearchService.HIGHLIGHT_STOP_MARKER),
+                        "the umlaut spelling itself must be marked, not merely present: " + highlight));
     }
 
     // ─────────────────────────────────────────────────────────────────────

@@ -241,10 +241,15 @@ public class WorksheetSearchService {
             // Highlight the name when it matched, otherwise the description: a snippet of the
             // title is more use on a card than the first twenty words of a description that
             // happens to mention the term.
+            //
+            // HIGHLIGHT_TSQUERY_EXPR, not TSQUERY_EXPR: ts_headline re-tokenizes the raw column
+            // text on every call rather than reading search_vector, so the search_normalize'd
+            // query TSQUERY_EXPR uses would never match a raw umlaut lexeme in either direction.
+            // See its Javadoc in FullTextSearch.
             sql.append(" ts_headline('simple', COALESCE(NULLIF(w.name, ''), COALESCE(w.description, '')), ")
-               .append(FullTextSearch.TSQUERY_EXPR)
+               .append(FullTextSearch.HIGHLIGHT_TSQUERY_EXPR)
                .append(", ?) AS highlight ");
-            FullTextSearch.addTsqueryParams(params, q.q());
+            FullTextSearch.addHighlightTsqueryParams(params, q.q());
             params.add(HEADLINE_OPTIONS);
         } else {
             sql.append(" NULL AS highlight ");

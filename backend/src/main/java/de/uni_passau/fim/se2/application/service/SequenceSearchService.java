@@ -333,7 +333,7 @@ public class SequenceSearchService {
                                    LIMIT 1),
                                 ''
                             ),
-                    """).append(TSQUERY_EXPR).append("""
+                    """).append(HIGHLIGHT_TSQUERY_EXPR).append("""
                             ,
                             ?
                          ) AS highlight
@@ -367,19 +367,21 @@ public class SequenceSearchService {
         sql.append(" LIMIT ? OFFSET ? ");
 
         // Parameter assembly must match placeholder order in the generated SQL. Each TSQUERY_EXPR
-        // occupies FOUR placeholders (query as typed, its umlaut-folded form, then those two
-        // again for the prefix-match branch — see addTsqueryParams):
+        // occupies TWO placeholders (the normalized query, then the same again for the
+        // prefix-match branch — see addTsqueryParams); HIGHLIGHT_TSQUERY_EXPR occupies SIX (three
+        // un-normalized spellings of the query, each with its own prefix-match sibling — see
+        // addHighlightTsqueryParams):
         //   1. (optional) currentUserId          — alreadyInMyWorksheet EXISTS subquery in SELECT
-        //   2. (optional) TSQUERY_EXPR × 4        — ts_headline in SELECT
+        //   2. (optional) HIGHLIGHT_TSQUERY_EXPR × 6 — ts_headline in SELECT
         //   3. (optional) headlineOptions()       — ts_headline option string (StartSel/StopSel)
         //   4. w.params                           — shared WHERE params (includes 2× TSQUERY_EXPR for FTS)
-        //   5. (optional) TSQUERY_EXPR × 4, × 4   — ORDER BY relevance (sequence vector, task vector)
+        //   5. (optional) TSQUERY_EXPR × 2, × 2   — ORDER BY relevance (sequence vector, task vector)
         //   6. size, offset                       — LIMIT / OFFSET
         List<Object> params = new ArrayList<>();
         if (hasUser) params.add(currentUserId);
         if (hasQuery) {
-            addTsqueryParams(params, q.q().trim()); // ts_headline query param
-            params.add(headlineOptions());          // ts_headline options param
+            addHighlightTsqueryParams(params, q.q().trim()); // ts_headline query param
+            params.add(headlineOptions());                   // ts_headline options param
         }
         params.addAll(w.params);
         if ("relevance".equals(sort) && hasQuery) {
@@ -748,6 +750,17 @@ public class SequenceSearchService {
     // two must agree about umlauts and half-typed words, and two copies would not have. These
     // delegates stay because this service's own test pins them down here, where the behaviour
     // was worked out and where its rationale is documented.
+    //
+    // Umlaut tolerance itself now lives in the database (search_normalize, applied to both the
+    // generated search_vector columns and the query — see FullTextSearch#TSQUERY_EXPR and
+    // db/init/19_migration_unaccent_search.sql) rather than in Java, so it works both directions
+    // — "Fakultät" finds "Fakultaet" and "fakultaet" finds "Fakultät" alike.
+    //
+    // ts_headline cannot use that same normalized query: it re-tokenizes the raw column text on
+    // every call rather than reading search_vector, so a query folded towards "fakultaet" never
+    // matches a raw "Fakultät" lexeme, in either direction. HIGHLIGHT_TSQUERY_EXPR is the
+    // separate, un-normalized tsquery that fixes highlighting without touching which rows match
+    // — see its Javadoc in FullTextSearch.
 
     /** @see FullTextSearch#TSQUERY_EXPR */
     static final String TSQUERY_EXPR = FullTextSearch.TSQUERY_EXPR;
@@ -757,9 +770,12 @@ public class SequenceSearchService {
         FullTextSearch.addTsqueryParams(params, query);
     }
 
-    /** @see FullTextSearch#foldGermanUmlauts */
-    static String foldGermanUmlauts(String s) {
-        return FullTextSearch.foldGermanUmlauts(s);
+    /** @see FullTextSearch#HIGHLIGHT_TSQUERY_EXPR */
+    static final String HIGHLIGHT_TSQUERY_EXPR = FullTextSearch.HIGHLIGHT_TSQUERY_EXPR;
+
+    /** @see FullTextSearch#addHighlightTsqueryParams */
+    static void addHighlightTsqueryParams(List<Object> params, String query) {
+        FullTextSearch.addHighlightTsqueryParams(params, query);
     }
 
     // ─────────────────────────────────────────────────────────────────────
