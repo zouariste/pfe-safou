@@ -6,10 +6,6 @@ services:
       POSTGRES_DB: codeowl
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    # Schema is Flyway's job now (backend/src/main/resources/db/migration), run
-    # automatically by the backend on every startup -- not this container's. No
-    # docker-entrypoint-initdb.d mount: that only ever ran against an empty
-    # volume anyway, which is exactly the limitation Flyway replaces.
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
