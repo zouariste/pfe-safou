@@ -18,9 +18,33 @@
  */
 package de.uni_passau.fim.se2.domain.model;
 
+import java.util.Locale;
+import java.util.regex.Pattern;
+
 /**
  * A FIM-Account as the FIM directory describes it after a successful login.
  * Everything but {@code uid} may be null if the directory entry lacks it.
  */
 public record FimAccount(String uid, String email, String firstName, String lastName) {
+
+    /**
+     * What a teacher may type as a FIM username. Stricter than LDAP itself, which
+     * is the point: an email address or a name pasted into the wrong column should
+     * be refused, not turned into an account nobody can ever log in to.
+     */
+    private static final Pattern VALID_UID = Pattern.compile("[a-z0-9][a-z0-9._-]{0,63}");
+
+    /**
+     * The one spelling of a uid that is stored and looked up. LDAP matches uids
+     * case-insensitively, so a teacher typing "Mustermann" and the student logging
+     * in as "mustermann" must arrive at the same account.
+     */
+    public static String normalizeUid(String username) {
+        return username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
+    }
+
+    /** Whether an already normalized uid has the shape of a FIM username. */
+    public static boolean isValidUid(String normalizedUid) {
+        return VALID_UID.matcher(normalizedUid).matches();
+    }
 }

@@ -129,6 +129,7 @@ public class AuthService {
                 .orElseThrow(() -> new AuthenticationException("Ungültige Anmeldedaten."));
 
         UserDTO user = userRepository.findByFimUid(account.uid())
+                .map(existing -> completeFimProfile(existing, account))
                 .orElseGet(() -> linkOrCreateFimUser(account));
 
         if (!user.isActive()) {
@@ -139,6 +140,38 @@ public class AuthService {
 
         log.info("FIM login successful: {} (role={})", account.uid(), user.getRole());
         return jwtService.generateToken(user);
+    }
+
+    /**
+     * Fills in what a teacher could not know when adding a FIM student before their
+     * first login (see {@code ClassService.addFimStudents}): the name, still the
+     * username then, and the email, still empty.
+     *
+     * Only placeholders are replaced. A name someone has since edited stays as it
+     * is, and an email is not taken if another account already uses it.
+     */
+    private UserDTO completeFimProfile(UserDTO user, FimAccount account) {
+        boolean changed = false;
+
+        boolean namePending = account.uid().equals(user.getFirstName())
+                && (user.getLastName() == null || user.getLastName().isEmpty());
+        if (namePending && account.firstName() != null) {
+            user.setFirstName(account.firstName());
+            user.setLastName(account.lastName() != null ? account.lastName() : "");
+            changed = true;
+        }
+
+        if (user.getEmail() == null && account.email() != null && !account.email().isBlank()
+                && !userRepository.existsByEmail(account.email())) {
+            user.setEmail(account.email());
+            changed = true;
+        }
+
+        if (changed) {
+            userRepository.update(user);
+            log.info("Profile of FIM-Account {} completed from the directory", account.uid());
+        }
+        return user;
     }
 
     /**

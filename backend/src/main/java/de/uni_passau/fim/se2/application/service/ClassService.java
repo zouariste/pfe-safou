@@ -28,6 +28,7 @@ import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
 import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
+import de.uni_passau.fim.se2.domain.model.FimAccount;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
@@ -236,6 +237,90 @@ public class ClassService {
         return created;
     }
 
+    /**
+     * Adds students by FIM username, one typed in or many from a CSV.
+     *
+     * A student who has never logged in to CodeOwl gets an account up front,
+     * linked to the FIM-Account but otherwise empty: the name is the username
+     * until the student's first FIM login fills in the real one (see
+     * {@code AuthService.loginWithFimAccount}). So the teacher can set up the
+     * whole class before anyone has logged in, and whoever logs in first lands
+     * in the class.
+     *
+     * The usernames are not checked against the FIM directory — reading it needs
+     * a login — so a mistyped one becomes an account nobody logs in to, which the
+     * teacher can remove from the class like any other student.
+     *
+     * All or nothing, like {@link #createStudents}. A student already in the class
+     * is no error; the list a teacher uploads twice should not fail the second time.
+     *
+     * @return the students as they now are in the class, in the order given
+     */
+    @Transactional
+    public List<ClassDTO.StudentInfo> addFimStudents(UUID classId, List<String> usernames) {
+        requireOwnedClass(classId);
+
+        if (usernames == null || usernames.isEmpty()) {
+            throw new DomainValidationException("Es wurden keine FIM-Benutzernamen übergeben.");
+        }
+        if (usernames.size() > MAX_BULK_STUDENTS) {
+            throw new DomainValidationException(
+                    "Höchstens " + MAX_BULK_STUDENTS + " Schüler pro Import (" + usernames.size() + " übergeben).");
+        }
+
+        // Check every row, and resolve the accounts that exist, before changing anything.
+        // Messages name the username rather than a row: the frontend drops headings
+        // and blank lines, so a position here is not a line in the teacher's file.
+        Map<String, Optional<UserDTO>> accounts = new LinkedHashMap<>();
+        for (String username : usernames) {
+            String uid = FimAccount.normalizeUid(username);
+            if (!FimAccount.isValidUid(uid)) {
+                throw new DomainValidationException("\"" + (username == null ? "" : username.trim())
+                        + "\" ist kein gültiger FIM-Benutzername.");
+            }
+            if (accounts.containsKey(uid)) {
+                continue;
+            }
+            Optional<UserDTO> existing = userRepository.findByFimUid(uid);
+            if (existing.isPresent() && existing.get().getRole() != UserDTO.UserRole.STUDENT) {
+                throw new DomainValidationException("Der FIM-Account \"" + uid
+                        + "\" gehört zu einem Lehrer- oder Admin-Konto und kann nicht als Schüler hinzugefügt werden.");
+            }
+            accounts.put(uid, existing);
+        }
+
+        List<ClassDTO.StudentInfo> added = new ArrayList<>(accounts.size());
+        for (Map.Entry<String, Optional<UserDTO>> entry : accounts.entrySet()) {
+            UserDTO student = entry.getValue().orElseGet(() -> createFimStudent(entry.getKey()));
+            classRepository.addStudent(classId, student.getUserId());
+            added.add(ClassDTO.StudentInfo.builder()
+                    .userId(student.getUserId())
+                    .firstName(student.getFirstName())
+                    .lastName(student.getLastName())
+                    .email(student.getEmail())
+                    .fimUid(student.getFimUid())
+                    .build());
+        }
+
+        log.info("Added {} FIM students to class {}", added.size(), classId);
+        return added;
+    }
+
+    /** Creates the placeholder account for a FIM student who has not logged in yet. */
+    private UserDTO createFimStudent(String uid) {
+        UserDTO student = UserDTO.builder()
+                .firstName(uid)
+                .lastName("")
+                .fimUid(uid)
+                .role(UserDTO.UserRole.STUDENT)
+                .verified(true) // logging in goes through the FIM directory, not an email
+                .active(true)
+                .build();
+        userRepository.save(student);
+        log.info("Created FIM student {} ({})", uid, student.getUserId());
+        return student;
+    }
+
     /** Loads the class and refuses anyone who is neither its owner nor an admin. */
     private ClassDTO requireOwnedClass(UUID classId) {
         ClassDTO classDTO = classRepository.findById(classId)
@@ -323,6 +408,12 @@ public class ClassService {
 
         if (student.getRole() != UserDTO.UserRole.STUDENT) {
             throw new DomainValidationException("Benutzer ist kein Schüler.");
+        }
+        // A temporary password would give the account a second way in, one the
+        // teacher knows, beside the FIM password the student already has.
+        if (student.getFimUid() != null) {
+            throw new DomainValidationException(
+                    "Dieser Schüler meldet sich mit seinem FIM-Account an; sein Passwort wird bei der FIM zurückgesetzt.");
         }
 
         String tempPassword = tempPasswordGenerator.generate(locale);

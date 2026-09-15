@@ -818,6 +818,32 @@
     "errorCreating": "Fehler beim Importieren der Schüler."
   },
 
+  "fimStudents": {
+    "button": "FIM-Accounts hinzufügen",
+    "title": "Schüler mit FIM-Account hinzufügen",
+    "hint": "Die Schüler melden sich mit ihrem FIM-Benutzernamen und Passwort an. Du kannst sie hinzufügen, bevor sie sich jemals bei CodeOwl angemeldet haben; ihr Name erscheint nach der ersten Anmeldung.",
+    "usernameLabel": "FIM-Benutzername",
+    "usernamePlaceholder": "z. B. mustermann",
+    "add": "Hinzufügen",
+    "csvLabel": "Mehrere auf einmal aus einer CSV-Datei",
+    "csvHint": "Ein FIM-Benutzername pro Zeile. Eine Kopfzeile ist optional.",
+    "preview": "{{count}} FIM-Accounts werden hinzugefügt:",
+    "previewMore": "… und {{count}} weitere",
+    "importBtn": "{{count}} FIM-Accounts hinzufügen",
+    "importing": "Wird hinzugefügt…",
+    "cancel": "Abbrechen",
+    "imported": "{{count}} FIM-Accounts hinzugefügt.",
+    "added": "{{count}} FIM-Accounts zur Klasse hinzugefügt.",
+    "badgeTitle": "Meldet sich mit diesem FIM-Account an",
+    "errorInvalid": "„{{value}}“ ist kein gültiger FIM-Benutzername (Kleinbuchstaben, Ziffern, Punkt, Binde- oder Unterstrich, keine Email-Adresse).",
+    "errorInvalidRow": "Zeile {{row}}: „{{value}}“ ist kein gültiger FIM-Benutzername.",
+    "errorColumns": "Zeile {{row}}: eine Spalte (FIM-Benutzername) erwartet, aber {{count}} gefunden.",
+    "errorEmpty": "In dieser Datei wurden keine FIM-Benutzernamen gefunden.",
+    "errorTooMany": "{{count}} Benutzernamen — es können höchstens {{max}} auf einmal hinzugefügt werden.",
+    "errorRead": "Die Datei konnte nicht gelesen werden.",
+    "errorAdding": "Fehler beim Hinzufügen der FIM-Accounts."
+  },
+
   "admin": {
     "title": "Benutzerverwaltung",
     "searchPlaceholder": "Suche nach Name oder Email...",

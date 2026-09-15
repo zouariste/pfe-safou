@@ -49,7 +49,7 @@ export interface CsvParseResult {
  * quote only opens a field at its start, so a quote character in the middle of
  * a name is kept as written.
  */
-function splitRows(text: string, delimiter: string): string[][] {
+export function splitRows(text: string, delimiter: string): string[][] {
     const rows: string[][] = [];
     let row: string[] = [];
     let field = "";

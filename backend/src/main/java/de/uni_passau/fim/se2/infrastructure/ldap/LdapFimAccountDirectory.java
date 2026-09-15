@@ -30,7 +30,6 @@ import org.springframework.security.ldap.DefaultSpringSecurityContextSource;
 import org.springframework.security.ldap.authentication.BindAuthenticator;
 import org.springframework.stereotype.Component;
 
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -63,7 +62,7 @@ public class LdapFimAccountDirectory implements FimAccountDirectory {
 
     @Override
     public Optional<FimAccount> authenticate(String username, String password) {
-        String uid = username.trim().toLowerCase(Locale.ROOT);
+        String uid = FimAccount.normalizeUid(username);
         DirContextOperations entry;
         try {
             entry = authenticator.authenticate(UsernamePasswordAuthenticationToken.unauthenticated(uid, password));

@@ -124,6 +124,49 @@ class AuthServiceFimLoginTest {
     }
 
     @Test
+    @DisplayName("the first login of a student a teacher added up front fills in name and email")
+    void completesAccountAddedByTeacher() {
+        UserDTO placeholder = user(true, "mustermann");
+        placeholder.setFirstName("mustermann");
+        placeholder.setLastName("");
+        placeholder.setEmail(null);
+        placeholder.setPasswordHash(null);
+        placeholder.setRole(UserDTO.UserRole.STUDENT);
+        when(directory.authenticate("mustermann", "secret")).thenReturn(Optional.of(ACCOUNT));
+        when(userRepository.findByFimUid("mustermann")).thenReturn(Optional.of(placeholder));
+
+        service.loginWithFimAccount("mustermann", "secret");
+
+        assertAll(
+                () -> assertEquals("Max", placeholder.getFirstName()),
+                () -> assertEquals("Mustermann", placeholder.getLastName()),
+                () -> assertEquals("max.mustermann@uni-passau.de", placeholder.getEmail()),
+                () -> assertEquals(UserDTO.UserRole.STUDENT, placeholder.getRole()));
+        verify(userRepository).update(placeholder);
+        verify(userRepository, never()).save(any());
+        verify(jwtService).generateToken(placeholder);
+    }
+
+    @Test
+    @DisplayName("a name someone has edited is not overwritten, and a taken email is not claimed")
+    void keepsEditedNameAndTakenEmail() {
+        UserDTO student = user(true, "mustermann");
+        student.setFirstName("Maximilian");
+        student.setLastName("");
+        student.setEmail(null);
+        when(directory.authenticate("mustermann", "secret")).thenReturn(Optional.of(ACCOUNT));
+        when(userRepository.findByFimUid("mustermann")).thenReturn(Optional.of(student));
+        when(userRepository.existsByEmail(ACCOUNT.email())).thenReturn(true);
+
+        service.loginWithFimAccount("mustermann", "secret");
+
+        assertAll(
+                () -> assertEquals("Maximilian", student.getFirstName()),
+                () -> assertNull(student.getEmail()));
+        verify(userRepository, never()).update(any());
+    }
+
+    @Test
     @DisplayName("a verified account with the same email is linked instead of duplicated, keeping its role")
     void linksVerifiedAccountWithSameEmail() {
         UserDTO existing = user(true, null);

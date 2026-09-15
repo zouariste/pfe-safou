@@ -818,6 +818,32 @@
     "errorCreating": "Error importing the students."
   },
 
+  "fimStudents": {
+    "button": "Add FIM-Accounts",
+    "title": "Add students with a FIM-Account",
+    "hint": "Students log in with their FIM username and password. You can add them before they have ever logged in to CodeOwl; their name appears after their first login.",
+    "usernameLabel": "FIM username",
+    "usernamePlaceholder": "e.g. mustermann",
+    "add": "Add",
+    "csvLabel": "Several at once from a CSV file",
+    "csvHint": "One FIM username per row. A heading row is optional.",
+    "preview": "{{count}} FIM-Accounts will be added:",
+    "previewMore": "… and {{count}} more",
+    "importBtn": "Add {{count}} FIM-Accounts",
+    "importing": "Adding…",
+    "cancel": "Cancel",
+    "imported": "{{count}} FIM-Accounts added.",
+    "added": "{{count}} FIM-Accounts added to the class.",
+    "badgeTitle": "Logs in with this FIM-Account",
+    "errorInvalid": "\"{{value}}\" is not a valid FIM username (lowercase letters, digits, dot, dash or underscore, no email address).",
+    "errorInvalidRow": "Row {{row}}: \"{{value}}\" is not a valid FIM username.",
+    "errorColumns": "Row {{row}}: expected one column (FIM username) but found {{count}}.",
+    "errorEmpty": "No FIM usernames found in this file.",
+    "errorTooMany": "{{count}} usernames — at most {{max}} can be added at once.",
+    "errorRead": "That file could not be read.",
+    "errorAdding": "Error adding the FIM-Accounts."
+  },
+
   "admin": {
     "title": "User Management",
     "searchPlaceholder": "Search by name or email...",
