@@ -111,8 +111,7 @@ Once the containers are healthy:
 
 The database schema is applied automatically by the backend on every start —
 [Flyway](https://flywaydb.org), migrating from
-[`backend/src/main/resources/db/migration/`](backend/src/main/resources/db/migration)
-(schema + seed dump, curriculum seed, then numbered migrations) — against the
+[`backend/src/main/resources/db/migration/`](backend/src/main/resources/db/migration) — against the
 `db_data` volume, whether that volume is brand new or already has data in it.
 To start from a clean database instead, remove the volume:
 
@@ -146,7 +145,6 @@ All configuration is environment-driven. The variables below are consumed by
 | `MAIL_PORT`             | no       | `587`                       | SMTP port.                                                                  |
 | `MAIL_USERNAME`         | no       | *(empty)*                   | SMTP username.                                                              |
 | `MAIL_PASSWORD`         | no       | *(empty)*                   | SMTP password.                                                              |
-| `FLYWAY_BASELINE_VERSION` | no     | `6`                          | Only matters against a database already schema'd the old, pre-Flyway way.² |
 
 The datasource (`SPRING_DATASOURCE_*`) and `SPRING_PROFILES_ACTIVE` are wired up
 by `docker-compose.yml` and normally need no changes.
@@ -154,12 +152,6 @@ by `docker-compose.yml` and normally need no changes.
 ¹ `ROOT_ADMIN_EMAIL` is read by the backend but is **not** passed through in the
 default `docker-compose.yml`. To use it under Docker, add it to the `backend`
 service's `environment:` block.
-
-² A fresh `db_data` volume ignores this entirely — Flyway just runs every
-migration from `V1`. It only matters the first time Flyway meets a database
-that already has tables but no `flyway_schema_history` yet; `6` is the schema
-level of the `v.1.0` release. See
-[`backend/src/main/resources/db/README.md`](backend/src/main/resources/db/README.md).
 
 ### Frontend (build-time)
 
