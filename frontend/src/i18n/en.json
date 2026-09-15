@@ -532,7 +532,18 @@
     "noAccount": "No account yet? ",
     "register": "Register (Teacher)",
     "studentToken": "Redeem student token",
+    "fimAccount": "Login with FIM-Account",
     "failed": "Login failed."
+  },
+
+  "fimLogin": {
+    "title": "Login with FIM-Account",
+    "username": "FIM username",
+    "password": "Password",
+    "submit": "Login",
+    "submitting": "Logging in...",
+    "failed": "Login failed.",
+    "backToLogin": "Back to Login"
   },
 
   "register": {

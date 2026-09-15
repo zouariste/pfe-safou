@@ -21,12 +21,15 @@ package de.uni_passau.fim.se2.application.service;
 import de.uni_passau.fim.se2.domain.entities.AuthTokenDTO;
 import de.uni_passau.fim.se2.domain.entities.UserDTO;
 import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
+import de.uni_passau.fim.se2.domain.interfaces.FimAccountDirectory;
 import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
+import de.uni_passau.fim.se2.domain.model.FimAccount;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -38,6 +41,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final TokenService tokenService;
     private final EmailService emailService;
+    private final FimAccountDirectory fimAccountDirectory;
     private final String rootAdminEmail;
 
     public AuthService(UserRepository userRepository,
@@ -45,12 +49,14 @@ public class AuthService {
                        JwtService jwtService,
                        TokenService tokenService,
                        EmailService emailService,
+                       FimAccountDirectory fimAccountDirectory,
                        @Value("${auth.root-admin-email:}") String rootAdminEmail) {
         this.userRepository = userRepository;
         this.passwordHasher = passwordHasher;
         this.jwtService = jwtService;
         this.tokenService = tokenService;
         this.emailService = emailService;
+        this.fimAccountDirectory = fimAccountDirectory;
         this.rootAdminEmail = rootAdminEmail;
     }
 
@@ -106,16 +112,86 @@ public class AuthService {
             throw new AuthenticationException("Bitte bestätige zuerst deine Email-Adresse.");
         }
 
-        // Ensure root admin always has ADMIN role
-        if (rootAdminEmail != null && !rootAdminEmail.isBlank()
-                && rootAdminEmail.equalsIgnoreCase(email.trim()) && user.getRole() != UserDTO.UserRole.ADMIN) {
-            user.setRole(UserDTO.UserRole.ADMIN);
-            userRepository.update(user);
-            log.info("Root admin role restored for: {}", email);
-        }
+        restoreRootAdminRole(user);
 
         log.info("Login successful: {} (role={})", email, user.getRole());
         return jwtService.generateToken(user);
+    }
+
+    /**
+     * Login with a FIM-Account. The FIM LDAP server checks the credentials; on the
+     * first login the FIM-Account is linked to a CodeOwl account (see
+     * {@link #linkOrCreateFimUser}). Returns JWT.
+     */
+    @Transactional
+    public String loginWithFimAccount(String username, String password) {
+        FimAccount account = fimAccountDirectory.authenticate(username, password)
+                .orElseThrow(() -> new AuthenticationException("Ungültige Anmeldedaten."));
+
+        UserDTO user = userRepository.findByFimUid(account.uid())
+                .orElseGet(() -> linkOrCreateFimUser(account));
+
+        if (!user.isActive()) {
+            throw new AuthenticationException("Account ist deaktiviert.");
+        }
+
+        restoreRootAdminRole(user);
+
+        log.info("FIM login successful: {} (role={})", account.uid(), user.getRole());
+        return jwtService.generateToken(user);
+    }
+
+    /**
+     * Links a FIM-Account seen for the first time to the existing account with the
+     * same email, or creates a verified student account for it. An admin can promote
+     * it to teacher or admin afterwards; a linked existing account keeps its role.
+     *
+     * An existing account is only linked if its email is verified: an unverified
+     * account may have been registered by someone who merely typed this address, and
+     * linking it would give them — through its password — access to everything the
+     * FIM user does in it.
+     */
+    private UserDTO linkOrCreateFimUser(FimAccount account) {
+        if (account.email() != null && !account.email().isBlank()) {
+            Optional<UserDTO> existing = userRepository.findByEmail(account.email());
+            if (existing.isPresent()) {
+                UserDTO user = existing.get();
+                if (!user.isVerified() || user.getFimUid() != null) {
+                    throw new AuthenticationException(
+                            "Für die Email-Adresse dieses FIM-Accounts existiert bereits ein anderer CodeOwl-Account.");
+                }
+                user.setFimUid(account.uid());
+                userRepository.update(user);
+                log.info("FIM-Account {} linked to existing user {}", account.uid(), user.getUserId());
+                return user;
+            }
+        }
+
+        UserDTO user = UserDTO.builder()
+                .firstName(account.firstName() != null ? account.firstName() : account.uid())
+                .lastName(account.lastName() != null ? account.lastName() : "")
+                .email(account.email())
+                .fimUid(account.uid())
+                .role(UserDTO.UserRole.STUDENT)
+                .verified(true) // the FIM directory vouches for the account
+                .active(true)
+                .build();
+        userRepository.save(user);
+
+        log.info("User created for FIM-Account {} ({})", account.uid(), user.getUserId());
+        return user;
+    }
+
+    /**
+     * Ensures the root admin always has the ADMIN role.
+     */
+    private void restoreRootAdminRole(UserDTO user) {
+        if (rootAdminEmail != null && !rootAdminEmail.isBlank() && user.getEmail() != null
+                && rootAdminEmail.equalsIgnoreCase(user.getEmail().trim()) && user.getRole() != UserDTO.UserRole.ADMIN) {
+            user.setRole(UserDTO.UserRole.ADMIN);
+            userRepository.update(user);
+            log.info("Root admin role restored for: {}", user.getEmail());
+        }
     }
 
     // ── Email Verification ───────────────────────────────────

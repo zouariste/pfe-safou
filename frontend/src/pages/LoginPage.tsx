@@ -70,6 +70,11 @@ export default function LoginPage() {
                 </button>
             </form>
 
+            <Link to="/login/fim" className="btn btn-outline-primary w-100 mt-2">
+                <i className="bi bi-mortarboard me-1"></i>
+                {t("login.fimAccount")}
+            </Link>
+
             <div className="text-center mt-3">
                 <Link to="/forgot-password">{t("login.forgotPassword")}</Link>
             </div>

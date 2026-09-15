@@ -39,6 +39,8 @@ services:
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      LDAP_URL: ${LDAP_URL:-ldaps://ldap01.fim.uni-passau.de/}
+      LDAP_BASE: ${LDAP_BASE:-ou=users,dc=fim,dc=uni-passau,dc=de}
     ports:
       - "8080:8080"
     # Maven wird jetzt im Build ausgeführt → kein Volume mehr nötig

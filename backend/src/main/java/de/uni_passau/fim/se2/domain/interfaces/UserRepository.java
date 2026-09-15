@@ -27,6 +27,7 @@ public interface UserRepository {
     UserDTO save(UserDTO user);
     Optional<UserDTO> findById(UUID userId);
     Optional<UserDTO> findByEmail(String email);
+    Optional<UserDTO> findByFimUid(String fimUid);
     List<UserDTO> findAll();
     void update(UserDTO user);
     void deleteById(UUID userId);

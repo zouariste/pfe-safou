@@ -168,6 +168,16 @@
             <version>1.78.1</version>
         </dependency>
 
+        <!-- Auth: FIM-Account login via LDAP bind -->
+        <dependency>
+            <groupId>org.springframework.ldap</groupId>
+            <artifactId>spring-ldap-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-ldap</artifactId>
+        </dependency>
+
         <!-- Auth: Email -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

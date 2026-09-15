@@ -532,7 +532,18 @@
     "noAccount": "Noch kein Account? ",
     "register": "Registrieren (Lehrer)",
     "studentToken": "Schüler-Token einlösen",
+    "fimAccount": "Mit FIM-Account anmelden",
     "failed": "Login fehlgeschlagen."
+  },
+
+  "fimLogin": {
+    "title": "Mit FIM-Account anmelden",
+    "username": "FIM-Benutzername",
+    "password": "Passwort",
+    "submit": "Anmelden",
+    "submitting": "Anmelden...",
+    "failed": "Login fehlgeschlagen.",
+    "backToLogin": "Zurück zum Login"
   },
 
   "register": {

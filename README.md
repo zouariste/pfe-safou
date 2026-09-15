@@ -144,6 +144,8 @@ All configuration is environment-driven. The variables below are consumed by
 | `MAIL_PORT`             | no       | `587`                       | SMTP port.                                                                  |
 | `MAIL_USERNAME`         | no       | *(empty)*                   | SMTP username.                                                              |
 | `MAIL_PASSWORD`         | no       | *(empty)*                   | SMTP password.                                                              |
+| `LDAP_URL`              | no       | `ldaps://ldap01.fim.uni-passau.de/` | LDAP server checked by "Login with FIM-Account".                    |
+| `LDAP_BASE`             | no       | `ou=users,dc=fim,dc=uni-passau,dc=de` | Base DN of FIM users; they bind as `uid=<username>,<base>`.       |
 
 The datasource (`SPRING_DATASOURCE_*`) and `SPRING_PROFILES_ACTIVE` are wired up
 by `docker-compose.yml` and normally need no changes.
