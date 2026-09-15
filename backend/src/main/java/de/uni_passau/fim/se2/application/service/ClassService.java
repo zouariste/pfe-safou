@@ -573,8 +573,14 @@ public class ClassService {
 
             Map<String, Object> row = new LinkedHashMap<>();
             boolean isAnonymous = sId.equals(new UUID(0, 0));
-            row.put("userId", isAnonymous ? null : sId.toString());
-            row.put("studentName", isAnonymous ? "Unangemeldet" : studentNames.getOrDefault(sId, "Unbekannt"));
+            // feedback_logs.user_id has no foreign key, so clicks outlive the student:
+            // deleted, or removed from the class. Their counts still belong to the
+            // class, but without a userId — the frontend links every row that has
+            // one, and the detail view only answers for current members.
+            boolean isMember = studentNames.containsKey(sId);
+            row.put("userId", isMember ? sId.toString() : null);
+            row.put("studentName", isAnonymous ? "Unangemeldet"
+                    : isMember ? studentNames.get(sId) : "Ehemaliger Schüler");
 
             // Tasks solved correctly (distinct task IDs where correct=true)
             Set<String> solvedTasks = studentLogs.stream()
