@@ -19,6 +19,7 @@
 package de.uni_passau.fim.se2.infrastructure.ai;
 
 import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.model.SupportedLanguage;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.node.*;
 import org.springframework.stereotype.*;
@@ -1276,6 +1277,11 @@ public class PromptBuilder {
         ObjectNode properties = mapper.createObjectNode();
         ObjectNode language = mapper.createObjectNode();
         language.put("type", "string");
+        // A closed set, not a free string. Structured output enforces this, so a typo like
+        // "Pyhton" -- which once reached the database and silently cost six sequences their
+        // static analysis -- is no longer a value the model is able to return.
+        ArrayNode allowed = language.putArray("enum");
+        SupportedLanguage.detectionChoices().forEach(allowed::add);
         properties.set("language", language);
 
         schema.set("properties", properties);

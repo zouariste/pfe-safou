@@ -209,6 +209,7 @@
     "reset": "Reset",
     "worksheet": "Worksheet",
     "error": "Error",
+    "errorUnsupportedLanguage": "This code snippet is neither Python nor Java. CodeOwl can only generate task sequences for languages it can analyse — paste Python or Java code instead.",
     "preview": "Preview",
     "new": "New",
     "tips": "Tips",

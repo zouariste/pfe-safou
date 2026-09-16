@@ -20,6 +20,7 @@ package de.uni_passau.fim.se2.application.service.hints;
 
 import de.uni_passau.fim.se2.domain.entities.HintUsageDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.model.SupportedLanguage;
 import de.uni_passau.fim.se2.domain.interfaces.HintUsageRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
 import de.uni_passau.fim.se2.application.service.OwnershipService;
@@ -308,9 +309,9 @@ public class HintService {
     }
 
     private List<AnalysisFinding> runAnalysis(String code, String language) {
-        if ("python".equalsIgnoreCase(language)) {
+        if (SupportedLanguage.PYTHON.matches(language)) {
             return ruffAnalyzer.analyze(code);
-        } else if ("java".equalsIgnoreCase(language)) {
+        } else if (SupportedLanguage.JAVA.matches(language)) {
             JavacAnalyzer.JavacResult javacResult = javacAnalyzer.analyze(code);
             List<AnalysisFinding> findings = new ArrayList<>(javacResult.findings());
 
@@ -326,6 +327,12 @@ public class HintService {
 
             return findings;
         }
+        // Not python and not java: there is no analyzer for this, so the hint is built from
+        // no findings at all. That is a silent quality loss for the student, and the cause is
+        // always bad data rather than an unsupported language -- the column is free text
+        // filled from the language-detection LLM, and a typo ("Pyhton") lands here.
+        logger.warn("No static analysis for programming language '{}' -- hint will be generated "
+                + "without findings. Check tiered_task_sequences.programming_language.", language);
         return List.of();
     }
 

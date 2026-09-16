@@ -245,8 +245,8 @@ public class TaskPersistenceService {
 
             List<TaskDTO> tasks = taskRepo.loadTasksBySequenceId(sequence);
             for (TaskDTO task : tasks) {
-                logger.info("Loaded task: {}", task);
-                logger.info("Setting programming language for task: {}", sequence.getProgrammingLanguage());
+                logger.debug("Loaded task: {}", task);
+                logger.debug("Setting programming language for task: {}", sequence.getProgrammingLanguage());
                 task.setProgrammingLanguage(sequence.getProgrammingLanguage());
             }
             logger.debug("Loaded {} tasks for sequence {}", tasks.size(), sequence.getId());
