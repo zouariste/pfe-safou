@@ -20,8 +20,9 @@ package de.uni_passau.fim.se2.application.service;
 
 import de.uni_passau.fim.se2.application.query.WorksheetSearchQuery;
 import de.uni_passau.fim.se2.application.query.WorksheetSearchResult;
-import org.flywaydb.core.Flyway;
+import de.uni_passau.fim.se2.testsupport.TestDatabase;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,10 +31,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreWorksheetDao;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.SequenceTagDAO;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.UUID;
@@ -52,32 +49,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * behaviour; a unit test asserting on the SQL string can only confirm we wrote what we wrote.
  * Everything here would have passed a mock and still been wrong in production.
  *
- * <p>The container starts bare; {@code @BeforeAll} runs the real Flyway migrations against it
- * (see {@code backend/src/main/resources/db/migration}), so the schema under test is the schema
- * that ships — including the migrations added by this feature.
+ * <p>The database starts bare and {@link TestDatabase} runs the real Flyway migrations against
+ * it (see {@code backend/src/main/resources/db/migration}), so the schema under test is the
+ * schema that ships — including the migrations added by this feature.
  *
- * <p>Skipped where there is no Docker, which in practice means CI. The shared runner is
- * unprivileged, so a {@code docker:dind} service cannot start on it -- the daemon dies on
- * {@code mount: permission denied} before it ever listens, and every test here errors on
- * "Could not find a valid Docker environment".
+ * <p>This class used to skip in CI: the shared runner is unprivileged, a {@code docker:dind}
+ * service dies on {@code mount: permission denied} before it ever listens, and Testcontainers
+ * then has no daemon to build a database with. It now runs there against the throwaway {@code
+ * services: postgres} container the {@code backend-test} job starts beside itself, injected
+ * through {@code SPRING_DATASOURCE_URL}; Testcontainers is still what supplies one locally.
  *
- * <p>Skipping is a concession and not the design. A search test that does not run proves
- * nothing, so what this class covers -- the tsvector columns, the GIN index, the generated SQL
- * actually parsing -- is currently checked on developer machines only. Getting it back into CI
- * means giving up Testcontainers here in favour of a {@code services: postgres} database migrated
- * the same way the backend migrates one, which is its own change; see the follow-up issue. Until
- * then, run {@code mvn test} locally with Docker up before touching the search or the migrations.
+ * <p>What remains skipped is a developer machine with Docker down and no database injected. That
+ * is an abort with a stated reason rather than a silent pass, and it no longer hides anything
+ * from the pipeline.
  */
-@Testcontainers(disabledWithoutDocker = true)
 @DisplayName("marketplace search against real Postgres")
 class WorksheetSearchDatabaseTest {
-
-    @Container
-    @SuppressWarnings("resource") // closed by the Testcontainers JUnit extension
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
-            .withDatabaseName("codeowl")
-            .withUsername("postgres")
-            .withPassword("postgres");
 
     private static JdbcTemplate jdbc;
     private static WorksheetSearchService service;
@@ -88,23 +75,9 @@ class WorksheetSearchDatabaseTest {
 
     @BeforeAll
     static void connect() {
-        DriverManagerDataSource ds = new DriverManagerDataSource(
-                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
-        ds.setDriverClassName("org.postgresql.Driver");
-
-        // Same migrations, same way the backend applies them -- default locations
-        // (classpath:db/migration), nothing to configure. The container is bare, so this
-        // always runs the full V1...latest chain rather than baselining.
-        Flyway.configure()
-                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
-                // See application.yml's spring.flyway.placeholder-replacement: V1 is a pg_dump
-                // containing a literal "${function_label}" in the data, which Flyway's
-                // placeholder scan otherwise trips over.
-                .placeholderReplacement(false)
-                .load()
-                .migrate();
-
-        jdbc = new JdbcTemplate(ds);
+        Assumptions.assumeTrue(TestDatabase.isAvailable(),
+                "no test database: set SPRING_DATASOURCE_URL or start Docker");
+        jdbc = TestDatabase.jdbc();
         service = new WorksheetSearchService(jdbc);
 
         // Fixtures this class needs, not data the migrated schema happens to already carry --

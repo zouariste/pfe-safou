@@ -34,8 +34,9 @@ import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreSequenceDAO;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreTaskDao;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreWorksheetDao;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.SequenceTagDAO;
-import org.flywaydb.core.Flyway;
+import de.uni_passau.fim.se2.testsupport.TestDatabase;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
@@ -43,10 +44,6 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Instant;
 import java.util.List;
@@ -75,21 +72,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * That is unusual for a test class and worth the exception here, because the thing under test is
  * a sequence of events rather than a set of independent behaviours.
  *
- * <p>Skipped where there is no Docker, CI included -- see {@link WorksheetSearchDatabaseTest}
- * for why the runner cannot provide one and what it would take to change that. The journey is
- * therefore only walked on developer machines for now.
+ * <p>Runs in CI against the job's own throwaway Postgres, and locally against a Testcontainers
+ * one -- see {@link de.uni_passau.fim.se2.testsupport.TestDatabase}. Skipped only where there is
+ * neither: a developer machine with Docker down.
  */
-@Testcontainers(disabledWithoutDocker = true)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("publishing, finding and copying a worksheet")
 class MarketplaceJourneyDatabaseTest {
-
-    @Container
-    @SuppressWarnings("resource") // closed by the Testcontainers JUnit extension
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
-            .withDatabaseName("codeowl")
-            .withUsername("postgres")
-            .withPassword("postgres");
 
     private static JdbcTemplate jdbc;
     private static PostgreWorksheetDao worksheetDao;
@@ -113,23 +102,9 @@ class MarketplaceJourneyDatabaseTest {
 
     @BeforeAll
     static void wire() {
-        DriverManagerDataSource ds = new DriverManagerDataSource(
-                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
-        ds.setDriverClassName("org.postgresql.Driver");
-
-        // Same migrations, same way the backend applies them -- default locations
-        // (classpath:db/migration), nothing to configure. The container is bare, so this
-        // always runs the full V1...latest chain rather than baselining.
-        Flyway.configure()
-                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
-                // See application.yml's spring.flyway.placeholder-replacement: V1 is a pg_dump
-                // containing a literal "${function_label}" in the data, which Flyway's
-                // placeholder scan otherwise trips over.
-                .placeholderReplacement(false)
-                .load()
-                .migrate();
-
-        jdbc = new JdbcTemplate(ds);
+        Assumptions.assumeTrue(TestDatabase.isAvailable(),
+                "no test database: set SPRING_DATASOURCE_URL or start Docker");
+        jdbc = TestDatabase.jdbc();
 
         // The container is bare except for what V1's pg_dump seeds -- a real snapshot, not
         // fixture data. This class's steps depend on being the only worksheets/sequences in
