@@ -12,6 +12,7 @@ import { useMatch } from "react-router-dom";
 import WorksheetPage from "./pages/WorksheetPage.tsx";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
+import FimLoginPage from "./pages/FimLoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
@@ -356,6 +357,7 @@ export default function App() {
 
                                 {/* Auth routes */}
                                 <Route path="/login" element={<LoginPage />} />
+                                <Route path="/login/fim" element={<FimLoginPage />} />
                                 <Route path="/register" element={<RegisterPage />} />
                                 <Route path="/verify-email" element={<VerifyEmailPage />} />
                                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />

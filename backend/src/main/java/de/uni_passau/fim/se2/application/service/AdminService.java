@@ -99,15 +99,20 @@ public class AdminService {
         UserDTO user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
 
+        // Users without an email (students before onboarding, FIM-Accounts whose
+        // directory entry has none) arrive here with a blank one; store that as null
+        // rather than "", which would collide with the next such user.
+        String newEmail = email == null || email.isBlank() ? null : email.trim();
+
         // Check email uniqueness if changed
-        if (!user.getEmail().equalsIgnoreCase(email)) {
-            userRepository.findByEmail(email).ifPresent(existing -> {
+        if (newEmail != null && !newEmail.equalsIgnoreCase(user.getEmail())) {
+            userRepository.findByEmail(newEmail).ifPresent(existing -> {
                 if (!existing.getUserId().equals(userId)) {
                     throw new AuthenticationException("Diese Email-Adresse wird bereits verwendet.");
                 }
             });
-            user.setEmail(email);
         }
+        user.setEmail(newEmail);
 
         user.setFirstName(firstName);
         user.setLastName(lastName);

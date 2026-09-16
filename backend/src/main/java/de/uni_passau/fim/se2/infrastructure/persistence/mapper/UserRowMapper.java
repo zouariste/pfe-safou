@@ -42,6 +42,7 @@ public class UserRowMapper implements RowMapper<UserDTO> {
                 .verified(rs.getBoolean("is_verified"))
                 .active(rs.getBoolean("is_active"))
                 .mustChangePassword(rs.getBoolean("must_change_password"))
+                .fimUid(rs.getString("fim_uid"))
                 .createdAt(toLocalDateTime(rs.getTimestamp("created_at")))
                 .updatedAt(toLocalDateTime(rs.getTimestamp("updated_at")))
                 .build();

@@ -18,6 +18,7 @@
  */
 package de.uni_passau.fim.se2.api;
 
+import de.uni_passau.fim.se2.api.dto.AddFimStudentsRequest;
 import de.uni_passau.fim.se2.api.dto.BulkCreateStudentsRequest;
 import de.uni_passau.fim.se2.api.dto.CreateClassRequest;
 import de.uni_passau.fim.se2.api.dto.CreateStudentRequest;
@@ -138,6 +139,21 @@ public class ClassController {
                         .map(s -> new ClassService.NewStudent(s.getFirstName(), s.getLastName()))
                         .toList();
         return ResponseEntity.ok(classService.createStudents(id, rows));
+    }
+
+    /**
+     * Adds students by FIM username, whether or not they have logged in to CodeOwl yet.
+     *
+     * @param id      the UUID of the class
+     * @param request the FIM usernames, one typed in or many from a CSV
+     * @return the added students
+     */
+    @PostMapping("/{id}/students/fim")
+    public ResponseEntity<List<ClassDTO.StudentInfo>> addFimStudents(
+            @PathVariable UUID id,
+            @RequestBody AddFimStudentsRequest request) {
+        // No @Valid, as for the CSV import: the service names the offending username.
+        return ResponseEntity.ok(classService.addFimStudents(id, request.getUsernames()));
     }
 
     /**
