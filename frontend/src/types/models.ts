@@ -271,6 +271,8 @@ export interface StudentInfo {
     lastName: string;
     email: string | null;
     inviteToken: string | null;
+    /** FIM username if the student logs in with a FIM-Account. */
+    fimUid?: string | null;
 }
 
 /** How a worksheet assignment stands relative to its schedule, for one class. */

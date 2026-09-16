@@ -12,6 +12,7 @@ import { useMatch } from "react-router-dom";
 import WorksheetPage from "./pages/WorksheetPage.tsx";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
+import FimLoginPage from "./pages/FimLoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
@@ -32,6 +33,8 @@ import CurriculumPage from "./pages/CurriculumPage";
 import LibraryPage from "./pages/LibraryPage";
 import MarketplacePage from "./pages/MarketplacePage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
+import ContactPage from "./pages/ContactPage";
+import ImprintPage from "./pages/ImprintPage";
 
 
 function FloatingHelpButton() {
@@ -258,6 +261,18 @@ function AppFooter() {
                         </li>
                     </ul>
                 </div>
+                <span className="text-muted d-none d-sm-inline">|</span>
+                <div className="d-flex align-items-center gap-3">
+                    <a href="https://github.com/se2p/codeowl" target="_blank" rel="noopener noreferrer" className="link-secondary">
+                        GitHub
+                    </a>
+                    <Link to="/contact" className="link-secondary">
+                        {t("nav.contact")}
+                    </Link>
+                    <Link to="/imprint" className="link-secondary">
+                        {t("nav.imprint")}
+                    </Link>
+                </div>
             </div>
         </footer>
     );
@@ -334,12 +349,15 @@ export default function App() {
                                 <Route path="/worksheets/:sheetId" element={<WorksheetPage />} />
                                 <Route path="/help" element={<HelpPage />} />
                                 <Route path="/help/:context" element={<HelpPage />} />
+                                <Route path="/contact" element={<ContactPage />} />
+                                <Route path="/imprint" element={<ImprintPage />} />
 
                                 {/* Temp-password change (accessible while logged in) */}
                                 <Route path="/change-password" element={<ChangePasswordPage />} />
 
                                 {/* Auth routes */}
                                 <Route path="/login" element={<LoginPage />} />
+                                <Route path="/login/fim" element={<FimLoginPage />} />
                                 <Route path="/register" element={<RegisterPage />} />
                                 <Route path="/verify-email" element={<VerifyEmailPage />} />
                                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />

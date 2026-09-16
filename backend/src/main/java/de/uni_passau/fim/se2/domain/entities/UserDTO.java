@@ -40,6 +40,8 @@ public class UserDTO {
     private boolean verified;
     private boolean active;
     private boolean mustChangePassword;
+    /** LDAP uid of the linked FIM-Account, null if the account has none. */
+    private String fimUid;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

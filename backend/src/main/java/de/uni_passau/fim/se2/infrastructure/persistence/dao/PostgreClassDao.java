@@ -146,7 +146,7 @@ public class PostgreClassDao implements ClassRepository {
 
         // Load students
         List<ClassDTO.StudentInfo> students = jdbc.query("""
-            SELECT u.user_id, u.first_name, u.last_name, u.email,
+            SELECT u.user_id, u.first_name, u.last_name, u.email, u.fim_uid,
                    at.token_value as invite_token
             FROM class_students cs
             JOIN users u ON u.user_id = cs.student_id
@@ -163,6 +163,7 @@ public class PostgreClassDao implements ClassRepository {
                         .lastName(rs.getString("last_name"))
                         .email(rs.getString("email"))
                         .inviteToken(rs.getString("invite_token"))
+                        .fimUid(rs.getString("fim_uid"))
                         .build(),
                 id
         );

@@ -64,6 +64,8 @@ public class ClassDTO {
         private String lastName;
         private String email;
         private String inviteToken;
+        /** FIM username if the student logs in with a FIM-Account, otherwise null. */
+        private String fimUid;
     }
 
     @Getter

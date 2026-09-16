@@ -64,6 +64,16 @@ auth:
   app:
     base-url: ${APP_BASE_URL:http://localhost:5173}
 
+# === FIM-Account login (LDAP bind, see LdapFimAccountDirectory) ===
+# Users bind as "uid=<username>,<base>".
+spring.ldap:
+  urls: ${LDAP_URL:ldaps://ldap01.fim.uni-passau.de/}
+  base: ${LDAP_BASE:ou=users,dc=fim,dc=uni-passau,dc=de}
+
+# Spring Boot would otherwise add an LDAP check to /actuator/health that
+# connects to the FIM server on every health request.
+management.health.ldap.enabled: false
+
 # === Mail (optional, falls nicht konfiguriert -> Console-Fallback) ===
 spring.mail:
   host: ${MAIL_HOST:}

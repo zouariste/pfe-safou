@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import type { ClassInfo, StudentInfo, StudentProgress, Worksheet } from "../types/models";
 import WorksheetSchedule from "../components/WorksheetSchedule.tsx";
 import WorksheetDeadline from "../components/WorksheetDeadline.tsx";
+import FimStudentAdder from "../components/FimStudentAdder.tsx";
 import {
     parseStudentCsv,
     downloadInviteCsv,
@@ -39,6 +40,9 @@ export default function ClassDetailPage() {
     const [studentFirstName, setStudentFirstName] = useState("");
     const [studentLastName, setStudentLastName] = useState("");
     const [addingStudent, setAddingStudent] = useState(false);
+
+    // Students by FIM username
+    const [showAddFim, setShowAddFim] = useState(false);
 
     // Assign worksheet
     const [showAssignWorksheet, setShowAssignWorksheet] = useState(false);
@@ -142,6 +146,19 @@ export default function ClassDetailPage() {
         } finally {
             setAddingStudent(false);
         }
+    };
+
+    const handleFimStudentsAdded = (added: StudentInfo[]) => {
+        // Merged by id: a student who was already in the class comes back too.
+        setClassData((prev) => {
+            if (!prev) return prev;
+            const addedById = new Map(added.map((s) => [s.userId, s]));
+            const kept = prev.students.map((s) => addedById.get(s.userId) ?? s);
+            const known = new Set(prev.students.map((s) => s.userId));
+            return { ...prev, students: [...kept, ...added.filter((s) => !known.has(s.userId))] };
+        });
+        setSuccess(t("fimStudents.added", { count: added.length }));
+        setTimeout(() => setSuccess(""), 5000);
     };
 
     const handleRemoveStudent = async (studentId: string, name: string) => {
@@ -342,7 +359,8 @@ export default function ClassDetailPage() {
 
     const handleDownloadUnregistered = () => {
         if (!classData) return;
-        const unregistered = classData.students.filter((s) => !s.email);
+        // FIM students have no invite link: they log in with their FIM-Account.
+        const unregistered = classData.students.filter((s) => !s.email && !s.fimUid);
         downloadInviteCsv(unregistered, classData.name, {
             headers: csvHeaders(),
             delimiter: csvDelimiterForLocale(i18n.language),
@@ -512,7 +530,14 @@ export default function ClassDetailPage() {
                         >
                             <i className="bi bi-filetype-csv me-1"></i> {t("csvImport.button")}
                         </button>
-                        {classData.students.some((s) => !s.email) && (
+                        <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => setShowAddFim((open) => !open)}
+                            aria-expanded={showAddFim}
+                        >
+                            <i className="bi bi-mortarboard me-1"></i> {t("fimStudents.button")}
+                        </button>
+                        {classData.students.some((s) => !s.email && !s.fimUid) && (
                             <button
                                 className="btn btn-sm btn-outline-secondary"
                                 onClick={handleDownloadUnregistered}
@@ -560,6 +585,9 @@ export default function ClassDetailPage() {
                             </div>
                         </form>
                     )}
+
+                    {/* Students by FIM username, one or a CSV of them */}
+                    {showAddFim && id && <FimStudentAdder classId={id} onAdded={handleFimStudentsAdded} />}
 
                     {/* CSV import */}
                     {showImport && (
@@ -677,6 +705,9 @@ export default function ClassDetailPage() {
                                             <td>
                                                 {s.email ? (
                                                     <span className="text-muted">{s.email}</span>
+                                                ) : s.fimUid ? (
+                                                    // Filled in by the student's first FIM login.
+                                                    <span className="text-muted">–</span>
                                                 ) : (
                                                     <span className="text-warning">
                                                         <i className="bi bi-clock me-1"></i>
@@ -685,7 +716,12 @@ export default function ClassDetailPage() {
                                                 )}
                                             </td>
                                             <td>
-                                                {s.email ? (
+                                                {s.fimUid ? (
+                                                    <span className="badge bg-info text-dark" title={t("fimStudents.badgeTitle")}>
+                                                        <i className="bi bi-mortarboard me-1"></i>
+                                                        {s.fimUid}
+                                                    </span>
+                                                ) : s.email ? (
                                                     <span className="badge bg-success">{t("classDetail.active")}</span>
                                                 ) : s.inviteToken ? (
                                                     <button
@@ -713,7 +749,7 @@ export default function ClassDetailPage() {
                                             </td>
                                             <td>
                                                 <div className="d-flex gap-1">
-                                                    {s.email && (
+                                                    {s.email && !s.fimUid && (
                                                         <button
                                                             className="btn btn-sm btn-outline-warning"
                                                             onClick={() => setResetingStudent(s)}
