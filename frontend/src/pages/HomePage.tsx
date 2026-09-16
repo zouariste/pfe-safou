@@ -124,7 +124,15 @@ export default function HomePage() {
                 document.getElementById("preview-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
             }, 50);
         } catch (err: any) {
-            setError(err?.response?.data?.message || err?.message || "Error during API request");
+            // The backend sends a stable `code` for the errors it expects us to explain
+            // properly; everything else still falls back to its (German) message, and then
+            // to whatever axios reports if the request never reached the server.
+            const code = err?.response?.data?.code;
+            setError(
+                code === "UNSUPPORTED_LANGUAGE"
+                    ? t("home.errorUnsupportedLanguage")
+                    : err?.response?.data?.message || err?.message || "Error during API request"
+            );
         } finally {
             setLoading(false);
         }

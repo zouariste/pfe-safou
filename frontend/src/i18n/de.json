@@ -209,6 +209,7 @@
     "reset": "Zurücksetzen",
     "worksheet": "Arbeitsblatt",
     "error": "Fehler",
+    "errorUnsupportedLanguage": "Dieser Code-Schnipsel ist weder Python noch Java. CodeOwl kann Aufgabensequenzen nur für Sprachen generieren, die es analysieren kann — bitte Python- oder Java-Code einfügen.",
     "preview": "Vorschau",
     "new": "Neu",
     "tips": "Tipps",

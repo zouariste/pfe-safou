@@ -26,8 +26,20 @@ public class ApiErrorResponse {
     private String error;
     private String message;
 
+    /**
+     * Stable, machine-readable identifier for errors the frontend is expected to handle
+     * specially -- currently only so it can translate them. Null for everything else, in
+     * which case the client falls back to {@link #message}.
+     */
+    private String code;
+
     public ApiErrorResponse(String error, String message) {
+        this(error, message, null);
+    }
+
+    public ApiErrorResponse(String error, String message, String code) {
         this.error = error;
         this.message = message;
+        this.code = code;
     }
 }
