@@ -68,12 +68,60 @@ public class TaskSubmissionService {
             throw new DomainValidationException("A solved submission needs at least one block.");
         }
 
+        store(userId, taskId, blockOrder, indentLevels, true);
+    }
+
+    /**
+     * Stores work in progress, so closing the tab or stepping away from the page does not
+     * cost the student their arrangement.
+     *
+     * Unlike {@link #saveSolved}, an empty arrangement is accepted: a student who has pulled
+     * every block back out of the solution area is in a real state, and refusing to record it
+     * would leave the previous one to be restored over the top of their actual work.
+     *
+     * Anonymous solvers are skipped for the same reason as above -- no account, nothing to
+     * store the work against.
+     */
+    @Transactional
+    public void saveProgress(UUID userId, UUID taskId, List<String> blockOrder, List<Integer> indentLevels) {
+        if (taskId == null) {
+            throw new DomainValidationException("taskId is required");
+        }
+        if (userId == null) {
+            log.debug("Anonymous work on task {}, nothing to store", taskId);
+            return;
+        }
+        // Autosaving against a closed worksheet would let a client that ignores the
+        // read-only UI carry on regardless, exactly as a solve would.
+        worksheetAccessService.requireSolvable(taskId);
+
+        store(userId, taskId, blockOrder, indentLevels, false);
+    }
+
+    private void store(UUID userId, UUID taskId, List<String> blockOrder,
+                       List<Integer> indentLevels, boolean solved) {
         repository.save(TaskSubmissionDTO.builder()
                 .userId(userId)
                 .taskId(taskId)
-                .blockOrder(blockOrder)
+                .blockOrder(blockOrder != null ? blockOrder : List.of())
                 .indentLevels(indentLevels != null ? indentLevels : List.of())
+                .solved(solved)
                 .build());
+    }
+
+    /**
+     * Throws away a student's stored arrangement, so the task deals a fresh puzzle next time.
+     *
+     * This is the student discarding their own work on purpose, which is why it is allowed on
+     * a closed worksheet: there is nothing to gain by forcing them to keep it.
+     */
+    @Transactional
+    public void discard(UUID userId, UUID taskId) {
+        if (taskId == null) {
+            throw new DomainValidationException("taskId is required");
+        }
+        if (userId == null) return;
+        repository.delete(userId, taskId);
     }
 
     @Transactional(readOnly = true)

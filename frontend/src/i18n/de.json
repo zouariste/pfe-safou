@@ -330,6 +330,8 @@
     "closedBanner": "Die Abgabefrist für dieses Arbeitsblatt ist abgelaufen. Du kannst die Aufgabe ansehen, aber nicht mehr bearbeiten.",
     "closedTooltip": "Abgabefrist abgelaufen",
     "redo": "Aufgabe erneut lösen",
+    "startOver": "Neu beginnen",
+    "alreadySolvedHint": "Du hast diese Aufgabe bereits gelöst. Mit „Aufgabe erneut lösen“ kannst du sie noch einmal bearbeiten.",
     "restoredNote": "Deine gelöste Anordnung wurde wiederhergestellt.",
     "creditsExhausted": "Alle Hinweis-Credits für diese Aufgabe sind aufgebraucht.",
     "creditsInsufficient": "Nicht genug Credits: dieser Hinweis kostet {{cost}}, du hast noch {{remaining}}.",

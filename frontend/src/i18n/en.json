@@ -330,6 +330,8 @@
     "closedBanner": "The deadline for this worksheet has passed. You can look at the task but no longer work on it.",
     "closedTooltip": "Deadline passed",
     "redo": "Solve again",
+    "startOver": "Start over",
+    "alreadySolvedHint": "You have already solved this task. Use “Solve again” to have another go.",
     "restoredNote": "Your solved arrangement has been restored.",
     "creditsExhausted": "All hint credits for this task have been used up.",
     "creditsInsufficient": "Not enough credits: this hint costs {{cost}}, you have {{remaining}} left.",

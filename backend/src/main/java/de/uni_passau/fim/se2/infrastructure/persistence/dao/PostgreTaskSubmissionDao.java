@@ -50,6 +50,7 @@ public class PostgreTaskSubmissionDao implements TaskSubmissionRepository {
             .taskId(rs.getObject("task_id", UUID.class))
             .blockOrder(readList(rs.getString("block_order"), new TypeReference<List<String>>() {}))
             .indentLevels(readList(rs.getString("indent_levels"), new TypeReference<List<Integer>>() {}))
+            .solved(rs.getBoolean("solved"))
             .solvedAt(rs.getTimestamp("solved_at") != null ? rs.getTimestamp("solved_at").toLocalDateTime() : null)
             .updatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null)
             .build();
@@ -60,16 +61,21 @@ public class PostgreTaskSubmissionDao implements TaskSubmissionRepository {
             throw new DomainValidationException("Task submission needs a user and a task.");
         }
 
-        // One row per student and task: solving again replaces the arrangement
-        // rather than adding to a history. The audit trail is learning_events.
+        // One row per student and task: a later arrangement replaces the earlier one rather
+        // than adding to a history. The audit trail is learning_events.
+        //
+        // `solved` only ever goes false -> true. An autosave of work in progress must not
+        // take away having solved the task, and solved_at keeps the moment it was first
+        // solved rather than being pushed forward by every later edit.
         String sql = """
                 INSERT INTO task_submissions (user_id, task_id, block_order, indent_levels,
-                                              solved_at, updated_at)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                                              solved, solved_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, CASE WHEN ? THEN CURRENT_TIMESTAMP END, CURRENT_TIMESTAMP)
                 ON CONFLICT (user_id, task_id) DO UPDATE
                 SET block_order   = EXCLUDED.block_order,
                     indent_levels = EXCLUDED.indent_levels,
-                    solved_at     = EXCLUDED.solved_at,
+                    solved        = task_submissions.solved OR EXCLUDED.solved,
+                    solved_at     = COALESCE(task_submissions.solved_at, EXCLUDED.solved_at),
                     updated_at    = CURRENT_TIMESTAMP
                 """;
 
@@ -77,9 +83,12 @@ public class PostgreTaskSubmissionDao implements TaskSubmissionRepository {
                 submission.getUserId(),
                 submission.getTaskId(),
                 toJsonb(submission.getBlockOrder()),
-                toJsonb(submission.getIndentLevels()));
+                toJsonb(submission.getIndentLevels()),
+                submission.isSolved(),
+                submission.isSolved());
 
-        log.debug("Stored solved arrangement for user={} task={}",
+        log.debug("Stored {} arrangement for user={} task={}",
+                submission.isSolved() ? "solved" : "in-progress",
                 submission.getUserId(), submission.getTaskId());
     }
 
@@ -88,12 +97,23 @@ public class PostgreTaskSubmissionDao implements TaskSubmissionRepository {
         if (userId == null || taskId == null) return Optional.empty();
 
         String sql = """
-                SELECT user_id, task_id, block_order, indent_levels, solved_at, updated_at
+                SELECT user_id, task_id, block_order, indent_levels, solved, solved_at, updated_at
                 FROM task_submissions
                 WHERE user_id = ? AND task_id = ?
                 """;
 
         return jdbc.query(sql, rowMapper, userId, taskId).stream().findFirst();
+    }
+
+    @Override
+    public void delete(UUID userId, UUID taskId) {
+        if (userId == null || taskId == null) return;
+
+        int removed = jdbc.update(
+                "DELETE FROM task_submissions WHERE user_id = ? AND task_id = ?", userId, taskId);
+
+        log.debug("Discarded {} stored arrangement(s) for user={} task={}",
+                removed, userId, taskId);
     }
 
     /** Wraps a list as a jsonb parameter; a null list is stored as an empty array. */

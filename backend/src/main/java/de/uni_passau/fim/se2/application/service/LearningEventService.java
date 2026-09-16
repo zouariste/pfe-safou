@@ -72,7 +72,12 @@ public class LearningEventService {
             "task_redo_started",
             // AP31: Inline-split fragment analytics
             "fragment_placed",
-            "split_distractor_placed"
+            "split_distractor_placed",
+            // Every reorder and indent the student makes, batched. Until this existed the
+            // only record of an arrangement was whatever they had when they clicked Feedback,
+            // so a student who worked for ten minutes without clicking it left nothing behind
+            // -- and no event of any kind carried indentation.
+            "arrangement_changed"
     );
 
     /**

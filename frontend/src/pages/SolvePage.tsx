@@ -16,6 +16,7 @@ import DOMPurify from "dompurify";
 import HintButton from "../components/HintButton.tsx";
 import { formatGraderFeedback } from "../lib/graderFeedback.ts";
 import { restoreSubmission } from "../lib/restoreSubmission.ts";
+import { readArrangement } from "../lib/readArrangement.ts";
 import { applyHintLabels } from "../lib/hintHighlight.ts";
 import { shuffleElementChildren } from "../lib/shuffleSource.ts";
 
@@ -96,12 +97,37 @@ export default function SolvePage() {
     const [creditsPerTask, setCreditsPerTask] = useState<number | null>(null);
     // A previously solved arrangement, restored into the puzzle on open.
     const [solvedPreviously, setSolvedPreviously] = useState(false);
+    /** Unfinished work was restored, so the student is offered a way to drop it. */
+    const [hasSavedProgress, setHasSavedProgress] = useState(false);
+    /**
+     * The task is solved, so grading it again would say nothing and the check button is closed
+     * off until the student asks for another go with Redo.
+     *
+     * Deliberately not solvedPreviously, which stays true through a Redo so the Redo button
+     * keeps its place -- and deliberately not showCompletionBanner, which the student can
+     * dismiss. This is the one signal that means "solved, right now".
+     */
+    const [solutionLocked, setSolutionLocked] = useState(false);
     // False once a worksheet deadline (plus grace) has passed: the task can
     // still be read, but not worked on.
     const [canSolve, setCanSolve] = useState(true);
     const restoredRef = useRef(false);
     // When the restored solution was first solved, reported with the redo event.
     const solvedAtRef = useRef<string | null>(null);
+
+    // ── Autosave of work in progress, and the research trail of how it got there ──
+    // Both are driven by the same widget hook (see the addLogEntry wrapper below): one read
+    // of the DOM, two destinations. The autosave is debounced because a drag produces one
+    // change and a student produces many; the research buffer is flushed in batches because
+    // useEventTracker posts one request per call and a move-by-move stream would be one
+    // request every few seconds, per student.
+    const progressTimerRef = useRef<number | null>(null);
+    const progressPendingRef = useRef(false);
+    const moveBufferRef = useRef<Array<Record<string, unknown>>>([]);
+    const moveBatchStartRef = useRef<number>(0);
+    const moveFlushTimerRef = useRef<number | null>(null);
+    /** Set by the widget effect; lets "start over" cancel pending saves it cannot otherwise see. */
+    const discardProgressRef = useRef<(() => void) | null>(null);
     const hintShownAtRef = useRef<number>(0);
     const lastHintLevelRef = useRef<number>(0);
     const correctCountBeforeHintRef = useRef<number | null>(null);
@@ -324,6 +350,10 @@ export default function SolvePage() {
         distractorPlacedAtRef.current = new Map();
         lastFeedbackBeforeRemovalRef.current = false;
         lastHintBeforeRemovalRef.current = false;
+        moveBufferRef.current = [];
+        moveBatchStartRef.current = 0;
+        setHasSavedProgress(false);
+        setSolutionLocked(false);
         setPreviousCorrectCount(0);
         setFeedbackHTML("");
         setHintText(null);
@@ -494,17 +524,34 @@ export default function SolvePage() {
         api.get(`/tasks/${task.id}/submission`)
             .then(({ data }) => {
                 if (!data?.blockOrder?.length) return;
-                const { restored } = restoreSubmission(
+                const { restored, placed } = restoreSubmission(
                     document.getElementById("ul-jsparsons-source"),
                     document.getElementById("ul-jsparsons-target"),
                     data.blockOrder,
                     data.indentLevels,
                     widget.options?.x_indent || 50,
                 );
+                // restoreSubmission only sets margin-left, which is how indentation is drawn.
+                // Grading reads line.indent on the widget's own model, which init left at 0, so
+                // without this a restored solution is graded as fully unindented until the
+                // student drags something -- a correct solution marked wrong.
+                for (const { id, indent } of placed) {
+                    const line = widget.getLineById?.(id);
+                    if (line) line.indent = widget.options?.can_indent ? indent : 0;
+                }
                 if (restored > 0) {
                     restoredRef.current = true;
                     solvedAtRef.current = data.solvedAt ?? null;
-                    setSolvedPreviously(true);
+                    // Only a solved arrangement makes the task solved. An in-progress restore
+                    // that claimed otherwise would offer Redo for work not yet finished, and
+                    // tell the student they had already completed it.
+                    if (data.solved) {
+                        setSolvedPreviously(true);
+                        // Reopened already solved: what is on screen is the arrangement that
+                        // was graded correct, so there is nothing to check until they redo it.
+                        setSolutionLocked(true);
+                    }
+                    else setHasSavedProgress(true);
                 }
             })
             .catch(() => { /* nothing stored, or not logged in */ });
@@ -526,6 +573,92 @@ export default function SolvePage() {
         }
         distractorsInSolutionRef.current = new Set();
         distractorPlacedAtRef.current = new Map();
+
+        // ── Autosave + research trail ───────────────────────────────────────
+        // parsons.js funnels every mutation through addLogEntry -- drag, click-to-move and
+        // keyboard alike -- and updateIndent runs in the same handlers immediately before it,
+        // so one wrapper catches reorders and indents both. Wrapped on the instance, shadowing
+        // the prototype, exactly as getFeedback is wrapped just below.
+        const PROGRESS_DEBOUNCE_MS = 1500;
+        const MOVE_FLUSH_MS = 10_000;
+        const MOVE_BATCH_MAX = 25;
+        const MOVE_ACTIONS = new Set(["moveOutput", "addOutput", "removeOutput", "moveInput"]);
+
+        const currentArrangement = () =>
+            readArrangement(
+                document.getElementById(`ul-${widget.options.sortableId}`),
+                widget.options?.x_indent || 50,
+            );
+
+        const saveProgressNow = () => {
+            if (progressTimerRef.current !== null) {
+                window.clearTimeout(progressTimerRef.current);
+                progressTimerRef.current = null;
+            }
+            if (!progressPendingRef.current || !task?.id) return;
+            progressPendingRef.current = false;
+            // Fire-and-forget, like the solved save: losing an autosave costs the student the
+            // last few seconds of work, and blocking the page on it would cost them more.
+            api.put(`/tasks/${task.id}/submission/progress`, currentArrangement())
+                .catch(() => { /* works fine without persistence */ });
+        };
+
+        const flushMoves = () => {
+            if (moveFlushTimerRef.current !== null) {
+                window.clearTimeout(moveFlushTimerRef.current);
+                moveFlushTimerRef.current = null;
+            }
+            const moves = moveBufferRef.current;
+            if (moves.length === 0 || !task?.id) return;
+            moveBufferRef.current = [];
+            logEvent(task.id, "arrangement_changed", {
+                batchStartMs: moveBatchStartRef.current,
+                moves,
+            }, task.sequenceId, task.tierLevel);
+            moveBatchStartRef.current = 0;
+        };
+
+        const originalAddLogEntry = widget.addLogEntry.bind(widget);
+        widget.addLogEntry = function (entry: any, isMove?: boolean) {
+            const result = originalAddLogEntry(entry, isMove);
+            try {
+                if (!entry || !MOVE_ACTIONS.has(entry.type)) return result;
+
+                const now = Date.now();
+                if (moveBufferRef.current.length === 0) moveBatchStartRef.current = now;
+
+                const moved = entry.target ? document.getElementById(entry.target) : null;
+                moveBufferRef.current.push({
+                    atMs: now - moveBatchStartRef.current,
+                    action: entry.type,
+                    blockText: moved?.textContent?.trim() ?? "",
+                    ...currentArrangement(),
+                });
+
+                if (moveBufferRef.current.length >= MOVE_BATCH_MAX) {
+                    flushMoves();
+                } else if (moveFlushTimerRef.current === null) {
+                    moveFlushTimerRef.current = window.setTimeout(flushMoves, MOVE_FLUSH_MS);
+                }
+
+                progressPendingRef.current = true;
+                if (progressTimerRef.current !== null) window.clearTimeout(progressTimerRef.current);
+                progressTimerRef.current = window.setTimeout(saveProgressNow, PROGRESS_DEBOUNCE_MS);
+            } catch {
+                // Recording how the student worked must never break the widget they work in.
+            }
+            return result;
+        };
+
+        discardProgressRef.current = () => {
+            if (progressTimerRef.current !== null) {
+                window.clearTimeout(progressTimerRef.current);
+                progressTimerRef.current = null;
+            }
+            progressPendingRef.current = false;
+            moveBufferRef.current = [];
+            moveBatchStartRef.current = 0;
+        };
 
         const originalGetFeedback = widget.getFeedback.bind(widget);
         widget.getFeedback = function () {
@@ -837,6 +970,18 @@ export default function SolvePage() {
         }
 
         return () => {
+            // Flush before the timers die, or the last edit before leaving the page is exactly
+            // the one that is lost. In-app navigation runs this synchronously and the requests
+            // complete; a real tab close may kill them, which is a known limit shared with the
+            // task_closed event and not something beforeunload would fix.
+            saveProgressNow();
+            flushMoves();
+            if (moveFlushTimerRef.current !== null) {
+                window.clearTimeout(moveFlushTimerRef.current);
+                moveFlushTimerRef.current = null;
+            }
+            discardProgressRef.current = null;
+            observer.disconnect();
             document.removeEventListener("input", gapClearHandler);
             widgetRef.current = null;
         };
@@ -910,12 +1055,7 @@ export default function SolvePage() {
             const blockOrder = domBlocks.map(
                 (li) => (li as HTMLElement).textContent?.trim() ?? ""
             );
-            // Read indent level from CSS margin-left (x_indent default = 50px per level)
-            const xIndent = widget.options?.x_indent || 50;
-            const indentLevels = domBlocks.map((li) => {
-                const ml = parseFloat((li as HTMLElement).style.marginLeft) || 0;
-                return Math.round(ml / xIndent);
-            });
+            const { indentLevels } = readArrangement(sortableUl, widget.options?.x_indent || 50);
 
             if (blockOrder.length === 0) {
                 setHintError(t("solve.hintDragFirst"));
@@ -1303,6 +1443,54 @@ export default function SolvePage() {
                         </button>
 
                         {/*
+                          * Offered only while unfinished work has been restored. Resuming is
+                          * silent, so this is the way back out for a student who would rather
+                          * start clean than undo their way there -- and it throws the stored
+                          * arrangement away, or the next visit would simply restore it again.
+                          */}
+                        {hasSavedProgress && !solvedPreviously && canSolve && (
+                            <button
+                                className="btn btn-outline-secondary"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    const widget = widgetRef.current;
+                                    if (!widget) return;
+
+                                    // Drop the pending autosave first: it would otherwise fire
+                                    // after the delete and store the arrangement right back.
+                                    discardProgressRef.current?.();
+
+                                    widget.shuffleLines();
+                                    setHasSavedProgress(false);
+                                    restoredRef.current = false;
+                                    isCompleteRef.current = false;
+                                    setSolutionLocked(false);
+                                    setFeedbackHTML("");
+                                    clearHintHighlights("new_hint");
+                                    setHintText(null);
+                                    setHintExplanation(null);
+                                    setHintError(null);
+                                    startTimeRef.current = Date.now();
+                                    attemptCountRef.current = 0;
+
+                                    if (interactionMode === "click") {
+                                        try {
+                                            widget.disableClickToMove();
+                                            widget.enableClickToMove();
+                                        } catch { /* not enabled */ }
+                                    }
+
+                                    if (task?.id) {
+                                        api.delete(`/tasks/${task.id}/submission`)
+                                            .catch(() => { /* nothing stored, or not logged in */ });
+                                    }
+                                }}
+                            >
+                                {t("solve.startOver")}
+                            </button>
+                        )}
+
+                        {/*
                           * Offered only once the task has been solved, since that is
                           * the only time the puzzle comes back already filled in.
                           * The stored solution is deliberately left in place: an
@@ -1319,6 +1507,7 @@ export default function SolvePage() {
                                     // Deal the task out again from scratch.
                                     widget.shuffleLines();
                                     isCompleteRef.current = false;
+                                    setSolutionLocked(false);
                                     setShowCompletionBanner(false);
                                     setShowSelfReport(false);
                                     setFeedbackHTML("");
@@ -1353,9 +1542,22 @@ export default function SolvePage() {
                             </button>
                         )}
 
+                        {/*
+                          * The title lives on a wrapper, not on the button. A disabled control
+                          * receives no pointer events, so its own tooltip never fires -- and
+                          * the hover does not reach the parent either while the button is
+                          * still in the way, which is what pointerEvents: none clears. This is
+                          * Bootstrap's own advice for tooltips on disabled buttons, done with
+                          * a plain title because that is what the rest of the app uses.
+                          */}
+                        <span
+                            className="d-inline-block"
+                            title={solutionLocked ? (t("solve.alreadySolvedHint") as string) : undefined}
+                        >
                         <button
                             className="btn btn-primary"
-                            disabled={!canSolve}
+                            disabled={!canSolve || solutionLocked}
+                            style={solutionLocked ? { pointerEvents: "none" } : undefined}
                             onClick={(e) => {
                                 e.preventDefault();
                                 const widget = widgetRef.current;
@@ -1613,18 +1815,15 @@ export default function SolvePage() {
                                     setShowSelfReport(true);
                                     setShowCompletionBanner(true); // AP18
                                     setSolvedPreviously(true);
+                                    setSolutionLocked(true);
 
                                     // Keep the arrangement so reopening the task shows
                                     // their work. Fire-and-forget: failing to store it
                                     // must not take away having solved it.
-                                    const xIndent = widget.options?.x_indent || 50;
-                                    api.put(`/tasks/${task.id}/submission`, {
-                                        blockOrder,
-                                        indentLevels: domBlocks.map((li) => {
-                                            const ml = parseFloat((li as HTMLElement).style.marginLeft) || 0;
-                                            return Math.round(ml / xIndent);
-                                        }),
-                                    }).catch(() => { /* works fine without persistence */ });
+                                    api.put(
+                                        `/tasks/${task.id}/submission`,
+                                        readArrangement(sortableUl, widget.options?.x_indent || 50),
+                                    ).catch(() => { /* works fine without persistence */ });
                                 }
 
                                 // Send feedback-log to legacy endpoint (fire-and-forget)
@@ -1649,6 +1848,7 @@ export default function SolvePage() {
                         >
                             {t("solve.feedback")}
                         </button>
+                        </span>
 
                         {/* AP13: Hint buttons (only if teacher enabled hints) */}
                         {hintsEnabled && canSolve && (

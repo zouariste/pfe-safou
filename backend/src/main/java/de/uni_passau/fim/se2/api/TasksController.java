@@ -254,6 +254,33 @@ public class TasksController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Autosaves the arrangement a student currently has, without claiming they solved it.
+     *
+     * Called repeatedly while a student works, so it is deliberately cheap and forgiving: an
+     * empty arrangement is valid, and anonymous callers are ignored rather than rejected.
+     */
+    @PutMapping("/tasks/{taskId}/submission/progress")
+    public ResponseEntity<Void> saveMyProgress(@PathVariable UUID taskId,
+                                               @RequestBody TaskSubmissionRequest request) {
+        UUID userId = ownershipService.getCurrentUserId();
+        taskSubmissionService.saveProgress(userId, taskId, request.blockOrder(), request.indentLevels());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Throws away the current student's stored arrangement for a task.
+     *
+     * What the "start over" control calls, so the next visit deals a fresh puzzle instead of
+     * restoring work the student has chosen to abandon.
+     */
+    @DeleteMapping("/tasks/{taskId}/submission")
+    public ResponseEntity<Void> discardMySubmission(@PathVariable UUID taskId) {
+        UUID userId = ownershipService.getCurrentUserId();
+        taskSubmissionService.discard(userId, taskId);
+        return ResponseEntity.noContent().build();
+    }
+
     /** The solution area as the student left it. */
     public record TaskSubmissionRequest(List<String> blockOrder, List<Integer> indentLevels) {}
 
