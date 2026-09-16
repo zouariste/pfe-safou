@@ -792,7 +792,21 @@
     "statusHeader": "Status",
     "solved": "Gelöst",
     "attempted": "Versucht",
-    "notAttempted": "Nicht versucht"
+    "notAttempted": "Nicht versucht",
+    "stateHeader": "Letzter Stand",
+    "stateButton": "Ansehen",
+    "stateButtonTitle": "Zeigen, was dieser Schüler zuletzt für diese Aufgabe gebaut hat",
+    "stateTitle": "{{name}} — letzter Stand",
+    "stateLoading": "Wird geladen…",
+    "stateError": "Der letzte Stand dieses Schülers konnte nicht geladen werden.",
+    "stateStudentColumn": "Stand des Schülers",
+    "stateSolutionColumn": "Erwartete Lösung",
+    "stateNothingSaved": "Dieser Schüler hat für diese Aufgabe noch nichts angeordnet.",
+    "stateEmptySolution": "Der Lösungsbereich war leer.",
+    "stateSolved": "Gelöst",
+    "stateInProgress": "In Bearbeitung",
+    "stateSavedAt": "gespeichert {{when}}",
+    "stateGapNote": "In Lücken eingetippte Werte werden nicht aufgezeichnet und fehlen daher in den Blöcken."
   },
 
   "csvImport": {

@@ -792,7 +792,21 @@
     "statusHeader": "Status",
     "solved": "Solved",
     "attempted": "Attempted",
-    "notAttempted": "Not attempted"
+    "notAttempted": "Not attempted",
+    "stateHeader": "Last state",
+    "stateButton": "View",
+    "stateButtonTitle": "Show what this student last built for this task",
+    "stateTitle": "{{name}} — last state",
+    "stateLoading": "Loading…",
+    "stateError": "This student's last state could not be loaded.",
+    "stateStudentColumn": "What the student built",
+    "stateSolutionColumn": "Expected solution",
+    "stateNothingSaved": "This student has not arranged anything for this task yet.",
+    "stateEmptySolution": "The solution area was empty.",
+    "stateSolved": "Solved",
+    "stateInProgress": "In progress",
+    "stateSavedAt": "saved {{when}}",
+    "stateGapNote": "Values typed into gaps are not recorded, so they are missing from the student's blocks."
   },
 
   "csvImport": {

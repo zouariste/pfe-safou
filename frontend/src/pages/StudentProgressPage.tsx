@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api, apiErrorMessage } from "../lib/api.ts";
 import type { StudentProgressDetail } from "../types/models.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
+import StudentTaskStateModal from "../components/StudentTaskStateModal.tsx";
 
 /** Statements are the whole problem text; a table row only needs enough to recognise the task. */
 const STATEMENT_PREVIEW_LENGTH = 100;
@@ -19,6 +20,8 @@ export default function StudentProgressPage() {
     const { id: classId, studentId } = useParams<{ id: string; studentId: string }>();
 
     const [detail, setDetail] = useState<StudentProgressDetail | null>(null);
+    /** The task whose saved arrangement the teacher asked to see, or null for no dialog. */
+    const [stateTaskId, setStateTaskId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
@@ -109,6 +112,9 @@ export default function StudentProgressPage() {
                                                         <th style={{ width: 110 }}>
                                                             {t("studentProgress.statusHeader")}
                                                         </th>
+                                                        <th style={{ width: 90 }}>
+                                                            {t("studentProgress.stateHeader")}
+                                                        </th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -134,6 +140,23 @@ export default function StudentProgressPage() {
                                                                     </span>
                                                                 )}
                                                             </td>
+                                                            <td>
+                                                                {/*
+                                                                  * Never gated on attempts. Those count
+                                                                  * Feedback clicks, while the arrangement is
+                                                                  * autosaved independently, so a student with
+                                                                  * no attempts can still have left plenty
+                                                                  * behind - the case this is most useful for.
+                                                                  */}
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-sm btn-outline-secondary"
+                                                                    title={t("studentProgress.stateButtonTitle")}
+                                                                    onClick={() => setStateTaskId(task.taskId)}
+                                                                >
+                                                                    {t("studentProgress.stateButton")}
+                                                                </button>
+                                                            </td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -145,6 +168,16 @@ export default function StudentProgressPage() {
                         </div>
                     </div>
                 ))
+            )}
+
+            {stateTaskId && classId && studentId && (
+                <StudentTaskStateModal
+                    classId={classId}
+                    studentId={studentId}
+                    taskId={stateTaskId}
+                    studentName={detail?.studentName ?? ""}
+                    onClose={() => setStateTaskId(null)}
+                />
             )}
         </div>
     );
