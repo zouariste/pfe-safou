@@ -1,6 +1,7 @@
 {
   "nav": {
     "userManagement": "User Management",
+    "researchLogs": "Research Logs",
     "automaticCreator": "Automatic Creator",
     "manualCreator": "Manual Creator",
     "classes": "Classes",
@@ -1210,6 +1211,42 @@
     "restoreHint": "Restore: docker exec -i <container> pg_restore -U postgres -d codeowl < backup.dump"
   },
 
+  "adminResearch": {
+    "title": "Research Logs",
+    "subtitle": "View and download the data recorded for research, filtered by class, type and date range",
+    "loadError": "The data could not be loaded.",
+    "downloadError": "The download failed.",
+    "dataset": {
+      "events": "Learning Events",
+      "feedback": "Feedback Clicks",
+      "hints": "Hints",
+      "submissions": "Submissions"
+    },
+    "filterClass": "Class",
+    "allClasses": "All classes",
+    "trackingOffTag": "(tracking off)",
+    "filterType": "Event type",
+    "allTypes": "All types",
+    "filterFrom": "From",
+    "filterTo": "To",
+    "refresh": "Reload",
+    "clearFilters": "Clear",
+    "statRows": "rows",
+    "statStudents": "identified students",
+    "statAnonymous": "anonymised",
+    "downloadCsv": "CSV",
+    "downloadZip": "ZIP",
+    "downloadZipHint": "All four datasets for the current class as a ZIP",
+    "empty": "Nothing was recorded for this filter.",
+    "prevPage": "Previous page",
+    "nextPage": "Next page",
+    "pageOf": "Page {{page}} of {{total}}",
+    "anonymous": "anonymous",
+    "noClass": "no class",
+    "expandHint": "Click to expand or collapse",
+    "privacyNote": "Ids are pseudonyms; names and email addresses never leave this page. Events from a class without tracking are stored without a student id but keep their class."
+  },
+
   "changePassword": {
     "title": "Choose a New Password",
     "subtitle": "Your teacher has set a temporary password for you. Please choose your own password now.",
@@ -1927,6 +1964,14 @@
         "<strong>Bulk Retag</strong> — re-runs the automatic tag analysis pipeline across all sequences in the database. Use this after updating the tagger model or changing tag rules. Can take a few minutes depending on library size.",
         "<strong>Merge Tags</strong> — combine duplicate or near-duplicate tags into one canonical form (e.g. <code>for_loop</code> + <code>for-loop</code> → <code>for-loop</code>). All sequence associations are updated automatically.",
         "<strong>Tag Overview</strong> — see all tags sorted by usage count; spot orphaned or rarely-used tags that could be cleaned up."
+      ],
+      "researchTitle": "Research Logs",
+      "research": [
+        "<strong>Four datasets</strong> — learning events (every block move, hint and distractor interaction), feedback clicks, hint usage, and the students' saved arrangements. Switch with the tabs.",
+        "<strong>Filter by class</strong> — learning events and feedback clicks carry the class they happened in, so the filter is exact. Hints and submissions are matched through class membership and worksheet assignment instead.",
+        "<strong>Download CSV</strong> — exports exactly what the filters select, not just the visible page.",
+        "<strong>Download ZIP</strong> — all four datasets for the current class plus a <code>_metadata.json</code> recording which filters produced it.",
+        "<strong>Pseudonymous</strong> — rows carry UUIDs, never names or email addresses. Both downloads are recorded in the audit log on <code>/admin/database</code>."
       ],
       "cautionTitle": "Caution",
       "caution": [

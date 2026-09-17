@@ -37,6 +37,7 @@ public class LearningEventDTO {
 
     private UUID id;
     private UUID userId;        // nullable — null for anonymous or anonymized
+    private UUID classId;       // nullable — survives anonymization of userId, see V22
     private UUID taskId;
     private UUID sequenceId;    // nullable
     private Integer tierLevel;  // nullable

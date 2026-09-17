@@ -27,6 +27,7 @@ import StudentClassesPage from "./pages/StudentClassesPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminLibraryPage from "./pages/AdminLibraryPage";
 import AdminDatabasePage from "./pages/AdminDatabasePage";
+import AdminResearchPage from "./pages/AdminResearchPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ManualTaskCreator from "./pages/ManualTaskCreator";
 import CurriculumPage from "./pages/CurriculumPage";
@@ -57,6 +58,7 @@ function FloatingHelpButton() {
     const matchAdminUsers = useMatch("/admin/users");
     const matchAdminLib   = useMatch("/admin/library");
     const matchAdminDb    = useMatch("/admin/database");
+    const matchAdminRes   = useMatch("/admin/research");
     const matchProfile    = useMatch("/profile");
     const matchHelpRoot   = useMatch("/help");
     const matchHelpAny    = useMatch("/help/*");
@@ -73,7 +75,7 @@ function FloatingHelpButton() {
         (matchWorksheet || matchWorksheetsList) ? "worksheets" :
         matchManual                       ? "manual-create" :
         matchMyClasses                    ? "my-classes"    :
-        (matchAdminUsers || matchAdminLib || matchAdminDb)? "admin" :
+        (matchAdminUsers || matchAdminLib || matchAdminDb || matchAdminRes)? "admin" :
         matchProfile                      ? "auth"          :
         "home";
 
@@ -159,6 +161,10 @@ function Navbar() {
                                 <Link to="/admin/database" className="btn btn-sm btn-outline-danger">
                                     <i className="bi bi-database me-1"></i>
                                     {t("nav.databaseTools")}
+                                </Link>
+                                <Link to="/admin/research" className="btn btn-sm btn-outline-danger">
+                                    <i className="bi bi-clipboard-data me-1"></i>
+                                    {t("nav.researchLogs")}
                                 </Link>
                             </>
                         )}
@@ -376,6 +382,7 @@ export default function App() {
                                 <Route path="/admin/users" element={<ProtectedRoute requiredRole="ADMIN"><AdminUsersPage /></ProtectedRoute>} />
                                 <Route path="/admin/library" element={<ProtectedRoute requiredRole="ADMIN"><AdminLibraryPage /></ProtectedRoute>} />
                                 <Route path="/admin/database" element={<ProtectedRoute requiredRole="ADMIN"><AdminDatabasePage /></ProtectedRoute>} />
+                                <Route path="/admin/research" element={<ProtectedRoute requiredRole="ADMIN"><AdminResearchPage /></ProtectedRoute>} />
 
                                 {/* Teacher tools */}
                                 <Route path="/manual-create" element={<ProtectedRoute><ManualTaskCreator /></ProtectedRoute>} />

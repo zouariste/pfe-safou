@@ -61,6 +61,8 @@ class ControllerRouteMappingTest {
                 () -> new WorksheetController(null, null, null, null, null));
         context.registerBean("tasksController", TasksController.class,
                 () -> new TasksController(null, null, null, null, null, null, null, null, null, null));
+        context.registerBean("adminResearchController", AdminResearchController.class,
+                () -> new AdminResearchController(null, null, null, null));
         context.refresh();
 
         mapping = new RequestMappingHandlerMapping();
@@ -117,6 +119,20 @@ class ControllerRouteMappingTest {
                 () -> assertTrue(actual.contains("GET /api/tasks/{taskId}")),
                 () -> assertTrue(actual.contains("PUT /api/tasks/{taskId}")),
                 () -> assertTrue(actual.contains("GET /api/sequences/my")));
+    }
+
+    @Test
+    @DisplayName("the research page's routes are all mapped, download paths included")
+    void researchRoutesAreMapped() {
+        // /export.zip and /{dataset} overlap: the literal has to win, or the ZIP download is
+        // handed to the dataset handler, which rejects "export.zip" as an unknown dataset.
+        // Registration above is what would fail on a genuine ambiguity; this pins the set.
+        Set<String> actual = routes();
+        assertAll(
+                () -> assertTrue(actual.contains("GET /api/admin/research/{dataset}")),
+                () -> assertTrue(actual.contains("GET /api/admin/research/{dataset}/summary")),
+                () -> assertTrue(actual.contains("GET /api/admin/research/{dataset}/export.csv")),
+                () -> assertTrue(actual.contains("GET /api/admin/research/export.zip")));
     }
 
     /** Each mapping as "METHOD /path", the form a reader can compare against a URL. */

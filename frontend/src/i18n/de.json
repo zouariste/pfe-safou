@@ -1,6 +1,7 @@
 {
   "nav": {
     "userManagement": "Userverwaltung",
+    "researchLogs": "Forschungsdaten",
     "automaticCreator": "Automatischer Editor",
     "manualCreator": "Manueller Editor",
     "classes": "Klassen",
@@ -1210,6 +1211,42 @@
     "restoreHint": "Wiederherstellung: docker exec -i <container> pg_restore -U postgres -d codeowl < backup.dump"
   },
 
+  "adminResearch": {
+    "title": "Forschungsdaten",
+    "subtitle": "Die zu Forschungszwecken erfassten Daten ansehen und herunterladen, gefiltert nach Klasse, Typ und Zeitraum",
+    "loadError": "Die Daten konnten nicht geladen werden.",
+    "downloadError": "Der Download ist fehlgeschlagen.",
+    "dataset": {
+      "events": "Lernereignisse",
+      "feedback": "Feedback-Klicks",
+      "hints": "Hinweise",
+      "submissions": "Abgaben"
+    },
+    "filterClass": "Klasse",
+    "allClasses": "Alle Klassen",
+    "trackingOffTag": "(Tracking aus)",
+    "filterType": "Ereignistyp",
+    "allTypes": "Alle Typen",
+    "filterFrom": "Von",
+    "filterTo": "Bis",
+    "refresh": "Neu laden",
+    "clearFilters": "Zurücksetzen",
+    "statRows": "Zeilen",
+    "statStudents": "identifizierte Schüler",
+    "statAnonymous": "anonymisiert",
+    "downloadCsv": "CSV",
+    "downloadZip": "ZIP",
+    "downloadZipHint": "Alle vier Datensätze der aktuellen Klasse als ZIP",
+    "empty": "Für diesen Filter wurden keine Daten erfasst.",
+    "prevPage": "Vorherige Seite",
+    "nextPage": "Nächste Seite",
+    "pageOf": "Seite {{page}} von {{total}}",
+    "anonymous": "anonym",
+    "noClass": "keine Klasse",
+    "expandHint": "Zum Auf- und Zuklappen klicken",
+    "privacyNote": "IDs sind Pseudonyme; Namen und E-Mail-Adressen verlassen diese Seite nicht. Ereignisse aus Klassen ohne Tracking werden ohne Schüler-ID gespeichert, behalten aber ihre Klasse."
+  },
+
   "changePassword": {
     "title": "Neues Passwort wählen",
     "subtitle": "Dein Lehrer hat ein temporäres Passwort für dich gesetzt. Bitte wähle jetzt ein eigenes Passwort.",
@@ -1927,6 +1964,14 @@
         "<strong>Sammel-Retagging</strong> — lässt die automatische Tag-Analyse über alle Sequenzen der Datenbank neu laufen. Nutze das nach einem Update des Tagger-Modells oder nach geänderten Tag-Regeln. Je nach Größe der Bibliothek kann das einige Minuten dauern.",
         "<strong>Tags zusammenführen</strong> — doppelte oder fast identische Tags zu einer kanonischen Form vereinen (z.B. <code>for_loop</code> + <code>for-loop</code> → <code>for-loop</code>). Alle Zuordnungen zu Sequenzen werden automatisch aktualisiert.",
         "<strong>Tag-Übersicht</strong> — alle Tags nach Verwendungshäufigkeit sortiert ansehen; verwaiste oder kaum genutzte Tags erkennen, die aufgeräumt werden könnten."
+      ],
+      "researchTitle": "Forschungsdaten",
+      "research": [
+        "<strong>Vier Datensätze</strong> — Lernereignisse (jeder Blockzug, jeder Hinweis, jede Distraktor-Interaktion), Feedback-Klicks, Hinweisnutzung und die gespeicherten Anordnungen der Schüler. Umschalten über die Reiter.",
+        "<strong>Nach Klasse filtern</strong> — Lernereignisse und Feedback-Klicks tragen die Klasse, in der sie entstanden sind; der Filter ist damit exakt. Hinweise und Abgaben werden stattdessen über Klassenzugehörigkeit und Arbeitsblatt-Zuweisung zugeordnet.",
+        "<strong>CSV herunterladen</strong> — exportiert genau das, was die Filter auswählen, nicht nur die sichtbare Seite.",
+        "<strong>ZIP herunterladen</strong> — alle vier Datensätze der aktuellen Klasse plus eine <code>_metadata.json</code>, die festhält, mit welchen Filtern das Paket entstanden ist.",
+        "<strong>Pseudonym</strong> — die Zeilen enthalten UUIDs, niemals Namen oder E-Mail-Adressen. Beide Downloads werden im Audit-Log auf <code>/admin/database</code> protokolliert."
       ],
       "cautionTitle": "Vorsicht",
       "caution": [

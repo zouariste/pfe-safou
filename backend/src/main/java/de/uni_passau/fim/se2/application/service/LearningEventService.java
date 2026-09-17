@@ -36,6 +36,11 @@ public class LearningEventService {
 
     private final LearningEventRepository learningEventRepository;
 
+    /**
+     * The event types that may be written — and, through {@link #allowedEventTypes()}, the
+     * ones the admin research page will accept as a filter, so a mistyped filter is a 400
+     * rather than an empty table that looks like missing data.
+     */
     private static final Set<String> ALLOWED_EVENT_TYPES = Set.of(
             // AP10/AP11: Core events
             "task_opened",
@@ -80,6 +85,11 @@ public class LearningEventService {
             "arrangement_changed"
     );
 
+    /** The allowlist above, for callers that validate against it rather than write through it. */
+    public static Set<String> allowedEventTypes() {
+        return ALLOWED_EVENT_TYPES;
+    }
+
     /**
      * Logs a learning event. If tracking is not enabled for the student's class,
      * the userId is set to null (anonymized).
@@ -96,8 +106,14 @@ public class LearningEventService {
                     "Invalid eventType: " + eventType + ". Allowed: " + ALLOWED_EVENT_TYPES);
         }
 
-        // Anonymize if tracking is not enabled for this student's class
+        // Resolve the class BEFORE anonymizing, because anonymizing is what destroys the only
+        // link back to it. Identity is dropped for an untracked class; class context is kept, so
+        // a per-class view still sees the work — the same trade feedback_logs already makes.
+        UUID classId = null;
         if (userId != null && learningEventRepository instanceof PostgreLearningEventDao dao) {
+            classId = dao.resolveClassId(userId, taskId);
+
+            // Anonymize if tracking is not enabled for this student's class
             if (!dao.isTrackingEnabledForStudent(userId)) {
                 log.debug("Tracking not enabled for user {}, anonymizing event", userId);
                 userId = null;
@@ -106,6 +122,7 @@ public class LearningEventService {
 
         LearningEventDTO event = LearningEventDTO.builder()
                 .userId(userId)
+                .classId(classId)
                 .taskId(taskId)
                 .sequenceId(sequenceId)
                 .tierLevel(tierLevel)
