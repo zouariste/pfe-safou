@@ -27,7 +27,7 @@
              reads the 400 as "no valid Docker environment", and because the database
              tests are @Testcontainers(disabledWithoutDocker = true) they then SKIP while
              the build still reports SUCCESS. The Surefire systemPropertyVariables block
-             below is what actually keeps them running. See db/init/README.md. -->
+             below is what actually keeps them running. See src/main/resources/db/README.md. -->
         <testcontainers.version>1.20.6</testcontainers.version>
         <!-- Docker API version the test JVM asks docker-java to speak. Needs to be >= the
              daemon's MinAPIVersion (1.40 on Docker Engine 29) and <= its ApiVersion.
@@ -74,6 +74,18 @@
             <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
 
+        <!--
+            Flyway: automated schema migrations.
+        -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -97,8 +109,9 @@
 
             The search services are the one place where the behaviour lives in the SQL rather
             than in Java - full-text vectors, tsquery, ts_headline, GIN indexes - so a mock can
-            only confirm that we wrote the string we wrote. These tests run the real queries
-            against the real db/init schema and throw the database away afterwards.
+            only confirm that we wrote the string we wrote. These tests run Flyway against a
+            fresh container to get the real schema, then run the real queries against it, and
+            throw the database away afterwards.
 
             Version comes from the Spring Boot parent's dependency management.
 
@@ -107,7 +120,7 @@
             shared runner is unprivileged and cannot host a daemon at all. Skipping is a
             concession: a search test that does not run proves nothing, and this one found a
             genuinely broken query the first time it ran. Run the suite locally with Docker up
-            before changing the search or db/init; see the CI follow-up issue.
+            before changing the search or the Flyway migrations; see the CI follow-up issue.
         -->
         <dependency>
             <groupId>org.testcontainers</groupId>

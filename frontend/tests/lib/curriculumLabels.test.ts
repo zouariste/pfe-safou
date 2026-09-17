@@ -59,14 +59,17 @@ describe("curriculum label language", () => {
 
 /**
  * The seed and the translation migration are two files that have to stay in
- * step: a topic added to 02_curriculum_seed.sql without a row in
- * 11_migration_curriculum_i18n.sql would silently fall back to German
- * everywhere. This catches that at test time instead of in the UI.
+ * step: a topic added to V2__curriculum_seed.sql without a row in
+ * V11__curriculum_i18n.sql would silently fall back to German everywhere.
+ * This catches that at test time instead of in the UI.
  */
 describe("curriculum translation coverage", () => {
-    const dbInit = resolve(dirname(fileURLToPath(import.meta.url)), "../../../db/init");
-    const seed = readFileSync(resolve(dbInit, "02_curriculum_seed.sql"), "utf-8");
-    const migration = readFileSync(resolve(dbInit, "11_migration_curriculum_i18n.sql"), "utf-8");
+    const dbMigration = resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../../backend/src/main/resources/db/migration",
+    );
+    const seed = readFileSync(resolve(dbMigration, "V2__curriculum_seed.sql"), "utf-8");
+    const migration = readFileSync(resolve(dbMigration, "V11__curriculum_i18n.sql"), "utf-8");
 
     const UUID = /'([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'/g;
     const idsIn = (sql: string, section: string) => {

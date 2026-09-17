@@ -4,8 +4,8 @@ import type { CurriculumTopic } from "../types/models";
  * The curriculum tree holds two kinds of top-level entry: school
  * Jahrgangsstufen from the Bavarian LehrplanPLUS, and university modules such
  * as "Programmieren 1". `education_level`
- * (db/init/12_migration_curriculum_education_level.sql) says which, and the
- * overview filters on it.
+ * (backend/src/main/resources/db/migration/V12__curriculum_education_level.sql)
+ * says which, and the overview filters on it.
  */
 export const EDUCATION_LEVELS = ["SCHOOL", "UNIVERSITY"] as const;
 export type EducationLevel = (typeof EDUCATION_LEVELS)[number];

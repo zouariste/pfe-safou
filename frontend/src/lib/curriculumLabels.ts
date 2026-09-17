@@ -3,9 +3,9 @@ import type { CurriculumTopic } from "../types/models";
 /**
  * Curriculum topics carry their own translations in the database: German in
  * `name`/`description`/`track`, English in the `*_en` columns added by
- * db/init/11_migration_curriculum_i18n.sql. Picking the column here rather
- * than keeping a table in the i18n bundles means a topic added to the
- * curriculum needs no frontend change at all.
+ * backend/src/main/resources/db/migration/V11__curriculum_i18n.sql. Picking
+ * the column here rather than keeping a table in the i18n bundles means a
+ * topic added to the curriculum needs no frontend change at all.
  *
  * German is the source language, so an English column that is missing — a
  * topic added to the curriculum without a translation — falls back to German

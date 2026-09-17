@@ -34,6 +34,9 @@ import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreSequenceDAO;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreTaskDao;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreWorksheetDao;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.SequenceTagDAO;
+import de.uni_passau.fim.se2.testsupport.TestDatabase;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
@@ -41,11 +44,6 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.MountableFile;
 
 import java.time.Instant;
 import java.util.List;
@@ -74,23 +72,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * That is unusual for a test class and worth the exception here, because the thing under test is
  * a sequence of events rather than a set of independent behaviours.
  *
- * <p>Skipped where there is no Docker, CI included -- see {@link WorksheetSearchDatabaseTest}
- * for why the runner cannot provide one and what it would take to change that. The journey is
- * therefore only walked on developer machines for now.
+ * <p>Runs in CI against the job's own throwaway Postgres, and locally against a Testcontainers
+ * one -- see {@link de.uni_passau.fim.se2.testsupport.TestDatabase}. Skipped only where there is
+ * neither: a developer machine with Docker down.
  */
-@Testcontainers(disabledWithoutDocker = true)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("publishing, finding and copying a worksheet")
 class MarketplaceJourneyDatabaseTest {
-
-    @Container
-    @SuppressWarnings("resource") // closed by the Testcontainers JUnit extension
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
-            .withDatabaseName("codeowl")
-            .withUsername("postgres")
-            .withPassword("postgres")
-            .withCopyFileToContainer(
-                    MountableFile.forHostPath("../db/init"), "/docker-entrypoint-initdb.d/");
 
     private static JdbcTemplate jdbc;
     private static PostgreWorksheetDao worksheetDao;
@@ -114,10 +102,15 @@ class MarketplaceJourneyDatabaseTest {
 
     @BeforeAll
     static void wire() {
-        DriverManagerDataSource ds = new DriverManagerDataSource(
-                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
-        ds.setDriverClassName("org.postgresql.Driver");
-        jdbc = new JdbcTemplate(ds);
+        Assumptions.assumeTrue(TestDatabase.isAvailable(),
+                "no test database: set SPRING_DATASOURCE_URL or start Docker");
+        jdbc = TestDatabase.jdbc();
+
+        // The container is bare except for what V1's pg_dump seeds -- a real snapshot, not
+        // fixture data. This class's steps depend on being the only worksheets/sequences in
+        // play, so start from an empty table rather than the dump's incidental content.
+        jdbc.update("DELETE FROM tiered_task_sequences");
+        jdbc.update("DELETE FROM worksheets");
 
         worksheetDao = new PostgreWorksheetDao(jdbc);
         sequenceDao = new PostgreSequenceDAO(jdbc, new ObjectMapper());
@@ -131,9 +124,23 @@ class MarketplaceJourneyDatabaseTest {
         forkService = new SequenceForkService(worksheetDao,
                 new WorksheetCloneService(worksheetDao, sequenceDao, taskDao, tagDao));
 
-        versionId = jdbc.queryForObject("SELECT id FROM versions LIMIT 1", UUID.class);
+        // A fixture this class needs, not data the migrated schema happens to already carry --
+        // the schema is what V1...latest guarantees, not the pg_dump's row contents.
+        versionId = UUID.randomUUID();
+        jdbc.update("INSERT INTO versions (id, version_name) VALUES (?, ?)",
+                versionId, "database-test-version");
         anna = teacher("anna@example.invalid");
         ben = teacher("ben@example.invalid");
+    }
+
+    @AfterAll
+    static void cleanup() {
+        // tasks, sequence_tags, tiered_task_sequence_concepts and worksheets_sequence all
+        // cascade from these two, so nothing else needs an explicit delete.
+        jdbc.update("DELETE FROM tiered_task_sequences");
+        jdbc.update("DELETE FROM worksheets");
+        jdbc.update("DELETE FROM users WHERE user_id IN (?, ?)", anna, ben);
+        jdbc.update("DELETE FROM versions WHERE id = ?", versionId);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -300,15 +307,10 @@ class MarketplaceJourneyDatabaseTest {
                 () -> assertTrue(found.items().get(0).alreadyCopied(),
                         "and Ben is told he already has it"),
                 () -> assertEquals(1, found.items().get(0).copyCount()),
-                // The seeded database already contains sequences on this topic, so the claim is
-                // not "exactly one result" but "Anna's original is listed and Ben's clone is
-                // not" — which is the invariant the copied_from filter exists for.
-                () -> assertTrue(listed.items().stream()
-                                .anyMatch(i -> annasSequence.equals(i.sequenceId())),
-                        "the original stays findable"),
-                () -> assertFalse(listed.items().stream()
-                                .anyMatch(i -> copiedSequenceOf(bensCopy).equals(i.sequenceId())),
-                        "the clone does not appear beside it"));
+                () -> assertEquals(1, listed.total(), "only Anna's original is in the library"),
+                () -> assertEquals(annasSequence, listed.items().get(0).sequenceId(),
+                        "the clone does not appear beside it — the invariant the copied_from"
+                                + " filter exists for"));
     }
 
     @Test
@@ -363,7 +365,7 @@ class MarketplaceJourneyDatabaseTest {
         // someone typing properly, but did nothing for the reverse — the tagger now writes real
         // umlauts, and a teacher who typed "fakultaet" (quicker on many keyboards) found nothing.
         //
-        // Closed by search_normalize (db/init/19_migration_unaccent_search.sql), built on the
+        // Closed by search_normalize (db/migration/V19__unaccent_search.sql), built on the
         // unaccent extension and applied to both the generated search_vector columns and the
         // query, so it no longer matters which spelling was stored and which was typed.
         assertAll(
