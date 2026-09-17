@@ -78,6 +78,18 @@ public class LearningEventService {
             // AP31: Inline-split fragment analytics
             "fragment_placed",
             "split_distractor_placed",
+            // AP30/AP31: what the student actually typed into a gap, and how they ordered an
+            // inline-split line, each with the expected value alongside it. SolvePage has
+            // emitted all four since gaps and splits were added, but they were never on this
+            // list, so every one was rejected with a 400 that useEventTracker swallows on
+            // purpose -- the client reported success and nothing was stored. They are also the
+            // one part of a student's work that task_submissions cannot hold: it records the
+            // visible text of each block, and neither a gap value nor a chip placement
+            // contributes any textContent. Until now they were recorded nowhere at all.
+            "gap_correct",
+            "gap_incorrect",
+            "split_line_correct",
+            "split_line_incorrect",
             // Every reorder and indent the student makes, batched. Until this existed the
             // only record of an arrangement was whatever they had when they clicked Feedback,
             // so a student who worked for ten minutes without clicking it left nothing behind
