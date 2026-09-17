@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code search_normalize} (folding German umlauts to their digraph spelling, then stripping
  * every other language's accents via the {@code unaccent} extension) runs in Postgres, applied
  * identically to the generated {@code search_vector} columns and to the query text. See {@code
- * db/init/19_migration_unaccent_search.sql} and {@code MarketplaceJourneyDatabaseTest} /
+ * db/migration/V19__unaccent_search.sql} and {@code MarketplaceJourneyDatabaseTest} /
  * {@code WorksheetSearchDatabaseTest} for the behaviour that matters.
  *
  * <p><em>Highlighting</em> still has Java-side umlaut logic, because {@code ts_headline}

@@ -55,8 +55,8 @@ backend-build:   # Compiles and packages the Spring Boot jar via the Maven wrapp
     # mvnw is easily lost; without this a stray mode change breaks every pipeline.
     - chmod +x mvnw
   script:
-    # Tests are skipped here on purpose: backend/src/test is still empty, and when
-    # it is not, they belong in the test stage rather than the build.
+    # Tests are skipped here on purpose: they belong in the test stage, which is where
+    # the database service that the *DatabaseTest classes need is configured.
     - ./mvnw -B -ntp -Dmaven.repo.local=.m2/repository package -DskipTests
   artifacts:
     paths:
@@ -83,7 +83,7 @@ frontend-test:   # Runs the vitest suite in frontend/.
     reports:
       junit: frontend/junit.xml  # Paths are relative to the project root, not the job cwd.
 
-backend-test:    # Runs the JUnit suite in backend/.
+backend-test:    # Runs the JUnit suite in backend/, database tests included.
   stage: test
   image: eclipse-temurin:21-jdk   # Matches java.version in backend/pom.xml.
   cache:
@@ -92,11 +92,43 @@ backend-test:    # Runs the JUnit suite in backend/.
         - backend/pom.xml
     paths:
       - backend/.m2/repository/
+  variables:
+    # A throwaway Postgres for the life of this job and no longer: GitLab starts the
+    # service container beside the job, the tests migrate it from V1, and it is destroyed
+    # with the job. Nothing persists between pipelines, so every run starts from an empty
+    # schema and no run can be contaminated by the one before it.
+    #
+    # The *DatabaseTest classes used to reach for Testcontainers and skip when it found no
+    # daemon, which on this runner is always: it is unprivileged, so docker:dind dies on
+    # "mount: permission denied" before it listens. Handing the tests a database instead of
+    # letting them build one is what gets them running here. See TestDatabase.
+    FF_NETWORK_PER_BUILD: "true"   # Job and service on one network, addressable by alias.
+    CI_DEBUG_SERVICES: "true"      # Service container logs in the job output, for when it is not.
+    # Read by TestDatabase, and the same names application.yml reads in production.
+    SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/codeowl"
+    SPRING_DATASOURCE_USERNAME: codeowl
+    SPRING_DATASOURCE_PASSWORD: codeowl
+  services:
+    # 17-alpine matches the deployment and carries contrib, which V19's unaccent needs.
+    - name: docker.io/library/postgres:17-alpine
+      alias: postgres
+      variables:
+        POSTGRES_DB: codeowl
+        POSTGRES_USER: codeowl
+        POSTGRES_PASSWORD: codeowl
   before_script:
     - cd backend
     # The executable bit on mvnw is easily lost when the repository is edited
     # from Windows; without this the job dies on a bare permission denied.
     - chmod +x mvnw
+    # GitLab starts the service and the job together rather than waiting for Postgres to
+    # finish initialising, so the first connection can beat the database to it. Maven is
+    # usually slow enough to hide that; this makes it not a matter of luck.
+    - >
+      for i in $(seq 1 60); do
+        (echo > /dev/tcp/postgres/5432) 2>/dev/null && break
+        echo "waiting for postgres ($i/60)"; sleep 1
+      done
   script:
     - ./mvnw -B -ntp -Dmaven.repo.local=.m2/repository test
   artifacts:

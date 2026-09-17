@@ -753,7 +753,7 @@ public class SequenceSearchService {
     //
     // Umlaut tolerance itself now lives in the database (search_normalize, applied to both the
     // generated search_vector columns and the query — see FullTextSearch#TSQUERY_EXPR and
-    // db/init/19_migration_unaccent_search.sql) rather than in Java, so it works both directions
+    // db/migration/V19__unaccent_search.sql) rather than in Java, so it works both directions
     // — "Fakultät" finds "Fakultaet" and "fakultaet" finds "Fakultät" alike.
     //
     // ts_headline cannot use that same normalized query: it re-tokenizes the raw column text on

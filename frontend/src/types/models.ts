@@ -106,15 +106,15 @@ export interface CurriculumTopic {
     learningArea: string | null;
     parentId: string | null;
     sortOrder: number;
-    // English translations (db/init/11_migration_curriculum_i18n.sql). German
-    // is the source language; these are null for a topic added without a
-    // translation, so read them through src/lib/curriculumLabels.ts.
+    // English translations (backend/src/main/resources/db/migration/V11__curriculum_i18n.sql).
+    // German is the source language; these are null for a topic added without
+    // a translation, so read them through src/lib/curriculumLabels.ts.
     nameEn: string | null;
     descriptionEn: string | null;
     trackEn: string | null;
     // "SCHOOL" (Jahrgangsstufe) or "UNIVERSITY" (module), from
-    // db/init/12_migration_curriculum_education_level.sql. Read it through
-    // src/lib/curriculumFilter.ts, which treats anything else as SCHOOL.
+    // backend/src/main/resources/db/migration/V12__curriculum_education_level.sql.
+    // Read it through src/lib/curriculumFilter.ts, which treats anything else as SCHOOL.
     educationLevel: string | null;
     /**
      * How many sequences match this topic's mapped concepts — the same set "View sequences"

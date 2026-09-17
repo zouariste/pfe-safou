@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
  *
  * <p>German is the source language and English is optional throughout — a topic
  * without a translation falls back to German in the UI rather than rendering
- * blank, the same rule db/init/11_migration_curriculum_i18n.sql follows.
+ * blank, the same rule db/migration/V11__curriculum_i18n.sql follows.
  *
  * <p>A top-level topic comes in two shapes. A Jahrgangsstufe has a grade level
  * and gets its name derived from it; a module ("Programmieren 1") has no grade

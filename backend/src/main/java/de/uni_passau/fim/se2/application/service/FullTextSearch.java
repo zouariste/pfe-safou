@@ -46,7 +46,7 @@ final class FullTextSearch {
      *   <li>{@code websearch_to_tsquery(search_normalize(query))} — the query as typed, with
      *       real operators ("exact phrase", {@code -exclude}, {@code or}), matched after the
      *       same normalization {@code search_vector} was generated with (see
-     *       {@code db/init/19_migration_unaccent_search.sql}). {@code search_normalize} folds
+     *       {@code db/migration/V19__unaccent_search.sql}). {@code search_normalize} folds
      *       German umlauts to their digraph spelling and strips every other language's accents
      *       via the {@code unaccent} extension, so "fakultaet" and "Fakultät" — whichever one is
      *       stored and whichever one is typed — normalize to the same lexeme.</li>

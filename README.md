@@ -84,7 +84,7 @@ For local development outside Docker you additionally need:
 > Running the backend's **tests** under WSL2 additionally needs Docker Desktop's
 > **WSL Integration** enabled for that distro. Without it the Testcontainers-backed
 > database tests skip and the build still reports success — see
-> [`db/init/README.md`](db/init/README.md#on-windows-enable-docker-desktops-wsl-integration-first).
+> [`backend/src/main/resources/db/README.md`](backend/src/main/resources/db/README.md#on-windows-enable-docker-desktops-wsl-integration-first).
 
 ---
 
@@ -109,10 +109,11 @@ Once the containers are healthy:
 - **Backend API:** http://localhost:8080/api/
 - **API docs (Swagger UI):** http://localhost:8080/swagger-ui.html
 
-The database is initialised automatically on first start from the SQL files in
-[`db/init/`](db/init) (schema + seed dump, curriculum seed, and migrations) and
-persisted in the `db_data` volume. To start from a clean database, remove the
-volume:
+The database schema is applied automatically by the backend on every start —
+[Flyway](https://flywaydb.org), migrating from
+[`backend/src/main/resources/db/migration/`](backend/src/main/resources/db/migration) — against the
+`db_data` volume, whether that volume is brand new or already has data in it.
+To start from a clean database instead, remove the volume:
 
 ```bash
 docker compose down -v
@@ -233,6 +234,8 @@ codeowl/
 │   ├── src/main/java/  # API controllers, services, domain, persistence, AI clients
 │   ├── src/main/resources/
 │   │   ├── application.yml
+│   │   ├── db/migration/ # Flyway migrations, run automatically on backend startup
+│   │   ├── db/undo/      # hand-written rollbacks, run manually, not by Flyway
 │   │   ├── PromptStuff/ # LLM prompt templates
 │   │   └── concepts/    # concept catalog & alias mapping
 │   └── Dockerfile
@@ -240,7 +243,6 @@ codeowl/
 │   ├── src/
 │   ├── nginx.conf
 │   └── Dockerfile
-├── db/init/            # SQL run on first DB start (schema, seed, migrations)
 ├── docker-compose.yml
 └── README.md
 ```
