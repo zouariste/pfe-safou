@@ -133,6 +133,12 @@ export default function SolvePage() {
     const moveFlushTimerRef = useRef<number | null>(null);
     /** Set by the widget effect; lets "start over" cancel pending saves it cannot otherwise see. */
     const discardProgressRef = useRef<(() => void) | null>(null);
+    /**
+     * Set by the widget effect; lets the Feedback handler empty the move buffer before it logs
+     * a verdict. Same reason discardProgressRef exists — the buffer lives in a closure the
+     * handler has no other way to reach.
+     */
+    const flushMovesRef = useRef<(() => void) | null>(null);
     const hintShownAtRef = useRef<number>(0);
     const lastHintLevelRef = useRef<number>(0);
     const correctCountBeforeHintRef = useRef<number | null>(null);
@@ -654,6 +660,7 @@ export default function SolvePage() {
             }, task.sequenceId, task.tierLevel);
             moveBatchStartRef.current = 0;
         };
+        flushMovesRef.current = flushMoves;
 
         const originalAddLogEntry = widget.addLogEntry.bind(widget);
         widget.addLogEntry = function (entry: any, isMove?: boolean) {
@@ -1018,6 +1025,7 @@ export default function SolvePage() {
                 moveFlushTimerRef.current = null;
             }
             discardProgressRef.current = null;
+            flushMovesRef.current = null;
             observer.disconnect();
             document.removeEventListener("input", gapClearHandler);
             widgetRef.current = null;
@@ -1076,6 +1084,16 @@ export default function SolvePage() {
         if (!task?.id) return;
         const widget = widgetRef.current;
         if (!widget) return;
+
+        // Same reason the Feedback handler flushes: a hint is generated from the arrangement as
+        // it stands right now, and hint_usage stores that arrangement server-side. If the moves
+        // that built it are still buffered, the trail shows the hint being asked for on a state
+        // the student had already moved past -- and the moves that produced it arriving
+        // afterwards, as though they were a reaction to the hint rather than the setup for it.
+        //
+        // Flushed before the request, not just before the log line, so the record holds even if
+        // the hint call fails or is refused for want of credits.
+        flushMovesRef.current?.();
 
         setHintLoading(true);
         setHintError(null);
@@ -1669,6 +1687,22 @@ export default function SolvePage() {
                                 feedbackCountRef.current += 1;
                                 const newFeedbackCount = feedbackCountRef.current;
                                 setFeedbackCount(newFeedbackCount);
+
+                                // Write the buffered moves out before any verdict is logged.
+                                //
+                                // The buffer is flushed on a 10s timer, at 25 moves, or when the
+                                // page is left -- none of which is "the student asked whether
+                                // they are done". Without this the moves that produced the
+                                // solution were still sitting in the buffer when task_correct
+                                // went out, so the trail read: an arrangement_changed ending on
+                                // a wrong arrangement, then task_correct, then an
+                                // arrangement_changed arriving up to ten seconds *after* the
+                                // task was solved, as if the student had kept working. They had
+                                // not; the batch had simply not been sent yet.
+                                //
+                                // Flushing here keeps the order causal: every move that led to
+                                // a verdict is recorded before the verdict it led to.
+                                flushMovesRef.current?.();
 
                                 // Time since last feedback (AP11)
                                 const now = Date.now();
