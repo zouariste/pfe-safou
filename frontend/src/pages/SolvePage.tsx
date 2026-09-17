@@ -78,6 +78,11 @@ export default function SolvePage() {
     const lastActivityRef = useRef(Date.now());
     const activeTimeRef = useRef(0);
     const activityIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    // Which task the open/close pair currently considers open, and a close that has been
+    // scheduled but not yet written. Both survive a StrictMode remount, which is the point —
+    // see the task_opened effect below.
+    const openTaskRef = useRef<string | null>(null);
+    const pendingCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [previousCorrectCount, setPreviousCorrectCount] = useState(0);
     const [, setBacktrackCount] = useState(0);
     const backtrackCountRef = useRef(0);
@@ -363,13 +368,31 @@ export default function SolvePage() {
     }, [taskId]);
 
     // Log task_opened on mount and task_closed on unmount (AP10)
+    //
+    // The close is deferred by a tick rather than written in the cleanup, because a cleanup is
+    // not proof the student left. StrictMode mounts this effect, tears it down and mounts it
+    // again in development, and writing the close synchronously turned every single task open
+    // into task_opened -> task_closed(total_time_ms: 0) -> task_opened. That was 47% of all
+    // task_closed rows by the time anyone noticed, and it looked like real data.
+    //
+    // So: on teardown, schedule the close. If the same task mounts straight back, cancel it and
+    // carry on with the session already in progress -- no second task_opened, no phantom close,
+    // and the timings keep running from the original open. A real navigation has nothing to
+    // cancel it, so the close lands a tick later as it should.
     useEffect(() => {
         if (!taskId) return;
-        startTimeRef.current = Date.now();
-        activeTimeRef.current = 0;
-        lastActivityRef.current = Date.now();
 
-        logEvent(taskId, "task_opened", {}, task?.sequenceId, task?.tierLevel);
+        const resuming = pendingCloseRef.current !== null && openTaskRef.current === taskId;
+        if (resuming) {
+            clearTimeout(pendingCloseRef.current!);
+            pendingCloseRef.current = null;
+        } else {
+            startTimeRef.current = Date.now();
+            activeTimeRef.current = 0;
+            lastActivityRef.current = Date.now();
+            openTaskRef.current = taskId;
+            logEvent(taskId, "task_opened", {}, task?.sequenceId, task?.tierLevel);
+        }
 
         // Activity tracking (AP11): track active time
         const INACTIVITY_THRESHOLD = 90_000; // 90 seconds
@@ -409,7 +432,21 @@ export default function SolvePage() {
         window.addEventListener("beforeunload", handleBeforeUnload);
 
         return () => {
-            handleBeforeUnload();
+            // Deferred, so an immediate remount of the same task can cancel it. Anything that
+            // really ends the visit -- navigating away, unmounting for good -- leaves nothing
+            // to cancel it and the close is written on the next tick.
+            //
+            // Both refs are checked before being cleared: moving from task A to task B runs
+            // A's cleanup, then B's effect, and only then A's timer. Clearing unconditionally
+            // would wipe the state B had just set for itself.
+            const closingTaskId = taskId;
+            const timer = setTimeout(() => {
+                if (pendingCloseRef.current === timer) pendingCloseRef.current = null;
+                if (openTaskRef.current === closingTaskId) openTaskRef.current = null;
+                handleBeforeUnload();
+            }, 0);
+            pendingCloseRef.current = timer;
+
             window.removeEventListener("mousemove", handleActivity);
             window.removeEventListener("keydown", handleActivity);
             window.removeEventListener("beforeunload", handleBeforeUnload);
