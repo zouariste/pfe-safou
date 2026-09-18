@@ -142,6 +142,7 @@ export default function HelpPage() {
                 {category("catContent")}
                 {card("library", "📚", "/help/library")}
                 {card("curriculum", "🎓", "/help/curriculum")}
+                {card("marketplace", "🛒", "/help/marketplace")}
 
                 <hr className="my-4" />
                 {/* ---- SEQUENCES & TASKS ---- */}
@@ -223,6 +224,12 @@ export default function HelpPage() {
                                 {" — "}
                                 <span dangerouslySetInnerHTML={html(t("help.home.contextModeBody"))} />
                             </li>
+                            <li>
+                                <strong>{t("help.home.inlineSplitLabel")}</strong>{" "}
+                                {betaBadge}
+                                {" — "}
+                                <span dangerouslySetInnerHTML={html(t("help.home.inlineSplitBody"))} />
+                            </li>
                         </ul>
 
                         <h5>⚙️ {t("help.home.advancedTitle")}</h5>
@@ -257,6 +264,9 @@ export default function HelpPage() {
                         {p("help.classes.trackingBody")}
                         {ul("help.classes.tracking")}
 
+                        <h5>📈 {t("help.classes.progressTitle")}</h5>
+                        {ul("help.classes.progress")}
+
                         <h5>🔑 {t("help.classes.permissionsTitle")}</h5>
                         {ul("help.classes.permissions")}
                     </>
@@ -271,6 +281,13 @@ export default function HelpPage() {
 
                         <h5>📋 {t("help.worksheets.overviewTitle")}</h5>
                         {ul("help.worksheets.overview")}
+
+                        <h5>👁️ {t("help.worksheets.visibilityTitle")}</h5>
+                        {ul("help.worksheets.visibility")}
+
+                        <h5>📅 {t("help.worksheets.scheduleTitle")}</h5>
+                        {p("help.worksheets.scheduleBody")}
+                        {ul("help.worksheets.schedule")}
 
                         <h5>🔧 {t("help.worksheets.hintsTitle")}</h5>
                         {p("help.worksheets.hintsBody")}
@@ -300,14 +317,39 @@ export default function HelpPage() {
                         {p("help.library.filtersBody")}
                         {p("help.library.filtersUrl")}
 
+                        <h5>🧩 {t("help.library.conceptsTitle")}</h5>
+                        {p("help.library.conceptsBody")}
+                        {ul("help.library.concepts")}
+
                         <h5>📋 {t("help.library.copyTitle")}</h5>
                         {ul("help.library.copy")}
+
+                        <h5>☑️ {t("help.library.bulkTitle")}</h5>
+                        {ul("help.library.bulk")}
 
                         <h5>✏️ {t("help.library.editTitle")}</h5>
                         {ul("help.library.edit")}
 
                         <h5>🔗 {t("help.library.curriculumTitle")}</h5>
                         {p("help.library.curriculumBody")}
+                    </>
+                );
+
+            // ------------------------------------------------------------------
+            case "marketplace":
+                return (
+                    <>
+                        <h2>🛒 {t("help.marketplace.title")}</h2>
+                        {p("help.marketplace.intro")}
+
+                        <h5>🔍 {t("help.marketplace.searchTitle")}</h5>
+                        {ul("help.marketplace.search")}
+
+                        <h5>📋 {t("help.marketplace.copyTitle")}</h5>
+                        {ul("help.marketplace.copy")}
+
+                        <h5>📤 {t("help.marketplace.publishingTitle")}</h5>
+                        {ul("help.marketplace.publishing")}
                     </>
                 );
 
@@ -336,6 +378,13 @@ export default function HelpPage() {
 
                         <h5>👩‍🏫 {t("help.curriculum.tipsTitle")}</h5>
                         {ul("help.curriculum.tips")}
+
+                        {isAdmin && (
+                            <>
+                                <h5>🔒 {t("help.curriculum.adminTitle")}</h5>
+                                {ul("help.curriculum.admin")}
+                            </>
+                        )}
                     </>
                 );
 
@@ -361,6 +410,9 @@ export default function HelpPage() {
                         <h5>✏️ {t("help.sequence.editTitle")}</h5>
                         {p("help.sequence.editBody")}
                         {ul("help.sequence.edit")}
+
+                        <h5>🔎 {t("help.sequence.similarTitle")}</h5>
+                        {p("help.sequence.similarBody")}
                     </>
                 );
 
@@ -387,6 +439,15 @@ export default function HelpPage() {
                         <h5>🔀 {t("help.solve.interchangeableTitle")}</h5>
                         {p("help.solve.interchangeableBody")}
 
+                        <h5>✍️ {t("help.solve.gapTitle")}</h5>
+                        {p("help.solve.gapBody")}
+
+                        <h5>
+                            🧩 {t("help.solve.inlineSplitTitle")}{" "}
+                            {betaBadge}
+                        </h5>
+                        {ul("help.solve.inlineSplit")}
+
                         <h5>
                             📐 {t("help.solve.contextTitle")}{" "}
                             {betaBadge}
@@ -400,6 +461,9 @@ export default function HelpPage() {
                         <h5>✅ {t("help.solve.completionTitle")}</h5>
                         {p("help.solve.completionBody")}
                         {ul("help.solve.completion")}
+
+                        <h5>💾 {t("help.solve.resumeTitle")}</h5>
+                        {ul("help.solve.resume")}
 
                         <h5>🧭 {t("help.solve.navTitle")}</h5>
                         {ul("help.solve.nav")}
@@ -577,6 +641,9 @@ export default function HelpPage() {
 
                         <h5>🏷️ {t("help.admin.libraryTitle")} <code>/admin/library</code></h5>
                         {ul("help.admin.library")}
+
+                        <h5>🗄️ {t("help.admin.databaseTitle")} <code>/admin/database</code></h5>
+                        {ul("help.admin.database")}
 
                         <h5>📊 {t("help.admin.researchTitle")} <code>/admin/research</code></h5>
                         {ul("help.admin.research")}

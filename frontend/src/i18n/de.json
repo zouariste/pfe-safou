@@ -1341,6 +1341,13 @@
         "<strong>Auto-Kontext</strong> — Konzepte und Codebeispiele werden aus dem Thema vorbelegt.",
         "<strong>Jahrgangs-Kalibrierung</strong> — der Prompt passt die Schwierigkeit an die gewählte Stufe an."
       ],
+      "marketplaceTitle": "Marktplatz",
+      "marketplaceBody": "Durchstöbere ganze Arbeitsblätter, die andere Lehrkräfte veröffentlicht haben — nicht nur einzelne Sequenzen. Kopiere jedes veröffentlichte Arbeitsblatt mit einem Klick in deinen eigenen Bereich.",
+      "marketplaceItems": [
+        "<strong>Suche &amp; Sortierung</strong> — nach Name/Beschreibung, Aktualität, Relevanz oder Beliebtheit.",
+        "<strong>Arbeitsblatt kopieren</strong> — kopiert das gesamte Arbeitsblatt inklusive aller Sequenzen und Aufgaben.",
+        "<strong>Veröffentlichen</strong> — setze die Sichtbarkeit eines Arbeitsblatts auf \"Im Marktplatz\", um es hier zu listen."
+      ],
       "sequenceTitle": "Sequenz-Seite",
       "sequenceBody": "Übersicht aller Aufgaben (T1–T3 bzw. T1–T5) innerhalb einer generierten Sequenz. Lehrkräfte sehen Musterlösungen, können Aufgaben bearbeiten und die Sequenz exportieren.",
       "sequenceItems": [
@@ -1399,7 +1406,8 @@
       "registration": [
         "<strong>Registrieren</strong> — Lehrkräfte registrieren sich selbst mit Name, Email und Passwort. Die Bestätigungsmail wird automatisch verschickt.",
         "<strong>Anmelden</strong> — Email und Passwort (Lehrkräfte/Admins) oder ein einmaliger Token-Link (Schüler).",
-        "<strong>Token-Anmeldung</strong> — Schüler fügen den von der Lehrkraft erzeugten Link ein oder klicken ihn an. Zum Start ist keine Email nötig."
+        "<strong>Token-Anmeldung</strong> — Schüler fügen den von der Lehrkraft erzeugten Link ein oder klicken ihn an. Zum Start ist keine Email nötig.",
+        "<strong>FIM-/Hochschul-Anmeldung</strong> — an Einrichtungen mit passendem LDAP-Verzeichnis meldet sich eine Lehrkraft über \"Mit FIM-Konto anmelden\" mit ihren bestehenden Hochschul-Zugangsdaten an; so angelegte Schüler tun dies ebenso, statt einen Token-Link zu nutzen."
       ],
       "onboardingTitle": "Schüler-Onboarding (\"Anton-Prinzip\")",
       "onboarding": "Schüler registrieren sich <em>nicht</em> selbst. Die Lehrkraft legt die Schülerkonten innerhalb einer Klasse an. CodeOwl erzeugt pro Schüler einen persönlichen Token-Link — teile diesen Link (ausgedruckt, per Chat usw.). Der Schüler klickt darauf, ist sofort angemeldet und kann während des Onboardings optional Email und Passwort setzen. Das hält die Hürde am ersten Tag so niedrig wie möglich.",
@@ -1434,6 +1442,8 @@
       ],
       "contextModeLabel": "Kontext-Modus",
       "contextModeBody": "umgibt das Puzzle mit schreibgeschütztem Gerüstcode. Die generierte Aufgabe erhält einen <em>contextBefore</em>- und einen <em>contextAfter</em>-Block (z.B. einen Klassenkopf darüber und eine aufrufende Funktion darunter). Schüler sehen das Gesamtbild, ordnen aber nur die Puzzle-Blöcke in der Mitte. Nützlich für längere, realistische Code-Aufgaben.",
+      "inlineSplitLabel": "Blöcke mit inneren Abschnitten",
+      "inlineSplitBody": "teilt manche Zeilen zusätzlich in Abschnitte auf, die der Schüler innerhalb des Blocks selbst anordnen muss, nicht nur den Block als Ganzes platzieren — nützlich für Zeilen mit mehreren unabhängigen Teilausdrücken.",
       "advancedTitle": "Erweiterte Optionen (Einschränkungen)",
       "advanced": [
         "<strong>Blacklist</strong> — kommagetrennte Konstrukte, die ausgeschlossen werden, z.B. <code>ternary, lambda, list comprehension</code>. Verhindert, dass das LLM Konzepte verwendet, die die Schüler noch nicht kennen.",
@@ -1444,6 +1454,7 @@
       "controlsTitle": "Bedienelemente",
       "controls": [
         "<strong>Sequenz generieren</strong> — schickt die Eingaben an das Modell und leitet zur Sequenz-Seite weiter.",
+        "<strong>Arbeitsblatt erstellen</strong> — öffnet einen kleinen Dialog, um direkt von der Startseite aus ein leeres Arbeitsblatt anzulegen, ohne vorher eine Sequenz zu generieren.",
         "<strong>Demo</strong> — lädt sofort eine Beispielsequenz zum Ausprobieren.",
         "<strong>Zurücksetzen</strong> — leert alle Eingabefelder.",
         "<kbd>Strg</kbd>+<kbd>Enter</kbd> — Tastenkürzel zum Generieren."
@@ -1469,7 +1480,11 @@
       "create": [
         "Token-Links können bei Verlust neu erzeugt werden.",
         "Schüler können später über ihre Profilseite eine Email hinterlegen und ein Passwort setzen.",
-        "Schüler können jederzeit aus einer Klasse entfernt werden (das löscht das Konto <em>nicht</em>)."
+        "Schüler können jederzeit aus einer Klasse entfernt werden (das löscht das Konto <em>nicht</em>).",
+        "<strong>CSV-Import</strong> — eine ganze Klassenliste auf einmal anlegen: Vorlage herunterladen, ausfüllen, Zeilen in der Vorschau prüfen und alle Konten in einem Schritt erzeugen.",
+        "<strong>FIM-/Hochschul-Konten</strong> — Schüler über ihren FIM-Benutzernamen hinzufügen (einzeln oder per CSV), sofern das LDAP-Verzeichnis deiner Hochschule angebunden ist; sie melden sich dann über \"Mit FIM-Konto anmelden\" statt über einen Token-Link an.",
+        "<strong>Einladungslinks als CSV</strong> — lade die Token-Links aller Schüler als CSV herunter, oder nur die derjenigen, die sich noch nicht angemeldet haben.",
+        "<strong>Passwort eines Schülers zurücksetzen</strong> — erzeugt ein neues, einmalig angezeigtes temporäres Passwort für Schüler, die ihren Token-Link verloren haben und ihn nicht selbst wiederherstellen können."
       ],
       "assignTitle": "Arbeitsblätter zuweisen",
       "assign": [
@@ -1484,6 +1499,12 @@
         "<strong>Deaktiviert</strong> — es werden nur aggregierte Daten gespeichert (richtig/falsch pro Aufgabe). Standard für neue Klassen.",
         "Der Tracking-Status lässt sich jederzeit umschalten; er wirkt nur auf künftige Ereignisse."
       ],
+      "progressTitle": "Schülerfortschritt",
+      "progress": [
+        "Ist Tracking aktiviert, zeigt die Klassen-Detailseite eine Tabelle pro Schüler — Anzahl gelöster Aufgaben sowie Versuche insgesamt/richtig.",
+        "Klicke einen Schüler an, um den detaillierten Fortschritt zu öffnen: jede Aufgabe in jedem zugewiesenen Arbeitsblatt, mit Versuchszahl und Status (Gelöst / Bearbeitet / Nicht begonnen).",
+        "\"Zustand ansehen\" bei einer Aufgabe zeigt genau das, was der Schüler zuletzt im Lösungsbereich angeordnet hatte — das funktioniert selbst dann, wenn nie auf Feedback geklickt wurde, weil es aus dem automatischen Speichern stammt, nicht nur aus bewerteten Versuchen."
+      ],
       "permissionsTitle": "Berechtigungen",
       "permissions": [
         "Nur die Besitzerin oder der Besitzer der Klasse (oder ein Admin) kann Schüler hinzufügen/entfernen oder die Klasse bearbeiten.",
@@ -1496,8 +1517,24 @@
       "overviewTitle": "Arbeitsblatt-Übersicht",
       "overview": [
         "Erstelle ein Arbeitsblatt auf der Arbeitsblatt-Seite oder direkt aus einer generierten Sequenz.",
-        "Füge Sequenzen über die Sequenz-Seite oder die Bibliothek hinzu (Ein-Klick-Kopie).",
-        "Sequenzen behalten innerhalb eines Arbeitsblatts ihre Stufenstruktur T1–T3."
+        "Füge Sequenzen über die Sequenz-Seite, die Bibliothek (Ein-Klick-Kopie) oder direkt auf der Arbeitsblatt-Seite hinzu — Suche-und-auswählen, eine einzelne Sequenz-ID einfügen, oder mehrere auf einmal.",
+        "Sequenzen behalten innerhalb eines Arbeitsblatts ihre Stufenstruktur T1–T3 und lassen sich per Drag-and-drop neu anordnen.",
+        "Ein Regler \"Detailgrad\" (Keine / Einige / Alle) steuert, wie viele Informationen pro Sequenz die Liste zeigt — sie werden erst bei Bedarf nachgeladen."
+      ],
+      "visibilityTitle": "Sichtbarkeit",
+      "visibility": [
+        "<strong>Nur ich</strong> — niemand sonst kann das Arbeitsblatt öffnen, auch nicht über einen Link.",
+        "<strong>Über Link</strong> — wer den Link hat, kann es öffnen; es taucht in keiner Suche auf. So verhielten sich Arbeitsblätter bisher.",
+        "<strong>Im Marktplatz</strong> — andere Lehrkräfte finden es über die Suche (siehe die Hilfeseite <em>Marktplatz</em>) und können es in ihren eigenen Bereich kopieren.",
+        "Dein Standard-\"Posteingang\"-Arbeitsblatt lässt sich nie veröffentlichen — die Option ist dafür ausgeblendet."
+      ],
+      "scheduleTitle": "Terminierung (Freigabe, Abgabetermin und Kulanzzeit)",
+      "scheduleBody": "Die Zuweisung eines Arbeitsblatts an eine Klasse kann einen eigenen Zeitplan haben, bearbeitbar auf der Klassen-Detailseite:",
+      "schedule": [
+        "<strong>Freigegeben ab</strong> — ab wann Schüler beginnen können; leer bedeutet sofort verfügbar.",
+        "<strong>Abgabetermin</strong> — danach sehen Schüler ein Banner \"geschlossen\" und können ihre Arbeit ansehen, aber nicht mehr bearbeiten. Leer bedeutet zeitlich unbegrenzt geöffnet.",
+        "<strong>Kulanzzeit</strong> — zusätzliche Stunden/Minuten nach dem Abgabetermin, bevor tatsächlich geschlossen wird; leer oder 0 bedeutet ein scharfer Stichtag.",
+        "<strong>Jetzt veröffentlichen / Zurückziehen / Jetzt beenden</strong> — Schnellaktionen, die den Zeitplan sofort außer Kraft setzen, neben einem Status-Abzeichen (Noch nicht freigegeben / Geöffnet / Abgabetermin abgelaufen)."
       ],
       "hintsTitle": "Hinweis-Konfiguration (nur Lehrkraft)",
       "hintsBody": "Lege pro Arbeitsblatt fest, ob Hinweise für Schüler verfügbar sind und ob ihre Nutzung begrenzt wird:",
@@ -1536,11 +1573,23 @@
       ],
       "filtersBody": "Zu den Filtern gehören: Programmiersprache, Stufenanzahl (3 oder 5), Tags, Erstellungsdatum und Besitzer (\"Nur meine\" / \"Alle\").",
       "filtersUrl": "Die Filter stehen in der URL, sodass sich Links teilen lassen.",
+      "conceptsTitle": "Konzepte",
+      "conceptsBody": "Neben Tags sind Sequenzen auch mit Einträgen aus dem kuratierten Konzeptkatalog verknüpft (demselben, den auch die Generierung und die Lehrplan-Zuordnung nutzen) — eine zweite Filterdimension in der Seitenleiste.",
+      "concepts": [
+        "Jede Sequenzkarte zeigt die Konzepte, die sie abdeckt, direkt neben ihren Tags — klicke eines an, um danach zu filtern, genau wie bei einem Tag.",
+        "Die Konzept-Wolke in der Seitenleiste funktioniert wie die Tag-Wolke: eine Anzahl pro Konzept, \"Mehr anzeigen\" und ein Beliebig/Alle-Modus, sobald du mehrere ausgewählt hast."
+      ],
       "copyTitle": "Ein-Klick-Kopie",
       "copy": [
         "Klicke auf einer Sequenzkarte auf <strong>\"In Arbeitsblatt kopieren\"</strong> und wähle das Ziel-Arbeitsblatt aus der Auswahlliste.",
         "Eine kurze Einblendung bestätigt die Kopie und bietet 5 Sekunden lang \"Rückgängig\" an.",
         "Sequenzen, die bereits in einem deiner Arbeitsblätter liegen, zeigen ein grünes ✓."
+      ],
+      "bulkTitle": "Mehrere auf einmal kopieren",
+      "bulk": [
+        "Klicke oberhalb der Trefferliste auf <strong>\"Auswählen\"</strong>, um auf jeder Karte ein Kontrollkästchen einzublenden.",
+        "Wähle beliebig viele Sequenzen aus, auch über mehrere Seiten hinweg — eine fixierte Leiste unten zeigt die Anzahl.",
+        "\"Auswahl kopieren\" schickt sie alle in einer Anfrage in ein Arbeitsblatt und zeigt, wie viele neu hinzugefügt und wie viele bereits vorhanden waren."
       ],
       "editTitle": "Tags bearbeiten (Lehrkraft)",
       "edit": [
@@ -1551,6 +1600,28 @@
       "curriculumTitle": "Bibliothek und Lehrplan",
       "curriculumBody": "Über „Vorhandene Sequenzen ansehen“ auf der Lehrplan-Seite gelangst du in die Bibliothek, bereits nach dem Lehrplanthema gefiltert — so siehst du sofort das gesamte relevante Material zu einem Thema, ob Jahrgangsstufe oder Modul."
     },
+    "marketplace": {
+      "title": "Hilfe zum Marktplatz",
+      "intro": "Der Marktplatz ist der Ort, an dem ganze Arbeitsblätter für andere Lehrkräfte veröffentlicht werden — eine Stufe über der Bibliothek, die einzelne Sequenzen statt ganzer Arbeitsblätter teilt.",
+      "searchTitle": "Suchen",
+      "search": [
+        "<strong>Volltextsuche</strong> — durchsucht Namen und Beschreibungen von Arbeitsblättern.",
+        "<strong>Sortierung</strong> — Aktualität, Relevanz (sobald du etwas gesucht hast) oder Beliebtheit.",
+        "<strong>Sprachfilter</strong> — Treffer auf eine Programmiersprache eingrenzen.",
+        "<strong>\"Nur meine\"</strong> — nur die von dir selbst veröffentlichten Arbeitsblätter anzeigen, mit Anzahl."
+      ],
+      "copyTitle": "Ein Arbeitsblatt kopieren",
+      "copy": [
+        "Klicke auf <strong>\"Kopieren\"</strong> bei einer Karte (bei eigenen Arbeitsblättern nicht angezeigt), um das gesamte Arbeitsblatt — jede Sequenz und Aufgabe darin — in deine eigenen Arbeitsblätter zu kopieren.",
+        "Das unterscheidet sich von der Ein-Klick-Kopie der Bibliothek, die eine einzelne Sequenz statt eines ganzen Arbeitsblatts kopiert.",
+        "Du landest danach direkt bei deiner neuen Kopie."
+      ],
+      "publishingTitle": "Eigene Arbeitsblätter veröffentlichen",
+      "publishing": [
+        "Ein Arbeitsblatt erscheint hier erst, wenn seine <strong>Sichtbarkeit</strong> auf der Arbeitsblatt-Seite auf \"Im Marktplatz\" gesetzt ist — die beiden anderen Sichtbarkeitsstufen findest du auf der Hilfeseite <em>Arbeitsblätter</em>.",
+        "Dein Standard-\"Posteingang\"-Arbeitsblatt lässt sich nie veröffentlichen."
+      ]
+    },
     "curriculum": {
       "title": "Hilfe zum Lehrplan",
       "intro": "Die Lehrplan-Seite bildet CodeOwl auf einen Themenbaum ab: bayerische Jahrgangsstufen (LehrplanPLUS G9 Informatik) und Hochschulmodule wie „Programmieren 1“. Navigiere nach Eintrag und Lernbereich und generiere dann eine Sequenz, deren Schwierigkeit und Konzepte automatisch auf dieses Thema kalibriert sind — ganz ohne manuelle Einrichtung.",
@@ -1558,7 +1629,8 @@
       "treeTitle": "Themenbaum",
       "tree": [
         "Die Themen sind nach Jahrgangsstufe (Jgst. 7, 9, 10, 11, 12/13) und Lernbereich gegliedert.",
-        "Das Abzeichen an jedem Thema zeigt, wie viele Sequenzen dazu bereits existieren."
+        "Das Abzeichen an jedem Thema zeigt, wie viele Sequenzen dazu bereits existieren.",
+        "<strong>Filter Schule / Hochschule</strong> — mischt der Themenbaum beides, grenzen Schaltflächen oben die Ansicht auf eines von beiden ein."
       ],
       "generateTitle": "Aus einem Thema generieren",
       "generateBody": "Klicke neben einem Thema auf <strong>\"Generieren\"</strong>. Der Generierungsdialog öffnet sich vorbelegt:",
@@ -1576,6 +1648,12 @@
         "Halte die Einschränkungen bei Themen der Jgst. 7 einfach — die Kalibrierung begrenzt die Komplexität bereits.",
         "Füge statt des Standardbeispiels dein eigenes kuratiertes Snippet ein, wenn du ein bestimmtes Unterrichtsbeispiel verwenden willst.",
         "Prüfe die Ausgabe nach dem Generieren im Lehrer-Modus, bevor du sie Schülern zuweist."
+      ],
+      "adminTitle": "Themenbaum verwalten (Admin)",
+      "admin": [
+        "<strong>Jahrgangsstufe / Modul</strong> — Einträge auf oberster Ebene anlegen oder bearbeiten: eine bayerische Jahrgangsstufe (mit Schulart) oder ein Hochschulmodul.",
+        "<strong>Lernbereich-Unterthemen</strong> — Unterthemen zu einem Eintrag anlegen oder bearbeiten, mit Name und Beschreibung auf Deutsch und Englisch sowie zugeordneten Konzepten.",
+        "<strong>Kuratierte Codebeispiele</strong> — die Referenz-Snippets anlegen, bearbeiten oder löschen, die ein Thema bei der Generierung anbietet. Ohne ein Beispiel ist die Generierung für dieses Thema deaktiviert."
       ]
     },
     "sequence": {
@@ -1614,7 +1692,9 @@
       "edit": [
         "Bei fremden Sequenzen ist der Bearbeiten-Button gesperrt — kopiere zuerst das Arbeitsblatt.",
         "Die Originalfassungen lassen sich über \"Original anzeigen\" einsehen (Lehrer-Ansicht)."
-      ]
+      ],
+      "similarTitle": "Das könnte dich auch interessieren…",
+      "similarBody": "Die Lehrer-Ansicht zeigt ein Panel mit Sequenzen, die Tags mit dieser hier teilen, sortiert nach Tag-Überschneidung und Sprachübereinstimmung — eine schnelle Möglichkeit, verwandtes Material ohne neue Suche zu finden. Ist nichts Ähnliches vorhanden, blendet sich das Panel selbst aus."
     },
     "solve": {
       "title": "Hilfe zur Löse-Seite",
@@ -1647,6 +1727,14 @@
       ],
       "interchangeableTitle": "Austauschbare Blöcke",
       "interchangeableBody": "Manche Aufgaben enthalten Blöcke, die <em>an mehreren Positionen gleichermaßen richtig</em> sind — zum Beispiel zwei unabhängige Variablendeklarationen oder zwei unabhängige Basisfälle in einer rekursiven Funktion. Die Bewertung erkennt alle gültigen Reihenfolgen und markiert sie grün.",
+      "gapTitle": "Lückentext-Blöcke",
+      "gapBody": "Manche Blöcke enthalten statt fertigem Text ein kleines Eingabefeld — trage die fehlende Stelle direkt in die Lücke ein (einen Variablennamen, einen Wert, einen Operator). Sie wird zusammen mit der Blockposition geprüft und muss stimmen, damit die Aufgabe als gelöst gilt.",
+      "inlineSplitTitle": "Blöcke mit inneren Abschnitten",
+      "inlineSplit": [
+        "Manche Blöcke sind in mehrere Abschnitte unterteilt, die du zusätzlich <em>innerhalb</em> des Blocks anordnest — nicht nur den Block als Ganzes platzierst.",
+        "Eine solche Unterteilung kann auch Distraktor-Abschnitte enthalten, optisch identisch mit den echten — zusätzlich zu eventuellen Distraktor-Blöcken anderswo im Puzzle.",
+        "Eine falsche Reihenfolge der Abschnitte verhindert ebenfalls das \"gelöst\"-Urteil, genau wie eine falsche Lückenantwort."
+      ],
       "contextTitle": "Kontext-Code",
       "contextBody": "Manche Aufgaben zeigen ober- und/oder unterhalb des Puzzle-Bereichs einen <strong>grauen, schreibgeschützten Block</strong>. Das ist <em>Kontext-Code</em> — das umgebende Gerüst (z.B. eine Klassendefinition, ein Import-Block oder eine Funktion, die dein Ergebnis aufruft). Diese Blöcke verschiebst du <strong>nicht</strong>; sie sind fest. Sie zeigen dir, wo deine Lösung im Gesamtbild steht. Die Bewertung ignoriert sie — geprüft werden nur die beweglichen Puzzle-Blöcke.",
       "hintsTitle": "Hinweise",
@@ -1663,6 +1751,13 @@
         "Es erscheint ein Banner <strong>\"✓ Gelöst!\"</strong> mit deiner Statistik: Versuche, Zeit, genutzte Hinweise.",
         "Es kann eine kurze Selbsteinschätzung (Sicherheitsbewertung) erscheinen — das sind anonyme Forschungsdaten.",
         "Über den Button <strong>\"Nächste Aufgabe\"</strong> geht es zur nächsten Stufe."
+      ],
+      "resumeTitle": "Arbeit speichern und fortsetzen",
+      "resume": [
+        "Deine Anordnung wird automatisch gespeichert, kurz nach jeder Bewegung — Tab schließen, neu laden oder wegnavigieren kostet dich keinen Fortschritt.",
+        "Öffnest du eine unfertige Aufgabe erneut, wird genau der Stand wiederhergestellt, den du zuletzt hattest, einschließlich Einrückung.",
+        "Hast du eine Aufgabe einmal gelöst, ist diese gelöste Anordnung ab dann das, was wiederhergestellt wird — selbst wenn du auf <strong>\"Aufgabe erneut lösen\"</strong> klickst und einen neuen Versuch später abbrichst, ohne erneut zu lösen.",
+        "<strong>\"Neu beginnen\"</strong> ist anders: Es erscheint nur bei einer unfertigen, noch nicht gelösten Anordnung und wirft sie absichtlich weg — beim nächsten Mal gibt es ein frisch gemischtes Puzzle."
       ],
       "navTitle": "Navigation",
       "nav": [
@@ -1961,9 +2056,16 @@
       ],
       "libraryTitle": "Bibliotheks-Admin",
       "library": [
-        "<strong>Sammel-Retagging</strong> — lässt die automatische Tag-Analyse über alle Sequenzen der Datenbank neu laufen. Nutze das nach einem Update des Tagger-Modells oder nach geänderten Tag-Regeln. Je nach Größe der Bibliothek kann das einige Minuten dauern.",
+        "<strong>Sammel-Retagging</strong> — lässt die automatische <em>Tag</em>-Analyse über alle Sequenzen (oder nur die ohne LLM-Tag) neu laufen. Läuft als Hintergrundjob mit Live-Fortschrittsbalken und einer Liste früherer Läufe. Nutze das nach einem Update des Tagger-Modells oder nach geänderten Tag-Regeln.",
+        "<strong>Sammel-Konzept-Neuklassifizierung</strong> — derselbe Job-Typ, aber für die strukturelle <em>Konzept</em>-Erkennung statt Tags (alle Sequenzen, oder nur die ohne Konzept). Getrennt vom Sammel-Retagging, weil Tags und Konzepte unabhängige Systeme sind.",
+        "<strong>Neue-Themen-Bericht</strong> — Tags, die innerhalb eines wählbaren Zeitfensters (1–90 Tage) erstmals aufgetaucht sind, mit Nutzungszahl und einem Ein-Klick-\"Zusammenführen\" in einen bestehenden Tag — der schnellste Weg, einen Tippfehler oder Beinahe-Dublette früh zu erwischen.",
         "<strong>Tags zusammenführen</strong> — doppelte oder fast identische Tags zu einer kanonischen Form vereinen (z.B. <code>for_loop</code> + <code>for-loop</code> → <code>for-loop</code>). Alle Zuordnungen zu Sequenzen werden automatisch aktualisiert.",
         "<strong>Tag-Übersicht</strong> — alle Tags nach Verwendungshäufigkeit sortiert ansehen; verwaiste oder kaum genutzte Tags erkennen, die aufgeräumt werden könnten."
+      ],
+      "databaseTitle": "Datenbank-Werkzeuge",
+      "database": [
+        "<strong>Vollständiges Backup</strong> — lädt einen kompletten <code>pg_dump</code> der Datenbank herunter, außerhalb der Anwendung wiederherstellbar, falls nötig.",
+        "<strong>Audit-Log</strong> — jedes Backup und jeder Forschungsdaten-Export, wer ihn ausgelöst hat, wann, Größe und Zeilenzahl, und ob er erfolgreich war."
       ],
       "researchTitle": "Forschungsdaten",
       "research": [
