@@ -324,6 +324,9 @@ export default function HelpPage() {
                         <h5>📋 {t("help.library.copyTitle")}</h5>
                         {ul("help.library.copy")}
 
+                        <h5>🎯 {t("help.library.addToWorksheetTitle")}</h5>
+                        {ul("help.library.addToWorksheet")}
+
                         <h5>☑️ {t("help.library.bulkTitle")}</h5>
                         {ul("help.library.bulk")}
 

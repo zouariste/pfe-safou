@@ -1363,7 +1363,7 @@
         "<strong>Klick-zum-Verschieben</strong> — Alternative zu Drag-and-drop (ideal für Trackpads).",
         "<strong>Distraktoren</strong> — plausible, aber falsche Blöcke, die erkannt und ausgeschlossen werden müssen.",
         "<strong>Hinweise</strong> — durch statische Analyse gestützte Hinweise, die problematische Blöcke hervorheben.",
-        "<strong>Abschluss-Banner</strong> — \"✓ Gelöst!\" mit Statistik, wenn die Lösung stimmt."
+        "<strong>Abschluss-Banner</strong> — \"Richtig gelöst!\" mit Statistik, wenn die Lösung stimmt."
       ],
       "hintsTitle": "Hinweis-System",
       "hintsBody": "Wenn ein Schüler nicht weiterkommt, führt das Hinweis-System eine statische Analyse der aktuellen Blockanordnung durch und hebt die problematischen Blöcke hervor — kein Raten, keine Halluzination. Eine zweite Stufe ruft optional das LLM für eine schülergerechte Erklärung auf.",
@@ -1407,7 +1407,7 @@
         "<strong>Registrieren</strong> — Lehrkräfte registrieren sich selbst mit Name, Email und Passwort. Die Bestätigungsmail wird automatisch verschickt.",
         "<strong>Anmelden</strong> — Email und Passwort (Lehrkräfte/Admins) oder ein einmaliger Token-Link (Schüler).",
         "<strong>Token-Anmeldung</strong> — Schüler fügen den von der Lehrkraft erzeugten Link ein oder klicken ihn an. Zum Start ist keine Email nötig.",
-        "<strong>FIM-/Hochschul-Anmeldung</strong> — an Einrichtungen mit passendem LDAP-Verzeichnis meldet sich eine Lehrkraft über \"Mit FIM-Konto anmelden\" mit ihren bestehenden Hochschul-Zugangsdaten an; so angelegte Schüler tun dies ebenso, statt einen Token-Link zu nutzen."
+        "<strong>FIM-/Hochschul-Anmeldung</strong> — an Einrichtungen mit passendem LDAP-Verzeichnis meldet sich eine Lehrkraft über \"Mit FIM-Account anmelden\" mit ihren bestehenden Hochschul-Zugangsdaten an; so angelegte Schüler tun dies ebenso, statt einen Token-Link zu nutzen."
       ],
       "onboardingTitle": "Schüler-Onboarding (\"Anton-Prinzip\")",
       "onboarding": "Schüler registrieren sich <em>nicht</em> selbst. Die Lehrkraft legt die Schülerkonten innerhalb einer Klasse an. CodeOwl erzeugt pro Schüler einen persönlichen Token-Link — teile diesen Link (ausgedruckt, per Chat usw.). Der Schüler klickt darauf, ist sofort angemeldet und kann während des Onboardings optional Email und Passwort setzen. Das hält die Hürde am ersten Tag so niedrig wie möglich.",
@@ -1481,10 +1481,10 @@
         "Token-Links können bei Verlust neu erzeugt werden.",
         "Schüler können später über ihre Profilseite eine Email hinterlegen und ein Passwort setzen.",
         "Schüler können jederzeit aus einer Klasse entfernt werden (das löscht das Konto <em>nicht</em>).",
-        "<strong>CSV-Import</strong> — eine ganze Klassenliste auf einmal anlegen: Vorlage herunterladen, ausfüllen, Zeilen in der Vorschau prüfen und alle Konten in einem Schritt erzeugen.",
-        "<strong>FIM-/Hochschul-Konten</strong> — Schüler über ihren FIM-Benutzernamen hinzufügen (einzeln oder per CSV), sofern das LDAP-Verzeichnis deiner Hochschule angebunden ist; sie melden sich dann über \"Mit FIM-Konto anmelden\" statt über einen Token-Link an.",
-        "<strong>Einladungslinks als CSV</strong> — lade die Token-Links aller Schüler als CSV herunter, oder nur die derjenigen, die sich noch nicht angemeldet haben.",
-        "<strong>Passwort eines Schülers zurücksetzen</strong> — erzeugt ein neues, einmalig angezeigtes temporäres Passwort für Schüler, die ihren Token-Link verloren haben und ihn nicht selbst wiederherstellen können."
+        "<strong>\"CSV importieren\"</strong> — eine ganze Klassenliste auf einmal anlegen: Vorlage herunterladen, ausfüllen, Zeilen in der Vorschau prüfen und alle Konten in einem Schritt erzeugen.",
+        "<strong>\"FIM-Accounts hinzufügen\"</strong> — Schüler über ihren FIM-Benutzernamen hinzufügen, sofern das LDAP-Verzeichnis deiner Hochschule angebunden ist; sie melden sich dann über \"Mit FIM-Account anmelden\" statt über einen Token-Link an.",
+        "<strong>\"Einladungslinks herunterladen (CSV)\"</strong> — die Token-Links aller Schüler als CSV; <strong>\"Nicht Registrierte herunterladen (CSV)\"</strong> grenzt das auf die ein, die sich noch nicht angemeldet haben.",
+        "<strong>\"Temporäres Passwort setzen\"</strong> — erzeugt ein neues, einmalig angezeigtes temporäres Passwort für Schüler, die ihren Token-Link verloren haben und ihn nicht selbst wiederherstellen können."
       ],
       "assignTitle": "Arbeitsblätter zuweisen",
       "assign": [
@@ -1503,7 +1503,7 @@
       "progress": [
         "Ist Tracking aktiviert, zeigt die Klassen-Detailseite eine Tabelle pro Schüler — Anzahl gelöster Aufgaben sowie Versuche insgesamt/richtig.",
         "Klicke einen Schüler an, um den detaillierten Fortschritt zu öffnen: jede Aufgabe in jedem zugewiesenen Arbeitsblatt, mit Versuchszahl und Status (Gelöst / Bearbeitet / Nicht begonnen).",
-        "\"Zustand ansehen\" bei einer Aufgabe zeigt genau das, was der Schüler zuletzt im Lösungsbereich angeordnet hatte — das funktioniert selbst dann, wenn nie auf Feedback geklickt wurde, weil es aus dem automatischen Speichern stammt, nicht nur aus bewerteten Versuchen."
+        "Der Button <strong>\"Ansehen\"</strong> (Spalte \"Letzter Stand\") bei einer Aufgabe zeigt genau das, was der Schüler zuletzt im Lösungsbereich angeordnet hatte — das funktioniert selbst dann, wenn nie auf Feedback geklickt wurde, weil es aus dem automatischen Speichern stammt, nicht nur aus bewerteten Versuchen."
       ],
       "permissionsTitle": "Berechtigungen",
       "permissions": [
@@ -1550,7 +1550,7 @@
       ],
       "copyTitle": "Fremde Arbeitsblätter kopieren",
       "copy": [
-        "Du kannst jedes mit dir geteilte Arbeitsblatt ansehen; klicke auf <strong>\"Arbeitsblatt kopieren\"</strong>, um eine eigene bearbeitbare Version zu erhalten.",
+        "Du kannst jedes mit dir geteilte Arbeitsblatt ansehen; klicke auf <strong>\"Kopieren\"</strong>, um eine eigene bearbeitbare Version zu erhalten.",
         "Die tiefe Kopie dupliziert alle Sequenzen und Aufgaben mit neuen IDs — du bist alleiniger Besitzer.",
         "Änderungen an der Kopie wirken sich nie auf das Original aus."
       ]
@@ -1562,7 +1562,7 @@
       "search": [
         "<strong>Volltextsuche</strong> — durchsucht Aufgabenstellungen und Code gleichzeitig. Die Volltextindizierung von Postgres sorgt für schnelle, relevante Treffer.",
         "<strong>Hervorgehobene Textstellen</strong> — passende Stellen werden in der Trefferkarte markiert, sodass du sofort siehst, warum eine Sequenz gefunden wurde.",
-        "<strong>\"Meintest du?\"</strong> — trigrammbasierte Vorschläge bei Tippfehlern (<em>recursiv</em> → <em>recursive</em>)."
+        "<strong>\"Meintest du eines dieser Tags?\"</strong> — trigrammbasierte Vorschläge bei Tippfehlern (<em>recursiv</em> → <em>recursive</em>)."
       ],
       "tagsTitle": "Tags und Filter",
       "tagsBody": "Jede Sequenz hat zwei Tag-Ebenen:",
@@ -1581,15 +1581,20 @@
       ],
       "copyTitle": "Ein-Klick-Kopie",
       "copy": [
-        "Klicke auf einer Sequenzkarte auf <strong>\"In Arbeitsblatt kopieren\"</strong> und wähle das Ziel-Arbeitsblatt aus der Auswahlliste.",
+        "Klicke auf einer Sequenzkarte auf <strong>\"Kopieren\"</strong>, um sie direkt in deine Bibliothek-Inbox zu kopieren — ein Standard-Arbeitsblatt, das CodeOwl genau dafür bereithält, ganz ohne Auswahl.",
         "Eine kurze Einblendung bestätigt die Kopie und bietet 5 Sekunden lang \"Rückgängig\" an.",
         "Sequenzen, die bereits in einem deiner Arbeitsblätter liegen, zeigen ein grünes ✓."
+      ],
+      "addToWorksheetTitle": "In ein bestimmtes Arbeitsblatt einfügen",
+      "addToWorksheet": [
+        "Klicke statt \"Kopieren\" auf <strong>\"Zu Arbeitsblatt hinzufügen\"</strong>, wenn du das Ziel selbst wählen willst — es öffnet einen Dialog mit deinen Arbeitsblättern.",
+        "Anders als \"Kopieren\" rührt das deine Bibliothek-Inbox gar nicht an."
       ],
       "bulkTitle": "Mehrere auf einmal kopieren",
       "bulk": [
         "Klicke oberhalb der Trefferliste auf <strong>\"Auswählen\"</strong>, um auf jeder Karte ein Kontrollkästchen einzublenden.",
         "Wähle beliebig viele Sequenzen aus, auch über mehrere Seiten hinweg — eine fixierte Leiste unten zeigt die Anzahl.",
-        "\"Auswahl kopieren\" schickt sie alle in einer Anfrage in ein Arbeitsblatt und zeigt, wie viele neu hinzugefügt und wie viele bereits vorhanden waren."
+        "\"N in Arbeitsblatt kopieren\" schickt sie alle in einer Anfrage in ein Arbeitsblatt und zeigt, wie viele neu hinzugefügt und wie viele bereits vorhanden waren."
       ],
       "editTitle": "Tags bearbeiten (Lehrkraft)",
       "edit": [
@@ -1598,7 +1603,7 @@
         "Manuelle Tags sind immer blau und werden vom Auto-Tagger nie überschrieben."
       ],
       "curriculumTitle": "Bibliothek und Lehrplan",
-      "curriculumBody": "Über „Vorhandene Sequenzen ansehen“ auf der Lehrplan-Seite gelangst du in die Bibliothek, bereits nach dem Lehrplanthema gefiltert — so siehst du sofort das gesamte relevante Material zu einem Thema, ob Jahrgangsstufe oder Modul."
+      "curriculumBody": "Über „Sequenzen ansehen“ auf der Lehrplan-Seite gelangst du in die Bibliothek, bereits nach dem Lehrplanthema gefiltert — so siehst du sofort das gesamte relevante Material zu einem Thema, ob Jahrgangsstufe oder Modul."
     },
     "marketplace": {
       "title": "Hilfe zum Marktplatz",
@@ -1633,7 +1638,7 @@
         "<strong>Filter Schule / Hochschule</strong> — mischt der Themenbaum beides, grenzen Schaltflächen oben die Ansicht auf eines von beiden ein."
       ],
       "generateTitle": "Aus einem Thema generieren",
-      "generateBody": "Klicke neben einem Thema auf <strong>\"Generieren\"</strong>. Der Generierungsdialog öffnet sich vorbelegt:",
+      "generateBody": "Klicke neben einem Thema auf <strong>\"Aufgabe generieren\"</strong>. Der Generierungsdialog öffnet sich vorbelegt:",
       "generate": [
         "<strong>Konzepte</strong> — automatisch aus der Zuordnung des Lehrplanthemas gesetzt.",
         "<strong>Codebeispiel</strong> — ein kuratiertes Referenz-Snippet zum Thema wird als Ausgangsmaterial eingefügt.",
@@ -1690,8 +1695,7 @@
       "editTitle": "Aufgaben bearbeiten und Versionierung",
       "editBody": "Wenn dir eine Sequenz gehört (oder du sie kopiert hast), kannst du Aufgabenstellung und Code jeder Aufgabe bearbeiten. Beim <strong>ersten Speichern</strong> wird die ursprüngliche, vom LLM erzeugte Fassung automatisch für Vergleich und Forschung aufbewahrt. Du wirst beim ersten Speichern gebeten, die Qualität der LLM-Ausgabe zu bewerten (1–5 Sterne).",
       "edit": [
-        "Bei fremden Sequenzen ist der Bearbeiten-Button gesperrt — kopiere zuerst das Arbeitsblatt.",
-        "Die Originalfassungen lassen sich über \"Original anzeigen\" einsehen (Lehrer-Ansicht)."
+        "Bei fremden Sequenzen ist der Bearbeiten-Button gesperrt — kopiere zuerst das Arbeitsblatt."
       ],
       "similarTitle": "Das könnte dich auch interessieren…",
       "similarBody": "Die Lehrer-Ansicht zeigt ein Panel mit Sequenzen, die Tags mit dieser hier teilen, sortiert nach Tag-Überschneidung und Sprachübereinstimmung — eine schnelle Möglichkeit, verwandtes Material ohne neue Suche zu finden. Ist nichts Ähnliches vorhanden, blendet sich das Panel selbst aus."
@@ -1748,7 +1752,7 @@
       "completionTitle": "Abschluss",
       "completionBody": "Wenn du das Puzzle richtig gelöst hast:",
       "completion": [
-        "Es erscheint ein Banner <strong>\"✓ Gelöst!\"</strong> mit deiner Statistik: Versuche, Zeit, genutzte Hinweise.",
+        "Es erscheint ein Banner <strong>\"Richtig gelöst!\"</strong> mit deiner Statistik: Versuche, Zeit, genutzte Hinweise.",
         "Es kann eine kurze Selbsteinschätzung (Sicherheitsbewertung) erscheinen — das sind anonyme Forschungsdaten.",
         "Über den Button <strong>\"Nächste Aufgabe\"</strong> geht es zur nächsten Stufe."
       ],
@@ -1835,10 +1839,10 @@
       ],
       "edgeTitle": "Sonderfälle",
       "edge": [
-        "<strong>Zu wenige Blöcke platziert</strong> — wenn im Lösungsbereich weniger Blöcke liegen als die richtige Antwort erfordert, sagt der Hinweis das sofort: \"Du hast X von Y benötigten Blöcken platziert.\" Das hat Vorrang vor allen anderen Befunden, damit du bei einer unvollständigen Anordnung keine irreführende Analyse bekommst.",
-        "<strong>Keine Befunde</strong> — wenn die Anordnung fehlerfrei kompiliert bzw. gelintet wird, aber trotzdem falsch ist, lautet die Ausweichmeldung: \"Keine Fehler gefunden, aber die Reihenfolge stimmt noch nicht. Überlege, was zuerst passieren muss.\"",
+        "<strong>Zu wenige Blöcke platziert</strong> — wenn im Lösungsbereich weniger Blöcke liegen als die richtige Antwort erfordert, sagt der Hinweis das sofort: \"Es wurden nur X von Y benötigten Blöcken platziert. Ziehe noch fehlende Blöcke in den Lösungsbereich.\" Das hat Vorrang vor allen anderen Befunden, damit du bei einer unvollständigen Anordnung keine irreführende Analyse bekommst.",
+        "<strong>Keine Befunde</strong> — wenn die Anordnung fehlerfrei kompiliert bzw. gelintet wird, aber trotzdem falsch ist, lautet die Ausweichmeldung: \"Keine statischen Fehler gefunden. Prüfe die Reihenfolge deiner Blöcke.\"",
         "<strong>Mehrere Befunde</strong> — es werden nur die 2 schwerwiegendsten Befunde gezeigt, um den Schüler nicht zu überfordern.",
-        "<strong>Zeitüberschreitung oder Absturz des Werkzeugs</strong> — sanfter Rückfall: positionsbasierte Ausweichlösung oder \"Hinweise vorübergehend nicht verfügbar\"."
+        "<strong>Zeitüberschreitung oder Absturz des Werkzeugs</strong> — das Analysewerkzeug gilt dann als \"nichts gefunden\" statt laut zu scheitern, du bekommst also stillschweigend dieselbe Ausweichmeldung \"Keine statischen Fehler gefunden\" wie bei einer sauber kompilierenden, aber trotzdem falschen Anordnung."
       ],
       "configTitle": "Hinweise konfigurieren (Lehrkraft)",
       "configBody": "Auf der Arbeitsblatt-Seite (Lehrer-Ansicht):",
@@ -2058,7 +2062,7 @@
       "library": [
         "<strong>Sammel-Retagging</strong> — lässt die automatische <em>Tag</em>-Analyse über alle Sequenzen (oder nur die ohne LLM-Tag) neu laufen. Läuft als Hintergrundjob mit Live-Fortschrittsbalken und einer Liste früherer Läufe. Nutze das nach einem Update des Tagger-Modells oder nach geänderten Tag-Regeln.",
         "<strong>Sammel-Konzept-Neuklassifizierung</strong> — derselbe Job-Typ, aber für die strukturelle <em>Konzept</em>-Erkennung statt Tags (alle Sequenzen, oder nur die ohne Konzept). Getrennt vom Sammel-Retagging, weil Tags und Konzepte unabhängige Systeme sind.",
-        "<strong>Neue-Themen-Bericht</strong> — Tags, die innerhalb eines wählbaren Zeitfensters (1–90 Tage) erstmals aufgetaucht sind, mit Nutzungszahl und einem Ein-Klick-\"Zusammenführen\" in einen bestehenden Tag — der schnellste Weg, einen Tippfehler oder Beinahe-Dublette früh zu erwischen.",
+        "<strong>Neue-Themen-Bericht</strong> — Tags, die innerhalb eines wählbaren Zeitfensters (1–90 Tage) erstmals aufgetaucht sind, mit Nutzungszahl und einem Ein-Klick-\"Zusammenführen…\" in einen bestehenden Tag — der schnellste Weg, einen Tippfehler oder Beinahe-Dublette früh zu erwischen.",
         "<strong>Tags zusammenführen</strong> — doppelte oder fast identische Tags zu einer kanonischen Form vereinen (z.B. <code>for_loop</code> + <code>for-loop</code> → <code>for-loop</code>). Alle Zuordnungen zu Sequenzen werden automatisch aktualisiert.",
         "<strong>Tag-Übersicht</strong> — alle Tags nach Verwendungshäufigkeit sortiert ansehen; verwaiste oder kaum genutzte Tags erkennen, die aufgeräumt werden könnten."
       ],
