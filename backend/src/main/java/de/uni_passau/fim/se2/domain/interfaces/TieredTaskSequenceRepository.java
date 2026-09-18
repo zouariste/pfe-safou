@@ -114,6 +114,16 @@ public interface TieredTaskSequenceRepository {
      */
     List<UUID> findConceptIdsBySequenceId(UUID sequenceId);
 
+    /**
+     * Concept names for many sequences in one round trip — the list-screen counterpart to
+     * {@link #findConceptIdsBySequenceId(UUID)}, which only reads for a single sequence.
+     *
+     * @param sequenceIds the sequences to read concept names for
+     * @return sequenceId to its concept names (sorted by name); a sequence with no linked
+     *         concepts is simply absent from the map rather than mapped to an empty list
+     */
+    Map<UUID, List<String>> findConceptNamesBySequenceIds(List<UUID> sequenceIds);
+
     void tagSequence(UUID sequenceId, UUID evalInputId, String mode, UUID runId);
 
     /**

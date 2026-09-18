@@ -29,6 +29,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreSequenceDAO;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreWorksheetDao;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.SequenceTagDAO;
 
@@ -503,7 +505,7 @@ class WorksheetSearchDatabaseTest {
         UUID clone = sequence("java", "Rekursive Fakultaet");
         jdbc.update("UPDATE tiered_task_sequences SET copied_from = ? WHERE id = ?", original, clone);
 
-        SequenceSearchService library = new SequenceSearchService(jdbc, new SequenceTagDAO(jdbc));
+        SequenceSearchService library = new SequenceSearchService(jdbc, new SequenceTagDAO(jdbc), new PostgreSequenceDAO(jdbc, new ObjectMapper()));
         var found = library.search(new SequenceSearchService.SearchQuery().q("fakultaet"), teacher);
 
         // Both rows carry the same text, so without the filter the teacher sees the same
@@ -523,7 +525,7 @@ class WorksheetSearchDatabaseTest {
         // exists specifically to keep that from happening.
         sequence("java", "Rekursive Berechnung der Fakultät.");
 
-        SequenceSearchService library = new SequenceSearchService(jdbc, new SequenceTagDAO(jdbc));
+        SequenceSearchService library = new SequenceSearchService(jdbc, new SequenceTagDAO(jdbc), new PostgreSequenceDAO(jdbc, new ObjectMapper()));
         String highlight = library.search(new SequenceSearchService.SearchQuery().q("fakultaet"), teacher)
                 .items().get(0).highlight();
 

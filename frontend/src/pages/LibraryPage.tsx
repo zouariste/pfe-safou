@@ -587,8 +587,10 @@ export default function LibraryPage() {
                                         <LibrarySequenceCard
                                             item={item}
                                             activeTags={filters.tags}
+                                            activeConcepts={filters.concepts}
                                             onOpen={() => navigate(`/sequence/${item.sequenceId}`)}
                                             onTagClick={filters.toggleTag}
+                                            onConceptClick={filters.toggleConcept}
                                             canEdit={canEditTagsFor(item)}
                                             canCopy={isLoggedIn && !isStudent}
                                             canAddToWorksheet={isLoggedIn && !isStudent}
@@ -1068,8 +1070,10 @@ function ConceptFacetChip({
 function LibrarySequenceCard({
     item,
     activeTags,
+    activeConcepts,
     onOpen,
     onTagClick,
+    onConceptClick,
     canEdit,
     canCopy,
     canAddToWorksheet,
@@ -1082,8 +1086,10 @@ function LibrarySequenceCard({
 }: {
     item: LibraryItem;
     activeTags: string[];
+    activeConcepts: string[];
     onOpen: () => void;
     onTagClick: (tag: string) => void;
+    onConceptClick: (concept: string) => void;
     canEdit: boolean;
     canCopy: boolean;
     canAddToWorksheet: boolean;
@@ -1285,6 +1291,39 @@ function LibrarySequenceCard({
                             <i className="bi bi-plus-lg me-1"></i>
                             {t("library.addTags")}
                         </button>
+                    </div>
+                )}
+
+                {/* Concepts the sequence covers — read-only here (editing stays on the
+                    sequence detail page). Clicking one toggles it as a library filter,
+                    the same way a tag chip does. Distinguished from the tag row above by
+                    the diagram icon, mirroring the sidebar's Tags/Concepts split. */}
+                {item.concepts.length > 0 && (
+                    <div className="d-flex flex-wrap gap-1 mb-3 align-items-center">
+                        <i
+                            className="bi bi-diagram-3 text-muted"
+                            aria-hidden="true"
+                            style={{ fontSize: "0.8rem" }}
+                        ></i>
+                        {item.concepts.slice(0, 6).map((concept) => {
+                            const active = activeConcepts.includes(concept);
+                            return (
+                                <button
+                                    key={concept}
+                                    type="button"
+                                    className={`badge border-0 ${active ? "text-bg-primary" : "bg-secondary-subtle text-secondary-emphasis"}`}
+                                    style={{ cursor: "pointer", fontWeight: 500, fontSize: "0.78rem" }}
+                                    onClick={() => onConceptClick(concept)}
+                                >
+                                    {concept}
+                                </button>
+                            );
+                        })}
+                        {item.concepts.length > 6 && (
+                            <span className="badge text-bg-light text-muted">
+                                +{item.concepts.length - 6}
+                            </span>
+                        )}
                     </div>
                 )}
 

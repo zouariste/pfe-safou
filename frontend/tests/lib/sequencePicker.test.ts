@@ -12,6 +12,7 @@ function item(overrides: Partial<LibraryItem> & { sequenceId: string }): Library
         ownerId: null,
         tierCount: 3,
         tags: [],
+        concepts: [],
         usageCount: 0,
         highlight: null,
         alreadyInMyWorksheet: false,
