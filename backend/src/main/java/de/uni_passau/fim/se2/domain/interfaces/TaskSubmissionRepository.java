@@ -39,4 +39,13 @@ public interface TaskSubmissionRepository {
     void save(TaskSubmissionDTO submission);
 
     Optional<TaskSubmissionDTO> find(UUID userId, UUID taskId);
+
+    /**
+     * Removes a student's stored arrangement for a task, so the next visit deals a fresh
+     * puzzle. A no-op when nothing is stored.
+     *
+     * @param userId the student
+     * @param taskId the task
+     */
+    void delete(UUID userId, UUID taskId);
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
+import { downloadFile, downloadTimestamp } from "../lib/download";
 import { useAuth } from "../context/AuthContext";
 import { homePathFor } from "../lib/homePath.ts";
 
@@ -63,24 +64,7 @@ export default function AdminDatabasePage() {
         setDownloading(kind);
         setError("");
         try {
-            const res =
-                method === "post"
-                    ? await api.post(url, null, { responseType: "blob", timeout: 0 })
-                    : await api.get(url, { responseType: "blob", timeout: 0 });
-
-            // Try to read filename from Content-Disposition; fall back to generated name
-            const cd = (res.headers["content-disposition"] as string) || "";
-            const match = cd.match(/filename="?([^";]+)"?/i);
-            const filename = match?.[1] || filenameFallback;
-
-            const blobUrl = URL.createObjectURL(res.data as Blob);
-            const a = document.createElement("a");
-            a.href = blobUrl;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(blobUrl);
+            await downloadFile(method, url, filenameFallback);
 
             // Refresh audit log to show the new entry
             loadAudit();
@@ -95,7 +79,7 @@ export default function AdminDatabasePage() {
         }
     };
 
-    const nowTs = () => new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const nowTs = downloadTimestamp;
 
     return (
         <div className="container py-4" style={{ maxWidth: 900 }}>

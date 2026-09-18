@@ -11,11 +11,28 @@
  * arrangement records. Where a task repeats a line, matches are consumed in
  * order, so identical lines fill the saved positions left to right.
  */
+export interface RestoredBlock {
+    /** The widget's id for the block, so the caller can find its line object. */
+    id: string;
+    /** The indent level the block was restored to. */
+    indent: number;
+}
+
 export interface RestoreResult {
     /** How many saved blocks were placed. */
     restored: number;
     /** Saved blocks whose text no longer exists among the available blocks. */
     missing: number;
+    /**
+     * The blocks that were placed, in solution order.
+     *
+     * Restoring sets `margin-left`, which is only how indentation is *drawn*. The widget grades
+     * from `line.indent` on its own model, which init left at 0, so a caller that does not copy
+     * these levels across has a student whose restored solution grades as fully unindented
+     * until they drag something. This helper cannot do it itself without taking a dependency on
+     * the widget, so it hands back what the caller needs to.
+     */
+    placed: RestoredBlock[];
 }
 
 export function restoreSubmission(
@@ -26,7 +43,7 @@ export function restoreSubmission(
     xIndent = 50,
 ): RestoreResult {
     if (!sourceUl || !targetUl || !blockOrder || blockOrder.length === 0) {
-        return { restored: 0, missing: 0 };
+        return { restored: 0, missing: 0, placed: [] };
     }
 
     // Index the available blocks by text. Both areas are searched: a restore may
@@ -44,6 +61,7 @@ export function restoreSubmission(
 
     let restored = 0;
     let missing = 0;
+    const placed: RestoredBlock[] = [];
 
     blockOrder.forEach((text, position) => {
         const bucket = available.get(text.trim());
@@ -58,8 +76,9 @@ export function restoreSubmission(
         targetUl.appendChild(block);
         const indent = indentLevels?.[position] ?? 0;
         block.style.marginLeft = `${indent * xIndent}px`;
+        if (block.id) placed.push({ id: block.id, indent });
         restored++;
     });
 
-    return { restored, missing };
+    return { restored, missing, placed };
 }

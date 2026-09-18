@@ -65,7 +65,8 @@ class ClassServiceVisibilityTest {
                 mock(TempPasswordGenerator.class),
                 mock(PasswordHasherService.class),
                 mock(WorksheetService.class),
-                mock(TaskPersistenceService.class));
+                mock(TaskPersistenceService.class),
+                mock(TaskSubmissionService.class));
     }
 
     private static ClassDTO.WorksheetInfo worksheet(String name, WorksheetAvailability availability) {

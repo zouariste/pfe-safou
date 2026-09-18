@@ -41,7 +41,11 @@ describe("restoreSubmission", () => {
 
         const result = restoreSubmission(source, target, ["a = 1", "b = 2", "c = 3"], [0, 0, 0]);
 
-        expect(result).toEqual({ restored: 3, missing: 0 });
+        expect(result).toEqual({
+            restored: 3,
+            missing: 0,
+            placed: [{ id: "s1", indent: 0 }, { id: "s2", indent: 0 }, { id: "s0", indent: 0 }],
+        });
         expect(textsOf(target)).toEqual(["a = 1", "b = 2", "c = 3"]);
         expect(textsOf(source)).toEqual([]);
     });
@@ -86,16 +90,20 @@ describe("restoreSubmission", () => {
 
         const result = restoreSubmission(source, target, ["a = 1", "gone", "b = 2"], [0, 0, 0]);
 
-        expect(result).toEqual({ restored: 2, missing: 1 });
+        expect(result).toEqual({
+            restored: 2,
+            missing: 1,
+            placed: [{ id: "s0", indent: 0 }, { id: "s1", indent: 0 }],
+        });
         expect(textsOf(target)).toEqual(["a = 1", "b = 2"]);
     });
 
     it("does nothing when there is nothing stored", () => {
         const { source, target } = build(["a = 1"]);
 
-        expect(restoreSubmission(source, target, [], [])).toEqual({ restored: 0, missing: 0 });
-        expect(restoreSubmission(source, target, null, null)).toEqual({ restored: 0, missing: 0 });
-        expect(restoreSubmission(null, target, ["a = 1"], [0])).toEqual({ restored: 0, missing: 0 });
+        expect(restoreSubmission(source, target, [], [])).toEqual({ restored: 0, missing: 0, placed: [] });
+        expect(restoreSubmission(source, target, null, null)).toEqual({ restored: 0, missing: 0, placed: [] });
+        expect(restoreSubmission(null, target, ["a = 1"], [0])).toEqual({ restored: 0, missing: 0, placed: [] });
         expect(textsOf(source)).toEqual(["a = 1"]);
     });
 
@@ -105,5 +113,31 @@ describe("restoreSubmission", () => {
         restoreSubmission(source, target, ["a = 1"], undefined);
 
         expect((target.children[0] as HTMLElement).style.marginLeft).toBe("0px");
+    });
+
+    /**
+     * margin-left is only how indentation is drawn. The widget grades from line.indent on its
+     * own model, which init left at 0, so a restored solution used to be graded as fully
+     * unindented until the student dragged something -- a correct answer marked wrong. The
+     * helper cannot reach the widget, so it reports what the caller must copy across.
+     */
+    it("reports each placed block with its indent, so the caller can sync the widget model", () => {
+        const { source, target } = build(["if x:", "    y = 1", "z = 2"]);
+
+        const result = restoreSubmission(source, target, ["if x:", "    y = 1"], [0, 1], 50);
+
+        expect(result.placed).toEqual([
+            { id: "s0", indent: 0 },
+            { id: "s1", indent: 1 },
+        ]);
+        // Only what was actually placed -- the block left in the source area is not reported.
+        expect(result.placed).toHaveLength(2);
+    });
+
+    it("reports indent 0 for placed blocks when no indents were saved", () => {
+        const { source, target } = build(["a = 1"]);
+
+        expect(restoreSubmission(source, target, ["a = 1"], undefined).placed)
+            .toEqual([{ id: "s0", indent: 0 }]);
     });
 });

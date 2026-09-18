@@ -258,6 +258,28 @@ export interface StudentProgressWorksheet {
     sequences: StudentProgressSequence[];
 }
 
+/**
+ * What one student last built for one task, beside the solution it was meant to become.
+ *
+ * The arrangement comes from the solve page's autosave, which is independent of the attempt
+ * counts on the progress page around it — those count Feedback clicks. A student can therefore
+ * have no attempts and still have left a substantial arrangement here.
+ */
+export interface StudentTaskState {
+    taskId: string;
+    statement: string;
+    programmingLanguage: string;
+    /** The expected solution, annotations intact; run it through toDisplayLines before showing it. */
+    solution: string;
+    /** False when this student has never arranged anything for this task. */
+    hasState: boolean;
+    blockOrder: string[];
+    indentLevels: number[];
+    solved: boolean;
+    solvedAt: string | null;
+    updatedAt: string | null;
+}
+
 /** One student's work across every worksheet assigned to one class. */
 export interface StudentProgressDetail {
     studentId: string;

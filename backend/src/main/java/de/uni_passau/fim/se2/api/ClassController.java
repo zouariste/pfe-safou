@@ -25,6 +25,7 @@ import de.uni_passau.fim.se2.api.dto.CreateStudentRequest;
 import de.uni_passau.fim.se2.application.service.ClassService;
 import de.uni_passau.fim.se2.domain.entities.ClassDTO;
 import de.uni_passau.fim.se2.domain.entities.StudentProgressDetailDTO;
+import de.uni_passau.fim.se2.domain.entities.StudentTaskStateDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -312,5 +313,25 @@ public class ClassController {
             @PathVariable UUID classId,
             @PathVariable UUID studentId) {
         return ResponseEntity.ok(classService.getStudentProgressDetail(classId, studentId));
+    }
+
+    /**
+     * What one student last built for one task, beside the solution it was meant to become.
+     *
+     * <p>Class-scoped on purpose. The arrangement is keyed by student and task alone, so reading
+     * it needs a reason, and the reason is that this class was assigned the worksheet the task
+     * sits in. That also keeps the authorization identical to the progress page this is opened
+     * from, rather than inventing a second story for the same data.
+     *
+     * @param classId   the UUID of the class
+     * @param studentId the UUID of the student
+     * @param taskId    the UUID of the task, which must belong to this class's worksheets
+     */
+    @GetMapping("/{classId}/students/{studentId}/tasks/{taskId}/state")
+    public ResponseEntity<StudentTaskStateDTO> getStudentTaskState(
+            @PathVariable UUID classId,
+            @PathVariable UUID studentId,
+            @PathVariable UUID taskId) {
+        return ResponseEntity.ok(classService.getStudentTaskState(classId, studentId, taskId));
     }
 }

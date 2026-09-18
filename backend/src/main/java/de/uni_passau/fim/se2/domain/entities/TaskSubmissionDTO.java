@@ -29,8 +29,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * A student's solved arrangement of one task, kept so that reopening the task
- * shows their work rather than a reshuffled puzzle.
+ * A student's arrangement of one task, kept so that reopening the task shows their
+ * work rather than a reshuffled puzzle -- whether they solved it or merely started.
  *
  * This is UI state, not research data. The record of how the student got there
  * lives in learning_events, which nulls user_id for classes with tracking
@@ -53,6 +53,16 @@ public class TaskSubmissionDTO {
     /** Indent level of each block, positionally aligned with {@link #blockOrder}. */
     private List<Integer> indentLevels;
 
+    /**
+     * Whether this arrangement is a solved one, as opposed to work in progress.
+     *
+     * Sticky: once true it stays true, because a student who solves a task and then pulls
+     * it apart has still solved it. It is also what keeps "who has solved this task" from
+     * counting students who merely opened it.
+     */
+    private boolean solved;
+
+    /** When the task was solved, or null while the arrangement is still in progress. */
     private LocalDateTime solvedAt;
 
     private LocalDateTime updatedAt;

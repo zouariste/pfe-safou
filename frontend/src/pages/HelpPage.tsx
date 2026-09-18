@@ -578,6 +578,9 @@ export default function HelpPage() {
                         <h5>🏷️ {t("help.admin.libraryTitle")} <code>/admin/library</code></h5>
                         {ul("help.admin.library")}
 
+                        <h5>📊 {t("help.admin.researchTitle")} <code>/admin/research</code></h5>
+                        {ul("help.admin.research")}
+
                         <h5>⚠️ {t("help.admin.cautionTitle")}</h5>
                         {ul("help.admin.caution")}
                     </>

@@ -21,6 +21,7 @@ package de.uni_passau.fim.se2.application.service;
 import de.uni_passau.fim.se2.domain.entities.ClassDTO;
 import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
 import de.uni_passau.fim.se2.domain.entities.StudentProgressDetailDTO;
+import de.uni_passau.fim.se2.domain.entities.StudentTaskStateDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.UserDTO;
@@ -55,6 +56,7 @@ public class ClassService {
     private final PasswordHasherService passwordHasher;
     private final WorksheetService worksheetService;
     private final TaskPersistenceService taskPersistenceService;
+    private final TaskSubmissionService taskSubmissionService;
 
     // ── CRUD ──────────────────────────────────────────────────
 
@@ -608,21 +610,8 @@ public class ClassService {
      * lands on a page whose authorization matches the class the teacher owns.
      */
     public StudentProgressDetailDTO getStudentProgressDetail(UUID classId, UUID studentId) {
-        ClassDTO classDTO = classRepository.findByIdWithDetails(classId)
-                .orElseThrow(() -> new DomainValidationException("Klasse nicht gefunden."));
-
-        UUID userId = ownershipService.getCurrentUserId();
-        if (userId == null) {
-            throw new AccessDeniedException("Authentifizierung erforderlich.");
-        }
-        if (!ownershipService.isOwnerOrAdmin(classDTO.getOwnerId())) {
-            throw new AccessDeniedException("Kein Zugriff auf Fortschrittsdaten.");
-        }
-
-        ClassDTO.StudentInfo student = classDTO.getStudents().stream()
-                .filter(s -> s.getUserId().equals(studentId))
-                .findFirst()
-                .orElseThrow(() -> new DomainValidationException("Schüler ist nicht Mitglied dieser Klasse."));
+        ClassDTO classDTO = loadClassForProgress(classId);
+        ClassDTO.StudentInfo student = requireCurrentMember(classDTO, studentId);
 
         Map<UUID, List<FeedbackLogDTO>> logsByTask = feedbackLogService.getFeedbackLogsForClass(classId).stream()
                 .filter(l -> studentId.equals(l.getUserId()))
@@ -668,5 +657,109 @@ public class ClassService {
                 studentId,
                 student.getFirstName() + " " + student.getLastName(),
                 worksheetProgresses);
+    }
+
+    /**
+     * The class, once the caller has proved they may read progress data for it.
+     *
+     * <p>Owner or admin, not merely a teacher of the class: that is the rule the progress page
+     * has always applied, and loosening it here would quietly loosen it there too.
+     */
+    private ClassDTO loadClassForProgress(UUID classId) {
+        ClassDTO classDTO = classRepository.findByIdWithDetails(classId)
+                .orElseThrow(() -> new DomainValidationException("Klasse nicht gefunden."));
+
+        if (ownershipService.getCurrentUserId() == null) {
+            throw new AccessDeniedException("Authentifizierung erforderlich.");
+        }
+        if (!ownershipService.isOwnerOrAdmin(classDTO.getOwnerId())) {
+            throw new AccessDeniedException("Kein Zugriff auf Fortschrittsdaten.");
+        }
+        return classDTO;
+    }
+
+    /**
+     * The student, if they are a member of the class now.
+     *
+     * <p>A former student is refused rather than served: feedback_logs has no foreign key on
+     * user_id, so their rows survive them leaving, and serving those would attribute work to
+     * somebody the teacher can no longer account for.
+     */
+    private ClassDTO.StudentInfo requireCurrentMember(ClassDTO classDTO, UUID studentId) {
+        return classDTO.getStudents().stream()
+                .filter(s -> s.getUserId().equals(studentId))
+                .findFirst()
+                .orElseThrow(() -> new DomainValidationException(
+                        "Schüler ist nicht Mitglied dieser Klasse."));
+    }
+
+    /**
+     * What one student last built for one task, beside the solution it was meant to become.
+     *
+     * <p>Three things have to hold, and only the first two are shared with the progress page:
+     * the caller owns the class, the student is in it, and -- checked here for the first time --
+     * the task belongs to a worksheet this class was actually assigned. Without that last one a
+     * class owner could read any student's arrangement for any task in the system by passing its
+     * id, because the arrangement itself is keyed by student and task alone.
+     *
+     * @param classId   the class whose assignment justifies the read
+     * @param studentId the student whose work is being looked at
+     * @param taskId    the task, which must belong to this class's worksheets
+     * @return the arrangement and the expected solution; never null, even when nothing is stored
+     */
+    public StudentTaskStateDTO getStudentTaskState(UUID classId, UUID studentId, UUID taskId) {
+        ClassDTO classDTO = loadClassForProgress(classId);
+        requireCurrentMember(classDTO, studentId);
+
+        TaskInClass found = findTaskInClass(classDTO, taskId)
+                .orElseThrow(() -> new AccessDeniedException(
+                        "Aufgabe gehört zu keinem Arbeitsblatt dieser Klasse."));
+
+        TaskDTO task = found.task();
+        return taskSubmissionService.find(studentId, taskId)
+                .map(stored -> new StudentTaskStateDTO(
+                        taskId,
+                        task.getStatement(),
+                        found.programmingLanguage(),
+                        task.getSolution(),
+                        true,
+                        stored.getBlockOrder(),
+                        stored.getIndentLevels(),
+                        stored.isSolved(),
+                        stored.getSolvedAt(),
+                        stored.getUpdatedAt()))
+                .orElseGet(() -> new StudentTaskStateDTO(
+                        taskId,
+                        task.getStatement(),
+                        found.programmingLanguage(),
+                        task.getSolution(),
+                        false,
+                        List.of(),
+                        List.of(),
+                        false,
+                        null,
+                        null));
+    }
+
+    /** A task reached through this class's worksheets, with the language of the sequence holding it. */
+    private record TaskInClass(TaskDTO task, String programmingLanguage) {}
+
+    /**
+     * Walks the same worksheet -> sequence -> task structure the progress page is built from, and
+     * stops at the requested task. Empty means the task is not this class's to show.
+     */
+    private Optional<TaskInClass> findTaskInClass(ClassDTO classDTO, UUID taskId) {
+        for (ClassDTO.WorksheetInfo wsInfo : classDTO.getWorksheets()) {
+            WorksheetDTO worksheet = worksheetService.loadWorksheetById(wsInfo.getWorksheetId());
+            for (TieredTaskSequenceDTO seqStub : worksheet.getSequenceDTOS()) {
+                TieredTaskSequenceDTO sequence = taskPersistenceService.loadSequenceById(seqStub.getId());
+                for (TaskDTO task : sequence.getOrderedTasks()) {
+                    if (taskId.equals(task.getId())) {
+                        return Optional.of(new TaskInClass(task, sequence.getProgrammingLanguage()));
+                    }
+                }
+            }
+        }
+        return Optional.empty();
     }
 }

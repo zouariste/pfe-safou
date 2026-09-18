@@ -51,6 +51,11 @@ public class PostgreResearchDataDao implements ResearchDataReader {
     }
 
     @Override
+    public List<Map<String, Object>> readTaskSubmissions() {
+        return jdbc.queryForList("SELECT * FROM task_submissions ORDER BY updated_at");
+    }
+
+    @Override
     public List<Map<String, Object>> readHintUsage() {
         return jdbc.queryForList("SELECT * FROM hint_usage ORDER BY created_at");
     }
@@ -103,6 +108,12 @@ public class PostgreResearchDataDao implements ResearchDataReader {
     @Override
     public List<Map<String, Object>> readClassStudents() {
         return jdbc.queryForList("SELECT * FROM class_students");
+    }
+
+    @Override
+    public List<Map<String, Object>> readClassStudents(java.util.UUID classId) {
+        return jdbc.queryForList(
+                "SELECT * FROM class_students WHERE class_id = ? ORDER BY joined_at", classId);
     }
 
     @Override
