@@ -120,7 +120,7 @@ class MarketplaceJourneyDatabaseTest {
         worksheetService = new WorksheetService(worksheetDao,
                 new WorksheetCloneService(worksheetDao, sequenceDao, taskDao, tagDao));
         marketplace = new WorksheetSearchService(jdbc);
-        library = new SequenceSearchService(jdbc, tagDao);
+        library = new SequenceSearchService(jdbc, tagDao, sequenceDao);
         forkService = new SequenceForkService(worksheetDao,
                 new WorksheetCloneService(worksheetDao, sequenceDao, taskDao, tagDao));
 

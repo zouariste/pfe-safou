@@ -341,6 +341,7 @@ export interface LibraryItem {
     ownerId: string | null;
     tierCount: number;
     tags: SequenceTag[];
+    concepts: string[];
     usageCount: number;
     /** ts_headline snippet with control-char markers; run through renderHighlight() before display. */
     highlight: string | null;

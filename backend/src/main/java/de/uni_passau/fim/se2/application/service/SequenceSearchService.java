@@ -25,6 +25,7 @@ import de.uni_passau.fim.se2.api.dto.LibrarySearchResponse.Facets;
 import de.uni_passau.fim.se2.api.dto.LibrarySearchResponse.Ownership;
 import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
 import de.uni_passau.fim.se2.domain.interfaces.SequenceTagRepository;
+import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -94,10 +95,13 @@ public class SequenceSearchService {
 
     private final JdbcTemplate jdbc;
     private final SequenceTagRepository tagRepo;
+    private final TieredTaskSequenceRepository sequenceRepo;
 
-    public SequenceSearchService(JdbcTemplate jdbc, SequenceTagRepository tagRepo) {
+    public SequenceSearchService(JdbcTemplate jdbc, SequenceTagRepository tagRepo,
+                                  TieredTaskSequenceRepository sequenceRepo) {
         this.jdbc = jdbc;
         this.tagRepo = tagRepo;
+        this.sequenceRepo = sequenceRepo;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -404,22 +408,25 @@ public class SequenceSearchService {
                     rs.getObject("owner_id", UUID.class),
                     tier,
                     List.of(), // filled in below with a single batch query
+                    List.of(), // concepts — same treatment
                     rs.getLong("usage_count"),
                     rs.getString("highlight"),
                     rs.getBoolean("already_in_my_worksheet")
             );
         }, params.toArray());
 
-        // Attach tags in one shot via the existing batch lookup.
+        // Attach tags and concepts in one shot each via their batch lookups.
         if (rows.isEmpty()) return rows;
         List<UUID> ids = rows.stream().map(LibraryItemDTO::sequenceId).toList();
         Map<UUID, List<SequenceTagDTO>> tagMap = tagRepo.findBySequenceIds(ids);
+        Map<UUID, List<String>> conceptMap = sequenceRepo.findConceptNamesBySequenceIds(ids);
         List<LibraryItemDTO> enriched = new ArrayList<>(rows.size());
         for (LibraryItemDTO r : rows) {
             enriched.add(new LibraryItemDTO(
                     r.sequenceId(), r.programmingLanguage(), r.taskDescription(), r.semanticSummary(),
                     r.createdAt(), r.ownerId(), r.tierCount(),
                     tagMap.getOrDefault(r.sequenceId(), List.of()),
+                    conceptMap.getOrDefault(r.sequenceId(), List.of()),
                     r.usageCount(), r.highlight(),
                     r.alreadyInMyWorksheet()));
         }
@@ -528,6 +535,7 @@ public class SequenceSearchService {
                     rs.getObject("owner_id", UUID.class),
                     tier,
                     List.of(),
+                    List.of(), // concepts — "similar sequences" doesn't show them either
                     rs.getLong("usage_count"),
                     null, // no highlight for similar-sequences — there's no query
                     rs.getBoolean("already_in_my_worksheet")
@@ -543,6 +551,7 @@ public class SequenceSearchService {
                     r.sequenceId(), r.programmingLanguage(), r.taskDescription(), r.semanticSummary(),
                     r.createdAt(), r.ownerId(), r.tierCount(),
                     tagMap.getOrDefault(r.sequenceId(), List.of()),
+                    r.concepts(),
                     r.usageCount(), r.highlight(), r.alreadyInMyWorksheet()));
         }
         return enriched;

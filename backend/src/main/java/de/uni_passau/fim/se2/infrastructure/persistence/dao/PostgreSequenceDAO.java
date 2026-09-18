@@ -349,6 +349,29 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                 UUID.class, sequenceId);
     }
 
+    @Override
+    public Map<UUID, List<String>> findConceptNamesBySequenceIds(List<UUID> sequenceIds) {
+        if (sequenceIds == null || sequenceIds.isEmpty()) return Map.of();
+
+        String placeholders = String.join(",", Collections.nCopies(sequenceIds.size(), "?"));
+        List<Object[]> rows = jdbc.query("""
+                SELECT link.sequence_id AS sequence_id, c.name AS name
+                FROM tiered_task_sequence_concepts link
+                JOIN concepts c ON c.id = link.concept_id
+                WHERE link.sequence_id IN (""" + placeholders + """
+                )
+                ORDER BY link.sequence_id, c.name
+                """,
+                (rs, n) -> new Object[]{rs.getObject("sequence_id", UUID.class), rs.getString("name")},
+                sequenceIds.toArray());
+
+        Map<UUID, List<String>> result = new LinkedHashMap<>();
+        for (Object[] row : rows) {
+            result.computeIfAbsent((UUID) row[0], k -> new ArrayList<>()).add((String) row[1]);
+        }
+        return result;
+    }
+
     /**
      * AP19 Teil A: single-query retag-candidate loader. Uses {@code string_agg} so we don't
      * N+1 over tasks per sequence. Always LEFT JOIN so sequences without tasks still show up
