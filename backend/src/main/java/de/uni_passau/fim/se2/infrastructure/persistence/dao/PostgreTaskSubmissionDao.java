@@ -67,16 +67,26 @@ public class PostgreTaskSubmissionDao implements TaskSubmissionRepository {
         // `solved` only ever goes false -> true. An autosave of work in progress must not
         // take away having solved the task, and solved_at keeps the moment it was first
         // solved rather than being pushed forward by every later edit.
+        //
+        // block_order/indent_levels/updated_at follow the same stickiness once the row is
+        // solved: an autosave (EXCLUDED.solved = false) against an already-solved row is a
+        // redo in progress that was abandoned before the student re-solved, so it must not
+        // clobber the arrangement that was actually graded correct. Only a fresh solve
+        // (EXCLUDED.solved = true) is allowed to replace it. Against a not-yet-solved row,
+        // every autosave still overwrites, exactly as before.
         String sql = """
                 INSERT INTO task_submissions (user_id, task_id, block_order, indent_levels,
                                               solved, solved_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, CASE WHEN ? THEN CURRENT_TIMESTAMP END, CURRENT_TIMESTAMP)
                 ON CONFLICT (user_id, task_id) DO UPDATE
-                SET block_order   = EXCLUDED.block_order,
-                    indent_levels = EXCLUDED.indent_levels,
+                SET block_order   = CASE WHEN task_submissions.solved AND NOT EXCLUDED.solved
+                                         THEN task_submissions.block_order ELSE EXCLUDED.block_order END,
+                    indent_levels = CASE WHEN task_submissions.solved AND NOT EXCLUDED.solved
+                                         THEN task_submissions.indent_levels ELSE EXCLUDED.indent_levels END,
                     solved        = task_submissions.solved OR EXCLUDED.solved,
                     solved_at     = COALESCE(task_submissions.solved_at, EXCLUDED.solved_at),
-                    updated_at    = CURRENT_TIMESTAMP
+                    updated_at    = CASE WHEN task_submissions.solved AND NOT EXCLUDED.solved
+                                         THEN task_submissions.updated_at ELSE CURRENT_TIMESTAMP END
                 """;
 
         jdbc.update(sql,
