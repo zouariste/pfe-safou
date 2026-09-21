@@ -15,12 +15,13 @@ describe("homePathFor", () => {
         expect(homePathFor({ isLoggedIn: true, isStudent: false })).toBe("/classes");
     });
 
-    it("keeps anonymous visitors on the public home page", () => {
+    it("sends anonymous visitors to the login page", () => {
         // Sequences, worksheets and tasks are viewable via a shared link without
-        // an account. Both class pages sit behind ProtectedRoute, so sending an
-        // anonymous visitor there would bounce them to a login screen.
-        expect(homePathFor({ isLoggedIn: false, isStudent: false })).toBe("/");
-        expect(homePathFor({ isLoggedIn: false, isStudent: true })).toBe("/");
+        // an account. The generator at / is teacher/admin only and both class
+        // pages sit behind ProtectedRoute, so the login page is the one place an
+        // anonymous visitor can go.
+        expect(homePathFor({ isLoggedIn: false, isStudent: false })).toBe("/login");
+        expect(homePathFor({ isLoggedIn: false, isStudent: true })).toBe("/login");
     });
 
     it("never routes anyone to a page they cannot open", () => {
@@ -32,7 +33,7 @@ describe("homePathFor", () => {
         ];
         for (const auth of cases) {
             const path = homePathFor(auth);
-            if (!auth.isLoggedIn) expect(path).toBe("/");
+            if (!auth.isLoggedIn) expect(path).toBe("/login");
             else expect(["/classes", "/my-classes"]).toContain(path);
         }
     });
