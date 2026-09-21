@@ -244,30 +244,6 @@ function AppFooter() {
                     style={{ filter: "drop-shadow(0 0 3px rgba(0,0,0,0.1))" }}
                 />
                 <span className="text-muted d-none d-sm-inline">|</span>
-                <div className="dropdown">
-                    <button
-                        className="btn btn-sm btn-outline-secondary dropdown-toggle"
-                        type="button"
-                        id="surveyDropdown"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
-                    >
-                        {t("nav.feedback")}
-                    </button>
-                    <ul className="dropdown-menu" aria-labelledby="surveyDropdown">
-                        <li>
-                            <a className="dropdown-item" href="https://forms.gle/ZdRYMc8uphyuT6Bu5" target="_blank" rel="noopener noreferrer">
-                                {t("nav.teacherSurvey")}
-                            </a>
-                        </li>
-                        <li>
-                            <a className="dropdown-item" href="https://forms.gle/5tJYYqiswLUm6fW86" target="_blank" rel="noopener noreferrer">
-                                {t("nav.studentSurvey")}
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-                <span className="text-muted d-none d-sm-inline">|</span>
                 <div className="d-flex align-items-center gap-3">
                     <a href="https://github.com/se2p/codeowl" target="_blank" rel="noopener noreferrer" className="link-secondary">
                         GitHub
