@@ -64,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: data.role,
             token: data.token,
             mustChangePassword: data.mustChangePassword ?? false,
+            fimAccount: data.fimAccount ?? false,
         };
 
         localStorage.setItem("jwt", data.token);

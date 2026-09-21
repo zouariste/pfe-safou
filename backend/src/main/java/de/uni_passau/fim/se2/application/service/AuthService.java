@@ -36,6 +36,10 @@ import java.util.UUID;
 @Slf4j
 public class AuthService {
 
+    /** Shown when a password is changed or reset for an account whose password lives in the FIM directory. */
+    private static final String FIM_PASSWORD_MESSAGE =
+            "Das Passwort eines FIM-Accounts kann nicht in CodeOwl geändert werden.";
+
     private final UserRepository userRepository;
     private final PasswordHasherService passwordHasher;
     private final JwtService jwtService;
@@ -251,6 +255,12 @@ public class AuthService {
      */
     public void requestPasswordReset(String email) {
         userRepository.findByEmail(email).ifPresent(user -> {
+            // A FIM-Account's password is reset at the FIM, not here. Skipped silently:
+            // the response must not reveal which addresses belong to an account.
+            if (user.getFimUid() != null) {
+                log.info("Password reset ignored for FIM-Account user: {}", user.getUserId());
+                return;
+            }
             AuthTokenDTO resetToken = tokenService.createPasswordResetToken(user.getUserId());
             emailService.sendPasswordResetEmail(email, resetToken.getTokenValue());
             log.info("Password reset requested for: {}", email);
@@ -266,6 +276,11 @@ public class AuthService {
 
         UserDTO user = userRepository.findById(token.getUserId())
                 .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+
+        // The token may predate the account being linked to a FIM-Account.
+        if (user.getFimUid() != null) {
+            throw new AuthenticationException(FIM_PASSWORD_MESSAGE);
+        }
 
         user.setPasswordHash(passwordHasher.hashPassword(newPassword));
         userRepository.update(user);
@@ -357,6 +372,12 @@ public class AuthService {
         UserDTO user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
 
+        // A FIM-Account's password lives in the FIM directory; changing the local hash
+        // would not change the one that logs the user in.
+        if (user.getFimUid() != null) {
+            throw new AuthenticationException(FIM_PASSWORD_MESSAGE);
+        }
+
         if (user.getPasswordHash() == null || !passwordHasher.verifyPassword(currentPassword, user.getPasswordHash())) {
             throw new AuthenticationException("Aktuelles Passwort ist falsch.");
         }
@@ -375,6 +396,10 @@ public class AuthService {
     public void changeTempPassword(UUID userId, String newPassword) {
         UserDTO user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+
+        if (user.getFimUid() != null) {
+            throw new AuthenticationException(FIM_PASSWORD_MESSAGE);
+        }
 
         if (!user.isMustChangePassword()) {
             throw new AuthenticationException("Kein temporäres Passwort gesetzt.");

@@ -105,6 +105,7 @@ public class AuthController {
                 .userId(user.getUserId().toString())
                 .classIds(classIds)
                 .mustChangePassword(user.isMustChangePassword() ? true : null)
+                .fimAccount(user.getFimUid() != null ? true : null)
                 .build();
     }
 
@@ -181,6 +182,7 @@ public class AuthController {
                                          .firstName(user.getFirstName())
                                          .lastName(user.getLastName())
                                          .userId(user.getUserId().toString())
+                                         .fimAccount(user.getFimUid() != null ? true : null)
                                          .build());
     }
 

@@ -390,6 +390,8 @@ export interface AuthUser {
     token: string;
     /** True when a teacher set a temporary password — user must change it before continuing. */
     mustChangePassword?: boolean;
+    /** True for a FIM-Account user, whose password is managed by the FIM directory. */
+    fimAccount?: boolean;
 }
 
 export interface LoginResponse {
@@ -403,5 +405,7 @@ export interface LoginResponse {
     classIds?: string[];
     /** True when a teacher set a temporary password. */
     mustChangePassword?: boolean;
+    /** True for a FIM-Account user. */
+    fimAccount?: boolean;
 }
 

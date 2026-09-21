@@ -76,7 +76,7 @@ public class AdminService {
 
     public record AdminUserResponse(
             String userId, String email, String firstName, String lastName,
-            String role, boolean verified, boolean active, String createdAt
+            String role, boolean verified, boolean active, String createdAt, boolean fimAccount
     ) {
         static AdminUserResponse from(UserDTO user) {
             return new AdminUserResponse(
@@ -87,7 +87,8 @@ public class AdminService {
                     user.getRole().name(),
                     user.isVerified(),
                     user.isActive(),
-                    user.getCreatedAt() != null ? user.getCreatedAt().toString() : null
+                    user.getCreatedAt() != null ? user.getCreatedAt().toString() : null,
+                    user.getFimUid() != null
             );
         }
     }
@@ -157,6 +158,11 @@ public class AdminService {
     public void resetPassword(UUID userId) {
         UserDTO user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+
+        if (user.getFimUid() != null) {
+            throw new AuthenticationException(
+                    "Das Passwort eines FIM-Accounts kann nicht in CodeOwl zurückgesetzt werden.");
+        }
 
         if (user.getEmail() == null || user.getEmail().isBlank()) {
             throw new AuthenticationException("Benutzer hat keine Email-Adresse.");
