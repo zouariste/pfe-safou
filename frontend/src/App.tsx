@@ -349,7 +349,6 @@ export default function App() {
                         <RouteErrorBoundary>
                             <Routes>
                                 {/* Public routes */}
-                                <Route path="/" element={<HomePage />} />
                                 <Route path="/sequence/:id" element={<SequencePage />} />
                                 <Route path="/solve/:taskId" element={<SolvePage />} />
                                 <Route path="/worksheets/:sheetId" element={<WorksheetPage />} />
@@ -384,7 +383,9 @@ export default function App() {
                                 <Route path="/admin/database" element={<ProtectedRoute requiredRole="ADMIN"><AdminDatabasePage /></ProtectedRoute>} />
                                 <Route path="/admin/research" element={<ProtectedRoute requiredRole="ADMIN"><AdminResearchPage /></ProtectedRoute>} />
 
-                                {/* Teacher tools */}
+                                {/* Teacher tools. The generator is the start page, so anonymous
+                                    visitors landing on / are redirected to the login page. */}
+                                <Route path="/" element={<ProtectedRoute staffOnly><HomePage /></ProtectedRoute>} />
                                 <Route path="/manual-create" element={<ProtectedRoute><ManualTaskCreator /></ProtectedRoute>} />
                                 <Route path="/curriculum" element={<ProtectedRoute><CurriculumPage /></ProtectedRoute>} />
                                 <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />

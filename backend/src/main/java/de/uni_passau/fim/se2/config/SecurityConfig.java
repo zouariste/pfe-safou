@@ -88,8 +88,8 @@ public class SecurityConfig {
                         // which the client read as an expired session.
                         .requestMatchers(HttpMethod.GET, "/api/concepts").permitAll()
 
-                        // Task generation: permitAll at HTTP level, student-check in controller
-                        .requestMatchers(HttpMethod.POST, "/api/tasks/generate").permitAll()
+                        // Task generation: teachers and admins only
+                        .requestMatchers(HttpMethod.POST, "/api/tasks/generate").hasAnyRole("TEACHER", "ADMIN")
 
                         // Feedback logging: open (anonymous feedback allowed)
                         .requestMatchers(HttpMethod.POST, "/api/tasks/*/feedback-log").permitAll()

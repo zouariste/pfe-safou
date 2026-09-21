@@ -7,9 +7,11 @@ import type { UserRole } from "../types/models";
 interface ProtectedRouteProps {
     children: React.ReactNode;
     requiredRole?: UserRole;
+    /** Teachers and admins only: students are sent to their own start page. */
+    staffOnly?: boolean;
 }
 
-export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiredRole, staffOnly }: ProtectedRouteProps) {
     const { t } = useTranslation();
     const { user, loading, isLoggedIn, isStudent, mustChangePassword } = useAuth();
 
@@ -42,7 +44,7 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     // be read. Redirecting outright is what actually happened; now it says so.
     // Nothing links here for the wrong role either, so this only fires on a
     // typed or bookmarked URL.
-    if (requiredRole && user?.role !== requiredRole) {
+    if ((requiredRole && user?.role !== requiredRole) || (staffOnly && isStudent)) {
         return <Navigate to={homePathFor({ isLoggedIn, isStudent })} replace />;
     }
 

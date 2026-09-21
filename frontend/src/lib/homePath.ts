@@ -9,13 +9,12 @@
  * The two roles have separate pages, matching the navbar: teachers and admins
  * get /classes, students /my-classes.
  *
- * Anonymous visitors keep going to /, because both class pages are behind
- * ProtectedRoute. Sequences, worksheets and tasks are all publicly viewable via
- * a shared link, so this case is real: sending those visitors to /classes would
- * bounce them to a login screen they have no account for.
+ * Anonymous visitors go to the login page: the generator at / is teacher/admin
+ * only and both class pages are behind ProtectedRoute. Sequences, worksheets and
+ * tasks are still publicly viewable via a shared link, so this case is real.
  */
 export function homePathFor(auth: { isLoggedIn: boolean; isStudent: boolean }): string {
-    if (!auth.isLoggedIn) return "/";
+    if (!auth.isLoggedIn) return "/login";
     return auth.isStudent ? "/my-classes" : "/classes";
 }
 

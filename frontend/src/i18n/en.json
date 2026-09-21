@@ -1395,10 +1395,10 @@
     },
     "auth": {
       "title": "Accounts & Authentication",
-      "intro": "CodeOwl v2 has full user accounts with three roles. All learning data (events, feedback logs) is linked to a user ID where available; anonymous use is still supported.",
+      "intro": "CodeOwl v2 has full user accounts with three roles. All learning data (events, feedback logs) is linked to a user ID where available. Anonymous visitors can still open shared links and solve tasks, but they cannot generate or create anything — the start page is the login page.",
       "rolesTitle": "Roles",
       "roles": [
-        "<strong>Teacher</strong> — can generate sequences, manage classes, create/edit worksheets.",
+        "<strong>Teacher</strong> — can generate sequences (the Home Page is only available to teachers and admins), manage classes, create/edit worksheets.",
         "<strong>Student</strong> — can solve tasks in assigned worksheets; cannot generate.",
         "<strong>Admin</strong> — all teacher permissions plus user management and admin tools."
       ],
@@ -1952,7 +1952,7 @@
         "Self-report ratings (confidence, frustration — 1-click smileys after completion)",
         "Session metadata (device type, viewport — once per session)"
       ],
-      "dataNote": "No raw mouse tracking, no keystroke logging, no external tab tracking. Anonymous use (no login) is always possible — those events have <code>user_id = null</code>.",
+      "dataNote": "No raw mouse tracking, no keystroke logging, no external tab tracking. Solving tasks via a shared link without logging in is possible — those events have <code>user_id = null</code>.",
       "adminTitle": "Admin Features",
       "admin": [
         "<strong>User Management</strong> — view, edit, promote, and delete users.",
