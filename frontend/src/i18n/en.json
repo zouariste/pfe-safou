@@ -649,6 +649,7 @@
     "emailRequired": "Email must not be empty.",
     "emailChanged": "Email changed.",
     "passwordSection": "Password",
+    "passwordManagedByFim": "You sign in with your FIM account, so your password is managed there and cannot be changed in CodeOwl.",
     "currentPassword": "Current password",
     "newPassword": "New password",
     "confirmPassword": "Confirm new password",

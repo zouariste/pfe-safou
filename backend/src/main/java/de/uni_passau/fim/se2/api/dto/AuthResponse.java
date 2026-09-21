@@ -42,4 +42,7 @@ public class AuthResponse {
 
     /** True when a teacher set a temporary password — frontend must redirect to change-password page. */
     private Boolean mustChangePassword;
+
+    /** True for a user linked to a FIM-Account — their password is managed by the FIM directory. */
+    private Boolean fimAccount;
 }

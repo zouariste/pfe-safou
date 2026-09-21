@@ -50,6 +50,17 @@ export default function ProfilePage() {
     const [pwErr, setPwErr] = useState("");
     const [pwSaving, setPwSaving] = useState(false);
 
+    // A FIM-Account's password is managed by the FIM directory, so it cannot be changed here.
+    // The cached session of someone logged in before this flag existed lacks it, so ask the
+    // server rather than trust localStorage.
+    const [fimAccount, setFimAccount] = useState(user?.fimAccount === true);
+    useEffect(() => {
+        if (!user) return;
+        api.get<{ fimAccount?: boolean }>("/auth/me")
+            .then(res => setFimAccount(res.data.fimAccount === true))
+            .catch(() => { /* keep the cached value */ });
+    }, [user]);
+
     useEffect(() => {
         if (user && (isTeacher || isAdmin)) {
             setLoadingResources(true);
@@ -246,7 +257,7 @@ export default function ProfilePage() {
             <div className="card mb-3">
                 <div className="card-header d-flex justify-content-between align-items-center">
                     <strong>{t("profile.passwordSection")}</strong>
-                    {!editingPassword && (
+                    {!editingPassword && !fimAccount && (
                         <button className="btn btn-sm btn-outline-primary" onClick={() => { setEditingPassword(true); setPwMsg(""); setPwErr(""); }}>
                             <i className="bi bi-key me-1"></i>{t("profile.change")}
                         </button>
@@ -256,7 +267,9 @@ export default function ProfilePage() {
                     {pwMsg && <div className="alert alert-success py-2">{pwMsg}</div>}
                     {pwErr && <div className="alert alert-danger py-2">{pwErr}</div>}
 
-                    {editingPassword ? (
+                    {fimAccount ? (
+                        <p className="mb-0 text-muted">{t("profile.passwordManagedByFim")}</p>
+                    ) : editingPassword ? (
                         <>
                             <div className="mb-2">
                                 <label className="form-label">{t("profile.currentPassword")}</label>
