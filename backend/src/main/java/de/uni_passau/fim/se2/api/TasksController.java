@@ -77,8 +77,8 @@ public class TasksController {
 
     /**
      * Generate a new task sequence.
-     * Allowed: Anonymous, Teacher, Admin
-     * Denied: Students (logged-in students cannot generate)
+     * Allowed: Teacher, Admin
+     * Denied: Anonymous and Students (enforced in SecurityConfig)
      */
     @PostMapping("/tasks/generate")
     public ResponseEntity<TieredTaskSequenceDTO> generateTaskSequence(

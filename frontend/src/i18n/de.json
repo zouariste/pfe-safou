@@ -1395,10 +1395,10 @@
     },
     "auth": {
       "title": "Konten und Authentifizierung",
-      "intro": "CodeOwl v2 hat vollwertige Benutzerkonten mit drei Rollen. Alle Lerndaten (Ereignisse, Feedback-Logs) werden, wo vorhanden, mit einer Benutzer-ID verknüpft; anonyme Nutzung bleibt weiterhin möglich.",
+      "intro": "CodeOwl v2 hat vollwertige Benutzerkonten mit drei Rollen. Alle Lerndaten (Ereignisse, Feedback-Logs) werden, wo vorhanden, mit einer Benutzer-ID verknüpft. Anonyme Besucher können weiterhin geteilte Links öffnen und Aufgaben lösen, aber nichts generieren oder erstellen — die Startseite ist die Anmeldeseite.",
       "rolesTitle": "Rollen",
       "roles": [
-        "<strong>Lehrkraft</strong> — kann Sequenzen generieren, Klassen verwalten sowie Arbeitsblätter erstellen und bearbeiten.",
+        "<strong>Lehrkraft</strong> — kann Sequenzen generieren (die Startseite steht nur Lehrkräften und Admins offen), Klassen verwalten sowie Arbeitsblätter erstellen und bearbeiten.",
         "<strong>Schüler</strong> — kann Aufgaben in zugewiesenen Arbeitsblättern lösen, aber nicht generieren.",
         "<strong>Admin</strong> — alle Rechte einer Lehrkraft plus Benutzerverwaltung und Admin-Werkzeuge."
       ],
@@ -1952,7 +1952,7 @@
         "Selbsteinschätzungen (Sicherheit, Frustration — Smileys mit einem Klick nach dem Lösen)",
         "Sitzungs-Metadaten (Gerätetyp, Fenstergröße — einmal pro Sitzung)"
       ],
-      "dataNote": "Kein rohes Maus-Tracking, keine Tastenaufzeichnung, keine Beobachtung fremder Tabs. Anonyme Nutzung (ohne Anmeldung) ist immer möglich — diese Ereignisse haben <code>user_id = null</code>.",
+      "dataNote": "Kein rohes Maus-Tracking, keine Tastenaufzeichnung, keine Beobachtung fremder Tabs. Aufgaben über einen geteilten Link ohne Anmeldung zu lösen ist möglich — diese Ereignisse haben <code>user_id = null</code>.",
       "adminTitle": "Admin-Funktionen",
       "admin": [
         "<strong>Benutzerverwaltung</strong> — Benutzer ansehen, bearbeiten, befördern und löschen.",
