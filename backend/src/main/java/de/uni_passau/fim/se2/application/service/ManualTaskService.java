@@ -129,7 +129,9 @@ public class ManualTaskService {
                 .programmingLanguage(language)
                 .concepts(request.getConcepts())
                 .tasks(tasks)
-                .codeSnippet(null) // no snippet for manual creation
+                // No input snippet in manual mode, but TaskPersistenceService.validateSequence
+                // requires a non-blank one: use the first tier's solution as representative.
+                .codeSnippet(tasks.get(0).getSolution())
                 .taskDescription(taskDescription)
                 .createdAt(LocalDateTime.now())
                 .versionId(versionId)
