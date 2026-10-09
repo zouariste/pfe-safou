@@ -365,6 +365,8 @@ export interface LibraryFacets {
     /** Concept-facet mirror of totalTagCount. */
     totalConceptCount: number;
     ownership: { mine: number; others: number };
+    /** Tier counts present under the other filters, ascending; `name` is the count as text. */
+    tierCounts: LibraryFacetBucket[];
 }
 
 export interface LibrarySearchResponse {
