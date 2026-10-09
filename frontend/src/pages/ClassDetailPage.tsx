@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, apiErrorMessage } from "../lib/api";
+import { readCsvFile } from "../lib/csv.ts";
 import { useAuth } from "../context/AuthContext";
 import type { ClassInfo, StudentInfo, StudentProgress, Worksheet } from "../types/models";
 import WorksheetSchedule from "../components/WorksheetSchedule.tsx";
@@ -313,7 +314,7 @@ export default function ClassDetailPage() {
         if (!file) return;
 
         try {
-            const result = parseStudentCsv(await file.text());
+            const result = parseStudentCsv(await readCsvFile(file));
             // The parser reports an i18n key so the message can be translated
             // where it is shown rather than where it is found.
             if (result.error) setImportError(t(result.error.key, result.error.params));

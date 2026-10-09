@@ -35,3 +35,26 @@ export function downloadTextFile(content: string, filename: string, mimeType: st
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
+
+/**
+ * Turns the bytes of an uploaded CSV into text, whichever encoding the
+ * teacher's spreadsheet saved it in.
+ *
+ * Excel on a German Windows saves "CSV (Trennzeichen-getrennt)" as
+ * Windows-1252, not UTF-8, and `File.text()` always assumes UTF-8 — every
+ * umlaut came out as "�". UTF-8 is tried strictly first; a Windows-1252 file
+ * with any umlaut in it is almost never valid UTF-8, so a failure there is a
+ * reliable sign to fall back. A file of plain ASCII decodes the same either way.
+ */
+export function decodeCsvBytes(bytes: ArrayBuffer | Uint8Array): string {
+    try {
+        return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch {
+        return new TextDecoder("windows-1252").decode(bytes);
+    }
+}
+
+/** Reads an uploaded CSV file as text. See {@link decodeCsvBytes}. */
+export async function readCsvFile(file: File): Promise<string> {
+    return decodeCsvBytes(await file.arrayBuffer());
+}
