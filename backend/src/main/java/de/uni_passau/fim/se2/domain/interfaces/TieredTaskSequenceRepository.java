@@ -112,6 +112,14 @@ public interface TieredTaskSequenceRepository {
     void replaceConcepts(UUID sequenceId, List<UUID> conceptIds);
 
     /**
+     * Overwrites a sequence's task description, the text shown under "Task Description" on
+     * the sequence page and searched by the library.
+     *
+     * @param taskDescription the new text, or {@code null} to clear it
+     */
+    void updateTaskDescription(UUID sequenceId, String taskDescription);
+
+    /**
      * The concept IDs currently linked to a sequence.
      *
      * <p>The read counterpart to {@link #linkConceptsBatch(UUID, List)}. Copying a sequence

@@ -10,6 +10,8 @@ import { useLocation } from "react-router-dom";
 import { useSequenceAccess } from "../hooks/useSequenceAccess.ts";
 import { useAuth } from "../context/AuthContext.tsx";
 import TaskEditModal from "../components/TaskEditModal.tsx";
+import TaskTitleEditor from "../components/TaskTitleEditor.tsx";
+import TaskDescriptionEditor from "../components/TaskDescriptionEditor.tsx";
 import ConceptPicker from "../components/ConceptPicker.tsx";
 import { useConceptCatalogue } from "../hooks/useConceptCatalogue.ts";
 import { useEventTracker } from "../hooks/useEventTracker.ts";
@@ -120,6 +122,7 @@ export default function SequencePage() {
                 statement: String(tk.statement ?? ""),
                 solution: String(tk.solution ?? ""),
                 tierLevel: Number(tk.tierLevel ?? 0),
+                title: tk.title ?? null,
                 cyclomaticComplexity: Number(tk.cyclomaticComplexity ?? 0),
                 sequenceId: String(tk.sequenceId ?? seqId),
                 programmingLanguage: String(tk.programmingLanguage ?? seqLang),
@@ -595,8 +598,14 @@ export default function SequencePage() {
 
             {teacherViewEnabled && (
                 <div>
-                    <strong>{t("sequence.taskDescription")}: </strong>
-                    {seq.taskDescription && <p>{seq.taskDescription}</p>}
+                    <TaskDescriptionEditor
+                        sequenceId={seq.id}
+                        taskDescription={seq.taskDescription}
+                        canEdit={canEdit}
+                        onSaved={(taskDescription) =>
+                            setSeq((current) => current && { ...current, taskDescription })
+                        }
+                    />
                     {seq.codeSnippet && (
                         <div className="accordion my-4" id="snippetAccordion">
                             <div className="accordion-item border-0 shadow-sm rounded-3">
@@ -692,6 +701,7 @@ export default function SequencePage() {
                                             statement: tk.statement ?? "",
                                             solution: tk.solution ?? "",
                                             tierLevel: tk.tierLevel ?? 0,
+                                            title: tk.title ?? null,
                                             cyclomaticComplexity: tk.cyclomaticComplexity ?? 0,
                                             sequenceId: String(tk.sequenceId ?? seq.id),
                                             programmingLanguage: tk.programmingLanguage ?? seq.programmingLanguage,
@@ -734,7 +744,16 @@ export default function SequencePage() {
                             }}
                         >
                             <div className="d-flex justify-content-between align-items-center">
-                                <h3 className="m-0">{t("sequence.tier", { level: task.tierLevel })}</h3>
+                                <TaskTitleEditor
+                                    task={task}
+                                    canEdit={canEdit && teacherViewEnabled}
+                                    onRenamed={(title) =>
+                                        setSeq((current) => current && {
+                                            ...current,
+                                            tasks: current.tasks.map((tk) => tk.id === task.id ? { ...tk, title } : tk),
+                                        })
+                                    }
+                                />
                                 <div className="d-flex gap-2">
                                     {teacherViewEnabled && (
                                         <>

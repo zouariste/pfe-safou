@@ -96,6 +96,13 @@ public interface TaskRepository {
     void updateDistractorsEnabled(UUID taskId, boolean enabled);
 
     /**
+     * Sets or clears the owner-given name of a task.
+     *
+     * @param title the new name, or {@code null} to fall back to the numbered default
+     */
+    void updateTitle(UUID taskId, String title);
+
+    /**
      * Updates only the split_plan (JSONB) column of an existing task (AP31).
      *
      * @param splitPlanJson serialized {@link de.uni_passau.fim.se2.domain.entities.SplitPlan},

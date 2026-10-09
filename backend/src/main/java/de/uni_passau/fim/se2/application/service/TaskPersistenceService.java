@@ -229,6 +229,29 @@ public class TaskPersistenceService {
         return reloaded.getConcepts();
     }
 
+    /** Longest task description accepted, room for a few paragraphs. */
+    public static final int MAX_TASK_DESCRIPTION_LENGTH = 5000;
+
+    /**
+     * Replaces a sequence's task description. A blank one clears it.
+     *
+     * @return the stored description, trimmed, or {@code null} when cleared
+     */
+    @Transactional
+    public String updateTaskDescription(UUID sequenceId, String taskDescription) {
+        if (sequenceId == null) {
+            throw new DomainValidationException("Sequence ID must not be null.");
+        }
+        String normalized = (taskDescription == null || taskDescription.isBlank()) ? null : taskDescription.strip();
+        if (normalized != null && normalized.length() > MAX_TASK_DESCRIPTION_LENGTH) {
+            throw new DomainValidationException(
+                    "Task description must be at most " + MAX_TASK_DESCRIPTION_LENGTH + " characters.");
+        }
+        sequenceRepo.updateTaskDescription(sequenceId, normalized);
+        sequenceRepo.markDiverged(sequenceId);
+        return normalized;
+    }
+
     /**
      * Loads all tasks for the given sequence.
      *
@@ -419,6 +442,27 @@ public class TaskPersistenceService {
         if (taskId == null) throw new DomainValidationException("Task ID must not be null.");
         taskRepo.updateDistractors(taskId, distractors);
         sequenceRepo.markDivergedByTaskId(taskId);
+    }
+
+    /** Longest task name accepted: room for a descriptive heading, short enough to stay one. */
+    public static final int MAX_TITLE_LENGTH = 120;
+
+    /**
+     * Renames a task. A blank name clears it, so the task shows its numbered default again.
+     *
+     * @return the stored name, trimmed, or {@code null} when cleared
+     */
+    @Transactional
+    public String updateTitle(UUID taskId, String title) {
+        if (taskId == null) throw new DomainValidationException("Task ID must not be null.");
+        String normalized = (title == null || title.isBlank()) ? null : title.strip();
+        if (normalized != null && normalized.length() > MAX_TITLE_LENGTH) {
+            throw new DomainValidationException(
+                    "Task name must be at most " + MAX_TITLE_LENGTH + " characters.");
+        }
+        taskRepo.updateTitle(taskId, normalized);
+        sequenceRepo.markDivergedByTaskId(taskId);
+        return normalized;
     }
 
     /**

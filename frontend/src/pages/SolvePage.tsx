@@ -19,6 +19,7 @@ import { restoreSubmission } from "../lib/restoreSubmission.ts";
 import { readArrangement } from "../lib/readArrangement.ts";
 import { applyHintLabels } from "../lib/hintHighlight.ts";
 import { shuffleElementChildren } from "../lib/shuffleSource.ts";
+import { taskName } from "../lib/taskName.ts";
 
 declare global {
     interface Window {
@@ -274,6 +275,7 @@ export default function SolvePage() {
                     statement: String(data.statement ?? ""),
                     solution: String(data.solution ?? ""),
                     tierLevel: Number(data.tierLevel ?? 0),
+                    title: data.title ?? null,
                     cyclomaticComplexity: Number(data.cyclomaticComplexity ?? 0),
                     sequenceId: String(data.sequenceId ?? ""),
                     programmingLanguage: String(lang),
@@ -1277,7 +1279,7 @@ export default function SolvePage() {
                             <b>{t("solve.taskLabel")}</b>
                             <div className="mt-2" style={{whiteSpace: "pre-wrap"}}>{task.statement}</div>
                             <div className="text-muted mt-2">
-                                {t("solve.tierAndLanguage", { tier: task.tierLevel, language: task.programmingLanguage })}
+                                {t("solve.tierAndLanguage", { name: taskName(task, t), language: task.programmingLanguage })}
                             </div>
                             <div className="mt-2"></div>
                         </div>

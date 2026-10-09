@@ -54,6 +54,8 @@ export type Task = {
     /** Parsons solution lines. May contain inline `$$blank:…$$` gap markers (AP30). */
     solution: string;
     tierLevel: number;
+    /** Name the sequence owner gave the task; null/absent means the numbered default. See taskName(). */
+    title?: string | null;
     cyclomaticComplexity: number;
     sequenceId?: string;
     programmingLanguage: string;

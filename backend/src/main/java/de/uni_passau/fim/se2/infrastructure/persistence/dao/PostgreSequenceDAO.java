@@ -226,6 +226,17 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
     }
 
     @Override
+    public void updateTaskDescription(UUID sequenceId, String taskDescription) {
+        if (sequenceId == null) throw new DomainValidationException("Sequence ID cannot be null");
+
+        int updated = jdbc.update("UPDATE tiered_task_sequences SET task_description = ? WHERE id = ?",
+                                  taskDescription, sequenceId);
+        if (updated != 1) {
+            throw new DomainValidationException("Sequence not found: " + sequenceId);
+        }
+    }
+
+    @Override
     public void tagSequence(UUID sequenceId, UUID evalInputId, String mode, UUID runId) {
         if (sequenceId == null) throw new DomainValidationException("sequenceId is required");
         if (runId == null)      throw new DomainValidationException("runId is required");

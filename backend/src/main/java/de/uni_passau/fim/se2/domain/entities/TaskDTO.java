@@ -58,6 +58,13 @@ public class TaskDTO {
     private int tierLevel;
 
     /**
+     * A name the sequence owner gave this task, e.g. "Warm-up: summing a list".
+     * NULL when none was given; clients then show a numbered default derived from
+     * {@link #tierLevel}, in the viewer's language.
+     */
+    private String title;
+
+    /**
      * The cyclomatic complexity of the task's solution.
      *
      * @return the cyclomatic complexity as an integer

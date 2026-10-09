@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { useTranslation } from "react-i18next";
 import type { TieredTaskSequence } from "../types/models";
+import { taskName } from "../lib/taskName";
 
 interface Props {
     sequence: TieredTaskSequence;
@@ -28,7 +29,7 @@ export const SequenceView: React.FC<Props> = ({ sequence }) => {
                             onClick={() => setSelectedTaskId(task.id)}
                         >
                             <div className="card-body">
-                                <h5 className="card-title">{t("sequence.tierLabel", { n: task.tierLevel })}</h5>
+                                <h5 className="card-title">{taskName(task, t)}</h5>
                                 <p className="card-text">
                                     {task.statement.length > 60
                                         ? task.statement.slice(0, 60) + "..."
@@ -54,7 +55,7 @@ export const SequenceView: React.FC<Props> = ({ sequence }) => {
             {selectedTask && (
                 <div className="card mt-3">
                     <div className="card-body">
-                        <h5 className="card-title">{t("sequence.tierLabel", { n: selectedTask.tierLevel })}</h5>
+                        <h5 className="card-title">{taskName(selectedTask, t)}</h5>
                         <b>{t("sequence.statementLabel")}</b>
                         <ReactMarkdown>{selectedTask.statement}</ReactMarkdown>
                     </div>
