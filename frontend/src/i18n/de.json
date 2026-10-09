@@ -683,7 +683,9 @@
     "create": "Erstellen",
     "emptyStudent": "Du bist noch keiner Klasse zugeordnet.",
     "emptyTeacher": "Noch keine Klassen vorhanden. Erstelle deine erste Klasse!",
-    "deleteClass": "Klasse löschen"
+    "deleteClass": "Klasse löschen",
+    "createdBy": "Erstellt von {{name}}",
+    "unknownOwner": "unbekannt"
   },
 
   "worksheets": {

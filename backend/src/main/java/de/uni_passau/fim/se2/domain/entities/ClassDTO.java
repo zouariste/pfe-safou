@@ -41,6 +41,9 @@ public class ClassDTO {
     private String name;
     private String description;
     private UUID ownerId;
+    /** Who created the class. Only filled for the admin overview (findAll); null elsewhere. */
+    private String ownerName;
+    private String ownerEmail;
     private boolean trackingEnabled;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

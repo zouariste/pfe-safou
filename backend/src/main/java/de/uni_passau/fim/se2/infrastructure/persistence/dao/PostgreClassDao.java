@@ -210,13 +210,20 @@ public class PostgreClassDao implements ClassRepository {
     @Override
     public List<ClassDTO> findAll() {
         return jdbc.query("""
-            SELECT * FROM classes ORDER BY created_at DESC
+            SELECT c.*,
+                   NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), '') AS owner_name,
+                   u.email AS owner_email
+            FROM classes c
+            LEFT JOIN users u ON u.user_id = c.owner_id
+            ORDER BY c.created_at DESC
             """,
                 (rs, rowNum) -> ClassDTO.builder()
                         .id(rs.getObject("id", UUID.class))
                         .name(rs.getString("name"))
                         .description(rs.getString("description"))
                         .ownerId(rs.getObject("owner_id", UUID.class))
+                        .ownerName(rs.getString("owner_name"))
+                        .ownerEmail(rs.getString("owner_email"))
                         .trackingEnabled(rs.getBoolean("tracking_enabled"))
                         .createdAt(rs.getTimestamp("created_at") != null
                                 ? rs.getTimestamp("created_at").toLocalDateTime() : null)
