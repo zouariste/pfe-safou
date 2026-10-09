@@ -53,6 +53,8 @@ export default function ManualTaskCreator() {
     // ── UI state ────────────────────────────────────────────
     const [activeTier, setActiveTier] = useState(0); // index into tiers[]
     const [submitting, setSubmitting] = useState(false);
+    const [generatingDistractors, setGeneratingDistractors] = useState(false);
+    const [generateDistractors, setGenerateDistractors] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [previewLines, setPreviewLines] = useState<string[]>([]);
 
@@ -144,6 +146,17 @@ export default function ManualTaskCreator() {
             };
 
             const { data } = await api.post("/tasks/manual", payload);
+
+            // Same on-demand endpoint the sequence page uses. The sequence already exists
+            // at this point, so a failure here must not look like a failed creation.
+            if (generateDistractors) {
+                setGeneratingDistractors(true);
+                try {
+                    await api.post(`/sequence/${data.id}/generate-distractors`);
+                } catch {
+                    alert(t("manual.distractorsFailed"));
+                }
+            }
             navigate(`/sequence/${data.id}`);
         } catch (err: any) {
             const msg =
@@ -154,6 +167,7 @@ export default function ManualTaskCreator() {
             setError(typeof msg === "string" ? msg : JSON.stringify(msg));
         } finally {
             setSubmitting(false);
+            setGeneratingDistractors(false);
         }
     };
 
@@ -347,6 +361,22 @@ export default function ManualTaskCreator() {
                             </div>
                         </div>
 
+                        {/* AP15b: generate distractors right after creation */}
+                        <div className="form-check form-switch mt-3">
+                            <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id="manualDistractorsToggle"
+                                checked={generateDistractors}
+                                disabled={submitting}
+                                onChange={(e) => setGenerateDistractors(e.target.checked)}
+                            />
+                            <label className="form-check-label" htmlFor="manualDistractorsToggle">
+                                {t("manual.generateDistractors")}
+                                <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
+                            </label>
+                        </div>
+
                         {/* Actions */}
                         <div className="d-flex flex-wrap gap-2 mt-3">
                             <button
@@ -360,7 +390,7 @@ export default function ManualTaskCreator() {
                                             className="spinner-border spinner-border-sm me-2"
                                             role="status"
                                         />
-                                        {t("manual.creating")}
+                                        {generatingDistractors ? t("manual.generatingDistractors") : t("manual.creating")}
                                     </>
                                 ) : (
                                     <>
