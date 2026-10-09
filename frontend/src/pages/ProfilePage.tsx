@@ -85,6 +85,16 @@ export default function ProfilePage() {
         STUDENT: t("profile.roleStudent"),
     }[user.role];
 
+    const handleDeleteSequence = async (id: string) => {
+        if (!window.confirm(t("profile.deleteSequenceConfirm"))) return;
+        try {
+            await api.delete(`/sequence/${id}`);
+            setMySequences(prev => prev.filter(s => s.id !== id));
+        } catch {
+            alert(t("profile.deleteSequenceFailed"));
+        }
+    };
+
     const handleNameSave = async () => {
         if (!firstName.trim() || !lastName.trim()) {
             setNameErr(t("profile.nameRequired"));
@@ -332,13 +342,21 @@ export default function ProfilePage() {
                             ) : (
                                 <div className="list-group list-group-flush">
                                     {mySequences.map(seq => (
-                                        <Link key={seq.id} to={`/sequence/${seq.id}`} className="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                            <div>
+                                        <div key={seq.id} className="list-group-item d-flex justify-content-between align-items-center gap-2">
+                                            <Link to={`/sequence/${seq.id}`} className="flex-grow-1 text-decoration-none text-reset">
                                                 <strong>{seq.programmingLanguage}</strong>
                                                 <small className="text-muted d-block">{seq.taskDescription?.substring(0, 80)}{seq.taskDescription && seq.taskDescription.length > 80 ? "..." : ""}</small>
-                                            </div>
-                                            <i className="bi bi-chevron-right"></i>
-                                        </Link>
+                                            </Link>
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-outline-danger"
+                                                title={t("profile.deleteSequence")}
+                                                aria-label={t("profile.deleteSequence")}
+                                                onClick={() => handleDeleteSequence(seq.id)}
+                                            >
+                                                <i className="bi bi-trash"></i>
+                                            </button>
+                                        </div>
                                     ))}
                                 </div>
                             )}

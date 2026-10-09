@@ -659,6 +659,9 @@
     "noWorksheets": "No worksheets created yet.",
     "mySequences": "My Sequences",
     "noSequences": "No sequences generated yet.",
+    "deleteSequence": "Delete sequence",
+    "deleteSequenceConfirm": "Delete this sequence? It will disappear from the library and from this list. Worksheets that already contain it keep it.",
+    "deleteSequenceFailed": "The sequence could not be deleted.",
     "logout": "Logout"
   },
 

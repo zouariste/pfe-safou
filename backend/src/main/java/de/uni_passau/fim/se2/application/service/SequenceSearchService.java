@@ -169,6 +169,11 @@ public class SequenceSearchService {
         // right: nothing knew they were copies either.
         sb.append(" AND (s.copied_from IS NULL OR s.diverged_at IS NOT NULL) ");
 
+        // A sequence its owner deleted is gone from the library but not from the worksheets
+        // that already use it (see V23), so the listing — and its counts and facets, which
+        // share this clause — skips it.
+        sb.append(" AND s.deleted_at IS NULL ");
+
         // Language filter
         if (q.lang() != null && !q.lang().isBlank()) {
             sb.append(" AND s.programming_language = ? ");
@@ -507,6 +512,7 @@ public class SequenceSearchService {
                   FROM tag_overlaps ov
                   JOIN tiered_task_sequences s ON s.id = ov.sequence_id
               LEFT JOIN tiered_task_sequences src ON src.id = ?
+                 WHERE s.deleted_at IS NULL
               ORDER BY ov.weighted_overlap DESC,
                        ov.overlap_count    DESC,
                        (s.programming_language = src.programming_language) DESC,

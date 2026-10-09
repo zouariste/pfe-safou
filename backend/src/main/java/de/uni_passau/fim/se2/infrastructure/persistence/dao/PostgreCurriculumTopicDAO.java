@@ -127,6 +127,7 @@ public class PostgreCurriculumTopicDAO implements CurriculumTopicRepository {
                 WHERE cct.topic_id IN (""" + placeholders + """
                 )
                   AND (s.copied_from IS NULL OR s.diverged_at IS NOT NULL)
+                  AND s.deleted_at IS NULL
                 GROUP BY cct.topic_id
                 """;
         Map<UUID, Integer> counts = new HashMap<>();

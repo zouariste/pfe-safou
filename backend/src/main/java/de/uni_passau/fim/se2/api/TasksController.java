@@ -294,6 +294,18 @@ public class TasksController {
         return ResponseEntity.ok(taskPersistenceService.findSequencesByOwnerId(userId));
     }
 
+    /**
+     * Delete one of your own sequences. It leaves the library and your list, but stays in any
+     * worksheet that already contains it, so work in progress is not disrupted.
+     * Allowed: Owner, Admin.
+     */
+    @DeleteMapping("/sequence/{seqId}")
+    public ResponseEntity<Void> deleteSequence(@PathVariable UUID seqId) {
+        requireSequenceOwnerOrAdmin(seqId);
+        taskPersistenceService.deleteSequence(seqId);
+        return ResponseEntity.noContent().build();
+    }
+
 
 
 
