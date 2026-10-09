@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, apiErrorMessage } from "../lib/api";
+import { readCsvFile } from "../lib/csv.ts";
 import { isValidFimUsername, normalizeFimUsername, parseFimUsernameCsv } from "../lib/fimStudentImport.ts";
 import type { StudentInfo } from "../types/models";
 
@@ -70,7 +71,7 @@ export default function FimStudentAdder({ classId, onAdded }: Props) {
         setImportedCount(0);
         if (!file) return;
         try {
-            const result = parseFimUsernameCsv(await file.text());
+            const result = parseFimUsernameCsv(await readCsvFile(file));
             if (result.error) setCsvError(t(result.error.key, result.error.params));
             else setCsvUsernames(result.usernames);
         } catch {
