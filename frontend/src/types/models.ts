@@ -218,6 +218,9 @@ export interface ClassInfo {
     name: string;
     description: string;
     ownerId: string;
+    /** Creator's name/email; only sent in the admin overview of all classes. */
+    ownerName?: string | null;
+    ownerEmail?: string | null;
     trackingEnabled: boolean;
     createdAt: string;
     updatedAt: string;
