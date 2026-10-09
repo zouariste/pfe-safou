@@ -421,6 +421,27 @@ public class TaskPersistenceService {
         sequenceRepo.markDivergedByTaskId(taskId);
     }
 
+    /** Longest task name accepted: room for a descriptive heading, short enough to stay one. */
+    public static final int MAX_TITLE_LENGTH = 120;
+
+    /**
+     * Renames a task. A blank name clears it, so the task shows its numbered default again.
+     *
+     * @return the stored name, trimmed, or {@code null} when cleared
+     */
+    @Transactional
+    public String updateTitle(UUID taskId, String title) {
+        if (taskId == null) throw new DomainValidationException("Task ID must not be null.");
+        String normalized = (title == null || title.isBlank()) ? null : title.strip();
+        if (normalized != null && normalized.length() > MAX_TITLE_LENGTH) {
+            throw new DomainValidationException(
+                    "Task name must be at most " + MAX_TITLE_LENGTH + " characters.");
+        }
+        taskRepo.updateTitle(taskId, normalized);
+        sequenceRepo.markDivergedByTaskId(taskId);
+        return normalized;
+    }
+
     /**
      * AP15: Toggle distractors enabled/disabled for a task.
      */

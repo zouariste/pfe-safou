@@ -466,6 +466,24 @@ public class TasksController {
     }
 
     /**
+     * Rename a task. Body: {@code {"title": "..."}}; a blank or missing title restores the
+     * numbered default.
+     * Allowed: Owner of parent sequence, Admin.
+     */
+    @PatchMapping("/tasks/{taskId}/title")
+    public ResponseEntity<TaskDTO> renameTask(
+            @PathVariable UUID taskId,
+            @RequestBody Map<String, String> body) {
+        TaskDTO task = taskPersistenceService.loadTaskById(taskId);
+        if (task == null) return ResponseEntity.notFound().build();
+
+        requireSequenceOwnerOrAdmin(task.getSequenceId());
+
+        task.setTitle(taskPersistenceService.updateTitle(taskId, body.get("title")));
+        return ResponseEntity.ok(task);
+    }
+
+    /**
      * Checks ownership of a sequence by ID. Throws AccessDeniedException if denied.
      */
     private void requireSequenceOwnerOrAdmin(UUID sequenceId) {
