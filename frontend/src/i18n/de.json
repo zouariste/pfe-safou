@@ -659,6 +659,9 @@
     "noWorksheets": "Noch keine Arbeitsblätter erstellt.",
     "mySequences": "Meine Sequenzen",
     "noSequences": "Noch keine Sequenzen generiert.",
+    "deleteSequence": "Sequenz löschen",
+    "deleteSequenceConfirm": "Diese Sequenz löschen? Sie verschwindet aus der Bibliothek und aus dieser Liste. Arbeitsblätter, die sie bereits enthalten, behalten sie.",
+    "deleteSequenceFailed": "Die Sequenz konnte nicht gelöscht werden.",
     "logout": "Abmelden"
   },
 

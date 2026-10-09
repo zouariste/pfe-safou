@@ -824,6 +824,13 @@ function FilterSidebar({
 }) {
     const { t } = useTranslation();
 
+    // Tier counts that actually occur under the other filters. The active one is kept even if
+    // it has no matches (e.g. from a shared URL), so it can still be seen and switched off.
+    const tierOptions = Array.from(new Set([
+        ...(facets?.tierCounts ?? []).map((b) => Number(b.name)).filter((n) => n > 0),
+        ...(filters.tierCount != null ? [filters.tierCount] : []),
+    ])).sort((a, b) => a - b);
+
     // Whether the tag/concept cloud sections are shown at all — pure display state, independent
     // of how many entries the backend sent (that's tagsLimit/conceptsLimit, owned by the parent).
     const [tagsVisible, setTagsVisible] = useState(true);
@@ -894,8 +901,9 @@ function FilterSidebar({
                 </h6>
                 <div className="btn-group btn-group-sm w-100 mb-3" role="group">
                     <TierButton value={null} filters={filters} label={t("library.tierAny")} />
-                    <TierButton value={3} filters={filters} label="3" />
-                    <TierButton value={5} filters={filters} label="5" />
+                    {tierOptions.map((n) => (
+                        <TierButton key={n} value={n} filters={filters} label={String(n)} />
+                    ))}
                 </div>
 
                 {/* ── Tag cloud ──

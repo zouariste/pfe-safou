@@ -54,7 +54,9 @@ public record LibrarySearchResponse(
             long totalTagCount,
             List<FacetBucket> topConcepts,
             long totalConceptCount,
-            Ownership ownership
+            Ownership ownership,
+            /** Tier counts present under the other filters, ascending; name is the count as text. */
+            List<FacetBucket> tierCounts
     ) {}
 
     /** A single facet entry: value → count. */

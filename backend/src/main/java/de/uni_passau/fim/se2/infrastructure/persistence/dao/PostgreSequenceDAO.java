@@ -161,6 +161,16 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
     }
 
     @Override
+    public boolean softDeleteById(UUID sequenceId) {
+        if (sequenceId == null) return false;
+        return jdbc.update("""
+                UPDATE tiered_task_sequences
+                   SET deleted_at = now()
+                 WHERE id = ? AND deleted_at IS NULL
+                """, sequenceId) > 0;
+    }
+
+    @Override
     public void linkConcept(TieredTaskSequenceConceptDTO linkDTO) {
         if (linkDTO == null || linkDTO.getSequenceId() == null || linkDTO.getConceptId() == null) {
             throw new DomainValidationException("Sequence and Concept ID cannot be null");
@@ -269,7 +279,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                    version_id, strategyname, owner_id, target_language, constraint_config, tier_count,
                    curriculum_topic_id
             FROM tiered_task_sequences
-            WHERE owner_id = ?
+            WHERE owner_id = ? AND deleted_at IS NULL
             ORDER BY created_at DESC, id DESC
             """;
 
@@ -388,6 +398,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                        COALESCE(string_agg(t.solution,  E'\n\n// --- next tier ---\n\n' ORDER BY t.tier_level), '') AS combined_code
                 FROM tiered_task_sequences s
                 LEFT JOIN tasks t ON t.sequence_id = s.id
+                WHERE s.deleted_at IS NULL
                 """);
 
         List<Object> params = new ArrayList<>();
@@ -397,11 +408,11 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
             // Safety cap — avoid pathological IN lists from clients.
             List<UUID> ids = specificIds.size() > 10_000 ? specificIds.subList(0, 10_000) : specificIds;
             String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
-            sql.append(" WHERE s.id IN (").append(placeholders).append(") ");
+            sql.append(" AND s.id IN (").append(placeholders).append(") ");
             params.addAll(ids);
         } else if (onlyMissingLlmTags) {
             sql.append("""
-                     WHERE NOT EXISTS (
+                     AND NOT EXISTS (
                          SELECT 1 FROM sequence_tags tg
                          WHERE tg.sequence_id = s.id AND tg.source = 'llm'
                      )
@@ -436,6 +447,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                        COALESCE(string_agg(t.solution,  E'\n\n// --- next tier ---\n\n' ORDER BY t.tier_level), '') AS combined_code
                 FROM tiered_task_sequences s
                 LEFT JOIN tasks t ON t.sequence_id = s.id
+                WHERE s.deleted_at IS NULL
                 """);
 
         List<Object> params = new ArrayList<>();
@@ -445,11 +457,11 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
             // Safety cap — avoid pathological IN lists from clients.
             List<UUID> ids = specificIds.size() > 10_000 ? specificIds.subList(0, 10_000) : specificIds;
             String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
-            sql.append(" WHERE s.id IN (").append(placeholders).append(") ");
+            sql.append(" AND s.id IN (").append(placeholders).append(") ");
             params.addAll(ids);
         } else if (onlyMissingConcepts) {
             sql.append("""
-                     WHERE NOT EXISTS (
+                     AND NOT EXISTS (
                          SELECT 1 FROM tiered_task_sequence_concepts tsc
                          WHERE tsc.sequence_id = s.id
                      )

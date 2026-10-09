@@ -169,6 +169,11 @@ public class SequenceSearchService {
         // right: nothing knew they were copies either.
         sb.append(" AND (s.copied_from IS NULL OR s.diverged_at IS NOT NULL) ");
 
+        // A sequence its owner deleted is gone from the library but not from the worksheets
+        // that already use it (see V23), so the listing — and its counts and facets, which
+        // share this clause — skips it.
+        sb.append(" AND s.deleted_at IS NULL ");
+
         // Language filter
         if (q.lang() != null && !q.lang().isBlank()) {
             sb.append(" AND s.programming_language = ? ");
@@ -507,6 +512,7 @@ public class SequenceSearchService {
                   FROM tag_overlaps ov
                   JOIN tiered_task_sequences s ON s.id = ov.sequence_id
               LEFT JOIN tiered_task_sequences src ON src.id = ?
+                 WHERE s.deleted_at IS NULL
               ORDER BY ov.weighted_overlap DESC,
                        ov.overlap_count    DESC,
                        (s.programming_language = src.programming_language) DESC,
@@ -570,7 +576,30 @@ public class SequenceSearchService {
         List<FacetBucket> topConcepts  = fetchConceptFacets(conceptWhere, conceptsLimit);
         long totalConceptCount         = fetchTotalConceptCount(conceptWhere);
         Ownership ownership            = fetchOwnershipFacets(base, currentUserId);
-        return new Facets(languages, topTags, totalTagCount, topConcepts, totalConceptCount, ownership);
+        List<FacetBucket> tierCounts   = fetchTierCountFacets(base.withoutTierCount());
+        return new Facets(languages, topTags, totalTagCount, topConcepts, totalConceptCount, ownership,
+                tierCounts);
+    }
+
+    /**
+     * Which tier counts exist under the other filters, so the sidebar offers exactly those
+     * instead of a hard-coded 3/5. Computed without the tier filter itself, like the language
+     * facet, so picking one tier count still shows the others to switch to. Rows with a missing
+     * tier_count cannot be matched by the {@code s.tier_count = ?} filter, so they are not
+     * offered as an option.
+     */
+    private List<FacetBucket> fetchTierCountFacets(WhereClause w) {
+        String sql = """
+                SELECT s.tier_count AS name, COUNT(*) AS cnt
+                FROM tiered_task_sequences s
+                """ + w.sql + """
+                  AND s.tier_count > 0
+                GROUP BY s.tier_count
+                ORDER BY s.tier_count
+                """;
+        return jdbc.query(sql,
+                (rs, n) -> new FacetBucket(String.valueOf(rs.getInt("name")), rs.getLong("cnt")),
+                w.params.toArray());
     }
 
     private List<FacetBucket> fetchLanguageFacets(WhereClause w) {
@@ -902,14 +931,15 @@ public class SequenceSearchService {
             this.currentUserId = currentUserId;
         }
 
-        WhereClause rebuild(boolean includeLang, boolean includeTags, boolean includeConcepts) {
+        WhereClause rebuild(boolean includeLang, boolean includeTags, boolean includeConcepts,
+                            boolean includeTierCount) {
             SearchQuery copy = new SearchQuery()
                     .q(query.q())
                     .lang(includeLang ? query.lang() : null)
                     .owner(query.owner())
                     .tagMode(query.tagMode)
                     .conceptMode(query.conceptMode)
-                    .tierCount(query.tierCount())
+                    .tierCount(includeTierCount ? query.tierCount() : null)
                     .sort(query.sort())
                     .page(query.page())
                     .size(query.size());
@@ -918,8 +948,9 @@ public class SequenceSearchService {
             return buildWhere(copy, currentUserId);
         }
 
-        WhereClause withoutLanguage() { return rebuild(false, true, true); }
-        WhereClause withoutTags()     { return rebuild(true, false, true); }
-        WhereClause withoutConcepts() { return rebuild(true, true, false); }
+        WhereClause withoutLanguage()  { return rebuild(false, true, true, true); }
+        WhereClause withoutTags()      { return rebuild(true, false, true, true); }
+        WhereClause withoutConcepts()  { return rebuild(true, true, false, true); }
+        WhereClause withoutTierCount() { return rebuild(true, true, true, false); }
     }
 }

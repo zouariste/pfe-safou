@@ -71,6 +71,15 @@ public interface TieredTaskSequenceRepository {
     void deleteById(TieredTaskSequenceDTO delete);
 
     /**
+     * Hides a sequence from the library, search, suggestions and its owner's list, without
+     * removing it. Worksheets that already contain it keep working, because a worksheet loads
+     * its sequences by id and the row (with its tasks and submissions) still exists.
+     *
+     * @return whether this call is what deleted it; false for an unknown or already-deleted id
+     */
+    boolean softDeleteById(UUID sequenceId);
+
+    /**
      * Links a programming concept to a specific tiered task sequence in the repository.
      * This method ensures that the relationship between the given task sequence
      * and the concept is persisted. If the provided data is invalid, an exception is thrown.

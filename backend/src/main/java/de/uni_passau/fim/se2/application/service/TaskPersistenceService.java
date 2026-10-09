@@ -442,4 +442,10 @@ public class TaskPersistenceService {
     public List<TieredTaskSequenceDTO> findSequencesByOwnerId(UUID ownerId) {
         return sequenceRepo.findByOwnerId(ownerId);
     }
+
+    /** Removes a sequence from the library and the owner's list; worksheets keep it. */
+    @Transactional
+    public boolean deleteSequence(UUID sequenceId) {
+        return sequenceRepo.softDeleteById(sequenceId);
+    }
 }
