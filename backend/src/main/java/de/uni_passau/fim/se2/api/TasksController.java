@@ -388,6 +388,28 @@ public class TasksController {
         return ResponseEntity.ok(updated);
     }
 
+    /**
+     * Replace a sequence's task description. A blank one clears it.
+     * Allowed: the sequence's owner, and admins.
+     */
+    @PutMapping("/sequence/{id}/task-description")
+    public ResponseEntity<Map<String, String>> updateSequenceTaskDescription(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> body) {
+
+        TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(id);
+        if (seq == null) {
+            return ResponseEntity.notFound().build();
+        }
+        ownershipService.checkOwnership(seq.getOwnerId(), "sequence task description");
+
+        String stored = taskPersistenceService.updateTaskDescription(id, body.get("taskDescription"));
+        // Map.of rejects null values, and a cleared description is null.
+        Map<String, String> response = new java.util.HashMap<>();
+        response.put("taskDescription", stored);
+        return ResponseEntity.ok(response);
+    }
+
     /** Body of PUT /api/sequence/{id}/concepts — the full new set of names. */
     @Setter
     @Getter

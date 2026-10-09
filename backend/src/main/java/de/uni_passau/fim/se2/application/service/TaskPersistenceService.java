@@ -229,6 +229,29 @@ public class TaskPersistenceService {
         return reloaded.getConcepts();
     }
 
+    /** Longest task description accepted, room for a few paragraphs. */
+    public static final int MAX_TASK_DESCRIPTION_LENGTH = 5000;
+
+    /**
+     * Replaces a sequence's task description. A blank one clears it.
+     *
+     * @return the stored description, trimmed, or {@code null} when cleared
+     */
+    @Transactional
+    public String updateTaskDescription(UUID sequenceId, String taskDescription) {
+        if (sequenceId == null) {
+            throw new DomainValidationException("Sequence ID must not be null.");
+        }
+        String normalized = (taskDescription == null || taskDescription.isBlank()) ? null : taskDescription.strip();
+        if (normalized != null && normalized.length() > MAX_TASK_DESCRIPTION_LENGTH) {
+            throw new DomainValidationException(
+                    "Task description must be at most " + MAX_TASK_DESCRIPTION_LENGTH + " characters.");
+        }
+        sequenceRepo.updateTaskDescription(sequenceId, normalized);
+        sequenceRepo.markDiverged(sequenceId);
+        return normalized;
+    }
+
     /**
      * Loads all tasks for the given sequence.
      *

@@ -64,10 +64,10 @@ export default function TaskTitleEditor({ task, canEdit, onRenamed }: Props) {
                     <button type="submit" className="btn btn-primary" disabled={saving}>
                         {saving
                             ? <span className="spinner-border spinner-border-sm" role="status" />
-                            : t("sequence.renameTaskSave")}
+                            : t("common.save")}
                     </button>
                     <button type="button" className="btn btn-outline-secondary" onClick={() => setEditing(false)} disabled={saving}>
-                        {t("sequence.renameTaskCancel")}
+                        {t("common.cancel")}
                     </button>
                 </div>
                 <div className="form-text">{t("sequence.renameTaskHint")}</div>

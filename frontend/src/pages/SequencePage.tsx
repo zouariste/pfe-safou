@@ -11,6 +11,7 @@ import { useSequenceAccess } from "../hooks/useSequenceAccess.ts";
 import { useAuth } from "../context/AuthContext.tsx";
 import TaskEditModal from "../components/TaskEditModal.tsx";
 import TaskTitleEditor from "../components/TaskTitleEditor.tsx";
+import TaskDescriptionEditor from "../components/TaskDescriptionEditor.tsx";
 import ConceptPicker from "../components/ConceptPicker.tsx";
 import { useConceptCatalogue } from "../hooks/useConceptCatalogue.ts";
 import { useEventTracker } from "../hooks/useEventTracker.ts";
@@ -597,8 +598,14 @@ export default function SequencePage() {
 
             {teacherViewEnabled && (
                 <div>
-                    <strong>{t("sequence.taskDescription")}: </strong>
-                    {seq.taskDescription && <p>{seq.taskDescription}</p>}
+                    <TaskDescriptionEditor
+                        sequenceId={seq.id}
+                        taskDescription={seq.taskDescription}
+                        canEdit={canEdit}
+                        onSaved={(taskDescription) =>
+                            setSeq((current) => current && { ...current, taskDescription })
+                        }
+                    />
                     {seq.codeSnippet && (
                         <div className="accordion my-4" id="snippetAccordion">
                             <div className="accordion-item border-0 shadow-sm rounded-3">
