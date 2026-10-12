@@ -74,7 +74,7 @@ database backups.
 For local development outside Docker you additionally need:
 
 - **JDK 21** (the backend ships a Maven wrapper, `./mvnw`)
-- **Node.js 20+** and npm
+- **Node.js 24+** and npm
 
 > **Windows:** the backend's code-analysis dependency (`java-tree-sitter`) only
 > ships native libraries for Linux and macOS, so `./mvnw spring-boot:run` cannot
