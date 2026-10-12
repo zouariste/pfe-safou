@@ -83,6 +83,8 @@ export type GenerationConstraints = {
 
 export type TieredTaskSequence = {
     id: string;
+    /** The name the owner gave the sequence; null shows the default heading. */
+    title?: string | null;
     programmingLanguage: string;
     concepts: string[];
     tasks: Task[];
@@ -146,7 +148,7 @@ export interface Worksheet {
      * The sequences in this worksheet, as shells. `ownerId` is null for seed material nobody
      * owns; it is here so the list can mark which of them are the reader's own.
      */
-    sequenceDTOS: { id: string; ownerId?: string | null }[];
+    sequenceDTOS: { id: string; ownerId?: string | null; title?: string | null }[];
     ownerId: string | null;
     hintsEnabled: boolean;
     /** Hint credits each student gets per task; null means unlimited. */
@@ -339,6 +341,8 @@ export interface SequenceTag {
 
 export interface LibraryItem {
     sequenceId: string;
+    /** The name the owner gave the sequence; absent or null when it has none. */
+    title?: string | null;
     programmingLanguage: string;
     taskDescription: string | null;
     semanticSummary: string | null;

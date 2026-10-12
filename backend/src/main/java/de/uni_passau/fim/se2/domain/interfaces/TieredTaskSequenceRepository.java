@@ -120,6 +120,13 @@ public interface TieredTaskSequenceRepository {
     void updateTaskDescription(UUID sequenceId, String taskDescription);
 
     /**
+     * Sets or clears the owner-given name of a sequence.
+     *
+     * @param title the new name, or {@code null} to fall back to the default heading
+     */
+    void updateTitle(UUID sequenceId, String title);
+
+    /**
      * The concept IDs currently linked to a sequence.
      *
      * <p>The read counterpart to {@link #linkConceptsBatch(UUID, List)}. Copying a sequence

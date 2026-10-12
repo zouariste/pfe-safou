@@ -46,6 +46,9 @@ public class TieredTaskSequenceRowMapper implements RowMapper<TieredTaskSequence
         }
 
         dto.setTaskDescription(rs.getString("task_description"));
+        if (hasColumn(rs, "title")) {
+            dto.setTitle(rs.getString("title"));
+        }
         dto.setVersionId(rs.getObject("version_id", UUID.class));
         String strategyId = rs.getObject("strategyname", String.class);
         dto.setStrategyName(strategyId);

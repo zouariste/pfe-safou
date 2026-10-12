@@ -150,7 +150,10 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             -- sorted by). The page needs it to mark which sequences belong to the reader: a
             -- worksheet that shows nothing but "Sequenz 1, Sequenz 2" cannot tell anybody
             -- that forking one of them changed something.
-            COALESCE(array_agg(s.owner_id ORDER BY ws.position, ws.sequence_id), '{}') AS sequence_owner_ids
+            COALESCE(array_agg(s.owner_id ORDER BY ws.position, ws.sequence_id), '{}') AS sequence_owner_ids,
+            -- Same zip. Lets the list say "Loops for beginners" instead of "Sequenz 2" when the
+            -- owner named the sequence.
+            COALESCE(array_agg(s.title ORDER BY ws.position, ws.sequence_id), '{}') AS sequence_titles
         FROM worksheets w
         LEFT JOIN worksheets_sequence ws ON ws.worksheet_id = w.id
         LEFT JOIN tiered_task_sequences s ON s.id = ws.sequence_id
@@ -163,6 +166,7 @@ public class PostgreWorksheetDao implements WorksheetRepository {
         List<TieredTaskSequenceDTO> sequences = new ArrayList<>();
         UUID[] seqArray = (UUID[]) rs.getArray("sequence_ids").getArray();
         UUID[] ownerArray = (UUID[]) rs.getArray("sequence_owner_ids").getArray();
+        String[] titleArray = (String[]) rs.getArray("sequence_titles").getArray();
         for (int i = 0; i < seqArray.length; i++) {
             if (seqArray[i] == null) {
                 // A worksheet with no sequences still produces one all-null row from the
@@ -171,7 +175,8 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             }
             // Seed sequences have no owner, so a null here is data rather than a mismatch.
             UUID ownerId = i < ownerArray.length ? ownerArray[i] : null;
-            sequences.add(TieredTaskSequenceDTO.builder().id(seqArray[i]).ownerId(ownerId).build());
+            String title = i < titleArray.length ? titleArray[i] : null;
+            sequences.add(TieredTaskSequenceDTO.builder().id(seqArray[i]).ownerId(ownerId).title(title).build());
         }
 
         return WorksheetDTO.builder()
