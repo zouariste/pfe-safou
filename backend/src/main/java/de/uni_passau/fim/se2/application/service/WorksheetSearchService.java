@@ -177,6 +177,7 @@ public class WorksheetSearchService {
             sql.append("""
                              OR EXISTS (SELECT 1 FROM tasks t
                                          WHERE t.sequence_id = s.id
+                                           AND t.deleted_at IS NULL
                                            AND t.search_vector @@\s""");
             sql.append(FullTextSearch.TSQUERY_EXPR);
             FullTextSearch.addTsqueryParams(params, q.q());

@@ -71,6 +71,8 @@ public class SecurityConfig {
                         // Task mutations: require authentication (ownership checked in service)
                         .requestMatchers(HttpMethod.PUT, "/api/tasks/**").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/tasks/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/tasks/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/sequence/*/tasks").authenticated()
 
                         // AP15b: Distractor generation endpoints
                         .requestMatchers(HttpMethod.POST, "/api/tasks/*/generate-distractors").authenticated()

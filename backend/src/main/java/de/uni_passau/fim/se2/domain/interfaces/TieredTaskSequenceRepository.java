@@ -188,6 +188,12 @@ public interface TieredTaskSequenceRepository {
     boolean markDivergedByTaskId(UUID taskId);
 
     /**
+     * Rewrites the stored tier count after a tier was added or deleted, so the library's
+     * tier-count filter and facet keep matching what the sequence actually has.
+     */
+    void updateTierCount(UUID sequenceId, int tierCount);
+
+    /**
      * AP19 Teil A: Updates the semantic_summary column with an LLM-generated one-line description.
      * No-op if the sequence doesn't exist.
      */

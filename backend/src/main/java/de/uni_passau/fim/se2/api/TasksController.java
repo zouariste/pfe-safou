@@ -22,9 +22,11 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import de.uni_passau.fim.se2.api.dto.ManualTaskRequest;
 import de.uni_passau.fim.se2.api.dto.TaskEditRequest;
+import de.uni_passau.fim.se2.api.dto.TierCreateRequest;
 import de.uni_passau.fim.se2.application.service.FeedbackLogService;
 import de.uni_passau.fim.se2.application.service.ManualTaskService;
 import de.uni_passau.fim.se2.application.service.OwnershipService;
+import de.uni_passau.fim.se2.application.service.SequenceTierService;
 import de.uni_passau.fim.se2.application.service.TaskSubmissionService;
 import de.uni_passau.fim.se2.application.service.WorksheetAccessService;
 import de.uni_passau.fim.se2.application.service.TaskEditService;
@@ -69,6 +71,7 @@ public class TasksController {
     private final OwnershipService ownershipService;
     private final TaskEditService taskEditService;
     private final ManualTaskService manualTaskService;
+    private final SequenceTierService sequenceTierService;
     private final TaskOriginalRepository taskOriginalRepository;
     private final FeedbackLogService feedbackLogService;
     private final TaskEnricher taskEnricher;
@@ -187,6 +190,30 @@ public class TasksController {
                                             @RequestBody TaskEditRequest request) {
         TaskDTO updated = taskEditService.editTask(taskId, request);
         return ResponseEntity.ok(updated);
+    }
+
+    /**
+     * Add a teacher-written tier to a sequence, at the given tier level (or at the end). Tiers
+     * at or above that level move up by one.
+     * Allowed: Owner of the sequence, Admin
+     */
+    @PostMapping("/sequence/{id}/tasks")
+    public ResponseEntity<TaskDTO> addTier(@PathVariable UUID id,
+                                           @RequestBody TierCreateRequest request) {
+        TaskDTO created = sequenceTierService.addTier(id, request);
+        var location = java.net.URI.create("/api/tasks/" + created.getId());
+        return ResponseEntity.created(location).body(created);
+    }
+
+    /**
+     * Delete a tier from its sequence. A soft delete: the tier leaves the sequence, but what
+     * students did on it is kept. Tiers above it move down by one.
+     * Allowed: Owner of the parent sequence, Admin
+     */
+    @DeleteMapping("/tasks/{taskId}")
+    public ResponseEntity<Void> deleteTier(@PathVariable UUID taskId) {
+        sequenceTierService.deleteTier(taskId);
+        return ResponseEntity.noContent().build();
     }
 
     /**

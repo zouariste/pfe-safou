@@ -84,36 +84,8 @@ public class ManualTaskService {
         List<TaskDTO> tasks = new ArrayList<>();
 
         for (ManualTaskRequest.ManualTierEntry tier : request.getTiers()) {
-            // No comment-sanitizing — in manual mode the teacher decides what stays
-            String code = tier.getSolution().trim();
-
-            // AP30: gap markers ($$blank:…$$) live inline in the solution. Strip them to the
-            // expected value before code analysis so metrics run on syntactically valid code;
-            // the persisted solution keeps the markers for the Parsons renderer.
-            String analyzableCode = GapMarkers.strip(code);
-
-            // Compute complexity metrics via CodeAnalyzer (AP26: all 9 languages)
-            ComplexityResult metrics = codeAnalyzer.computeComplexity(analyzableCode, language);
-
-            // AP31: validate + serialize inline-split entries (reconstruction check against the raw
-            // solution lines — split markers are not part of the solution text).
-            String splitPlanJson = buildSplitPlanJson(tier.getSplits(), code, tier.getTierLevel());
-
-            TaskDTO task = TaskDTO.builder()
-                    .id(UUID.randomUUID())
-                    .statement(tier.getStatement().trim())
-                    .solution(code)
-                    .tierLevel(tier.getTierLevel())
-                    .cyclomaticComplexity(metrics.cyclomaticComplexity())
-                    .linesOfCode(metrics.linesOfCode())
-                    .maximalNestingDepth(metrics.maxNestingDepth())
-                    .methodCallCount(metrics.methodCallCount())
-                    .distinctIdentifierCount(metrics.distinctIdentifierCount())
-                    .sequenceId(sequenceId)
-                    .splitPlan(splitPlanJson)
-                    .build();
-
-            tasks.add(task);
+            tasks.add(buildTask(tier.getStatement(), tier.getSolution(), tier.getTierLevel(),
+                    tier.getSplits(), language, sequenceId));
         }
 
         // ── Build sequence ──────────────────────────────────────
@@ -145,6 +117,47 @@ public class ManualTaskService {
         logger.info("Manual sequence persisted: id={}", sequenceId);
 
         return sequence;
+    }
+
+    /**
+     * Builds one teacher-written tier, metrics and split plan included, without saving it.
+     *
+     * <p>Public because adding a tier to an existing sequence ({@link SequenceTierService}) must
+     * produce exactly what manual creation produces; a second copy of this would drift the way
+     * the old worksheet copy did.
+     *
+     * @throws DomainValidationException if a split fails the reconstruction check
+     */
+    public TaskDTO buildTask(String statement, String solution, int tierLevel,
+                             List<SplitPlan.SplitEntry> splits, String language, UUID sequenceId) {
+        // No comment-sanitizing — in manual mode the teacher decides what stays
+        String code = solution.trim();
+
+        // AP30: gap markers ($$blank:…$$) live inline in the solution. Strip them to the
+        // expected value before code analysis so metrics run on syntactically valid code;
+        // the persisted solution keeps the markers for the Parsons renderer.
+        String analyzableCode = GapMarkers.strip(code);
+
+        // Compute complexity metrics via CodeAnalyzer (AP26: all 9 languages)
+        ComplexityResult metrics = codeAnalyzer.computeComplexity(analyzableCode, language);
+
+        // AP31: validate + serialize inline-split entries (reconstruction check against the raw
+        // solution lines — split markers are not part of the solution text).
+        String splitPlanJson = buildSplitPlanJson(splits, code, tierLevel);
+
+        return TaskDTO.builder()
+                .id(UUID.randomUUID())
+                .statement(statement.trim())
+                .solution(code)
+                .tierLevel(tierLevel)
+                .cyclomaticComplexity(metrics.cyclomaticComplexity())
+                .linesOfCode(metrics.linesOfCode())
+                .maximalNestingDepth(metrics.maxNestingDepth())
+                .methodCallCount(metrics.methodCallCount())
+                .distinctIdentifierCount(metrics.distinctIdentifierCount())
+                .sequenceId(sequenceId)
+                .splitPlan(splitPlanJson)
+                .build();
     }
 
     /**

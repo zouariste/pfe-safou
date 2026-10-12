@@ -109,4 +109,21 @@ public interface TaskRepository {
      *                      or {@code null} to clear the plan.
      */
     void updateSplitPlan(UUID taskId, String splitPlanJson);
+
+    /**
+     * Takes a task out of its sequence without deleting the row, so the learning events,
+     * submissions and hint usage recorded against it survive. {@link #loadTasksBySequenceId}
+     * no longer returns it; {@link #loadById} still does.
+     *
+     * @throws de.uni_passau.fim.se2.domain.exceptions.DomainValidationException if no such
+     *         task exists or it is already deleted
+     */
+    void softDelete(UUID taskId);
+
+    /**
+     * Moves every non-deleted task of a sequence at or above {@code fromLevel} by {@code delta}
+     * tier levels — {@code +1} to open a gap for an inserted tier, {@code -1} to close the gap a
+     * deleted one left.
+     */
+    void shiftTierLevels(UUID sequenceId, int fromLevel, int delta);
 }

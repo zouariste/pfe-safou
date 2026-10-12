@@ -7,7 +7,14 @@ import CodeSolutionEditor from "./CodeSolutionEditor";
 import { parseSplitPlan, type SplitEntry } from "../types/models";
 
 interface TaskEditModalProps {
+    /** The task being edited. Ignored when {@link create} is set. */
     taskId: string;
+    /**
+     * Turns the dialog into "add a tier": the same form, plus where the new tier goes, saved as
+     * a new task of this sequence instead of over an existing one. There is no adjustment
+     * rating — nothing was generated, so there is nothing to rate.
+     */
+    create?: { sequenceId: string; tierCount: number };
     initialProblemStatement: string;
     initialCode: string;
     /** True when no original has been saved yet — shows the rating input. */
@@ -33,9 +40,10 @@ const RATING_KEYS: Record<number, string> = {
 
 const TaskEditModal: React.FC<TaskEditModalProps> = ({
     taskId,
+    create,
     initialProblemStatement,
     initialCode,
-    isFirstEdit,
+    isFirstEdit: isFirstEditProp,
     initialDistractors,
     distractorPlan,
     initialSplitPlan,
@@ -43,6 +51,9 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
     onClose,
 }) => {
     const { t } = useTranslation();
+    const isFirstEdit = isFirstEditProp && !create;
+    // Where a new tier goes; defaults to the end. Tiers at or above it move up by one.
+    const [position, setPosition] = useState<number>((create?.tierCount ?? 0) + 1);
     const [problemStatement, setProblemStatement] = useState(initialProblemStatement);
     const [code, setCode] = useState(initialCode);
     const [distractors, setDistractors] = useState(initialDistractors ?? "");
@@ -59,7 +70,8 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
     useEffect(() => {
         editStartRef.current = Date.now();
-        logEvent(taskId, "teacher_edit_started", { taskId });
+        // A tier being added has no task id to log against yet; it is logged once it exists.
+        if (!create) logEvent(taskId, "teacher_edit_started", { taskId });
     }, [taskId]);
 
     const handleSave = async () => {
@@ -85,6 +97,24 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
             if (distractors !== (initialDistractors ?? "")) {
                 body.distractors = distractors.trim() || null;
             }
+
+            if (create) {
+                body.tierLevel = position;
+                const res = await api.post(`/sequence/${create.sequenceId}/tasks`, body);
+                logEvent(String(res.data.id), "teacher_tier_added", {
+                    taskId: res.data.id,
+                    tierLevel: position,
+                    editDurationMs: Date.now() - editStartRef.current,
+                }, create.sequenceId, position);
+                onSave({
+                    statement: res.data.statement,
+                    solution: res.data.solution,
+                    distractors: res.data.distractors ?? null,
+                    splitPlan: res.data.splitPlan ?? null,
+                });
+                return;
+            }
+
             if (isFirstEdit) {
                 body.adjustmentRating = adjustmentRating;
             }
@@ -120,17 +150,37 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
     return (
         <Modal show onHide={() => {
-            logEvent(taskId, "teacher_edit_cancelled", {
-                taskId,
-                editDurationMs: Date.now() - editStartRef.current,
-            });
+            if (!create) {
+                logEvent(taskId, "teacher_edit_cancelled", {
+                    taskId,
+                    editDurationMs: Date.now() - editStartRef.current,
+                });
+            }
             onClose();
         }} size="lg" centered>
             <Modal.Header closeButton>
-                <Modal.Title>{t("taskEdit.title")}</Modal.Title>
+                <Modal.Title>{create ? t("taskEdit.addTitle") : t("taskEdit.title")}</Modal.Title>
             </Modal.Header>
             <Modal.Body>
                 {error && <div className="alert alert-danger">{error}</div>}
+
+                {create && (
+                    <Form.Group className="mb-3">
+                        <Form.Label>{t("taskEdit.position")}</Form.Label>
+                        <Form.Select
+                            value={position}
+                            onChange={(e) => setPosition(parseInt(e.target.value, 10))}
+                        >
+                            {Array.from({ length: create.tierCount + 1 }, (_, i) => i + 1).map((level) => (
+                                <option key={level} value={level}>
+                                    {level <= create.tierCount
+                                        ? t("taskEdit.positionBefore", { level })
+                                        : t("taskEdit.positionEnd", { level })}
+                                </option>
+                            ))}
+                        </Form.Select>
+                    </Form.Group>
+                )}
 
                 <Form.Group className="mb-3">
                     <Form.Label>{t("taskEdit.statement")}</Form.Label>

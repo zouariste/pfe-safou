@@ -215,7 +215,15 @@ export default function SequencePage() {
 
     function handleEditSave(_updated: { statement: string; solution: string; distractors?: string | null }) {
         setEditingTask(null);
-        // Reload the sequence data
+        setAddingTier(false);
+        reloadSequence();
+    }
+
+    /**
+     * Re-reads the sequence after a change made on the server. Adding or deleting a tier
+     * renumbers the others, so patching the local copy would mean redoing that arithmetic here.
+     */
+    function reloadSequence() {
         if (!id) return;
         api.get(`/sequence/${id}`)
             .then(({ data }) => {
@@ -223,6 +231,24 @@ export default function SequencePage() {
                 setSeq(mapped);
             })
             .catch(() => {});
+    }
+
+    // Adding and deleting tiers. Owners and admins only (canEdit); 5 is the server's limit too.
+    const MAX_TIERS = 5;
+    const [addingTier, setAddingTier] = useState(false);
+    const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+
+    async function handleDeleteTier(task: Task) {
+        if (!window.confirm(t("sequence.deleteTierConfirm", { level: task.tierLevel }))) return;
+        setDeletingTaskId(task.id);
+        try {
+            await api.delete(`/tasks/${task.id}`);
+            reloadSequence();
+        } catch (err) {
+            alert(apiErrorMessage(err, t("sequence.deleteTierFailed")));
+        } finally {
+            setDeletingTaskId(null);
+        }
     }
 
     function handleSubmitRating() {
@@ -799,6 +825,19 @@ export default function SequencePage() {
                                         >
                                             {t("sequence.editTask")}
                                         </button>
+                                        {canEdit && seq.tasks.length > 1 && (
+                                            <button
+                                                className="btn btn-sm btn-outline-danger"
+                                                disabled={deletingTaskId !== null}
+                                                onClick={() => handleDeleteTier(task)}
+                                                title={t("sequence.deleteTier")}
+                                                aria-label={t("sequence.deleteTier")}
+                                            >
+                                                {deletingTaskId === task.id
+                                                    ? <span className="spinner-border spinner-border-sm" />
+                                                    : <i className="bi bi-trash"></i>}
+                                            </button>
+                                        )}
                                         {/* AP15b: On-demand distractor generation */}
                                         <button
                                             className={`btn btn-sm fw-semibold ${task.distractors ? "btn-outline-danger" : "btn-outline-info"}`}
@@ -969,6 +1008,16 @@ export default function SequencePage() {
                         </article>
                     ))
                 )}
+                {teacherViewEnabled && canEdit && seq.tasks.length < MAX_TIERS && (
+                    <div className="d-flex justify-content-center mb-3">
+                        <button
+                            className="btn btn-outline-primary fw-semibold"
+                            onClick={() => setAddingTier(true)}
+                        >
+                            + {t("sequence.addTier")}
+                        </button>
+                    </div>
+                )}
             </section>
 
             {/* AP19 A15: "You might also like…" — teacher-only discovery panel.
@@ -1061,6 +1110,19 @@ export default function SequencePage() {
                     isFirstEdit={editIsFirstEdit}
                     onSave={handleEditSave}
                     onClose={() => setEditingTask(null)}
+                />
+            )}
+
+            {/* Same dialog, adding a tier instead of editing one */}
+            {addingTier && (
+                <TaskEditModal
+                    taskId=""
+                    create={{ sequenceId: seq.id, tierCount: seq.tasks.length }}
+                    initialProblemStatement=""
+                    initialCode=""
+                    isFirstEdit={false}
+                    onSave={handleEditSave}
+                    onClose={() => setAddingTier(false)}
                 />
             )}
         </main>
