@@ -303,6 +303,22 @@ public class PostgreClassDao implements ClassRepository {
         log.info("Removed worksheet {} from class {}", worksheetId, classId);
     }
 
+    /**
+     * Rewrites the worksheet id in place rather than removing and re-adding the row, so the
+     * release date, deadline, grace period, published flag and assigned_at all carry over.
+     */
+    @Override
+    public void replaceWorksheet(UUID classId, UUID oldWorksheetId, UUID newWorksheetId) {
+        int rows = jdbc.update("""
+                UPDATE class_worksheets SET worksheet_id = ?
+                WHERE class_id = ? AND worksheet_id = ?
+                """, newWorksheetId, classId, oldWorksheetId);
+        if (rows == 0) {
+            throw new DomainValidationException("That worksheet is not assigned to this class.");
+        }
+        log.info("Replaced worksheet {} with {} in class {}", oldWorksheetId, newWorksheetId, classId);
+    }
+
     @Override
     public List<ClassDTO> findByStudentId(UUID studentId) {
         List<ClassDTO> classes = jdbc.query("""

@@ -81,6 +81,7 @@ class ClassServiceBulkStudentsTest {
                 mock(TempPasswordGenerator.class),
                 mock(PasswordHasherService.class),
                 mock(WorksheetService.class),
+                mock(WorksheetCloneService.class),
                 mock(TaskPersistenceService.class),
                 mock(TaskSubmissionService.class));
 

@@ -92,6 +92,7 @@ class StudentTaskStateTest {
                 mock(TempPasswordGenerator.class),
                 mock(PasswordHasherService.class),
                 worksheetService,
+                mock(WorksheetCloneService.class),
                 taskPersistenceService,
                 taskSubmissionService);
 
