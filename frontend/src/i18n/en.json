@@ -266,6 +266,8 @@
     "tierLabel": "Task {{n}}",
     "title": "Tiered Task Sequence",
     "language": "Language",
+    "uuid": "UUID",
+    "copyUuidTitle": "Copy UUID to clipboard",
     "concepts": "Concepts",
     "conceptsNone": "none",
     "conceptsEdit": "Edit concepts",

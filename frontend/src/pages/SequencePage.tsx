@@ -70,6 +70,7 @@ export default function SequencePage() {
     const [savingConcepts, setSavingConcepts] = useState(false);
     const [conceptError, setConceptError] = useState("");
     const [copied, setCopied] = useState(false);
+    const [uuidCopied, setUuidCopied] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [editIsFirstEdit, setEditIsFirstEdit] = useState(true);
     const { logEvent } = useEventTracker();
@@ -243,6 +244,17 @@ export default function SequencePage() {
         );
         setRatingSubmitted(true);
         setTimeout(() => setShowRatingModal(false), 1500);
+    }
+
+    async function handleCopyUuid() {
+        if (!seq) return;
+        try {
+            await navigator.clipboard.writeText(seq.id);
+            setUuidCopied(true);
+            setTimeout(() => setUuidCopied(false), 1500);
+        } catch {
+            alert(t("solve.copyFailed"));
+        }
     }
 
     async function handleCopyLink() {
@@ -467,6 +479,19 @@ export default function SequencePage() {
                     </div>
                 )}
             </div>
+
+            <p className="mb-1 d-flex align-items-center gap-2">
+                <strong>{t("sequence.uuid")}:</strong>
+                <code className="user-select-all">{seq.id}</code>
+                <button
+                    className={`btn btn-sm py-0 px-1 ${uuidCopied ? "btn-success" : "btn-outline-secondary"}`}
+                    onClick={handleCopyUuid}
+                    title={t("sequence.copyUuidTitle")}
+                    aria-label={t("sequence.copyUuidTitle")}
+                >
+                    <i className={`bi ${uuidCopied ? "bi-check2" : "bi-clipboard"}`}></i>
+                </button>
+            </p>
 
             <p>
                 <strong>{t("sequence.language")}:</strong> {seq.programmingLanguage}
