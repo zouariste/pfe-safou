@@ -120,7 +120,7 @@ public class PostgreTaskDao implements TaskRepository {
                                 distractor_plan, distractors_enabled,
                                 context_before, context_after, split_plan
                          FROM tasks
-                         WHERE sequence_id = ?
+                         WHERE sequence_id = ? AND deleted_at IS NULL
                          ORDER BY tier_level, id
                      """;
 
@@ -285,6 +285,7 @@ public class PostgreTaskDao implements TaskRepository {
         JOIN tiered_task_sequences ts ON t.sequence_id = ts.id
         LEFT JOIN tiered_task_sequence_concepts ttsc ON ttsc.sequence_id = ts.id
         LEFT JOIN concepts c ON c.id = ttsc.concept_id
+        WHERE t.deleted_at IS NULL
         GROUP BY t.id, ts.id, t.solution
         ORDER BY ts.id, t.tier_level
         """;
@@ -357,6 +358,32 @@ public class PostgreTaskDao implements TaskRepository {
         if (updated != 1) {
             throw new DomainValidationException("Task not found: " + taskId);
         }
+    }
+
+    @Override
+    public void softDelete(UUID taskId) {
+        if (taskId == null) {
+            throw new DomainValidationException("Task ID cannot be null");
+        }
+        String sql = "UPDATE tasks SET deleted_at = now() WHERE id = ? AND deleted_at IS NULL";
+        int updated = jdbc.update(sql, taskId);
+        if (updated != 1) {
+            throw new DomainValidationException("Task not found or already deleted: " + taskId);
+        }
+    }
+
+    @Override
+    public void shiftTierLevels(UUID sequenceId, int fromLevel, int delta) {
+        if (sequenceId == null) {
+            throw new DomainValidationException("Sequence ID cannot be null");
+        }
+        // Deleted tiers keep the level they had when they were deleted, so their research rows
+        // still say which tier they were; only the tiers still offered move.
+        String sql = """
+                UPDATE tasks SET tier_level = tier_level + ?
+                WHERE sequence_id = ? AND deleted_at IS NULL AND tier_level >= ?
+                """;
+        jdbc.update(sql, delta, sequenceId, fromLevel);
     }
 
     private void validateTask(TaskDTO task) {

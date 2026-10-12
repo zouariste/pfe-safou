@@ -358,6 +358,18 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
     }
 
     @Override
+    public void updateTierCount(UUID sequenceId, int tierCount) {
+        if (sequenceId == null) {
+            throw new DomainValidationException("Sequence ID cannot be null");
+        }
+        int updated = jdbc.update("UPDATE tiered_task_sequences SET tier_count = ? WHERE id = ?",
+                tierCount, sequenceId);
+        if (updated != 1) {
+            throw new DomainValidationException("Sequence not found: " + sequenceId);
+        }
+    }
+
+    @Override
     public void updateSemanticSummary(UUID sequenceId, String summary) {
         if (sequenceId == null) return;
         String trimmed = summary == null ? null : summary.substring(0, Math.min(summary.length(), 500));
@@ -422,7 +434,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                        COALESCE(string_agg(t.statement, E'\n---\n'              ORDER BY t.tier_level), '') AS combined_statement,
                        COALESCE(string_agg(t.solution,  E'\n\n// --- next tier ---\n\n' ORDER BY t.tier_level), '') AS combined_code
                 FROM tiered_task_sequences s
-                LEFT JOIN tasks t ON t.sequence_id = s.id
+                LEFT JOIN tasks t ON t.sequence_id = s.id AND t.deleted_at IS NULL
                 WHERE s.deleted_at IS NULL
                 """);
 
@@ -471,7 +483,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                        COALESCE(string_agg(t.statement, E'\n---\n'              ORDER BY t.tier_level), '') AS combined_statement,
                        COALESCE(string_agg(t.solution,  E'\n\n// --- next tier ---\n\n' ORDER BY t.tier_level), '') AS combined_code
                 FROM tiered_task_sequences s
-                LEFT JOIN tasks t ON t.sequence_id = s.id
+                LEFT JOIN tasks t ON t.sequence_id = s.id AND t.deleted_at IS NULL
                 WHERE s.deleted_at IS NULL
                 """);
 

@@ -60,7 +60,7 @@ class ControllerRouteMappingTest {
         context.registerBean("worksheetController", WorksheetController.class,
                 () -> new WorksheetController(null, null, null, null, null));
         context.registerBean("tasksController", TasksController.class,
-                () -> new TasksController(null, null, null, null, null, null, null, null, null, null));
+                () -> new TasksController(null, null, null, null, null, null, null, null, null, null, null));
         context.registerBean("adminResearchController", AdminResearchController.class,
                 () -> new AdminResearchController(null, null, null, null));
         context.refresh();
@@ -118,6 +118,8 @@ class ControllerRouteMappingTest {
                 () -> assertTrue(actual.contains("GET /api/sequence/{id}")),
                 () -> assertTrue(actual.contains("GET /api/tasks/{taskId}")),
                 () -> assertTrue(actual.contains("PUT /api/tasks/{taskId}")),
+                () -> assertTrue(actual.contains("DELETE /api/tasks/{taskId}")),
+                () -> assertTrue(actual.contains("POST /api/sequence/{id}/tasks")),
                 () -> assertTrue(actual.contains("GET /api/sequences/my")));
     }
 

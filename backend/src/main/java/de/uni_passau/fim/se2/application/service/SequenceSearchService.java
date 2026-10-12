@@ -269,7 +269,7 @@ public class SequenceSearchService {
         if (q.q() != null && !q.q().isBlank()) {
             sb.append(" AND ( s.search_vector @@ ").append(TSQUERY_EXPR).append(' ')
               .append("       OR EXISTS (SELECT 1 FROM tasks t ")
-              .append("                    WHERE t.sequence_id = s.id ")
+              .append("                    WHERE t.sequence_id = s.id AND t.deleted_at IS NULL ")
               .append("                      AND t.search_vector @@ ").append(TSQUERY_EXPR).append(")) ");
             addTsqueryParams(params, q.q().trim());
             addTsqueryParams(params, q.q().trim());
@@ -338,7 +338,7 @@ public class SequenceSearchService {
                                 NULLIF(s.semantic_summary, ''),
                                 NULLIF(s.task_description, ''),
                                 (SELECT t.statement FROM tasks t
-                                   WHERE t.sequence_id = s.id
+                                   WHERE t.sequence_id = s.id AND t.deleted_at IS NULL
                                    ORDER BY t.tier_level
                                    LIMIT 1),
                                 ''
@@ -365,7 +365,7 @@ public class SequenceSearchService {
             sql.append(" ORDER BY ( ")
                .append("     COALESCE(ts_rank_cd(s.search_vector, ").append(TSQUERY_EXPR).append("), 0) ")
                .append("     + COALESCE((SELECT MAX(ts_rank_cd(t.search_vector, ").append(TSQUERY_EXPR).append(")) ")
-               .append("                   FROM tasks t WHERE t.sequence_id = s.id), 0) ")
+               .append("                   FROM tasks t WHERE t.sequence_id = s.id AND t.deleted_at IS NULL), 0) ")
                .append(" ) DESC NULLS LAST, s.created_at DESC, s.id ");
         } else if ("popularity".equals(sort)) {
             sql.append(" ORDER BY (SELECT COUNT(*) FROM worksheets_sequence ws WHERE ws.sequence_id = s.id) DESC, ")
