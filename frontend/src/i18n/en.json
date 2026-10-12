@@ -529,6 +529,11 @@
     "tip4": "\"Share with students\" copies a student-friendly link.",
     "tip5": "Switch to <em>student mode</em> via the toggle above.",
     "worksheetCopied": "Worksheet has been copied. You can now edit it.",
+    "forkNoticeTitle": "This worksheet belongs to someone else.",
+    "forkNoticeBody": "Your class uses it, but editing it would change it for other teachers and classes too, so make your own copy first. Your class then uses the copy, with the same schedule and the same student progress.",
+    "forkForClass": "Make own copy",
+    "forkingForClass": "Copying…",
+    "forkForClassFailed": "Could not create your own copy.",
     "errorSavingHints": "Error saving hint setting.",
     "errorSaving": "Error saving."
   },

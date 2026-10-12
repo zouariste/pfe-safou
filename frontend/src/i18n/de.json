@@ -529,6 +529,11 @@
     "tip4": "\"Mit Schülern teilen\" kopiert einen schülerfreundlichen Link.",
     "tip5": "Wechsle in den <em>Schüler-Modus</em> über den Toggle oben.",
     "worksheetCopied": "Arbeitsblatt wurde kopiert. Du kannst es jetzt bearbeiten.",
+    "forkNoticeTitle": "Dieses Arbeitsblatt gehört jemand anderem.",
+    "forkNoticeBody": "Deine Klasse nutzt es, aber Änderungen würden es auch für andere Lehrkräfte und Klassen verändern — erstelle dafür eine eigene Kopie. Deine Klasse nutzt dann die Kopie, mit demselben Zeitplan und demselben Lernfortschritt.",
+    "forkForClass": "Eigene Kopie erstellen",
+    "forkingForClass": "Kopiere…",
+    "forkForClassFailed": "Die eigene Kopie konnte nicht erstellt werden.",
     "errorSavingHints": "Fehler beim Speichern der Hint-Einstellung.",
     "errorSaving": "Fehler beim Speichern."
   },

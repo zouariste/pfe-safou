@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, apiErrorMessage, isNotFound } from "../lib/api.ts";
 import type { Worksheet, ClassInfo, LibraryItem, LibrarySearchResponse, WorksheetVisibility } from "../types/models.ts";
@@ -44,9 +44,14 @@ export default function WorksheetPage() {
     const location = useLocation();
     const justCopied = (location.state as any)?.justCopied === true;
 
-    // Only show "back to class" when navigated FROM a class (via location.state),
-    // the same way the sequence page decides on "back to worksheet".
-    const fromClass = (location.state as { fromClass?: string })?.fromClass ?? null;
+    // Only show "back to class" when navigated FROM a class, the same way the sequence page
+    // decides on "back to worksheet". The query string is read first because it survives a
+    // reload, and the class now also decides whether the "make your own copy" notice shows.
+    const [searchParams] = useSearchParams();
+    const fromClass =
+        searchParams.get("fromClass")
+        ?? (location.state as { fromClass?: string })?.fromClass
+        ?? null;
 
     // The marketplace is a third way in, and it carries its filters along so returning lands
     // on the list the teacher was reading rather than an unfiltered one.
@@ -301,6 +306,49 @@ export default function WorksheetPage() {
             setAssignError(err?.response?.data?.error || err?.response?.data || t("classDetail.errorAssigning"));
         } finally {
             setAssigningClassId(null);
+        }
+    }
+
+    // ── Own copy for a class ────────────────────────────────
+    // A teacher who assigned someone else's worksheet to their class cannot edit it: an edit
+    // would change it for every other class and teacher using it. Like a foreign sequence in a
+    // worksheet (see SequencePage), they are offered their own copy instead, which then replaces
+    // the original in this class only.
+    const [canForkForClass, setCanForkForClass] = useState(false);
+    const [forkingForClass, setForkingForClass] = useState(false);
+
+    // Offered only when the class the teacher came from is theirs and really uses this
+    // worksheet; the server checks the same before copying anything.
+    useEffect(() => {
+        setCanForkForClass(false);
+        if (!fromClass || !isTeacher || isAdmin || !isForeignWorksheet || !user) return;
+
+        let cancelled = false;
+        api.get<ClassInfo>(`/classes/${fromClass}`)
+            .then(({ data }) => {
+                if (cancelled) return;
+                setCanForkForClass(
+                    data.ownerId === user.userId
+                    && (data.worksheets ?? []).some((w) => w.worksheetId === sheetId));
+            })
+            .catch(() => { /* no notice; nothing the teacher needs to see */ });
+        return () => { cancelled = true; };
+    }, [fromClass, isTeacher, isAdmin, isForeignWorksheet, user, sheetId]);
+
+    async function handleForkForClass() {
+        if (!fromClass || !sheetId) return;
+        setForkingForClass(true);
+        try {
+            const { data } = await api.post<{ worksheetId: string }>(
+                `/classes/${fromClass}/worksheets/${sheetId}/fork`);
+            // Replace rather than push: the class no longer uses the worksheet in this URL, so
+            // going back to it would land on a page with nothing left to do.
+            navigate(`/worksheets/${data.worksheetId}?fromClass=${fromClass}`,
+                { state: { fromClass, justCopied: true }, replace: true });
+        } catch (err) {
+            alert(apiErrorMessage(err, t("worksheet.forkForClassFailed")));
+        } finally {
+            setForkingForClass(false);
         }
     }
 
@@ -671,6 +719,22 @@ export default function WorksheetPage() {
             {justCopied && (
                 <div className="alert alert-success">
                     {t("worksheet.worksheetCopied")}
+                </div>
+            )}
+
+            {canForkForClass && (
+                <div className="alert alert-info d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <div className="flex-grow-1">
+                        <strong>{t("worksheet.forkNoticeTitle")}</strong>
+                        <div className="small">{t("worksheet.forkNoticeBody")}</div>
+                    </div>
+                    <button
+                        className="btn btn-sm btn-primary"
+                        disabled={forkingForClass}
+                        onClick={handleForkForClass}
+                    >
+                        {forkingForClass ? t("worksheet.forkingForClass") : t("worksheet.forkForClass")}
+                    </button>
                 </div>
             )}
 

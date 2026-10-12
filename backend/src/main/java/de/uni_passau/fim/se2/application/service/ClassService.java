@@ -55,6 +55,7 @@ public class ClassService {
     private final TempPasswordGenerator tempPasswordGenerator;
     private final PasswordHasherService passwordHasher;
     private final WorksheetService worksheetService;
+    private final WorksheetCloneService worksheetCloneService;
     private final TaskPersistenceService taskPersistenceService;
     private final TaskSubmissionService taskSubmissionService;
 
@@ -511,6 +512,54 @@ public class ClassService {
 
         ownershipService.checkOwnership(classDTO.getOwnerId(), "class");
         classRepository.removeWorksheet(classId, worksheetId);
+    }
+
+    /**
+     * Gives the class owner their own copy of a worksheet the class uses but they do not own,
+     * and moves this class (and only this one) onto it.
+     *
+     * <p>The copy is shallow — see {@link WorksheetCloneService#copyShallow} — so the class keeps
+     * working on the same tasks and its progress stays visible. Other classes and worksheets
+     * using the original are left alone, as with {@link SequenceForkService}.
+     *
+     * <p>Being assigned to the caller's own class is what authorises the copy, not the source's
+     * marketplace visibility: the class already shows this material to its students, and an
+     * owner who later unpublished the original must not lock the teacher out of their class.
+     *
+     * <p>One transaction, so a failure never leaves an orphan copy or a class pointing nowhere.
+     *
+     * @return the copy, which the class now uses
+     */
+    @Transactional
+    public WorksheetDTO forkAssignedWorksheet(UUID classId, UUID worksheetId) {
+        ownershipService.denyStudents("fork worksheets");
+        UUID userId = ownershipService.getCurrentUserId();
+        if (userId == null) {
+            throw new AccessDeniedException("Authentifizierung erforderlich.");
+        }
+
+        ClassDTO classDTO = classRepository.findByIdWithDetails(classId)
+                .orElseThrow(() -> new DomainValidationException("Klasse nicht gefunden."));
+        ownershipService.checkOwnership(classDTO.getOwnerId(), "class");
+
+        boolean assigned = classDTO.getWorksheets().stream()
+                .anyMatch(w -> worksheetId.equals(w.getWorksheetId()));
+        if (!assigned) {
+            throw new DomainValidationException("Dieses Arbeitsblatt ist der Klasse nicht zugewiesen.");
+        }
+
+        WorksheetDTO source = worksheetService.loadWorksheetById(worksheetId);
+        if (userId.equals(source.getOwnerId())) {
+            // Already editable. A copy would be a duplicate nobody asked for.
+            throw new DomainValidationException("Dieses Arbeitsblatt gehört bereits dir.");
+        }
+
+        WorksheetDTO copy = worksheetCloneService.copyShallow(worksheetId, userId);
+        classRepository.replaceWorksheet(classId, worksheetId, copy.getId());
+
+        log.info("Class {} moved from worksheet {} to own copy {} for user {}",
+                classId, worksheetId, copy.getId(), userId);
+        return copy;
     }
 
     // ── Tracking (AP5) ───────────────────────────────────────

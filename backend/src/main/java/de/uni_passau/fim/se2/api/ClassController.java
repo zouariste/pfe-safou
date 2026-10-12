@@ -26,6 +26,7 @@ import de.uni_passau.fim.se2.application.service.ClassService;
 import de.uni_passau.fim.se2.domain.entities.ClassDTO;
 import de.uni_passau.fim.se2.domain.entities.StudentProgressDetailDTO;
 import de.uni_passau.fim.se2.domain.entities.StudentTaskStateDTO;
+import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -219,6 +220,22 @@ public class ClassController {
             @PathVariable UUID worksheetId) {
         classService.removeWorksheet(id, worksheetId);
         return ResponseEntity.ok(Map.of("message", "Worksheet-Zuweisung entfernt."));
+    }
+
+    /**
+     * Gives the class owner their own copy of a worksheet the class uses but someone else owns,
+     * and moves this class onto it. Schedule, published state and student progress carry over.
+     *
+     * @param id          the UUID of the class
+     * @param worksheetId the UUID of the foreign worksheet currently assigned
+     * @return the id of the copy, so the client can navigate to it
+     */
+    @PostMapping("/{id}/worksheets/{worksheetId}/fork")
+    public ResponseEntity<Map<String, UUID>> forkWorksheet(
+            @PathVariable UUID id,
+            @PathVariable UUID worksheetId) {
+        WorksheetDTO copy = classService.forkAssignedWorksheet(id, worksheetId);
+        return ResponseEntity.ok(Map.of("worksheetId", copy.getId()));
     }
 
     /**

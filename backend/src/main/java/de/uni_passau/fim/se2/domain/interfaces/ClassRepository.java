@@ -50,6 +50,15 @@ public interface ClassRepository {
 
     void removeWorksheet(UUID classId, UUID worksheetId);
 
+    /**
+     * Points one class's assignment at a different worksheet, keeping its schedule and
+     * published state.
+     *
+     * @throws de.uni_passau.fim.se2.domain.exceptions.DomainValidationException if the old
+     *         worksheet is not assigned to the class
+     */
+    void replaceWorksheet(UUID classId, UUID oldWorksheetId, UUID newWorksheetId);
+
     /** Find classes a student belongs to */
     List<ClassDTO> findByStudentId(UUID studentId);
 

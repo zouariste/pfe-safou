@@ -378,7 +378,7 @@ export default function SequencePage() {
                     <button
                         className="btn btn-link"
                         onClick={() =>
-                            navigate(`/worksheets/${fromWorksheet}`, {
+                            navigate(`/worksheets/${fromWorksheet}${fromClass ? `?fromClass=${fromClass}` : ""}`, {
                                 state: { fromClass },
                             })
                         }

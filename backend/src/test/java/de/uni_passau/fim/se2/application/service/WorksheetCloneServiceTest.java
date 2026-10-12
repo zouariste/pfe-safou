@@ -335,6 +335,57 @@ class WorksheetCloneServiceTest {
     // ─────────────────────────────────────────────────────────────────────
 
     @Nested
+    @DisplayName("shallow copy, for taking over a worksheet a class already uses")
+    class Shallow {
+
+        @Test
+        @DisplayName("links the same sequences, in the same order, without copying any")
+        @SuppressWarnings("unchecked")
+        void linksSameSequencesInOrder() {
+            UUID second = UUID.randomUUID();
+            stubWorksheetLoad(List.of(SOURCE_SEQUENCE, second));
+
+            service.copyShallow(SOURCE_WORKSHEET, COPIER);
+
+            ArgumentCaptor<List<TieredTaskSequenceDTO>> linked = ArgumentCaptor.forClass(List.class);
+            verify(worksheetRepo).addSequencesToWorksheet(any(), linked.capture());
+            assertAll(
+                    () -> assertEquals(List.of(SOURCE_SEQUENCE, second),
+                            linked.getValue().stream().map(TieredTaskSequenceDTO::getId).toList(),
+                            "the class must keep working on the very same tasks, so its "
+                                    + "progress stays visible"),
+                    () -> verify(sequenceRepo, never()).save(any()),
+                    () -> verify(taskRepo, never()).save(any()));
+        }
+
+        @Test
+        @DisplayName("the copy is the copier's, private, and records its source")
+        void copyIsOwnedPrivateAndTraceable() {
+            service.copyShallow(SOURCE_WORKSHEET, COPIER);
+
+            WorksheetDTO copy = savedWorksheet();
+            assertAll(
+                    () -> assertEquals(COPIER, copy.getOwnerId()),
+                    () -> assertEquals(WorksheetVisibility.PRIVATE, copy.getVisibility()),
+                    () -> assertEquals(SOURCE_WORKSHEET, copy.getCopiedFrom()),
+                    () -> assertEquals("Arrays", copy.getName()),
+                    () -> assertEquals(4, copy.getHintCreditsPerTask()));
+        }
+
+        @Test
+        @DisplayName("an empty worksheet links nothing, rather than tripping the batch's empty check")
+        void emptyWorksheetLinksNothing() {
+            stubWorksheetLoad(List.of());
+
+            service.copyShallow(SOURCE_WORKSHEET, COPIER);
+
+            assertAll(
+                    () -> verify(worksheetRepo).createWorksheet(any()),
+                    () -> verify(worksheetRepo, never()).addSequencesToWorksheet(any(), anyList()));
+        }
+    }
+
+    @Nested
     @DisplayName("edge cases")
     class Edges {
 

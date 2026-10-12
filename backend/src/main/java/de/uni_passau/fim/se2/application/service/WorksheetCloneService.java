@@ -122,6 +122,51 @@ public class WorksheetCloneService {
         return loadWorksheet(copy.getId());
     }
 
+    /**
+     * Copies a worksheet to a new owner without copying its sequences: the copy links the same
+     * sequences, in the same order.
+     *
+     * <p>How a teacher takes over a worksheet their class is already working on. Keeping the
+     * sequences — and with them the task ids — is the point: student progress is keyed by task,
+     * so a deep copy would make the work a class has already done vanish from the progress view.
+     * Editing one of the linked sequences still goes through {@link SequenceForkService}, exactly
+     * as for any other foreign sequence in a worksheet of theirs.
+     *
+     * @param sourceWorksheetId the worksheet to copy
+     * @param newOwnerId        the user the copy belongs to
+     * @return the freshly loaded copy
+     * @throws DomainValidationException if either argument is null, or if the source does not exist
+     */
+    @Transactional
+    public WorksheetDTO copyShallow(UUID sourceWorksheetId, UUID newOwnerId) {
+        if (sourceWorksheetId == null) {
+            throw new DomainValidationException("Source worksheet ID must not be null.");
+        }
+        if (newOwnerId == null) {
+            throw new DomainValidationException("New owner ID must not be null.");
+        }
+
+        WorksheetDTO source = loadWorksheet(sourceWorksheetId);
+
+        WorksheetDTO copy = copyWorksheetShell(source, newOwnerId);
+        worksheetRepo.createWorksheet(copy);
+
+        // The batch appends in list order, and the source lists its sequences in display order,
+        // so the copy keeps the order the teacher saw. The batch refuses an empty list.
+        List<TieredTaskSequenceDTO> sourceSequences =
+                source.getSequenceDTOS() == null ? List.of() : source.getSequenceDTOS();
+        if (!sourceSequences.isEmpty()) {
+            worksheetRepo.addSequencesToWorksheet(copy, sourceSequences.stream()
+                    .map(reference -> TieredTaskSequenceDTO.builder().id(reference.getId()).build())
+                    .toList());
+        }
+
+        log.info("Shallow-copied worksheet {} -> {} for owner {} ({} sequences linked)",
+                sourceWorksheetId, copy.getId(), newOwnerId, sourceSequences.size());
+
+        return loadWorksheet(copy.getId());
+    }
+
     // ─────────────────────────────────────────────────────────────────────
 
     /**
