@@ -82,6 +82,13 @@ public class TieredTaskSequenceDTO {
     private String taskDescription;
 
     /**
+     * A name the sequence owner gave this sequence, e.g. "Loops for beginners".
+     * NULL when none was given; clients then show a generic heading, or "Sequence N" on a
+     * worksheet, in the viewer's language.
+     */
+    private String title;
+
+    /**
      * The timestamp indicating when the task sequence was created.
      *
      * @return the timestamp

@@ -303,6 +303,7 @@ public class SequenceSearchService {
                 SELECT s.id                   AS id,
                        s.programming_language AS programming_language,
                        s.task_description     AS task_description,
+                       s.title              AS title,
                        s.semantic_summary     AS semantic_summary,
                        s.created_at           AS created_at,
                        s.owner_id             AS owner_id,
@@ -406,6 +407,7 @@ public class SequenceSearchService {
             if (rs.wasNull() || tier <= 0) tier = 3;
             return new LibraryItemDTO(
                     seqId,
+                    rs.getString("title"),
                     rs.getString("programming_language"),
                     rs.getString("task_description"),
                     rs.getString("semantic_summary"),
@@ -428,7 +430,7 @@ public class SequenceSearchService {
         List<LibraryItemDTO> enriched = new ArrayList<>(rows.size());
         for (LibraryItemDTO r : rows) {
             enriched.add(new LibraryItemDTO(
-                    r.sequenceId(), r.programmingLanguage(), r.taskDescription(), r.semanticSummary(),
+                    r.sequenceId(), r.title(), r.programmingLanguage(), r.taskDescription(), r.semanticSummary(),
                     r.createdAt(), r.ownerId(), r.tierCount(),
                     tagMap.getOrDefault(r.sequenceId(), List.of()),
                     conceptMap.getOrDefault(r.sequenceId(), List.of()),
@@ -488,6 +490,7 @@ public class SequenceSearchService {
                 SELECT s.id                   AS id,
                        s.programming_language AS programming_language,
                        s.task_description     AS task_description,
+                       s.title              AS title,
                        s.semantic_summary     AS semantic_summary,
                        s.created_at           AS created_at,
                        s.owner_id             AS owner_id,
@@ -534,6 +537,7 @@ public class SequenceSearchService {
             if (rs.wasNull() || tier <= 0) tier = 3;
             return new LibraryItemDTO(
                     seqId,
+                    rs.getString("title"),
                     rs.getString("programming_language"),
                     rs.getString("task_description"),
                     rs.getString("semantic_summary"),
@@ -554,7 +558,7 @@ public class SequenceSearchService {
         List<LibraryItemDTO> enriched = new ArrayList<>(rows.size());
         for (LibraryItemDTO r : rows) {
             enriched.add(new LibraryItemDTO(
-                    r.sequenceId(), r.programmingLanguage(), r.taskDescription(), r.semanticSummary(),
+                    r.sequenceId(), r.title(), r.programmingLanguage(), r.taskDescription(), r.semanticSummary(),
                     r.createdAt(), r.ownerId(), r.tierCount(),
                     tagMap.getOrDefault(r.sequenceId(), List.of()),
                     r.concepts(),

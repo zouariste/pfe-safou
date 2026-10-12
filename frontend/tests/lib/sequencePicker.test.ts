@@ -78,6 +78,22 @@ describe("prepareSequenceOptions", () => {
 });
 
 describe("sequenceOptionTitle", () => {
+    it("prefers the name the owner gave the sequence", () => {
+        const title = sequenceOptionTitle(
+            { title: "Sorting basics", taskDescription: "Write a sorting function.", semanticSummary: "Sortiert ein Array." },
+            "fallback"
+        );
+        expect(title).toBe("Sorting basics");
+    });
+
+    it("ignores a blank name", () => {
+        const title = sequenceOptionTitle(
+            { title: "  ", taskDescription: "Write a sorting function.", semanticSummary: null },
+            "fallback"
+        );
+        expect(title).toBe("Write a sorting function.");
+    });
+
     it("prefers the teacher-written task description", () => {
         const title = sequenceOptionTitle(
             { taskDescription: "Write a sorting function.", semanticSummary: "Sortiert ein Array." },

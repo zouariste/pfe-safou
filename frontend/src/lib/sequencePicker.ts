@@ -32,13 +32,13 @@ export function prepareSequenceOptions(
 }
 
 /**
- * Same title priority as the Library card (see LibraryPage.tsx): a teacher-written task
- * description first, the LLM-generated one-liner only as a fallback for sequences that don't
- * have one, then the caller's own fallback text.
+ * Same title priority as the Library card (see LibraryPage.tsx): the name the owner gave the
+ * sequence, then a teacher-written task description, the LLM-generated one-liner only as a
+ * fallback for sequences that have neither, then the caller's own fallback text.
  */
 export function sequenceOptionTitle(
-    item: Pick<LibraryItem, "taskDescription" | "semanticSummary">,
+    item: Pick<LibraryItem, "title" | "taskDescription" | "semanticSummary">,
     fallback: string
 ): string {
-    return item.taskDescription?.trim() || item.semanticSummary?.trim() || fallback;
+    return item.title?.trim() || item.taskDescription?.trim() || item.semanticSummary?.trim() || fallback;
 }

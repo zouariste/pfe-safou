@@ -810,7 +810,7 @@ export default function WorksheetPage() {
                                             })
                                         }
                                     >
-                                        {t("worksheet.sequenceLabel", { index: idx + 1 })}
+                                        {s.title?.trim() || t("worksheet.sequenceLabel", { index: idx + 1 })}
                                         {/* Marks material the reader did not make. Without it the list
                                             is identical before and after forking a sequence, which
                                             makes the fork look like it did nothing. Admins are excluded:

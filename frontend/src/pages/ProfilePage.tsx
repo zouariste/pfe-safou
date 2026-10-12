@@ -12,6 +12,7 @@ interface WorksheetSummary {
 
 interface SequenceSummary {
     id: string;
+    title: string | null;
     programmingLanguage: string;
     taskDescription: string;
 }
@@ -344,7 +345,14 @@ export default function ProfilePage() {
                                     {mySequences.map(seq => (
                                         <div key={seq.id} className="list-group-item d-flex justify-content-between align-items-center gap-2">
                                             <Link to={`/sequence/${seq.id}`} className="flex-grow-1 text-decoration-none text-reset">
-                                                <strong>{seq.programmingLanguage}</strong>
+                                                {seq.title?.trim() ? (
+                                                    <>
+                                                        <strong className="d-block">{seq.title}</strong>
+                                                        <span className="badge text-bg-light text-muted">{seq.programmingLanguage}</span>
+                                                    </>
+                                                ) : (
+                                                    <strong>{seq.programmingLanguage}</strong>
+                                                )}
                                                 <small className="text-muted d-block">{seq.taskDescription?.substring(0, 80)}{seq.taskDescription && seq.taskDescription.length > 80 ? "..." : ""}</small>
                                             </Link>
                                             <button

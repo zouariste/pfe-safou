@@ -410,6 +410,29 @@ public class TasksController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Rename a sequence. Body: {@code {"title": "..."}}; a blank or missing title restores the
+     * default heading.
+     * Allowed: the sequence's owner, and admins.
+     */
+    @PatchMapping("/sequence/{id}/title")
+    public ResponseEntity<Map<String, String>> renameSequence(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> body) {
+
+        TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(id);
+        if (seq == null) {
+            return ResponseEntity.notFound().build();
+        }
+        ownershipService.checkOwnership(seq.getOwnerId(), "sequence title");
+
+        String stored = taskPersistenceService.updateSequenceTitle(id, body.get("title"));
+        // Map.of rejects null values, and a cleared name is null.
+        Map<String, String> response = new java.util.HashMap<>();
+        response.put("title", stored);
+        return ResponseEntity.ok(response);
+    }
+
     /** Body of PUT /api/sequence/{id}/concepts — the full new set of names. */
     @Setter
     @Getter

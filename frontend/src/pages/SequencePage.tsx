@@ -12,6 +12,7 @@ import { useAuth } from "../context/AuthContext.tsx";
 import TaskEditModal from "../components/TaskEditModal.tsx";
 import TaskTitleEditor from "../components/TaskTitleEditor.tsx";
 import TaskDescriptionEditor from "../components/TaskDescriptionEditor.tsx";
+import SequenceTitleEditor from "../components/SequenceTitleEditor.tsx";
 import ConceptPicker from "../components/ConceptPicker.tsx";
 import { useConceptCatalogue } from "../hooks/useConceptCatalogue.ts";
 import { useEventTracker } from "../hooks/useEventTracker.ts";
@@ -138,6 +139,7 @@ export default function SequencePage() {
 
         return {
             id: seqId,
+            title: raw?.title ?? null,
             programmingLanguage: seqLang,
             concepts: Array.isArray(raw?.concepts) ? raw.concepts.map(String) : [],
             tasks: tasks.sort((a, b) => a.tierLevel - b.tierLevel),
@@ -434,7 +436,14 @@ export default function SequencePage() {
                 </div>
             )}
 
-            <h1>{t("sequence.title")}</h1>
+            <div className="mb-2">
+                <SequenceTitleEditor
+                    sequenceId={seq.id}
+                    title={seq.title}
+                    canEdit={canEdit}
+                    onRenamed={(title) => setSeq((current) => current && { ...current, title })}
+                />
+            </div>
             <div className="d-flex justify-content-end gap-2 mb-3">
                 <button
                     className={`btn btn-sm d-flex align-items-center gap-1 ${

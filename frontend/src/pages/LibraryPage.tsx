@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { renderHighlight } from "../lib/highlight";
+import { sequenceOptionTitle } from "../lib/sequencePicker";
 import { useAuth } from "../context/AuthContext";
 import { useLibraryFilters } from "../hooks/useLibraryFilters";
 import TagChip from "../components/TagChip";
@@ -1140,10 +1141,10 @@ function LibrarySequenceCard({
         wasWaitingRef.current = isWaitingForLlm;
     }, [isWaitingForLlm, tags, onTagsUpdated]);
 
-    const title =
-        item.taskDescription?.trim() ||
-        item.semanticSummary?.trim() ||
-        t("library.untitled");
+    const title = sequenceOptionTitle(item, t("library.untitled"));
+    // A named sequence would otherwise lose its task description, which is the title of an
+    // unnamed one; it moves under the name instead.
+    const subtitle = item.title?.trim() ? item.taskDescription?.trim() : undefined;
 
     // A15c: visual affordance for select mode. A selected card gets a primary-border ring so the
     // user can scan their picks at a glance while scrolling a large grid.
@@ -1214,6 +1215,9 @@ function LibrarySequenceCard({
                 <h5 className="card-title mb-1" style={{ fontSize: "1rem" }}>
                     {title}
                 </h5>
+                {subtitle && !item.highlight && (
+                    <p className="card-text small text-muted mb-2">{subtitle}</p>
+                )}
 
                 {/* The sequence's semanticSummary is deliberately NOT rendered here. It is an
                     LLM-generated one-liner that the tagger prompt intends as a card tooltip; as

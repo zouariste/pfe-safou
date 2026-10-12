@@ -43,6 +43,7 @@ import java.util.UUID;
  */
 public record LibraryItemDTO(
         UUID sequenceId,
+        String title,
         String programmingLanguage,
         String taskDescription,
         String semanticSummary,

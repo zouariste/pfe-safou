@@ -52,7 +52,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
             throw new DomainValidationException("Sequence and ID cannot be null");
         }
         String sql = """
-                         SELECT id, programming_language, code_snippet, created_at, task_description,
+                         SELECT id, programming_language, code_snippet, created_at, task_description, title,
                                 version_id, strategyname, owner_id, target_language, constraint_config, tier_count,
                                 curriculum_topic_id, copied_from, diverged_at
                          FROM tiered_task_sequences
@@ -65,6 +65,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                 target.setCodeSnippet(db.getCodeSnippet());
                 target.setCreatedAt(db.getCreatedAt());
                 target.setTaskDescription(db.getTaskDescription());
+                target.setTitle(db.getTitle());
                 target.setVersionId(db.getVersionId());
                 target.setStrategyName(db.getStrategyName());
                 target.setOwnerId(db.getOwnerId());
@@ -104,7 +105,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
     @Override
     public List<TieredTaskSequenceDTO> loadAll() {
         String sql = """
-                         SELECT id, programming_language, code_snippet, created_at, task_description,
+                         SELECT id, programming_language, code_snippet, created_at, task_description, title,
                                 version_id, strategyname, owner_id, target_language, constraint_config, tier_count,
                                 curriculum_topic_id
                          FROM tiered_task_sequences
@@ -132,8 +133,8 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
         // created_at lassen wir von der DB setzen (DEFAULT)
         String sql = """
                          INSERT INTO tiered_task_sequences
-                             (id, programming_language, code_snippet, task_description, version_id, strategyname, owner_id, target_language, constraint_config, tier_count, curriculum_topic_id, copied_from)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             (id, programming_language, code_snippet, task_description, version_id, strategyname, owner_id, target_language, constraint_config, tier_count, curriculum_topic_id, copied_from, title)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                      """;
         jdbc.update(sql,
                     id,
@@ -147,7 +148,8 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                     toJsonb(sequence.getConstraints()),
                     sequence.getTierCount(),
                     sequence.getCurriculumTopicId(),
-                    sequence.getCopiedFrom()
+                    sequence.getCopiedFrom(),
+                    sequence.getTitle()
         );
     }
 
@@ -237,6 +239,17 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
     }
 
     @Override
+    public void updateTitle(UUID sequenceId, String title) {
+        if (sequenceId == null) throw new DomainValidationException("Sequence ID cannot be null");
+
+        int updated = jdbc.update("UPDATE tiered_task_sequences SET title = ? WHERE id = ?",
+                                  title, sequenceId);
+        if (updated != 1) {
+            throw new DomainValidationException("Sequence not found: " + sequenceId);
+        }
+    }
+
+    @Override
     public void tagSequence(UUID sequenceId, UUID evalInputId, String mode, UUID runId) {
         if (sequenceId == null) throw new DomainValidationException("sequenceId is required");
         if (runId == null)      throw new DomainValidationException("runId is required");
@@ -286,7 +299,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
     @Override
     public List<TieredTaskSequenceDTO> findByOwnerId(UUID ownerId) {
         String sql = """
-            SELECT id, programming_language, code_snippet, created_at, task_description,
+            SELECT id, programming_language, code_snippet, created_at, task_description, title,
                    version_id, strategyname, owner_id, target_language, constraint_config, tier_count,
                    curriculum_topic_id
             FROM tiered_task_sequences
@@ -302,6 +315,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
                     .codeSnippet(rs.getString("code_snippet"))
                     .createdAt(ts != null ? ts.toLocalDateTime() : null)
                     .taskDescription(rs.getString("task_description"))
+                    .title(rs.getString("title"))
                     .versionId(rs.getObject("version_id", UUID.class))
                     .strategyName(rs.getString("strategyname"))
                     .ownerId(rs.getObject("owner_id", UUID.class))

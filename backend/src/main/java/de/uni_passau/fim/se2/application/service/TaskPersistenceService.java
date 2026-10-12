@@ -252,6 +252,30 @@ public class TaskPersistenceService {
         return normalized;
     }
 
+    /** Longest sequence name accepted; same bound as a task name. */
+    public static final int MAX_SEQUENCE_TITLE_LENGTH = 120;
+
+    /**
+     * Renames a sequence. A blank name clears it, so the sequence shows its default heading
+     * again.
+     *
+     * @return the stored name, trimmed, or {@code null} when cleared
+     */
+    @Transactional
+    public String updateSequenceTitle(UUID sequenceId, String title) {
+        if (sequenceId == null) {
+            throw new DomainValidationException("Sequence ID must not be null.");
+        }
+        String normalized = (title == null || title.isBlank()) ? null : title.strip();
+        if (normalized != null && normalized.length() > MAX_SEQUENCE_TITLE_LENGTH) {
+            throw new DomainValidationException(
+                    "Sequence name must be at most " + MAX_SEQUENCE_TITLE_LENGTH + " characters.");
+        }
+        sequenceRepo.updateTitle(sequenceId, normalized);
+        sequenceRepo.markDiverged(sequenceId);
+        return normalized;
+    }
+
     /**
      * Loads all tasks for the given sequence.
      *
