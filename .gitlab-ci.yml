@@ -23,7 +23,7 @@ stages:          # List of stages for jobs, and their order of execution
 
 frontend-build:  # tsc -b (typechecks src and tests) + vite production bundle.
   stage: build
-  image: node:22
+  image: node:24
   cache:
     key:
       files:
@@ -65,7 +65,7 @@ backend-build:   # Compiles and packages the Spring Boot jar via the Maven wrapp
 
 frontend-test:   # Runs the vitest suite in frontend/.
   stage: test    # It only starts when the job in the build stage completes successfully.
-  image: node:22
+  image: node:24
   cache:         # Reuse the npm cache across pipelines, keyed on the lockfile.
     key:
       files:
