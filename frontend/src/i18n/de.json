@@ -266,6 +266,8 @@
     "tierLabel": "Aufgabe {{n}}",
     "title": "Gestufte Aufgabensequenz",
     "language": "Sprache",
+    "uuid": "UUID",
+    "copyUuidTitle": "UUID in die Zwischenablage kopieren",
     "concepts": "Konzepte",
     "conceptsNone": "keine",
     "conceptsEdit": "Konzepte bearbeiten",
