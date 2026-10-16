@@ -1037,6 +1037,49 @@ public class PromptBuilder {
         return json;
     }
 
+    /**
+     * AP19 Teil A: Builds the semantic tagging request. The response is held to the tagger's own
+     * schema, so it can only come back as the tag object — not as free text.
+     */
+    public ObjectNode buildSemanticTagRequest(final String systemPrompt, final String userPrompt) {
+        ObjectNode json = mapper.createObjectNode();
+        ArrayNode messages = mapper.createArrayNode();
+        messages.add(mapper.createObjectNode().put("role", "system").put("content", systemPrompt));
+        messages.add(mapper.createObjectNode().put("role", "user").put("content", userPrompt));
+        json.set("messages", messages);
+        json.set("response_format", responseFormatSemanticTags());
+        return json;
+    }
+
+    private ObjectNode responseFormatSemanticTags() {
+        ObjectNode tag = mapper.createObjectNode().put("type", "object");
+        ObjectNode tagProps = mapper.createObjectNode();
+        tagProps.set("de", mapper.createObjectNode().put("type", "string"));
+        tagProps.set("en", mapper.createObjectNode().put("type", "string"));
+        tag.set("properties", tagProps);
+        tag.putArray("required").add("de").add("en");
+        tag.put("additionalProperties", false);
+
+        ObjectNode properties = mapper.createObjectNode();
+        properties.set("primary_tags", mapper.createObjectNode().put("type", "array").set("items", tag));
+        properties.set("aliases", mapper.createObjectNode().put("type", "array").set("items", tag.deepCopy()));
+        properties.set("short_description", mapper.createObjectNode().put("type", "string"));
+
+        ObjectNode schema = mapper.createObjectNode().put("type", "object");
+        schema.set("properties", properties);
+        schema.putArray("required").add("primary_tags").add("aliases").add("short_description");
+        schema.put("additionalProperties", false);
+
+        ObjectNode js = mapper.createObjectNode();
+        js.put("name", "semantic_tags_response");
+        js.put("strict", true);
+        js.set("schema", schema);
+
+        ObjectNode rf = mapper.createObjectNode().put("type", "json_schema");
+        rf.set("json_schema", js);
+        return rf;
+    }
+
     private ObjectNode responseFormatDistractors() {
         ObjectNode rf = mapper.createObjectNode().put("type", "json_schema");
         ObjectNode js = mapper.createObjectNode();

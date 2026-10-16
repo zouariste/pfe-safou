@@ -62,8 +62,8 @@ import java.util.UUID;
  *
  * <h2>Why tags are copied rather than regenerated</h2>
  *
- * <p>Sequences are normally tagged by {@link TaskPersistenceService#persistSequence}, which runs
- * the structural tagger and publishes a {@code SequenceGeneratedEvent} for the asynchronous LLM
+ * <p>Sequences are normally tagged via {@link TaskPersistenceService#persistSequence}, which
+ * publishes a {@code SequenceGeneratedEvent} for the asynchronous LLM
  * pass. Routing clones through that path would look tidy and be wrong twice over: it bills an
  * LLM call per copied sequence, and the fresh tags would drift from the ones on the original,
  * so a copy would answer to different search terms than the thing it was copied from. Copying
@@ -236,7 +236,7 @@ public class WorksheetCloneService {
     }
 
     /**
-     * Concept links drive the structural tags and the concept display, and live in their own
+     * Concept links drive the concept display and filter, and live in their own
      * junction table rather than on the sequence row, so they need copying separately.
      */
     private void copyConcepts(UUID sourceSequenceId, UUID newSequenceId) {

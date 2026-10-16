@@ -544,6 +544,19 @@ public class OpenAiClient extends AbstractAiClient {
     }
 
     /**
+     * AP19 Teil A: semantic topic tags, held to the tagger's schema by {@code response_format}.
+     */
+    @Override
+    public String generateSemanticTags(String systemPrompt, String userPrompt)
+            throws IOException, InterruptedException {
+        ObjectNode json = promptBuilder.buildSemanticTagRequest(systemPrompt, userPrompt);
+        attachModel(json, defaultModel);
+        HttpResponse<String> response = sendRequest(json);
+        JsonNode parsed = parseResponse(response);
+        return parsed == null ? null : parsed.toString();
+    }
+
+    /**
      * AP31: Second pass — generates ONE split-aware fragment distractor. Returns the raw distractor
      * JSON ({@code {"fragmentIndex":..,"text":..,"type":..}}) or {@code null} if the model declines.
      */

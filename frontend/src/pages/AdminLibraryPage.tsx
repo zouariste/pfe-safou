@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
+import { useTopicLabel } from "../hooks/useTopicLabel";
 
 /**
  * AP19 Teil A A16 + A7: Admin "library curation" dashboard.
@@ -61,6 +62,7 @@ const STATUS_BADGE: Record<BulkRetagJob["status"], string> = {
 
 export default function AdminLibraryPage() {
     const { t, i18n } = useTranslation();
+    const topicLabel = useTopicLabel();
 
     // ── new-topics state ──────────────────────────────────────────────
     const [days, setDays] = useState<number>(7);
@@ -403,7 +405,12 @@ export default function AdminLibraryPage() {
                                 <tbody>
                                     {topics.map((row) => (
                                         <tr key={row.tagName}>
-                                            <td><code className="text-body">{row.tagName}</code></td>
+                                            <td>
+                                                <code className="text-body">{row.tagName}</code>
+                                                {topicLabel(row.tagName) !== row.tagName && (
+                                                    <span className="text-muted small ms-2">({topicLabel(row.tagName)})</span>
+                                                )}
+                                            </td>
                                             <td className="text-muted small">{fmtDate(row.firstSeen)}</td>
                                             <td className="text-end">
                                                 <span className="badge text-bg-light text-dark">{row.usageCount}</span>

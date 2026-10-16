@@ -27,9 +27,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * AP19 Teil A: LLM-powered semantic tagger.
@@ -37,6 +38,9 @@ import java.util.Locale;
  * <p>Emits domain / algorithm / data-structure tags (e.g. "fibonacci", "binary-search",
  * "caesar-chiffre"). Deliberately separated from the AP25 structural concept detection,
  * which covers syntax-level constructs (for-loop, recursion, if-else, …).
+ *
+ * <p>Each tag comes back as a {@code {"de": …, "en": …}} pair: the German slug is the canonical
+ * tag name, the English one is stored as its translation for the English UI.
  *
  * <p>Always invoked from a background thread via {@link de.uni_passau.fim.se2.application.events.SemanticTaggingListener}.
  * LLM cost is ~0.5 cent per sequence.
@@ -64,7 +68,7 @@ public class LlmSemanticTagger {
      * <p>Failure modes (all logged, all return null):
      * <ul>
      *   <li>Identity file missing</li>
-     *   <li>LLM call throws</li>
+     *   <li>LLM call throws, or the provider does not support semantic tagging</li>
      *   <li>LLM response not valid JSON</li>
      *   <li>LLM returns empty {@code primary_tags}</li>
      * </ul>
@@ -85,7 +89,7 @@ public class LlmSemanticTagger {
         String response;
         try {
             // A single blocking call — caller is already on a background thread.
-            response = aiModelClient.generateTaskDescription(combinedCode, identity, userPrompt);
+            response = aiModelClient.generateSemanticTags(identity, userPrompt);
         } catch (Exception e) {
             logger.warn("LLM call for semantic tagging failed: {}", e.getMessage());
             return null;
@@ -136,8 +140,9 @@ public class LlmSemanticTagger {
             return null;
         }
 
-        List<String> primary = extractStringArray(root.get("primary_tags"));
-        List<String> aliases = extractStringArray(root.get("aliases"));
+        Map<String, String> translations = new LinkedHashMap<>();
+        List<String> primary = extractTags(root.get("primary_tags"), translations);
+        List<String> aliases = extractTags(root.get("aliases"), translations);
 
         if (primary.isEmpty()) {
             logger.debug("Semantic tagger returned no primary_tags");
@@ -153,21 +158,39 @@ public class LlmSemanticTagger {
             }
         }
 
-        return new SemanticTagResult(primary, aliases, summary);
+        return new SemanticTagResult(primary, aliases, translations, summary);
     }
 
-    private List<String> extractStringArray(JsonNode node) {
-        if (node == null || !node.isArray()) return Collections.emptyList();
+    /**
+     * Reads a tag array. Entries are {@code {"de": …, "en": …}} objects; plain strings are
+     * accepted too (treated as the German slug, without translation). English slugs are
+     * collected into {@code translations}, keyed by the German slug.
+     */
+    private List<String> extractTags(JsonNode node, Map<String, String> translations) {
+        if (node == null || !node.isArray()) return List.of();
         List<String> out = new ArrayList<>();
         for (JsonNode n : node) {
-            if (!n.isTextual()) continue;
-            String v = n.asText().trim().toLowerCase(Locale.ROOT);
-            if (v.isEmpty()) continue;
-            // Defence-in-depth: strip characters the slug-spec forbids.
-            v = v.replaceAll("[^a-z0-9-]", "-").replaceAll("-+", "-").replaceAll("^-|-$", "");
-            if (!v.isEmpty() && !out.contains(v)) out.add(v);
+            String de;
+            String en = null;
+            if (n.isTextual()) {
+                de = slugify(n.asText());
+            } else if (n.isObject()) {
+                de = slugify(n.path("de").asText(""));
+                en = slugify(n.path("en").asText(""));
+            } else {
+                continue;
+            }
+            if (de.isEmpty() || out.contains(de)) continue;
+            out.add(de);
+            if (en != null && !en.isEmpty()) translations.putIfAbsent(de, en);
         }
         return out;
+    }
+
+    /** Lowercase hyphenated slug; defence-in-depth against characters the slug spec forbids. */
+    private static String slugify(String raw) {
+        String v = raw.trim().toLowerCase(Locale.ROOT);
+        return v.replaceAll("[^a-z0-9-]", "-").replaceAll("-+", "-").replaceAll("^-|-$", "");
     }
 
     private String truncate(String s, int n) {
@@ -175,6 +198,11 @@ public class LlmSemanticTagger {
         return s.length() <= n ? s : s.substring(0, n) + "…";
     }
 
-    /** Result of a single semantic tagging pass. */
-    public record SemanticTagResult(List<String> primaryTags, List<String> aliases, String shortDescription) {}
+    /**
+     * Result of a single semantic tagging pass.
+     *
+     * @param translations German tag slug → English tag slug, for every tag the LLM translated
+     */
+    public record SemanticTagResult(List<String> primaryTags, List<String> aliases,
+                                    Map<String, String> translations, String shortDescription) {}
 }

@@ -164,6 +164,20 @@ public interface AiModelClient {
     }
 
     /**
+     * AP19 Teil A: Generates semantic topic tags for a sequence. The response is the tagger's
+     * JSON object ({@code primary_tags}, {@code aliases} — each a list of {@code {"de","en"}}
+     * slug pairs — and {@code short_description}), as a string.
+     *
+     * @param systemPrompt the tagger identity ({@code SequenceSemanticTagger})
+     * @param userPrompt   the sequence's combined statements and code
+     * @return the JSON object as a string, or {@code null} if the provider does not support it
+     */
+    default String generateSemanticTags(String systemPrompt, String userPrompt)
+            throws IOException, InterruptedException {
+        return null;
+    }
+
+    /**
      * AP31: Generates an inline-split plan for a (solved) task — one complex line decomposed
      * into 2–4 fragments with optional display prefix/suffix and fragment distractors.
      *

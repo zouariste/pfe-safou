@@ -72,6 +72,9 @@ public class ConceptCatalog {
     @Getter
     private Set<String> validSlugs = Set.of();
 
+    /** Every name of a file concept (slug, display names, aliases) in topic-slug form. */
+    private Set<String> fileNamesAsTopicSlugs = Set.of();
+
     public ConceptCatalog(ConceptRepository conceptRepo) {
         this.conceptRepo = conceptRepo;
     }
@@ -81,6 +84,7 @@ public class ConceptCatalog {
         try {
             loadCatalog();
             loadAliasMapping();
+            this.fileNamesAsTopicSlugs = collectFileNamesAsTopicSlugs();
             log.info("ConceptCatalog loaded: {} concepts, {} aliases", bySlug.size(), aliasToSlug.size());
         } catch (IOException e) {
             log.error("Failed to load concept catalog — concept detection will be degraded", e);
@@ -204,6 +208,58 @@ public class ConceptCatalog {
 
     public Optional<CatalogEntry> getEntry(String slug) {
         return Optional.ofNullable(bySlug.get(slug));
+    }
+
+    /**
+     * Every name a concept goes by — slug, German and English display name, aliases, plus every
+     * concept added to the {@code concepts} table since — in the slug form topics (sequence tags)
+     * use. A topic in this set names a concept, and topics and concepts are kept disjoint.
+     * The table part is queried fresh, like everywhere else here; callers checking several topics
+     * should fetch the set once.
+     */
+    public Set<String> getConceptNamesAsTopicSlugs() {
+        Set<String> all = new HashSet<>(fileNamesAsTopicSlugs);
+        for (String name : loadConceptsBeyondCatalog().keySet()) {
+            addTopicSlugVariants(name, all);
+        }
+        return Collections.unmodifiableSet(all);
+    }
+
+    /**
+     * Converts a name to the slug form topics use: lowercase, umlauts transliterated, every run
+     * of other characters collapsed to a single hyphen ("Verkettete Liste" → "verkettete-liste").
+     */
+    public static String toTopicSlug(String name) {
+        if (name == null) return "";
+        String s = name.toLowerCase(Locale.ROOT)
+                .replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss");
+        return s.replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+    }
+
+    private Set<String> collectFileNamesAsTopicSlugs() {
+        Set<String> out = new HashSet<>();
+        for (CatalogEntry e : bySlug.values()) {
+            addTopicSlugVariants(e.slug, out);
+            addTopicSlugVariants(e.displayNameDe, out);
+            addTopicSlugVariants(e.displayNameEn, out);
+        }
+        aliasToSlug.keySet().forEach(alias -> addTopicSlugVariants(alias, out));
+        return Collections.unmodifiableSet(out);
+    }
+
+    /**
+     * Adds the name itself and its parts: display names like "Stapel (Stack)" or
+     * "2D Array / Matrix" bundle several names, each of which a topic could be called.
+     */
+    private static void addTopicSlugVariants(String name, Set<String> out) {
+        if (name == null || name.isBlank()) return;
+        List<String> variants = new ArrayList<>();
+        variants.add(name);
+        variants.addAll(Arrays.asList(name.split("[()/]")));
+        for (String v : variants) {
+            String slug = toTopicSlug(v);
+            if (!slug.isEmpty()) out.add(slug);
+        }
     }
 
     /**

@@ -12,7 +12,7 @@
     "curriculum": "Lehrplan",
     "library": "Bibliothek",
     "marketplace": "Marktplatz",
-    "libraryAdmin": "Tag-Kuratierung",
+    "libraryAdmin": "Themen-Kuratierung",
     "databaseTools": "Datenbank-Tools",
     "worksheets": "Arbeitsblätter",
     "contact": "Kontakt",
@@ -140,8 +140,13 @@
     "pageOf": "Seite {{page}} von {{total}}",
     "resetFilters": "Filter zurücksetzen",
     "clearSearch": "Suche löschen",
-    "activeTags": "Aktive Tags",
-    "removeTag": "Tag „{{tag}}“ entfernen",
+    "activeTags": "Aktive Themen",
+    "removeTag": "Thema „{{tag}}“ entfernen",
+    "topicSource": {
+      "llm": "Vom LLM vorgeschlagenes Thema",
+      "llmConfidence": "Vom LLM vorgeschlagenes Thema ({{confidence}} % Konfidenz)",
+      "manual": "Von einer Lehrkraft ergänztes Thema"
+    },
     "tagMode": {
       "any": "Beliebig",
       "all": "Alle"
@@ -158,8 +163,8 @@
     "ownerMeDisabled": "Anmelden, um eigene Sequenzen zu filtern",
     "tierLabel": "Stufen",
     "tierAny": "Beliebig",
-    "tagsLabel": "Tags",
-    "noTagsYet": "Noch keine Tags verfügbar",
+    "tagsLabel": "Themen",
+    "noTagsYet": "Noch keine Themen verfügbar",
     "hideTags": "Ausblenden",
     "showTags": "Anzeigen",
     "showMoreTags": "Mehr anzeigen",
@@ -168,22 +173,22 @@
     "hideConcepts": "Ausblenden",
     "showConcepts": "Anzeigen",
     "showMoreConcepts": "Mehr anzeigen",
-    "editTags": "Tags bearbeiten",
+    "editTags": "Themen bearbeiten",
     "doneEditing": "Fertig",
-    "addTags": "Tags hinzufügen",
-    "tagLoading": "Semantik-Tag wird geladen …",
+    "addTags": "Themen hinzufügen",
+    "tagLoading": "Semantisches Thema wird geladen …",
     "tagEditor": {
-      "noTags": "Noch keine Tags.",
-      "inputPlaceholder": "Neues Tag eingeben und Enter drücken …",
-      "addTag": "Tag hinzufügen",
-      "maxReached": "Maximale Anzahl Tags ({{max}}) erreicht.",
-      "errorAdd": "Tag konnte nicht hinzugefügt werden.",
-      "errorRemove": "Tag konnte nicht entfernt werden."
+      "noTags": "Noch keine Themen.",
+      "inputPlaceholder": "Neues Thema eingeben und Enter drücken …",
+      "addTag": "Thema hinzufügen",
+      "maxReached": "Maximale Anzahl Themen ({{max}}) erreicht.",
+      "errorAdd": "Thema konnte nicht hinzugefügt werden.",
+      "errorRemove": "Thema konnte nicht entfernt werden."
     },
     "empty": {
       "title": "Keine Sequenzen gefunden",
       "forQuery": "Zur Suchanfrage „{{query}}“ wurden keine Treffer gefunden.",
-      "didYouMean": "Meintest du eines dieser Tags?"
+      "didYouMean": "Meintest du eines dieser Themen?"
     }
   },
 
@@ -275,8 +280,8 @@
     "conceptsDone": "Fertig",
     "conceptsEditHint": "Änderungen werden sofort gespeichert.",
     "conceptsSaveError": "Konzepte konnten nicht gespeichert werden.",
-    "libraryTags": "Bibliothek-Tags",
-    "llmTagLoading": "Semantik-Tag wird berechnet",
+    "libraryTags": "Bibliothek-Themen",
+    "llmTagLoading": "Semantisches Thema wird berechnet",
     "shareSequence": "Sequenz teilen",
     "copied": "Kopiert!",
     "codeSnippet": "Code-Snippet",
@@ -511,7 +516,7 @@
     "enterUuid": "Sequenz-ID (UUID) eingeben",
     "pasteUuids": "Mehrere UUIDs einfügen",
     "searchSequenceLabel": "Sequenz suchen",
-    "searchSequencePlaceholder": "Suche nach Beschreibung, Tag oder Sprache...",
+    "searchSequencePlaceholder": "Suche nach Beschreibung, Thema oder Sprache...",
     "loadingSequences": "Sequenzen werden geladen...",
     "noMatchingSequences": "Keine passenden Sequenzen gefunden.",
     "untitledSequence": "Unbenannte Sequenz",
@@ -930,40 +935,40 @@
     "deleting": "Löschen...",
 
     "library": {
-      "title": "Bibliothek — Tag-Kuratierung",
+      "title": "Bibliothek — Themen-Kuratierung",
       "newTopics": {
         "title": "Neue Themen",
-        "subtitle": "Tags, die in den letzten {{days}} Tagen erstmals aufgetaucht sind — Kandidaten für Kanonisierung oder Merge.",
+        "subtitle": "Themen, die in den letzten {{days}} Tagen erstmals aufgetaucht sind — Kandidaten für Kanonisierung oder Merge.",
         "daysLabel": "Tage",
         "refresh": "Neu laden",
-        "empty": "Keine neuen Tags in diesem Zeitraum.",
+        "empty": "Keine neuen Themen in diesem Zeitraum.",
         "errorLoad": "Neue Themen konnten nicht geladen werden.",
-        "colTag": "Tag",
+        "colTag": "Thema",
         "colFirstSeen": "Erstmals",
         "colUsage": "Nutzung",
         "mergeAction": "Zusammenführen…"
       },
       "merge": {
-        "title": "Tags zusammenführen",
-        "subtitle": "Einen Tag in einen anderen umbenennen — systemweit. Wiederholbar: Duplikate werden entfernt, nicht dupliziert.",
+        "title": "Themen zusammenführen",
+        "subtitle": "Ein Thema in ein anderes umbenennen — systemweit. Wiederholbar: Duplikate werden entfernt, nicht dupliziert.",
         "fromLabel": "Von",
-        "fromPlaceholder": "z.B. rekursion",
+        "fromPlaceholder": "z.B. fib-folge",
         "toLabel": "Nach",
-        "toPlaceholder": "z.B. recursion",
+        "toPlaceholder": "z.B. fibonacci",
         "confirm": "Zusammenführen",
         "clear": "Zurücksetzen",
         "success": "„{{from}}“ in „{{to}}“ überführt — {{count}} Zeilen betroffen.",
-        "errorBothRequired": "Beide Tag-Namen sind erforderlich.",
+        "errorBothRequired": "Beide Themennamen sind erforderlich.",
         "errorSame": "„Von“ und „Nach“ müssen unterschiedlich sein.",
         "errorServer": "Zusammenführen fehlgeschlagen — bitte erneut versuchen."
       },
       "retag": {
         "title": "Bulk-Retagger",
-        "subtitle": "Startet einen Hintergrund-Job, der alle Sequences semantisch neu taggt. Antwortet sofort mit einer Job-ID — Fortschritt wird alle 2 Sekunden aktualisiert.",
+        "subtitle": "Startet einen Hintergrund-Job, der die Themen der Sequences per LLM neu bestimmt. Antwortet sofort mit einer Job-ID — Fortschritt wird alle 2 Sekunden aktualisiert.",
         "filterLabel": "Filter",
-        "filterMissing": "Nur fehlende LLM-Tags (empfohlen)",
-        "filterAll": "Alle Sequences (überschreibt bestehende Tags)",
-        "warningAll": "Achtung: \"Alle\" überschreibt vorhandene LLM-Tags und verbraucht für jede Sequence LLM-Credits (~0,5 ct/Sequence).",
+        "filterMissing": "Nur fehlende LLM-Themen oder englische Bezeichnungen (empfohlen)",
+        "filterAll": "Alle Sequences (überschreibt bestehende Themen)",
+        "warningAll": "Achtung: \"Alle\" überschreibt vorhandene LLM-Themen und verbraucht für jede Sequence LLM-Credits (~0,5 ct/Sequence).",
         "start": "Job starten",
         "starting": "Startet…",
         "errorStart": "Job konnte nicht gestartet werden — bitte erneut versuchen.",
@@ -1356,10 +1361,10 @@
         "<strong>Export</strong> — PDF (Puzzle oder Freiform) sowie CSV-/JSON-Export."
       ],
       "libraryTitle": "Bibliothek",
-      "libraryBody": "Durchsuche und verwende alle für dich verfügbaren Sequenzen. Filtere nach Programmiersprache, Konzept-Tags, Stufenanzahl oder per Volltextsuche. Kopiere jede Sequenz mit einem Klick in dein eigenes Arbeitsblatt.",
+      "libraryBody": "Durchsuche und verwende alle für dich verfügbaren Sequenzen. Filtere nach Programmiersprache, Themen, Konzepten, Stufenanzahl oder per Volltextsuche. Kopiere jede Sequenz mit einem Klick in dein eigenes Arbeitsblatt.",
       "libraryItems": [
         "<strong>Volltextsuche</strong> — durchsucht Aufgabenstellungen und Code gleichzeitig.",
-        "<strong>Tags</strong> — strukturelle Tags (z.B. <code>for-loop</code>) und semantische Tags (z.B. <code>fibonacci</code>).",
+        "<strong>Themen</strong> — worum es in einer Sequenz geht (z.B. <code>fibonacci</code>), getrennt von den <strong>Konzepten</strong>, die sie verwendet (z.B. <code>for loop</code>).",
         "<strong>Ein-Klick-Kopie</strong> — kopiert eine Sequenz direkt in eines deiner Arbeitsblätter.",
         "<strong>Filter in der URL</strong> — Filterlinks lassen sich teilen."
       ],
@@ -1416,10 +1421,10 @@
         "Schüler sehen Lehrer-Bedienelemente nie, unabhängig von der URL."
       ],
       "adminTitle": "Admin-Bereich",
-      "adminBody": "Werkzeuge nur für Admins zur Verwaltung der Plattform: Benutzerkonten, Tag-Pflege und Sammeloperationen auf den Bibliotheksinhalten.",
+      "adminBody": "Werkzeuge nur für Admins zur Verwaltung der Plattform: Benutzerkonten, Themen-Pflege und Sammeloperationen auf den Bibliotheksinhalten.",
       "adminItems": [
         "<strong>Benutzerverwaltung</strong> — Konten ansehen, Rollen ändern und Konten löschen.",
-        "<strong>Bibliotheks-Admin</strong> — doppelte Tags zusammenführen, Sequenzen nach Modell-Updates neu taggen."
+        "<strong>Bibliotheks-Admin</strong> — doppelte Themen zusammenführen, Sequenzen nach Modell-Updates neu verschlagworten."
       ]
     },
     "auth": {
@@ -1591,22 +1596,21 @@
       "search": [
         "<strong>Volltextsuche</strong> — durchsucht Aufgabenstellungen und Code gleichzeitig. Die Volltextindizierung von Postgres sorgt für schnelle, relevante Treffer.",
         "<strong>Hervorgehobene Textstellen</strong> — passende Stellen werden in der Trefferkarte markiert, sodass du sofort siehst, warum eine Sequenz gefunden wurde.",
-        "<strong>\"Meintest du eines dieser Tags?\"</strong> — trigrammbasierte Vorschläge bei Tippfehlern (<em>recursiv</em> → <em>recursive</em>)."
+        "<strong>\"Meintest du eines dieser Themen?\"</strong> — trigrammbasierte Vorschläge bei Tippfehlern (<em>fibonaci</em> → <em>fibonacci</em>)."
       ],
-      "tagsTitle": "Tags und Filter",
-      "tagsBody": "Jede Sequenz hat zwei Tag-Ebenen:",
+      "tagsTitle": "Themen und Filter",
+      "tagsBody": "Jede Sequenz hat Themen — worum es in ihr geht — in zwei Arten:",
       "tags": [
-        "<strong>Strukturelle Tags</strong> (grau) — automatisch aus dem Code erkannt: <code>for-loop</code>, <code>recursion</code>, <code>arrays</code>. Sie werden direkt nach der Generierung synchron ergänzt.",
-        "<strong>Semantische Tags</strong> (mit ✨) — vom LLM erzeugte Themenbezeichnungen: <code>fibonacci</code>, <code>binary-search</code>, <code>caesar-cipher</code>. Sie treffen einige Sekunden nach der Generierung ein.",
-        "<strong>Manuelle Tags</strong> (blau) — von der Lehrkraft ergänzt; sie werden vom Auto-Tagging nie überschrieben."
+        "<strong>Semantische Themen</strong> (blau, mit ✨) — vom LLM erzeugte Themenbezeichnungen: <code>fibonacci</code>, <code>binaersuche</code>, <code>caesar-chiffre</code>. Sie treffen einige Sekunden nach der Generierung ein und werden in der Sprache der Oberfläche angezeigt.",
+        "<strong>Manuelle Themen</strong> (grün) — von der Lehrkraft ergänzt; sie werden vom Auto-Tagging nie überschrieben. Sie erscheinen genau so, wie sie eingegeben wurden."
       ],
-      "filtersBody": "Zu den Filtern gehören: Programmiersprache, Stufenanzahl (3 oder 5), Tags, Erstellungsdatum und Besitzer (\"Nur meine\" / \"Alle\").",
+      "filtersBody": "Zu den Filtern gehören: Programmiersprache, Stufenanzahl (3 oder 5), Themen, Konzepte, Erstellungsdatum und Besitzer (\"Nur meine\" / \"Alle\").",
       "filtersUrl": "Die Filter stehen in der URL, sodass sich Links teilen lassen.",
       "conceptsTitle": "Konzepte",
-      "conceptsBody": "Neben Tags sind Sequenzen auch mit Einträgen aus dem kuratierten Konzeptkatalog verknüpft (demselben, den auch die Generierung und die Lehrplan-Zuordnung nutzen) — eine zweite Filterdimension in der Seitenleiste.",
+      "conceptsBody": "Unabhängig von den Themen sind Sequenzen mit Einträgen aus dem kuratierten Konzeptkatalog verknüpft (demselben, den auch die Generierung und die Lehrplan-Zuordnung nutzen) — den Programmierkonstrukten, die eine Sequenz verwendet, etwa Schleifen oder Rekursion. Themen und Konzepte überschneiden sich nie; jedes ist eine eigene Filterdimension in der Seitenleiste.",
       "concepts": [
-        "Jede Sequenzkarte zeigt die Konzepte, die sie abdeckt, direkt neben ihren Tags — klicke eines an, um danach zu filtern, genau wie bei einem Tag.",
-        "Die Konzept-Wolke in der Seitenleiste funktioniert wie die Tag-Wolke: eine Anzahl pro Konzept, \"Mehr anzeigen\" und ein Beliebig/Alle-Modus, sobald du mehrere ausgewählt hast."
+        "Jede Sequenzkarte zeigt die Konzepte, die sie abdeckt, direkt neben ihren Themen — klicke eines an, um danach zu filtern, genau wie bei einem Thema.",
+        "Die Konzept-Wolke in der Seitenleiste funktioniert wie die Themen-Wolke: eine Anzahl pro Konzept, \"Mehr anzeigen\" und ein Beliebig/Alle-Modus, sobald du mehrere ausgewählt hast."
       ],
       "copyTitle": "Ein-Klick-Kopie",
       "copy": [
@@ -1625,11 +1629,11 @@
         "Wähle beliebig viele Sequenzen aus, auch über mehrere Seiten hinweg — eine fixierte Leiste unten zeigt die Anzahl.",
         "\"N in Arbeitsblatt kopieren\" schickt sie alle in einer Anfrage in ein Arbeitsblatt und zeigt, wie viele neu hinzugefügt und wie viele bereits vorhanden waren."
       ],
-      "editTitle": "Tags bearbeiten (Lehrkraft)",
+      "editTitle": "Themen bearbeiten (Lehrkraft)",
       "edit": [
-        "Fahre bei einer eigenen Sequenz über ein Tag, um den Entfernen-Button (×) einzublenden.",
-        "Klicke auf das Stift-Symbol, um neue Tags hinzuzufügen. Eine Autovervollständigung schlägt bestehende Tags vor, um Dubletten zu vermeiden.",
-        "Manuelle Tags sind immer blau und werden vom Auto-Tagger nie überschrieben."
+        "Fahre bei einer eigenen Sequenz über ein Thema, um den Entfernen-Button (×) einzublenden.",
+        "Klicke auf das Stift-Symbol, um neue Themen hinzuzufügen. Eine Autovervollständigung schlägt bestehende Themen vor, um Dubletten zu vermeiden.",
+        "Manuelle Themen sind immer grün und werden vom Auto-Tagger nie überschrieben."
       ],
       "curriculumTitle": "Bibliothek und Lehrplan",
       "curriculumBody": "Über „Sequenzen ansehen“ auf der Lehrplan-Seite gelangst du in die Bibliothek, bereits nach dem Lehrplanthema gefiltert — so siehst du sofort das gesamte relevante Material zu einem Thema, ob Jahrgangsstufe oder Modul."
@@ -1695,7 +1699,7 @@
       "intro": "Die Sequenz-Seite zeigt alle Aufgaben innerhalb einer generierten Sequenz. Jede Aufgabe entspricht einer Stufe — Stufe 1 ist am leichtesten, Stufe 3 (oder 5) am komplexesten.",
       "overviewTitle": "Übersicht",
       "overview": [
-        "<strong>Sprache / Konzepte</strong> — erkannte Programmiersprache, Konzept-Tags, semantische Zusammenfassung.",
+        "<strong>Sprache / Konzepte</strong> — erkannte Programmiersprache, Konzepte, semantische Zusammenfassung.",
         "<strong>Aufgabenbeschreibung</strong> — das übergreifende Thema aller Aufgaben der Sequenz.",
         "<strong>Code-Snippet</strong> — ursprünglicher oder Referenzcode (falls bei der Generierung angegeben).",
         "<strong>Distraktor-Anzeige</strong> — ein Abzeichen zeigt, ob für eine Aufgabe Distraktor-Blöcke aktiv sind."
@@ -1727,7 +1731,7 @@
         "Bei fremden Sequenzen ist der Bearbeiten-Button gesperrt — kopiere zuerst das Arbeitsblatt."
       ],
       "similarTitle": "Das könnte dich auch interessieren…",
-      "similarBody": "Die Lehrer-Ansicht zeigt ein Panel mit Sequenzen, die Tags mit dieser hier teilen, sortiert nach Tag-Überschneidung und Sprachübereinstimmung — eine schnelle Möglichkeit, verwandtes Material ohne neue Suche zu finden. Ist nichts Ähnliches vorhanden, blendet sich das Panel selbst aus."
+      "similarBody": "Die Lehrer-Ansicht zeigt ein Panel mit Sequenzen, die Themen mit dieser hier teilen, sortiert nach Themen-Überschneidung und Sprachübereinstimmung — eine schnelle Möglichkeit, verwandtes Material ohne neue Suche zu finden. Ist nichts Ähnliches vorhanden, blendet sich das Panel selbst aus."
     },
     "solve": {
       "title": "Hilfe zur Löse-Seite",
@@ -1985,8 +1989,8 @@
       "adminTitle": "Admin-Funktionen",
       "admin": [
         "<strong>Benutzerverwaltung</strong> — Benutzer ansehen, bearbeiten, befördern und löschen.",
-        "<strong>Sammel-Retagging</strong> — die Tag-Analyse über alle Sequenzen neu laufen lassen (nützlich nach Modell-Updates oder geänderter Tag-Konfiguration).",
-        "<strong>Bibliotheks-Admin</strong> — doppelte Tags zusammenführen, neu entdeckte Themen ansehen."
+        "<strong>Sammel-Retagging</strong> — die Themen-Analyse über alle Sequenzen neu laufen lassen (nützlich nach Modell-Updates oder geänderter Themen-Konfiguration).",
+        "<strong>Bibliotheks-Admin</strong> — doppelte Themen zusammenführen, neu entdeckte Themen ansehen."
       ],
       "adminLink": "Zur vollständigen Admin-Dokumentation"
     },
@@ -2050,7 +2054,7 @@
       "tipsTitle": "Tipps",
       "tips": [
         "Nach dem Erstellen kannst du über die Sequenz-Seite weiterhin Distraktoren erzeugen.",
-        "Die Sequenz wird nach dem Erstellen automatisch getaggt — prüfe die Tags in der Bibliothek.",
+        "Die Sequenz erhält nach dem Erstellen automatisch ihre Themen — prüfe sie in der Bibliothek.",
         "Die Stufen müssen nicht denselben Algorithmus verwenden — T1 könnte eine einfache Schleife sein, T3 eine rekursive Variante."
       ]
     },
@@ -2079,7 +2083,7 @@
     },
     "admin": {
       "title": "Hilfe zum Admin-Bereich",
-      "intro": "Die Admin-Werkzeuge geben dir den Gesamtüberblick über die CodeOwl-Plattform — Benutzerkonten, Tag-Pflege und Sammeloperationen in der Bibliothek. Diese Seiten sind für Lehrkräfte und Schüler nicht sichtbar.",
+      "intro": "Die Admin-Werkzeuge geben dir den Gesamtüberblick über die CodeOwl-Plattform — Benutzerkonten, Themen-Pflege und Sammeloperationen in der Bibliothek. Diese Seiten sind für Lehrkräfte und Schüler nicht sichtbar.",
       "usersTitle": "Benutzerverwaltung",
       "users": [
         "<strong>Alle Benutzer ansehen</strong> — Liste aller registrierten Konten mit Rolle, Email und Erstellungsdatum.",
@@ -2089,11 +2093,11 @@
       ],
       "libraryTitle": "Bibliotheks-Admin",
       "library": [
-        "<strong>Sammel-Retagging</strong> — lässt die automatische <em>Tag</em>-Analyse über alle Sequenzen (oder nur die ohne LLM-Tag) neu laufen. Läuft als Hintergrundjob mit Live-Fortschrittsbalken und einer Liste früherer Läufe. Nutze das nach einem Update des Tagger-Modells oder nach geänderten Tag-Regeln.",
-        "<strong>Sammel-Konzept-Neuklassifizierung</strong> — derselbe Job-Typ, aber für die strukturelle <em>Konzept</em>-Erkennung statt Tags (alle Sequenzen, oder nur die ohne Konzept). Getrennt vom Sammel-Retagging, weil Tags und Konzepte unabhängige Systeme sind.",
-        "<strong>Neue-Themen-Bericht</strong> — Tags, die innerhalb eines wählbaren Zeitfensters (1–90 Tage) erstmals aufgetaucht sind, mit Nutzungszahl und einem Ein-Klick-\"Zusammenführen…\" in einen bestehenden Tag — der schnellste Weg, einen Tippfehler oder Beinahe-Dublette früh zu erwischen.",
-        "<strong>Tags zusammenführen</strong> — doppelte oder fast identische Tags zu einer kanonischen Form vereinen (z.B. <code>for_loop</code> + <code>for-loop</code> → <code>for-loop</code>). Alle Zuordnungen zu Sequenzen werden automatisch aktualisiert.",
-        "<strong>Tag-Übersicht</strong> — alle Tags nach Verwendungshäufigkeit sortiert ansehen; verwaiste oder kaum genutzte Tags erkennen, die aufgeräumt werden könnten."
+        "<strong>Sammel-Retagging</strong> — lässt die automatische <em>Themen</em>-Analyse über alle Sequenzen (oder nur die ohne LLM-Thema bzw. ohne englische Bezeichnung) neu laufen. Läuft als Hintergrundjob mit Live-Fortschrittsbalken und einer Liste früherer Läufe. Nutze das nach einem Update des Tagger-Modells oder nach geänderten Themen-Regeln.",
+        "<strong>Sammel-Konzept-Neuklassifizierung</strong> — derselbe Job-Typ, aber für die strukturelle <em>Konzept</em>-Erkennung statt Themen (alle Sequenzen, oder nur die ohne Konzept). Getrennt vom Sammel-Retagging, weil Themen und Konzepte unabhängige Systeme sind.",
+        "<strong>Neue-Themen-Bericht</strong> — Themen, die innerhalb eines wählbaren Zeitfensters (1–90 Tage) erstmals aufgetaucht sind, mit Nutzungszahl und einem Ein-Klick-\"Zusammenführen…\" in ein bestehendes Thema — der schnellste Weg, einen Tippfehler oder Beinahe-Dublette früh zu erwischen.",
+        "<strong>Themen zusammenführen</strong> — doppelte oder fast identische Themen zu einer kanonischen Form vereinen (z.B. <code>fib-folge</code> + <code>fibonacci-folge</code> → <code>fibonacci-folge</code>). Alle Zuordnungen zu Sequenzen werden automatisch aktualisiert.",
+        "<strong>Themen-Übersicht</strong> — alle Themen nach Verwendungshäufigkeit sortiert ansehen; verwaiste oder kaum genutzte Themen erkennen, die aufgeräumt werden könnten."
       ],
       "databaseTitle": "Datenbank-Werkzeuge",
       "database": [
@@ -2110,8 +2114,8 @@
       ],
       "cautionTitle": "Vorsicht",
       "caution": [
-        "Sammel-Retagging überschreibt vorhandene automatisch erzeugte Tags. <strong>Manuelle Tags werden nie angetastet.</strong>",
-        "Das Zusammenführen von Tags lässt sich über die Oberfläche nicht rückgängig machen — lege vor großen Merge-Operationen ein Datenbank-Backup an.",
+        "Sammel-Retagging überschreibt vorhandene automatisch erzeugte Themen. <strong>Manuelle Themen werden nie angetastet.</strong>",
+        "Das Zusammenführen von Themen lässt sich über die Oberfläche nicht rückgängig machen — lege vor großen Merge-Operationen ein Datenbank-Backup an.",
         "Beim Löschen von Benutzern werden deren Inhalte nicht mitgelöscht — prüfe, ob du verwaiste Sequenzen behalten willst."
       ]
     }

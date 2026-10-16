@@ -27,9 +27,9 @@ import java.util.UUID;
 /**
  * Represents a single tag on a TieredTaskSequence (AP19 Teil A).
  *
- * <p>Tags have three sources, stored in the {@code source} column:
+ * <p>Tags are the sequence's <em>topics</em> (what it is about) and are disjoint from its concepts
+ * (which syntax constructs it uses). They have two sources, stored in the {@code source} column:
  * <ul>
- *   <li>{@code "auto"} &mdash; structural, derived from AP25 Concept Detection (for-loop, recursion, …)</li>
  *   <li>{@code "llm"} &mdash; semantic, derived from an LLM analysis (fibonacci, binary-search, …)</li>
  *   <li>{@code "manual"} &mdash; teacher-set, must never be overwritten by auto-retag</li>
  * </ul>
@@ -39,7 +39,7 @@ import java.util.UUID;
 public class SequenceTagDTO {
     private UUID sequenceId;
     private String tagName;
-    /** One of "auto", "llm", "manual". */
+    /** One of "llm", "manual". */
     private String source;
     /** Only populated for LLM-generated tags (0.0-1.0). */
     private Float confidence;

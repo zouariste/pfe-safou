@@ -449,10 +449,17 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
             params.addAll(ids);
         } else if (onlyMissingLlmTags) {
             sql.append("""
-                     AND NOT EXISTS (
-                         SELECT 1 FROM sequence_tags tg
-                         WHERE tg.sequence_id = s.id AND tg.source = 'llm'
-                     )
+                     AND (NOT EXISTS (
+                             SELECT 1 FROM sequence_tags tg
+                             WHERE tg.sequence_id = s.id AND tg.source = 'llm'
+                          )
+                          -- Tagged before topics were bilingual: re-tag to get English labels.
+                          OR EXISTS (
+                             SELECT 1 FROM sequence_tags tg
+                             WHERE tg.sequence_id = s.id AND tg.source = 'llm'
+                               AND NOT EXISTS (SELECT 1 FROM topic_translations tt
+                                               WHERE tt.tag_name = tg.tag_name)
+                          ))
                     """);
         }
 

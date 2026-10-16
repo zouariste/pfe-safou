@@ -52,11 +52,11 @@ public class SequenceTagDAO implements SequenceTagRepository {
 
     @Override
     public List<SequenceTagDTO> findBySequenceId(UUID sequenceId) {
-        // Order: manual first (teacher-set, most trustworthy), then llm, then auto; tag_name as tiebreaker.
+        // Order: manual first (teacher-set, most trustworthy), then llm; tag_name as tiebreaker.
         return jdbc.query(
             "SELECT sequence_id, tag_name, source, confidence, created_at "
             + "FROM sequence_tags WHERE sequence_id = ? "
-            + "ORDER BY CASE source WHEN 'manual' THEN 0 WHEN 'llm' THEN 1 ELSE 2 END, tag_name",
+            + "ORDER BY CASE source WHEN 'manual' THEN 0 ELSE 1 END, tag_name",
             ROW_MAPPER, sequenceId);
     }
 
@@ -68,7 +68,7 @@ public class SequenceTagDAO implements SequenceTagRepository {
         List<SequenceTagDTO> rows = jdbc.query(
             "SELECT sequence_id, tag_name, source, confidence, created_at "
             + "FROM sequence_tags WHERE sequence_id IN (" + placeholders + ") "
-            + "ORDER BY CASE source WHEN 'manual' THEN 0 WHEN 'llm' THEN 1 ELSE 2 END, tag_name",
+            + "ORDER BY CASE source WHEN 'manual' THEN 0 ELSE 1 END, tag_name",
             ROW_MAPPER, sequenceIds.toArray());
 
         return rows.stream().collect(Collectors.groupingBy(SequenceTagDTO::getSequenceId));
@@ -97,7 +97,7 @@ public class SequenceTagDAO implements SequenceTagRepository {
                     SequenceTagDTO t = deduped.get(i);
                     ps.setObject(1, t.getSequenceId());
                     ps.setString(2, t.getTagName().trim().toLowerCase(Locale.ROOT));
-                    ps.setString(3, t.getSource() != null ? t.getSource() : "auto");
+                    ps.setString(3, t.getSource() != null ? t.getSource() : "manual");
                     if (t.getConfidence() != null) ps.setFloat(4, t.getConfidence());
                     else ps.setNull(4, Types.REAL);
                 }
@@ -139,10 +139,14 @@ public class SequenceTagDAO implements SequenceTagRepository {
         if (prefix == null) prefix = "";
         String normalized = prefix.trim().toLowerCase(Locale.ROOT) + "%";
         int cap = Math.max(1, Math.min(limit, 50));
+        // Also match the English label, so teachers typing in English find the canonical
+        // (German) topic instead of creating a duplicate.
         return jdbc.query(
-            "SELECT DISTINCT tag_name FROM sequence_tags WHERE tag_name LIKE ? "
-            + "ORDER BY tag_name LIMIT ?",
-            (rs, n) -> rs.getString("tag_name"), normalized, cap);
+            "SELECT DISTINCT tg.tag_name FROM sequence_tags tg "
+            + "LEFT JOIN topic_translations tt ON tt.tag_name = tg.tag_name "
+            + "WHERE tg.tag_name LIKE ? OR tt.label_en LIKE ? "
+            + "ORDER BY tg.tag_name LIMIT ?",
+            (rs, n) -> rs.getString("tag_name"), normalized, normalized, cap);
     }
 
     @Override
@@ -187,6 +191,43 @@ public class SequenceTagDAO implements SequenceTagRepository {
         int renamed = jdbc.update(
             "UPDATE sequence_tags SET tag_name = ? WHERE tag_name = ?",
             to, from);
+        // Carry the translation over if the target has none; the source name is gone either way.
+        jdbc.update(
+            "INSERT INTO topic_translations (tag_name, label_en) "
+            + "SELECT ?, label_en FROM topic_translations WHERE tag_name = ? "
+            + "ON CONFLICT (tag_name) DO NOTHING",
+            to, from);
+        jdbc.update("DELETE FROM topic_translations WHERE tag_name = ?", from);
         return deletedDuplicates + renamed;
+    }
+
+    @Override
+    @Transactional
+    public void upsertTranslations(Map<String, String> translations) {
+        if (translations == null || translations.isEmpty()) return;
+
+        List<Map.Entry<String, String>> rows = new ArrayList<>();
+        for (Map.Entry<String, String> e : translations.entrySet()) {
+            if (e.getKey() == null || e.getKey().isBlank() || e.getValue() == null || e.getValue().isBlank()) continue;
+            rows.add(Map.entry(e.getKey().trim().toLowerCase(Locale.ROOT), e.getValue().trim().toLowerCase(Locale.ROOT)));
+        }
+        if (rows.isEmpty()) return;
+
+        jdbc.batchUpdate(
+            "INSERT INTO topic_translations (tag_name, label_en) VALUES (?, ?) "
+            + "ON CONFLICT (tag_name) DO UPDATE SET label_en = EXCLUDED.label_en",
+            rows, rows.size(),
+            (ps, e) -> {
+                ps.setString(1, e.getKey());
+                ps.setString(2, e.getValue());
+            });
+    }
+
+    @Override
+    public Map<String, String> findAllTranslations() {
+        Map<String, String> out = new LinkedHashMap<>();
+        jdbc.query("SELECT tag_name, label_en FROM topic_translations ORDER BY tag_name",
+            rs -> { out.put(rs.getString("tag_name"), rs.getString("label_en")); });
+        return out;
     }
 }

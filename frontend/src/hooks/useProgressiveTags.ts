@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import type { SequenceTag } from "../types/models";
+import { refreshTopicLabels } from "./useTopicLabel";
 
 /**
  * AP19 Teil A (A13): Progressive enhancement hook for LLM semantic tags.
  *
- * <p>Problem: when a teacher generates a new sequence, the auto (structural) tags are written
- * synchronously, but the LLM semantic tagger runs on a background thread and may take 3–10s to
- * complete. The user shouldn't have to refresh to see the semantic tags land. Equally, we don't
+ * <p>Problem: when a teacher generates a new sequence, the LLM semantic tagger runs on a
+ * background thread and may take 3–10s to complete. The user shouldn't have to refresh to see the semantic tags land. Equally, we don't
  * want to poll forever for old sequences — that would generate constant load for zero benefit
  * (the LLM tagger ran, or failed, long ago).
  *
@@ -100,6 +100,7 @@ export function useProgressiveTags(
                 setTags(fresh);
                 if (fresh.some((t) => t.source === "llm")) {
                     setIsWaitingForLlm(false);
+                    refreshTopicLabels(); // the new topics brought English labels with them
                     return; // success — stop the chain
                 }
             }

@@ -19,7 +19,7 @@ export interface TagChipSkeletonProps {
 export default function TagChipSkeleton({
     size = "sm",
     widthCh = 6,
-    ariaLabel = "Loading semantic tag",
+    ariaLabel = "Loading semantic topic",
 }: TagChipSkeletonProps) {
     return (
         <span

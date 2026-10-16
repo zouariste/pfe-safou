@@ -172,6 +172,16 @@ public class LibraryController {
     }
 
     /**
+     * English display slugs for topics (sequence tags), keyed by the canonical German tag name.
+     * The frontend uses this to show topics in English when the UI language is English;
+     * tags without an entry are shown as-is.
+     */
+    @GetMapping("/tags/translations")
+    public ResponseEntity<Map<String, String>> tagTranslations() {
+        return ResponseEntity.ok(tagService.getTopicTranslations());
+    }
+
+    /**
      * Retrieves a list of sequences similar to the provided sequence ID.
      *
      * @param sequenceId UUID of the reference sequence.

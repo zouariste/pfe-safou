@@ -101,4 +101,25 @@ class ConceptCatalogTest {
         dto.setGenerated(true);
         return dto;
     }
+
+    @Test
+    @DisplayName("every name of a concept is recognised in topic-slug form")
+    void conceptNamesAsTopicSlugs() {
+        var names = catalog.getConceptNamesAsTopicSlugs();
+        assertTrue(names.contains("linked-list"), "file slug");
+        assertTrue(names.contains("verkettete-liste"), "German display name");
+        assertTrue(names.contains("stapel"), "part of the German display name \"Stapel (Stack)\"");
+        assertTrue(names.contains("matrix"), "part of the English display name \"2D Array / Matrix\"");
+        assertTrue(names.contains("hashtable"), "alias");
+        assertTrue(names.contains("quantum-computing"), "concept added beyond the file");
+        assertFalse(names.contains("fibonacci"), "a topic, not a concept");
+    }
+
+    @Test
+    @DisplayName("topic slugs transliterate umlauts and collapse separators")
+    void toTopicSlug() {
+        assertEquals("zweidimensionales-array", ConceptCatalog.toTopicSlug("Zweidimensionales Array"));
+        assertEquals("schleife-ueber-maenner-strasse", ConceptCatalog.toTopicSlug(" Schleife über Männer-Straße "));
+        assertEquals("", ConceptCatalog.toTopicSlug(null));
+    }
 }

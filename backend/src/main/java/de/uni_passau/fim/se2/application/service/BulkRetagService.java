@@ -178,8 +178,7 @@ public class BulkRetagService {
     private void processOne(RetagCandidate c, JobState state) {
         try {
             if (c.combinedCode() == null || c.combinedCode().isBlank()) {
-                // Nothing to tag — treat as processed-but-skipped so the counter advances.
-                state.processed.incrementAndGet();
+                // Nothing to tag — a skip; the finally block still counts it as processed.
                 return;
             }
 
@@ -188,11 +187,10 @@ public class BulkRetagService {
 
             if (result == null) {
                 state.failed.incrementAndGet();
-                state.processed.incrementAndGet();
                 return;
             }
 
-            tagService.writeLlmTags(c.sequenceId(), result.primaryTags(), result.aliases());
+            tagService.writeLlmTags(c.sequenceId(), result.primaryTags(), result.aliases(), result.translations());
 
             if (result.shortDescription() != null && !result.shortDescription().isBlank()) {
                 try {
@@ -209,6 +207,7 @@ public class BulkRetagService {
             logger.warn("Retag failed for sequence {} in job {}: {}",
                     c.sequenceId(), state.jobId, e.getMessage());
         } finally {
+            // The one place a candidate is counted, whichever way processing ended.
             state.processed.incrementAndGet();
         }
     }
@@ -236,7 +235,8 @@ public class BulkRetagService {
      * <p>Three filter flavors:
      * <ul>
      *   <li>{@code filter = "missing-llm-tags"} &mdash; only sequences that currently have no
-     *       {@code source='llm'} tag row (<b>default</b>).</li>
+     *       {@code source='llm'} tag row, or an LLM tag without an English translation
+     *       (<b>default</b>).</li>
      *   <li>{@code filter = "all"} &mdash; every sequence in the system (dangerous — bounded by
      *       {@link #MAX_CANDIDATES_PER_JOB}).</li>
      *   <li>{@code sequenceIds = [...]} &mdash; explicit list; overrides {@code filter}.</li>
