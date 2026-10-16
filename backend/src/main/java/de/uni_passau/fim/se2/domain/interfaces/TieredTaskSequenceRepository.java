@@ -222,7 +222,8 @@ public interface TieredTaskSequenceRepository {
      * and combined tier statements + code. Internally joins {@code tasks} and aggregates with
      * {@code string_agg} so no per-sequence N+1 query is needed.
      *
-     * @param onlyMissingLlmTags  if true, restricts to sequences with no {@code source='llm'} tag row
+     * @param onlyMissingLlmTags  if true, restricts to sequences with no {@code source='llm'} tag row,
+     *                            or with an LLM tag that has no {@code topic_translations} row
      * @param specificIds         if non-null and non-empty, restricts to just these IDs
      *                            (overrides {@code onlyMissingLlmTags})
      * @param limit               safety cap on rows returned; negative/zero → no limit

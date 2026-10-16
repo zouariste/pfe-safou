@@ -27,7 +27,10 @@ import java.util.UUID;
 
 /**
  * Repository for sequence tags (AP19 Teil A).
- * Tags are keyed by (sequence_id, tag_name) and carry a source (auto / llm / manual).
+ * Tags are keyed by (sequence_id, tag_name) and carry a source (llm / manual).
+ *
+ * <p>The canonical {@code tag_name} is the German slug; {@code topic_translations} maps it to an
+ * English slug for display when the UI runs in English.
  */
 public interface SequenceTagRepository {
 
@@ -44,7 +47,7 @@ public interface SequenceTagRepository {
     void upsertAll(List<SequenceTagDTO> tags);
 
     /**
-     * Replace all tags of a given source for a sequence (e.g. re-tagging structural tags
+     * Replace all tags of a given source for a sequence (e.g. re-running the LLM tagger
      * after a code change). Never touches tags with a different source.
      */
     void replaceForSource(UUID sequenceId, String source, List<SequenceTagDTO> newTags);
@@ -77,6 +80,15 @@ public interface SequenceTagRepository {
      * @return number of sequence_tags rows affected (renamed + deleted)
      */
     int mergeTags(String fromTagName, String toTagName);
+
+    /**
+     * Stores English display slugs for canonical tag names (key → value). Existing translations
+     * are overwritten, so a re-tag can correct a bad one.
+     */
+    void upsertTranslations(Map<String, String> translations);
+
+    /** Every known canonical tag name → English slug mapping. */
+    Map<String, String> findAllTranslations();
 
     record TagCount(String tagName, long count) {}
 

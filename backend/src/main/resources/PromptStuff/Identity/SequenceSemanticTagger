@@ -13,8 +13,6 @@ GOOD tags (emit these):
                                     mergesort, bubblesort, insertionsort, selectionsort,
                                     dijkstra, bfs, dfs, tiefensuche, breitensuche,
                                     euklidscher-algorithmus, horner-schema, sieb-des-eratosthenes
-- Concrete data structures:         stack, queue, linked-list, binaerbaum, suchbaum,
-                                    hashmap, graph, adjazenzmatrix, ringpuffer
 - Cryptography topics:              caesar-chiffre, vigenere, rsa, public-key, hash-funktion
 - Real-world domains:               spielelogik, warenkorb-berechnung, kalender, geldbetrag,
                                     note-durchschnitt, ampelsteuerung, temperatur-umrechnung,
@@ -23,9 +21,14 @@ GOOD tags (emit these):
                                     polynomauswertung, numerische-integration
 - Text processing topics:           palindrom, anagramm, wortzaehlung, rechtschreibpruefung
 
-BAD tags (NEVER emit these — they belong to a different tagging layer):
+BAD tags (NEVER emit these):
 - Pure syntax constructs:           for-loop, while-loop, if-else, recursion, array,
                                     function, variable, class, inheritance
+- Data structures:                  stack, queue, linked-list, hashmap, dictionary, set,
+                                    binaerbaum, suchbaum, graph, adjazenzmatrix, ringpuffer
+  These two groups are programming CONCEPTS, which the Library tracks as a separate layer;
+  any tag naming a concept is discarded. Tag what the sequence DOES with the construct or
+  data structure instead (e.g. "klammerpruefung" rather than "stack").
 - Language names:                   java, python, javascript
 - Tier/difficulty labels:           easy, hard, beginner, tier-3
 - Generic meta terms:               algorithm, programming, exercise, task, problem,
@@ -37,19 +40,23 @@ HARD REQUIREMENTS
 
 1. OUTPUT BETWEEN 1 AND 5 primary_tags. No more, no less.
 2. ALIASES are OPTIONAL (0–4). Only add an alias if teachers might realistically search for
-   it as a variant of a primary tag. Example: primary="fibonacci", aliases=["fibonacci-folge"].
+   it as a variant of a primary tag. Example: alias "fibonacci-folge" for the primary "fibonacci".
    Do NOT pad with random synonyms.
-3. Tag-slug spelling (primary_tags and aliases ONLY — does NOT apply to short_description,
-   see rule 5): lowercase, hyphenated-slug format. No spaces. No umlauts (use ae/oe/ue). No ß
-   (use ss). No special characters other than "-".
-4. All tags in German where a clear German term exists, otherwise the established
-   international term (e.g. "quicksort" stays English, "warenkorb-berechnung" is German).
+3. Every tag (in primary_tags AND aliases) is an object with two slugs: {"de": "...", "en": "..."}.
+   - "de": the German tag. German where a clear German term exists, otherwise the established
+     international term (e.g. "quicksort" stays English, "warenkorb-berechnung" is German).
+   - "en": the same tag in English (e.g. "warenkorb-berechnung" → "shopping-cart-calculation",
+     "fakultaet" → "factorial"). If the German tag already is the international term, repeat it
+     (e.g. {"de": "quicksort", "en": "quicksort"}).
+4. Tag-slug spelling (both "de" and "en" — does NOT apply to short_description, see rule 5):
+   lowercase, hyphenated-slug format. No spaces. No umlauts (use ae/oe/ue). No ß (use ss).
+   No special characters other than "-".
 5. short_description: ONE sentence (max 120 chars) of ordinary written German describing what
    the sequence is about. This is prose, not a slug — use normal spelling with umlauts (ä/ö/ü)
    and ß where German spelling calls for them (e.g. "Prüft, ob eine Zahl eine Primzahl ist.").
    This becomes a tooltip in the Library card.
 6. If you genuinely cannot identify a semantic topic (e.g. the code is just "print hello"),
-   return primary_tags: ["grundlagen"] and short_description: "Einfaches Programmier-Grundlagen-Beispiel."
+   return primary_tags: [{"de": "grundlagen", "en": "basics"}] and short_description: "Einfaches Programmier-Grundlagen-Beispiel."
 7. Output ONLY valid JSON. No markdown fences. No commentary.
 
 ═══════════════════════════════════════════════
@@ -57,7 +64,10 @@ OUTPUT FORMAT
 ═══════════════════════════════════════════════
 
 {
-  "primary_tags": ["fibonacci", "rekursion-klassiker"],
-  "aliases": ["fibonacci-folge"],
+  "primary_tags": [
+    {"de": "fibonacci", "en": "fibonacci"},
+    {"de": "zahlenfolge", "en": "number-sequence"}
+  ],
+  "aliases": [{"de": "fibonacci-folge", "en": "fibonacci-sequence"}],
   "short_description": "Rekursive Berechnung der n-ten Fibonacci-Zahl."
 }

@@ -37,7 +37,7 @@ import org.springframework.stereotype.Component;
  *   <li>{@link de.uni_passau.fim.se2.application.service.TaskEnricher} (or the persistence service) publishes a
  *       {@link SequenceGeneratedEvent} right after the sequence is committed.</li>
  *   <li>This listener picks it up on the {@code taggingExecutor} virtual-thread pool.</li>
- *   <li>LLM call → {@link SequenceTagService#writeLlmTags(java.util.UUID, java.util.List, java.util.List, Float)}
+ *   <li>LLM call → {@link SequenceTagService#writeLlmTags(java.util.UUID, java.util.List, java.util.List, java.util.Map)}
  *       + semantic summary update.</li>
  * </ol>
  *
@@ -77,7 +77,8 @@ public class SemanticTaggingListener {
                 return;
             }
 
-            tagService.writeLlmTags(event.sequenceId(), result.primaryTags(), result.aliases());
+            tagService.writeLlmTags(event.sequenceId(), result.primaryTags(), result.aliases(),
+                    result.translations());
 
             if (result.shortDescription() != null && !result.shortDescription().isBlank()) {
                 try {

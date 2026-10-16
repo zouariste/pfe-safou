@@ -328,7 +328,7 @@ export interface ClassWorksheetInfo {
 
 // ── AP19 Teil A: Library / Sequence Tags ───────────────
 
-export type SequenceTagSource = "auto" | "llm" | "manual";
+export type SequenceTagSource = "llm" | "manual";
 
 export interface SequenceTag {
     sequenceId: string;

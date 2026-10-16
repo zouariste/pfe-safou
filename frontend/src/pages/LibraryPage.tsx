@@ -12,6 +12,7 @@ import TagEditor from "../components/TagEditor";
 import ToastMessage from "../components/ToastMessage";
 import AddToWorksheetModal from "../components/AddToWorksheetModal";
 import { useProgressiveTags } from "../hooks/useProgressiveTags";
+import { useTopicLabel } from "../hooks/useTopicLabel";
 import type {
     LibraryItem,
     LibrarySearchResponse,
@@ -87,6 +88,7 @@ const CONCEPT_FACET_STEP = 50;
  */
 export default function LibraryPage() {
     const { t } = useTranslation();
+    const topicLabel = useTopicLabel();
     const { isLoggedIn, user, isAdmin, isStudent } = useAuth();
     const navigate = useNavigate();
     const filters = useLibraryFilters();
@@ -476,9 +478,9 @@ export default function LibraryPage() {
                                             key={tag}
                                             className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1"
                                             onClick={() => filters.removeTag(tag)}
-                                            title={t("library.removeTag", { tag }) as string}
+                                            title={t("library.removeTag", { tag: topicLabel(tag) }) as string}
                                         >
-                                            {tag}
+                                            {topicLabel(tag)}
                                             <i className="bi bi-x-circle-fill"></i>
                                         </button>
                                     ))}
@@ -1032,6 +1034,7 @@ function TagFacetChip({
     bucket: LibraryFacetBucket;
     filters: ReturnType<typeof useLibraryFilters>;
 }) {
+    const topicLabel = useTopicLabel();
     const active = filters.tags.includes(bucket.name);
     return (
         <button
@@ -1039,7 +1042,7 @@ function TagFacetChip({
             onClick={() => filters.toggleTag(bucket.name)}
             style={{ fontSize: "0.78rem" }}
         >
-            <span>{bucket.name}</span>
+            <span>{topicLabel(bucket.name)}</span>
             <span className={`badge ${active ? "text-bg-light text-dark" : "text-bg-secondary"}`}>
                 {bucket.count}
             </span>
@@ -1409,6 +1412,7 @@ function EmptyState({
     onSuggestion: (s: string) => void;
 }) {
     const { t } = useTranslation();
+    const topicLabel = useTopicLabel();
     return (
         <div className="text-center py-5">
             <i className="bi bi-search display-5 text-muted"></i>
@@ -1428,7 +1432,7 @@ function EmptyState({
                                 className="btn btn-sm btn-outline-secondary"
                                 onClick={() => onSuggestion(s)}
                             >
-                                {s}
+                                {topicLabel(s)}
                             </button>
                         ))}
                     </div>

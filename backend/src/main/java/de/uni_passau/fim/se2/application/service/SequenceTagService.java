@@ -20,6 +20,7 @@ package de.uni_passau.fim.se2.application.service;
 
 import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
 import de.uni_passau.fim.se2.domain.interfaces.SequenceTagRepository;
+import de.uni_passau.fim.se2.domain.model.ConceptCatalog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,16 +30,17 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
- * Central service for sequence tags (AP19 Teil A).
+ * Central service for sequence tags (AP19 Teil A), shown to users as <em>topics</em>.
  *
- * <p>Three tag sources, all stored in the same table:
+ * <p>Topics describe what a sequence is about and are disjoint from its concepts (which live in
+ * {@code tiered_task_sequence_concepts}). Two sources, stored in the same table:
  * <ul>
- *   <li><b>auto</b> &mdash; structural tags derived from AP25 Concept Detection. Written synchronously
- *       at the end of task generation (cheap DB INSERT, never blocks meaningfully).</li>
  *   <li><b>llm</b> &mdash; semantic tags derived from an LLM call. Written asynchronously via
  *       {@link de.uni_passau.fim.se2.application.events.SequenceGeneratedEvent} (see AsyncConfig).</li>
  *   <li><b>manual</b> &mdash; teacher-set. Must never be overwritten by auto-retag.</li>
@@ -46,6 +48,7 @@ import java.util.stream.Collectors;
  *
  * <p>All tag names are normalized to lowercase-trimmed slugs by the DAO layer, so callers
  * can pass user-typed variants ("Fibonacci", " fibonacci ", "FIBONACCI") without worry.
+ * The canonical name is German; LLM tags also carry an English slug in {@code topic_translations}.
  */
 @Service
 public class SequenceTagService {
@@ -53,55 +56,11 @@ public class SequenceTagService {
     private static final Logger logger = LoggerFactory.getLogger(SequenceTagService.class);
 
     private final SequenceTagRepository tagRepo;
+    private final ConceptCatalog conceptCatalog;
 
-    public SequenceTagService(SequenceTagRepository tagRepo) {
+    public SequenceTagService(SequenceTagRepository tagRepo, ConceptCatalog conceptCatalog) {
         this.tagRepo = tagRepo;
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Auto-tagging (AP25 structural concepts)
-    // ─────────────────────────────────────────────────────────────────────
-
-    /**
-     * Writes structural tags (source='auto') for a freshly generated sequence.
-     * Synchronous — this is a single batched INSERT and runs in the same transaction
-     * as sequence persist.
-     *
-     * <p>Manual tags are <b>never</b> overwritten: the DAO uses {@code ON CONFLICT DO NOTHING},
-     * so an already-existing (sequence_id, tag_name) row stays untouched.
-     *
-     * @param sequenceId the freshly-persisted sequence
-     * @param conceptSlugs structural concept slugs from AP25 (e.g. "for-loop", "recursion")
-     */
-    public void autoTagStructural(UUID sequenceId, List<String> conceptSlugs) {
-        if (sequenceId == null || conceptSlugs == null || conceptSlugs.isEmpty()) return;
-
-        List<SequenceTagDTO> tags = conceptSlugs.stream()
-                .filter(s -> s != null && !s.isBlank())
-                .map(s -> new SequenceTagDTO(sequenceId, s.trim().toLowerCase(Locale.ROOT), "auto"))
-                .toList();
-
-        if (tags.isEmpty()) return;
-        try {
-            tagRepo.upsertAll(tags);
-            logger.debug("Auto-tagged sequence {} with {} structural tags", sequenceId, tags.size());
-        } catch (Exception e) {
-            // Tagging failures must never block the generation pipeline (see AP19 Teil A spec).
-            logger.warn("Structural auto-tagging failed for sequence {}: {}", sequenceId, e.getMessage());
-        }
-    }
-
-    /**
-     * Replaces all structural (auto) tags for a sequence. Used when code is meaningfully edited
-     * and concept detection re-runs. Manual + LLM tags survive.
-     */
-    public void replaceStructuralTags(UUID sequenceId, List<String> newConceptSlugs) {
-        if (sequenceId == null) return;
-        List<SequenceTagDTO> fresh = newConceptSlugs == null ? List.of() : newConceptSlugs.stream()
-                .filter(s -> s != null && !s.isBlank())
-                .map(s -> new SequenceTagDTO(sequenceId, s.trim().toLowerCase(Locale.ROOT), "auto"))
-                .toList();
-        tagRepo.replaceForSource(sequenceId, "auto", fresh);
+        this.conceptCatalog = conceptCatalog;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -109,26 +68,29 @@ public class SequenceTagService {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Writes semantic LLM tags (source='llm'). Called by {@link #writeLlmTags(UUID, List, List)}
-     * with the primary + alias split.
+     * Writes semantic LLM tags (source='llm'). Primary and alias are both stored so they all
+     * contribute to search; primaries get a higher confidence.
+     *
+     * <p>Tags that name a concept — in German or in their English translation — are dropped:
+     * the prompt asks the LLM not to emit them, this makes sure, so topics and concepts stay
+     * disjoint.
+     *
+     * @param translations canonical (German) tag name → English slug; may be null or partial
      */
-    public void writeLlmTags(UUID sequenceId, List<String> primaryTags, List<String> aliases) {
-        writeLlmTags(sequenceId, primaryTags, aliases, null);
-    }
-
-    /**
-     * Writes semantic LLM tags. Primary and alias are both stored with source='llm'
-     * so they all contribute to search; primaries get a higher confidence.
-     */
-    public void writeLlmTags(UUID sequenceId, List<String> primaryTags, List<String> aliases, Float confidence) {
+    public void writeLlmTags(UUID sequenceId, List<String> primaryTags, List<String> aliases,
+                             Map<String, String> translations) {
         if (sequenceId == null) return;
+
+        Map<String, String> english = translations == null ? Map.of() : translations;
+        Set<String> conceptNames = conceptCatalog.getConceptNamesAsTopicSlugs();
+        Predicate<String> namesConcept = tag -> conceptNames.contains(tag)
+                || conceptNames.contains(ConceptCatalog.toTopicSlug(english.get(tag)));
 
         List<SequenceTagDTO> tags = new java.util.ArrayList<>();
         if (primaryTags != null) {
             for (String p : primaryTags) {
                 if (p == null || p.isBlank()) continue;
-                tags.add(new SequenceTagDTO(sequenceId, p.trim().toLowerCase(Locale.ROOT), "llm",
-                        confidence != null ? confidence : 0.9f));
+                tags.add(new SequenceTagDTO(sequenceId, p.trim().toLowerCase(Locale.ROOT), "llm", 0.9f));
             }
         }
         if (aliases != null) {
@@ -136,6 +98,11 @@ public class SequenceTagService {
                 if (a == null || a.isBlank()) continue;
                 tags.add(new SequenceTagDTO(sequenceId, a.trim().toLowerCase(Locale.ROOT), "llm", 0.6f));
             }
+        }
+        int before = tags.size();
+        tags.removeIf(t -> namesConcept.test(t.getTagName()));
+        if (tags.size() < before) {
+            logger.debug("Dropped {} LLM tags naming a concept for sequence {}", before - tags.size(), sequenceId);
         }
         if (tags.isEmpty()) return;
 
@@ -148,6 +115,20 @@ public class SequenceTagService {
                     aliases == null ? 0 : aliases.size());
         } catch (Exception e) {
             logger.warn("LLM tag write failed for sequence {}: {}", sequenceId, e.getMessage());
+            return;
+        }
+
+        Map<String, String> keptTranslations = new java.util.HashMap<>();
+        for (SequenceTagDTO t : tags) {
+            String en = english.get(t.getTagName());
+            if (en != null) keptTranslations.put(t.getTagName(), en);
+        }
+        if (!keptTranslations.isEmpty()) {
+            try {
+                tagRepo.upsertTranslations(keptTranslations);
+            } catch (Exception e) {
+                logger.warn("Topic translation write failed for sequence {}: {}", sequenceId, e.getMessage());
+            }
         }
     }
 
@@ -185,6 +166,11 @@ public class SequenceTagService {
 
     public List<String> autocomplete(String prefix, int limit) {
         return tagRepo.findTagsByPrefix(prefix, limit);
+    }
+
+    /** Canonical tag name → English slug, for localizing topic chips in the UI. */
+    public Map<String, String> getTopicTranslations() {
+        return tagRepo.findAllTranslations();
     }
 
     /**

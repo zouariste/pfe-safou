@@ -606,7 +606,7 @@ export default function SequencePage() {
                     <div className="d-flex flex-wrap gap-1 align-items-center">
                         <span className="me-1 text-muted small">
                             <i className="bi bi-tag-fill me-1"></i>
-                            {t("sequence.libraryTags", "Library tags")}:
+                            {t("sequence.libraryTags", "Library topics")}:
                         </span>
                         {!editingTags && sequenceTags.map((tag) => (
                             <TagChip
@@ -619,7 +619,7 @@ export default function SequencePage() {
                             <span className="text-muted small fst-italic">{t("library.tagEditor.noTags")}</span>
                         )}
                         {isWaitingForLlm && (
-                            <TagChipSkeleton ariaLabel={t("sequence.llmTagLoading", "Waiting for semantic tag") as string} />
+                            <TagChipSkeleton ariaLabel={t("sequence.llmTagLoading", "Waiting for semantic topic") as string} />
                         )}
                         {!editingTags && (
                             <button

@@ -12,7 +12,7 @@
     "curriculum": "Curriculum",
     "library": "Library",
     "marketplace": "Marketplace",
-    "libraryAdmin": "Tag Curation",
+    "libraryAdmin": "Topic Curation",
     "databaseTools": "Database Tools",
     "worksheets": "Worksheets",
     "contact": "Contact",
@@ -140,8 +140,13 @@
     "pageOf": "Page {{page}} of {{total}}",
     "resetFilters": "Reset filters",
     "clearSearch": "Clear search",
-    "activeTags": "Active tags",
-    "removeTag": "Remove tag \"{{tag}}\"",
+    "activeTags": "Active topics",
+    "removeTag": "Remove topic \"{{tag}}\"",
+    "topicSource": {
+      "llm": "Topic suggested by the LLM",
+      "llmConfidence": "Topic suggested by the LLM ({{confidence}}% confidence)",
+      "manual": "Topic added by a teacher"
+    },
     "tagMode": {
       "any": "Any",
       "all": "All"
@@ -158,8 +163,8 @@
     "ownerMeDisabled": "Log in to filter your own sequences",
     "tierLabel": "Tiers",
     "tierAny": "Any",
-    "tagsLabel": "Tags",
-    "noTagsYet": "No tags yet",
+    "tagsLabel": "Topics",
+    "noTagsYet": "No topics yet",
     "hideTags": "Hide",
     "showTags": "Show",
     "showMoreTags": "Show more",
@@ -168,22 +173,22 @@
     "hideConcepts": "Hide",
     "showConcepts": "Show",
     "showMoreConcepts": "Show more",
-    "editTags": "Edit tags",
+    "editTags": "Edit topics",
     "doneEditing": "Done",
-    "addTags": "Add tags",
-    "tagLoading": "Semantic tag on the way …",
+    "addTags": "Add topics",
+    "tagLoading": "Semantic topic on the way …",
     "tagEditor": {
-      "noTags": "No tags yet.",
-      "inputPlaceholder": "Type a tag and press Enter …",
-      "addTag": "Add tag",
-      "maxReached": "Tag limit ({{max}}) reached.",
-      "errorAdd": "Could not add tag.",
-      "errorRemove": "Could not remove tag."
+      "noTags": "No topics yet.",
+      "inputPlaceholder": "Type a topic and press Enter …",
+      "addTag": "Add topic",
+      "maxReached": "Topic limit ({{max}}) reached.",
+      "errorAdd": "Could not add topic.",
+      "errorRemove": "Could not remove topic."
     },
     "empty": {
       "title": "No sequences found",
       "forQuery": "No matches for \"{{query}}\".",
-      "didYouMean": "Did you mean one of these tags?"
+      "didYouMean": "Did you mean one of these topics?"
     }
   },
 
@@ -275,8 +280,8 @@
     "conceptsDone": "Done",
     "conceptsEditHint": "Changes are saved immediately.",
     "conceptsSaveError": "Could not save the concepts.",
-    "libraryTags": "Library tags",
-    "llmTagLoading": "Waiting for semantic tag",
+    "libraryTags": "Library topics",
+    "llmTagLoading": "Waiting for semantic topic",
     "shareSequence": "Share Sequence",
     "copied": "Copied!",
     "codeSnippet": "Code Snippet",
@@ -511,7 +516,7 @@
     "enterUuid": "Enter sequence ID (UUID)",
     "pasteUuids": "Paste multiple UUIDs",
     "searchSequenceLabel": "Find a sequence",
-    "searchSequencePlaceholder": "Search by description, tag or language...",
+    "searchSequencePlaceholder": "Search by description, topic or language...",
     "loadingSequences": "Loading sequences...",
     "noMatchingSequences": "No matching sequences found.",
     "untitledSequence": "Untitled sequence",
@@ -930,40 +935,40 @@
     "deleting": "Deleting...",
 
     "library": {
-      "title": "Library tag curation",
+      "title": "Library topic curation",
       "newTopics": {
         "title": "New topics",
-        "subtitle": "Tags that first appeared in the last {{days}} days — candidates for canonicalisation or merge.",
+        "subtitle": "Topics that first appeared in the last {{days}} days — candidates for canonicalisation or merge.",
         "daysLabel": "Days",
         "refresh": "Refresh",
-        "empty": "No new tags in this window.",
+        "empty": "No new topics in this window.",
         "errorLoad": "Could not load new topics.",
-        "colTag": "Tag",
+        "colTag": "Topic",
         "colFirstSeen": "First seen",
         "colUsage": "Usage",
         "mergeAction": "Merge…"
       },
       "merge": {
-        "title": "Merge tags",
-        "subtitle": "Rename one tag to another across every sequence. Safe to re-run — duplicates are dropped, not duplicated.",
+        "title": "Merge topics",
+        "subtitle": "Rename one topic to another across every sequence. Safe to re-run — duplicates are dropped, not duplicated.",
         "fromLabel": "From",
-        "fromPlaceholder": "e.g. rekursion",
+        "fromPlaceholder": "e.g. fib-folge",
         "toLabel": "To",
-        "toPlaceholder": "e.g. recursion",
+        "toPlaceholder": "e.g. fibonacci",
         "confirm": "Merge",
         "clear": "Clear",
         "success": "Merged \"{{from}}\" into \"{{to}}\" — {{count}} rows affected.",
-        "errorBothRequired": "Both tag names are required.",
+        "errorBothRequired": "Both topic names are required.",
         "errorSame": "\"From\" and \"To\" must differ.",
         "errorServer": "Merge failed — please try again."
       },
       "retag": {
         "title": "Bulk-Retagger",
-        "subtitle": "Starts a background job that re-runs LLM semantic tagging. Returns immediately with a job ID — progress is polled every 2 seconds.",
+        "subtitle": "Starts a background job that re-runs LLM semantic topic tagging. Returns immediately with a job ID — progress is polled every 2 seconds.",
         "filterLabel": "Filter",
-        "filterMissing": "Missing LLM tags only (recommended)",
-        "filterAll": "All sequences (overwrites existing tags)",
-        "warningAll": "Warning: \"All\" overwrites existing LLM tags and consumes LLM credits for every sequence (~$0.005/sequence).",
+        "filterMissing": "Missing LLM topics or English labels only (recommended)",
+        "filterAll": "All sequences (overwrites existing topics)",
+        "warningAll": "Warning: \"All\" overwrites existing LLM topics and consumes LLM credits for every sequence (~$0.005/sequence).",
         "start": "Start job",
         "starting": "Starting…",
         "errorStart": "Could not start job — please try again.",
@@ -1356,10 +1361,10 @@
         "<strong>Export</strong> — PDF (puzzle or free-form) and CSV/JSON export."
       ],
       "libraryTitle": "Library",
-      "libraryBody": "Browse, search, and reuse all sequences available to you. Filter by programming language, concept tags, tier count, or full-text search. Copy any sequence into your own worksheet with one click.",
+      "libraryBody": "Browse, search, and reuse all sequences available to you. Filter by programming language, topics, concepts, tier count, or full-text search. Copy any sequence into your own worksheet with one click.",
       "libraryItems": [
         "<strong>Full-Text Search</strong> — searches problem statements and code simultaneously.",
-        "<strong>Tags</strong> — structural tags (e.g., <code>for-loop</code>) and semantic tags (e.g., <code>fibonacci</code>).",
+        "<strong>Topics</strong> — what a sequence is about (e.g., <code>fibonacci</code>), kept separate from the <strong>concepts</strong> it uses (e.g., <code>for loop</code>).",
         "<strong>One-Click Copy</strong> — copy a sequence directly into one of your worksheets.",
         "<strong>URL-State Filters</strong> — shareable filter links."
       ],
@@ -1416,10 +1421,10 @@
         "Students never see teacher controls regardless of URL."
       ],
       "adminTitle": "Admin Panel",
-      "adminBody": "Admin-only tools for managing the platform: user accounts, tag hygiene, and bulk operations on library content.",
+      "adminBody": "Admin-only tools for managing the platform: user accounts, topic hygiene, and bulk operations on library content.",
       "adminItems": [
         "<strong>User Management</strong> — view, edit roles, and delete user accounts.",
-        "<strong>Library Admin</strong> — merge duplicate tags, bulk-retag sequences after model updates."
+        "<strong>Library Admin</strong> — merge duplicate topics, bulk-retag sequences after model updates."
       ]
     },
     "auth": {
@@ -1591,22 +1596,21 @@
       "search": [
         "<strong>Full-Text Search</strong> — searches problem statements and code simultaneously. Postgres full-text indexing ensures fast, relevant results.",
         "<strong>Highlighted Snippets</strong> — matching text is highlighted in the result card so you immediately see why a sequence matched.",
-        "<strong>\"Did you mean one of these tags?\"</strong> — trigram-based fuzzy suggestions for typos (<em>recursiv</em> → <em>recursive</em>)."
+        "<strong>\"Did you mean one of these topics?\"</strong> — trigram-based fuzzy suggestions for typos (<em>fibonaci</em> → <em>fibonacci</em>)."
       ],
-      "tagsTitle": "Tags & Filters",
-      "tagsBody": "Every sequence has two layers of tags:",
+      "tagsTitle": "Topics & Filters",
+      "tagsBody": "Every sequence has topics — what it is about — in two kinds:",
       "tags": [
-        "<strong>Structural Tags</strong> (grey) — automatically detected from code: <code>for-loop</code>, <code>recursion</code>, <code>arrays</code>. These are added synchronously right after generation.",
-        "<strong>Semantic Tags</strong> (with ✨) — LLM-generated topic labels: <code>fibonacci</code>, <code>binary-search</code>, <code>caesar-cipher</code>. These arrive a few seconds after generation.",
-        "<strong>Manual Tags</strong> (blue) — added by the teacher; never overwritten by auto-tagging."
+        "<strong>Semantic topics</strong> (blue, with ✨) — LLM-generated topic labels: <code>fibonacci</code>, <code>binary-search</code>, <code>caesar-cipher</code>. These arrive a few seconds after generation and are shown in the language of the interface.",
+        "<strong>Manual topics</strong> (green) — added by the teacher; never overwritten by auto-tagging. Shown exactly as typed."
       ],
-      "filtersBody": "Filters include: programming language, tier count (3 or 5), tags, date created, owner (\"Mine\" / \"All\").",
+      "filtersBody": "Filters include: programming language, tier count (3 or 5), topics, concepts, date created, owner (\"Mine\" / \"All\").",
       "filtersUrl": "Filters are reflected in the URL so links can be shared.",
       "conceptsTitle": "Concepts",
-      "conceptsBody": "Alongside tags, sequences are also linked to entries in the curated concept catalogue (the same one used by generation and the curriculum mapping) — a second filter dimension in the sidebar.",
+      "conceptsBody": "Separately from topics, sequences are linked to entries in the curated concept catalogue (the same one used by generation and the curriculum mapping) — the programming constructs a sequence uses, such as loops or recursion. Topics and concepts never overlap; each is its own filter dimension in the sidebar.",
       "concepts": [
-        "Every sequence card shows the concepts it covers, right next to its tags — click one to filter by it, the same way a tag chip does.",
-        "The sidebar's concept cloud works exactly like the tag cloud: a count per concept, \"show more\", and an any/all match mode once you've picked several."
+        "Every sequence card shows the concepts it covers, right next to its topics — click one to filter by it, the same way a topic chip does.",
+        "The sidebar's concept cloud works exactly like the topic cloud: a count per concept, \"show more\", and an any/all match mode once you've picked several."
       ],
       "copyTitle": "One-Click Copy",
       "copy": [
@@ -1625,11 +1629,11 @@
         "Pick as many sequences as you like, across pages — a sticky bar at the bottom tracks your count.",
         "\"Copy N to worksheet\" sends them all to one worksheet in a single request and shows how many were added versus already present."
       ],
-      "editTitle": "Editing Tags (Teacher)",
+      "editTitle": "Editing Topics (Teacher)",
       "edit": [
-        "Hover over a tag on your own sequence to reveal the remove (×) button.",
-        "Click the pencil icon to add new tags. An autocomplete suggests existing tags to avoid duplicates.",
-        "Manual tags are always blue and are never overwritten by the auto-tagger."
+        "Hover over a topic on your own sequence to reveal the remove (×) button.",
+        "Click the pencil icon to add new topics. An autocomplete suggests existing topics to avoid duplicates.",
+        "Manual topics are always green and are never overwritten by the auto-tagger."
       ],
       "curriculumTitle": "Library + Curriculum",
       "curriculumBody": "From the Curriculum page, “View sequences” redirects to the Library with the curriculum topic pre-filled as a filter — so you instantly see all relevant material for a given topic, whether it is a grade level or a module."
@@ -1695,7 +1699,7 @@
       "intro": "The Sequence Page displays all tasks within a generated sequence. Each task corresponds to a tier — Tier 1 is easiest, Tier 3 (or 5) is most complex.",
       "overviewTitle": "Overview",
       "overview": [
-        "<strong>Language / Concepts</strong> — detected programming language, concept tags, semantic summary.",
+        "<strong>Language / Concepts</strong> — detected programming language, concepts, semantic summary.",
         "<strong>Task Description</strong> — the general topic for all tasks in the sequence.",
         "<strong>Code Snippet</strong> — original or reference code (if provided during generation).",
         "<strong>Distractor Indicator</strong> — a badge shows if distractor blocks are active for a task."
@@ -1727,7 +1731,7 @@
         "On foreign sequences, the Edit button is locked — copy the worksheet first."
       ],
       "similarTitle": "You Might Also Like…",
-      "similarBody": "Teacher view shows a panel of sequences that share tags with this one, ranked by tag overlap and language match — a quick way to find related material without a fresh search. It hides itself when there's nothing similar."
+      "similarBody": "Teacher view shows a panel of sequences that share topics with this one, ranked by topic overlap and language match — a quick way to find related material without a fresh search. It hides itself when there's nothing similar."
     },
     "solve": {
       "title": "Solve Page Help",
@@ -1985,8 +1989,8 @@
       "adminTitle": "Admin Features",
       "admin": [
         "<strong>User Management</strong> — view, edit, promote, and delete users.",
-        "<strong>Bulk Retag</strong> — re-run tag analysis across all sequences (useful after model updates or tag config changes).",
-        "<strong>Library Admin</strong> — merge duplicate tags, view newly discovered topics."
+        "<strong>Bulk Retag</strong> — re-run topic analysis across all sequences (useful after model updates or topic config changes).",
+        "<strong>Library Admin</strong> — merge duplicate topics, view newly discovered topics."
       ],
       "adminLink": "Full Admin documentation"
     },
@@ -2050,7 +2054,7 @@
       "tipsTitle": "Tips",
       "tips": [
         "After creation, you can still generate distractors via the sequence page.",
-        "The sequence is tagged automatically after creation — check the Library to verify tags.",
+        "The sequence gets its topics automatically after creation — check the Library to verify them.",
         "Tiers don't have to share the same algorithm — T1 could be a simple loop, T3 a recursive version."
       ]
     },
@@ -2079,7 +2083,7 @@
     },
     "admin": {
       "title": "Admin Panel Help",
-      "intro": "Admin tools give you global oversight of the CodeOwl platform — user accounts, tag hygiene, and bulk library operations. These pages are not visible to teachers or students.",
+      "intro": "Admin tools give you global oversight of the CodeOwl platform — user accounts, topic hygiene, and bulk library operations. These pages are not visible to teachers or students.",
       "usersTitle": "User Management",
       "users": [
         "<strong>View all users</strong> — list of every registered account with role, email, and creation date.",
@@ -2089,11 +2093,11 @@
       ],
       "libraryTitle": "Library Admin",
       "library": [
-        "<strong>Bulk Retag</strong> — re-runs the automatic <em>tag</em> analysis pipeline across all sequences (or just those missing an LLM tag). Runs as a background job with a live progress bar and a history of past runs. Use this after updating the tagger model or changing tag rules.",
-        "<strong>Bulk Concept Re-Classifier</strong> — the same kind of background job, but re-runs structural <em>concept</em> detection instead of tags (all sequences, or just those missing a concept). Separate from Bulk Retag because tags and concepts are independent systems.",
-        "<strong>New Topics Report</strong> — tags first seen within a configurable window (1–90 days), with usage counts and a one-click \"Merge…\" into an existing tag — the fastest way to catch a typo or near-duplicate before it spreads.",
-        "<strong>Merge Tags</strong> — combine duplicate or near-duplicate tags into one canonical form (e.g. <code>for_loop</code> + <code>for-loop</code> → <code>for-loop</code>). All sequence associations are updated automatically.",
-        "<strong>Tag Overview</strong> — see all tags sorted by usage count; spot orphaned or rarely-used tags that could be cleaned up."
+        "<strong>Bulk Retag</strong> — re-runs the automatic <em>topic</em> analysis pipeline across all sequences (or just those missing an LLM topic or its English label). Runs as a background job with a live progress bar and a history of past runs. Use this after updating the tagger model or changing topic rules.",
+        "<strong>Bulk Concept Re-Classifier</strong> — the same kind of background job, but re-runs structural <em>concept</em> detection instead of topics (all sequences, or just those missing a concept). Separate from Bulk Retag because topics and concepts are independent systems.",
+        "<strong>New Topics Report</strong> — topics first seen within a configurable window (1–90 days), with usage counts and a one-click \"Merge…\" into an existing topic — the fastest way to catch a typo or near-duplicate before it spreads.",
+        "<strong>Merge Topics</strong> — combine duplicate or near-duplicate topics into one canonical form (e.g. <code>fib-folge</code> + <code>fibonacci-folge</code> → <code>fibonacci-folge</code>). All sequence associations are updated automatically.",
+        "<strong>Topic Overview</strong> — see all topics sorted by usage count; spot orphaned or rarely-used topics that could be cleaned up."
       ],
       "databaseTitle": "Database Tools",
       "database": [
@@ -2110,8 +2114,8 @@
       ],
       "cautionTitle": "Caution",
       "caution": [
-        "Bulk Retag overwrites existing auto-generated tags. <strong>Manual tags are never touched.</strong>",
-        "Merging tags is irreversible via the UI — make a DB backup before large merge operations.",
+        "Bulk Retag overwrites existing auto-generated topics. <strong>Manual topics are never touched.</strong>",
+        "Merging topics is irreversible via the UI — make a DB backup before large merge operations.",
         "Deleting users does not cascade-delete their content — verify you want to keep orphaned sequences."
       ]
     }

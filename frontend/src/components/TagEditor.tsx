@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import type { SequenceTag } from "../types/models";
 import TagChip from "./TagChip";
+import { useTopicLabel } from "../hooks/useTopicLabel";
 
 /**
- * AP19 Teil A (A11): Inline editor for a single sequence's tags.
+ * AP19 Teil A (A11): Inline editor for a single sequence's tags (shown to users as topics).
  *
  * <p>Shown on teacher-owned sequences (the caller is expected to gate visibility). Consists of:
  * <ul>
@@ -43,6 +44,7 @@ export default function TagEditor({
     maxTags = 20,
 }: TagEditorProps) {
     const { t } = useTranslation();
+    const topicLabel = useTopicLabel();
 
     const [input, setInput] = useState("");
     const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -268,7 +270,7 @@ export default function TagEditor({
                                     }}
                                 >
                                     <i className="bi bi-tag me-1 text-muted"></i>
-                                    {s}
+                                    {topicLabel(s)}
                                 </li>
                             ))}
                         </ul>

@@ -53,9 +53,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>Where it differs: each candidate gets one call to {@link
  * AiModelClient#generateConcepts(String, String)} instead of the semantic tagger, and a
  * non-empty result replaces the sequence's concept links ({@link
- * TieredTaskSequenceRepository#replaceConcepts}) and its structural tags ({@link
- * SequenceTagService#replaceStructuralTags}) together, so the two never drift out of step. An
- * <em>empty</em> result is treated as a skip, not a replacement — the LLM returning nothing this
+ * TieredTaskSequenceRepository#replaceConcepts}). Topics (sequence tags) are a separate
+ * dimension and are left untouched. An <em>empty</em> result is treated as a skip, not a replacement — the LLM returning nothing this
  * time is not good evidence that the sequence's existing concepts are wrong, and silently
  * clearing them on a fluke would be a worse outcome than leaving them alone.
  */
@@ -73,7 +72,6 @@ public class BulkConceptReclassifyService {
     private final TieredTaskSequenceRepository sequenceRepo;
     private final AiModelClient aiModelClient;
     private final ConceptRepository conceptRepo;
-    private final SequenceTagService tagService;
     /** Same virtual-thread pool the bulk retagger and semantic tagging use. */
     private final Executor taggingExecutor;
 
@@ -83,12 +81,10 @@ public class BulkConceptReclassifyService {
     public BulkConceptReclassifyService(TieredTaskSequenceRepository sequenceRepo,
                                         AiModelClient aiModelClient,
                                         ConceptRepository conceptRepo,
-                                        SequenceTagService tagService,
                                         @Qualifier("taggingExecutor") Executor taggingExecutor) {
         this.sequenceRepo = sequenceRepo;
         this.aiModelClient = aiModelClient;
         this.conceptRepo = conceptRepo;
-        this.tagService = tagService;
         this.taggingExecutor = taggingExecutor;
     }
 
@@ -183,8 +179,7 @@ public class BulkConceptReclassifyService {
     private void processOne(RetagCandidate c, JobState state) {
         try {
             if (c.combinedCode() == null || c.combinedCode().isBlank()) {
-                // Nothing to classify — treat as processed-but-skipped so the counter advances.
-                state.processed.incrementAndGet();
+                // Nothing to classify — a skip; the finally block still counts it as processed.
                 return;
             }
 
@@ -193,7 +188,6 @@ public class BulkConceptReclassifyService {
             if (conceptSlugs == null || conceptSlugs.isEmpty()) {
                 // See the class doc: an empty result is a skip, not "this sequence has no
                 // concepts" — it must not clear what generation already found.
-                state.processed.incrementAndGet();
                 return;
             }
 
@@ -207,7 +201,6 @@ public class BulkConceptReclassifyService {
             List<UUID> conceptIds = conceptRepo.saveAll(dtos);
 
             sequenceRepo.replaceConcepts(c.sequenceId(), conceptIds);
-            tagService.replaceStructuralTags(c.sequenceId(), conceptSlugs);
 
             state.succeeded.incrementAndGet();
         } catch (Exception e) {
@@ -215,6 +208,7 @@ public class BulkConceptReclassifyService {
             logger.warn("Concept reclassify failed for sequence {} in job {}: {}",
                     c.sequenceId(), state.jobId, e.getMessage());
         } finally {
+            // The one place a candidate is counted, whichever way processing ended.
             state.processed.incrementAndGet();
         }
     }

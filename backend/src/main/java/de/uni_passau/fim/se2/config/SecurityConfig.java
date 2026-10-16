@@ -89,6 +89,9 @@ public class SecurityConfig {
                         // it fell through to anyRequest().authenticated() and answered 403,
                         // which the client read as an expired session.
                         .requestMatchers(HttpMethod.GET, "/api/concepts").permitAll()
+                        // Same reasoning: topic chips on anonymously reachable pages look up
+                        // their English labels here.
+                        .requestMatchers(HttpMethod.GET, "/api/library/tags/translations").permitAll()
 
                         // Task generation: teachers and admins only
                         .requestMatchers(HttpMethod.POST, "/api/tasks/generate").hasAnyRole("TEACHER", "ADMIN")

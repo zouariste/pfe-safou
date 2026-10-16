@@ -51,20 +51,15 @@ public class TaskPersistenceService {
 
     private final ConceptRepository conceptRepo;
 
-    /** AP19 Teil A: for synchronous structural auto-tagging. */
-    private final SequenceTagService sequenceTagService;
-
     /** AP19 Teil A: for async semantic LLM tagging via {@link SequenceGeneratedEvent}. */
     private final ApplicationEventPublisher eventPublisher;
 
     public TaskPersistenceService(TaskRepository taskRepository, TieredTaskSequenceRepository sequenceRepo,
                                   ConceptRepository conceptRepository,
-                                  SequenceTagService sequenceTagService,
                                   ApplicationEventPublisher eventPublisher) {
         this.taskRepo = taskRepository;
         this.sequenceRepo = sequenceRepo;
         this.conceptRepo = conceptRepository;
-        this.sequenceTagService = sequenceTagService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -345,10 +340,6 @@ public class TaskPersistenceService {
             saveAllGeneratedTasks(sequence);
             linkConcepts(sequence);
             logger.debug("Successfully persisted sequence with ID: {}", sequence.getId());
-
-            // AP19 Teil A: structural auto-tagging (synchronous, ~50ms DB INSERT).
-            // Errors are caught inside SequenceTagService — persistence is authoritative.
-            sequenceTagService.autoTagStructural(sequence.getId(), sequence.getConcepts());
 
             // AP19 Teil A: fire event for async LLM semantic tagging (3–10s background work).
             try {

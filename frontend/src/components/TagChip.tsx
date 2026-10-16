@@ -1,13 +1,15 @@
+import { useTranslation } from "react-i18next";
+import { useTopicLabel } from "../hooks/useTopicLabel";
 import type { SequenceTag, SequenceTagSource } from "../types/models";
 
 /**
- * AP19 Teil A (A11): A reusable tag chip with source-aware styling.
+ * AP19 Teil A (A11): A reusable topic chip with source-aware styling. The label is shown in the
+ * UI's language via {@link useTopicLabel}.
  *
  * <p>Sources are color-coded so teachers can tell at a glance where a tag came from:
  * <ul>
  *   <li><b>manual</b> (green) — "this teacher set it deliberately"</li>
  *   <li><b>llm</b> (blue) — "inferred by the LLM; may be noisy"</li>
- *   <li><b>auto</b> (grey) — "derived structurally (e.g. for-loop, recursion)"</li>
  *   <li><b>active</b> override (primary) — used when the chip represents an active filter</li>
  * </ul>
  *
@@ -48,6 +50,9 @@ export default function TagChip({
     className = "",
     fadeIn = false,
 }: TagChipProps) {
+    const { t } = useTranslation();
+    const topicLabel = useTopicLabel();
+    const label = topicLabel(tag.tagName);
     const colorClass = active ? "text-bg-primary" : sourceColor(tag.source);
     const isInteractive = !!onClick;
 
@@ -55,7 +60,14 @@ export default function TagChip({
     const uncertain =
         tag.source === "llm" && tag.confidence != null && tag.confidence < 0.7;
 
-    const title = tooltipText(tag);
+    const title =
+        tag.source === "llm"
+            ? tag.confidence != null
+                ? (t("library.topicSource.llmConfidence", {
+                      confidence: Math.round(tag.confidence * 100),
+                  }) as string)
+                : (t("library.topicSource.llm") as string)
+            : (t("library.topicSource.manual") as string);
 
     // The chip is always a <button> when onClick is set — otherwise a <span>
     // so assistive tech reads it as static text.
@@ -87,7 +99,7 @@ export default function TagChip({
 
     const content = (
         <>
-            {/* Source icon — only shown when it helps (llm + manual). auto is grey & self-evident. */}
+            {/* Source icon */}
             {tag.source === "llm" && (
                 <i className="bi bi-stars" aria-hidden="true" style={{ fontSize: "0.7em" }}></i>
             )}
@@ -98,7 +110,7 @@ export default function TagChip({
                     style={{ fontSize: "0.7em" }}
                 ></i>
             )}
-            <span>{tag.tagName}</span>
+            <span>{label}</span>
             {tag.source === "llm" && tag.confidence != null && (
                 <span
                     className="opacity-75"
@@ -116,7 +128,7 @@ export default function TagChip({
                         e.stopPropagation();
                         onRemove();
                     }}
-                    aria-label={`Remove ${tag.tagName}`}
+                    aria-label={t("library.removeTag", { tag: label }) as string}
                     style={{
                         fontSize: "0.55em",
                         padding: 0,
@@ -144,19 +156,7 @@ function sourceColor(source: SequenceTagSource): string {
         case "manual":
             return "text-bg-success";
         case "llm":
-            return "text-bg-info";
-        case "auto":
         default:
-            return "text-bg-secondary";
+            return "text-bg-info";
     }
-}
-
-/** Rich tooltip — shows source + confidence percentage where applicable. */
-function tooltipText(tag: SequenceTag): string {
-    const parts: string[] = [];
-    parts.push(`source=${tag.source}`);
-    if (tag.source === "llm" && tag.confidence != null) {
-        parts.push(`confidence=${(tag.confidence * 100).toFixed(0)}%`);
-    }
-    return parts.join(", ");
 }
