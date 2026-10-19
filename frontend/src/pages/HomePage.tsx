@@ -223,15 +223,19 @@ export default function HomePage() {
                                 <div className="input-group mb-3">
                                     <span className="input-group-text">🌐</span>
                                     <div className="form-floating">
-                                        <input
-                                            id="langInput"
-                                            type="text"
-                                            className="form-control"
+                                        {/* Values are the backend's canonical SupportedLanguage names;
+                                            empty leaves it to the backend to detect from the code. */}
+                                        <select
+                                            id="langSelect"
+                                            className="form-select"
                                             value={language}
                                             onChange={(e) => setLanguage(e.target.value)}
-                                            placeholder={t("home.programmingLanguage")}
-                                        />
-                                        <label htmlFor="langInput">{t("home.programmingLanguage")}</label>
+                                        >
+                                            <option value="">{t("home.programmingLanguageAuto")}</option>
+                                            <option value="java">Java</option>
+                                            <option value="python">Python</option>
+                                        </select>
+                                        <label htmlFor="langSelect">{t("home.programmingLanguage")}</label>
                                     </div>
                                 </div>
 
@@ -274,11 +278,10 @@ export default function HomePage() {
                                     />
                                     <label className="form-check-label" htmlFor="distractorsToggle">
                                         {t("home.distractorsEnabled")}
-                                        <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                     </label>
                                 </div>
 
-                                {/* AP22: Context mode toggle (Beta) */}
+                                {/* AP22: Context mode toggle */}
                                 <div className="form-check form-switch mt-2 mb-0">
                                     <input
                                         className="form-check-input"
@@ -289,11 +292,10 @@ export default function HomePage() {
                                     />
                                     <label className="form-check-label" htmlFor="contextModeToggle">
                                         {t("home.contextModeEnabled")}
-                                        <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                     </label>
                                 </div>
 
-                                {/* AP31: Inline-split toggle (Beta) */}
+                                {/* AP31: Inline-split toggle */}
                                 <div className="form-check form-switch mt-2 mb-0">
                                     <input
                                         className="form-check-input"
@@ -304,7 +306,6 @@ export default function HomePage() {
                                     />
                                     <label className="form-check-label" htmlFor="splitToggle">
                                         {t("home.splitEnabled", "Generate inline-split blocks")}
-                                        <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                     </label>
                                 </div>
 
@@ -327,7 +328,6 @@ export default function HomePage() {
                                             <div className="mb-3">
                                                 <label className="form-label fw-semibold text-danger-emphasis" style={{ fontSize: "0.85rem" }}>
                                                     🚫 {t("home.blacklist", "Blacklist (forbidden constructs)")}
-                                                    <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                                 </label>
                                                 <input
                                                     type="text"
@@ -343,7 +343,6 @@ export default function HomePage() {
                                             <div className="mb-3">
                                                 <label className="form-label fw-semibold text-success-emphasis" style={{ fontSize: "0.85rem" }}>
                                                     ✅ {t("home.whitelist", "Whitelist (allowed constructs only)")}
-                                                    <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                                 </label>
                                                 <input
                                                     type="text"
@@ -359,7 +358,6 @@ export default function HomePage() {
                                             <div className="mb-3">
                                                 <label className="form-label fw-semibold" style={{ fontSize: "0.85rem" }}>
                                                     📈 {t("home.difficultySlope", "Difficulty Slope")}
-                                                    <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                                 </label>
                                                 <select
                                                     className="form-select form-select-sm"
@@ -376,7 +374,6 @@ export default function HomePage() {
                                             <div className="mb-3">
                                                 <label className="form-label fw-semibold" style={{ fontSize: "0.85rem" }}>
                                                     💬 {t("home.additionalContext", "Teacher Instructions")}
-                                                    <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                                 </label>
                                                 <textarea
                                                     className="form-control form-control-sm"
@@ -392,7 +389,6 @@ export default function HomePage() {
                                             <div className="mb-0">
                                                 <label className="form-label fw-semibold" style={{ fontSize: "0.85rem" }}>
                                                     🔢 {t("home.tierCount", "Number of Tiers")}
-                                                    <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                                 </label>
                                                 <select
                                                     className="form-select form-select-sm"

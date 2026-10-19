@@ -122,6 +122,9 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
         if (sequence.getProgrammingLanguage() == null || sequence.getProgrammingLanguage().isBlank()) {
             throw new DomainValidationException("programming_language is required");
         }
+        // One spelling per language: free-text input (the manual creator) otherwise lets "Java"
+        // and "java" coexist as two library facets. V28 enforces this in the schema too.
+        sequence.setProgrammingLanguage(sequence.getProgrammingLanguage().trim().toLowerCase(Locale.ROOT));
         if (sequence.getVersionId() == null) {
             throw new DomainValidationException("version_id is required");
         }

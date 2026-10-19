@@ -80,7 +80,7 @@ public record WorksheetSearchQuery(
         }
         return new WorksheetSearchQuery(
                 text,
-                blankToNull(lang),
+                normaliseLang(lang),
                 onlyMine,
                 normalisedSort,
                 Math.max(0, page),
@@ -104,6 +104,12 @@ public record WorksheetSearchQuery(
             case SORT_POPULARITY -> SORT_POPULARITY;
             default -> SORT_RECENT;
         };
+    }
+
+    /** Languages are stored lowercase (V28), so "Java" in a request must still match. */
+    private static String normaliseLang(String lang) {
+        String trimmed = blankToNull(lang);
+        return trimmed == null ? null : trimmed.toLowerCase(Locale.ROOT);
     }
 
     private static int clampSize(int size) {

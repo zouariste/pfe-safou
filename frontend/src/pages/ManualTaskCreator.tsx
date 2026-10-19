@@ -373,7 +373,6 @@ export default function ManualTaskCreator() {
                             />
                             <label className="form-check-label" htmlFor="manualDistractorsToggle">
                                 {t("manual.generateDistractors")}
-                                <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                             </label>
                         </div>
 

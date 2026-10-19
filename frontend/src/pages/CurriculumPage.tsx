@@ -437,9 +437,6 @@ export default function CurriculumPage() {
                 <h2 className="fw-bold">
                     <i className="bi bi-book me-2"></i>
                     {t("curriculum.title")}
-                    <span className="badge bg-warning text-dark ms-2" style={{ fontSize: "0.5em", verticalAlign: "middle" }}>
-                        {t("curriculum.beta")}
-                    </span>
                 </h2>
                 <p className="text-muted">{t("curriculum.subtitle")}</p>
             </div>
@@ -907,9 +904,6 @@ export default function CurriculumPage() {
                                 <h6 className="mb-0">
                                     <i className="bi bi-lightning-charge me-2"></i>
                                     {t("curriculum.generate")}
-                                    <span className="badge bg-warning text-dark ms-2" style={{ fontSize: "0.75em" }}>
-                                        {t("curriculum.beta")}
-                                    </span>
                                 </h6>
                             </div>
                             <div className="card-body">
@@ -972,7 +966,7 @@ export default function CurriculumPage() {
                                     </label>
                                 </div>
 
-                                {/* AP22: Context mode toggle (Beta) */}
+                                {/* AP22: Context mode toggle */}
                                 <div className="form-check mb-3">
                                     <input
                                         className="form-check-input"
@@ -983,11 +977,10 @@ export default function CurriculumPage() {
                                     />
                                     <label className="form-check-label" htmlFor="curriculumContextModeCheck">
                                         {t("curriculum.contextMode", "Context mode (fuller code with scaffolding)")}
-                                        <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                     </label>
                                 </div>
 
-                                {/* AP31: Inline-split toggle (Beta) */}
+                                {/* AP31: Inline-split toggle */}
                                 <div className="form-check mb-3">
                                     <input
                                         className="form-check-input"
@@ -998,7 +991,6 @@ export default function CurriculumPage() {
                                     />
                                     <label className="form-check-label" htmlFor="curriculumSplitCheck">
                                         {t("curriculum.split", "Generate inline-split blocks")}
-                                        <span className="badge text-bg-warning ms-2" style={{ fontSize: "0.65em" }}>Beta</span>
                                     </label>
                                 </div>
 

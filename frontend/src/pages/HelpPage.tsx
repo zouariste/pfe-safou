@@ -83,12 +83,6 @@ export default function HelpPage() {
         </table>
     );
 
-    const betaBadge = (
-        <span className="badge bg-warning text-dark" style={{ fontSize: "0.7rem" }}>
-            {t("help.common.beta")}
-        </span>
-    );
-
     // =====================================================================
     // FULL OVERVIEW PAGE (no context param)
     // =====================================================================
@@ -219,14 +213,12 @@ export default function HelpPage() {
                                 <li key={i} dangerouslySetInnerHTML={html(item)} />
                             ))}
                             <li>
-                                <strong>{t("help.home.contextModeLabel")}</strong>{" "}
-                                {betaBadge}
+                                <strong>{t("help.home.contextModeLabel")}</strong>
                                 {" — "}
                                 <span dangerouslySetInnerHTML={html(t("help.home.contextModeBody"))} />
                             </li>
                             <li>
-                                <strong>{t("help.home.inlineSplitLabel")}</strong>{" "}
-                                {betaBadge}
+                                <strong>{t("help.home.inlineSplitLabel")}</strong>
                                 {" — "}
                                 <span dangerouslySetInnerHTML={html(t("help.home.inlineSplitBody"))} />
                             </li>
@@ -365,7 +357,7 @@ export default function HelpPage() {
                         <div
                             className="alert alert-info d-inline-block py-1 px-3 mb-3"
                             style={{ fontSize: "0.875rem" }}
-                            dangerouslySetInnerHTML={html(t("help.curriculum.betaNote"))}
+                            dangerouslySetInnerHTML={html(t("help.curriculum.note"))}
                         />
 
                         <h5>🌳 {t("help.curriculum.treeTitle")}</h5>
@@ -446,14 +438,12 @@ export default function HelpPage() {
                         {p("help.solve.gapBody")}
 
                         <h5>
-                            🧩 {t("help.solve.inlineSplitTitle")}{" "}
-                            {betaBadge}
+                            🧩 {t("help.solve.inlineSplitTitle")}
                         </h5>
                         {ul("help.solve.inlineSplit")}
 
                         <h5>
-                            📐 {t("help.solve.contextTitle")}{" "}
-                            {betaBadge}
+                            📐 {t("help.solve.contextTitle")}
                         </h5>
                         {p("help.solve.contextBody")}
 

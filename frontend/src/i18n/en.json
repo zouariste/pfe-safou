@@ -202,7 +202,8 @@
     "characters": "{{count}} characters",
     "problemStatement": "Problem Statement",
     "describeProblem": "Describe the problem...",
-    "programmingLanguage": "Programming language (e.g. Java, Python...)",
+    "programmingLanguage": "Programming language",
+    "programmingLanguageAuto": "Automatic (detect from code)",
     "concepts": "Concepts",
     "targetLanguage": "Task language",
     "targetLanguageDe": "German",
@@ -232,8 +233,8 @@
     "creating": "Creating...",
     "createWorksheetBtn": "Create worksheet",
     "worksheetNameRequired": "Please enter a name.",
-    "contextModeEnabled": "Context mode — longer code with scaffolding (Beta)",
-    "splitEnabled": "Generate inline-split blocks (Beta)",
+    "contextModeEnabled": "Context mode — longer code with scaffolding",
+    "splitEnabled": "Generate inline-split blocks",
     "advancedOptions": "Advanced Options",
     "blacklist": "Blacklist (forbidden constructs)",
     "blacklistPlaceholder": "e.g. recursion, lambda, ternary",
@@ -1124,8 +1125,8 @@
     "targetLanguage": "Task language",
     "tierCount": "Number of tiers",
     "distractors": "Distractors",
-    "contextMode": "Context mode — fuller code with scaffolding (Beta)",
-    "split": "Generate inline-split blocks (Beta)",
+    "contextMode": "Context mode — fuller code with scaffolding",
+    "split": "Generate inline-split blocks",
     "freeText": "Free text about the task you want",
     "freeTextPlaceholder": "e.g. solvable recursively, animal theme, German variable names, focus on loops …",
     "freeTextHint": "Anything the generated task should take into account — injected directly into the generation prompt.",
@@ -1151,7 +1152,6 @@
     "advancedOptions": "Advanced options",
     "backToTopics": "Back to overview",
     "grade": "Grade {{level}}",
-    "beta": "Beta",
     "errorGenerating": "Error during generation.",
     "errorLoading": "Error loading curriculum data.",
     "successGenerated": "Sequence generated successfully!",
@@ -1300,8 +1300,7 @@
       "learnMore": "Learn more",
       "fullOverview": "View full help overview",
       "notFound": "No help content available for this section.",
-      "adminOnly": "This page is only accessible to admins.",
-      "beta": "Beta"
+      "adminOnly": "This page is only accessible to admins."
     },
     "overview": {
       "title": "CodeOwl Help Center",
@@ -1663,7 +1662,7 @@
     "curriculum": {
       "title": "Curriculum Help",
       "intro": "The Curriculum page maps CodeOwl onto a topic tree: Bavarian grade levels (LehrplanPLUS G9 Informatik) and university modules such as “Programmieren 1”. Browse by entry and learning area, then generate a sequence whose difficulty and concepts are automatically calibrated to that topic — no manual setup needed.",
-      "betaNote": "<strong>Beta feature.</strong> Curriculum-generated sequences use a dedicated prompt that takes the topic's education level into account — school or university. The underlying code examples are curated by hand and exist for only some topics so far; without one, generation is disabled.",
+      "note": "Curriculum-generated sequences use a dedicated prompt that takes the topic's education level into account — school or university. The underlying code examples are curated by hand and exist for only some topics so far; without one, generation is disabled.",
       "treeTitle": "Topic Tree",
       "tree": [
         "Topics are organised by grade (Jgst. 7, 9, 10, 11, 12/13) and learning area.",
