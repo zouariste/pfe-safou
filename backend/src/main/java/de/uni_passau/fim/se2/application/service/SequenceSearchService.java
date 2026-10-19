@@ -177,7 +177,7 @@ public class SequenceSearchService {
         // Language filter
         if (q.lang() != null && !q.lang().isBlank()) {
             sb.append(" AND s.programming_language = ? ");
-            params.add(q.lang().trim());
+            params.add(q.lang().trim().toLowerCase(Locale.ROOT));
         }
 
         // Ownership filter (me)

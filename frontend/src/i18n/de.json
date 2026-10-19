@@ -202,7 +202,8 @@
     "characters": "{{count}} Zeichen",
     "problemStatement": "Aufgabenstellung",
     "describeProblem": "Beschreibe das Problem...",
-    "programmingLanguage": "Programmiersprache (z.B. Java, Python...)",
+    "programmingLanguage": "Programmiersprache",
+    "programmingLanguageAuto": "Automatisch (aus dem Code erkennen)",
     "concepts": "Konzepte",
     "targetLanguage": "Sprache der Aufgabenstellung",
     "targetLanguageDe": "Deutsch",
@@ -232,8 +233,8 @@
     "creating": "Erstelle...",
     "createWorksheetBtn": "Arbeitsblatt erstellen",
     "worksheetNameRequired": "Bitte gib einen Namen ein.",
-    "contextModeEnabled": "Kontext-Modus — längerer Code mit Gerüst (Beta)",
-    "splitEnabled": "Inline-Split-Blöcke generieren (Beta)",
+    "contextModeEnabled": "Kontext-Modus — längerer Code mit Gerüst",
+    "splitEnabled": "Inline-Split-Blöcke generieren",
     "advancedOptions": "Erweiterte Optionen",
     "blacklist": "Blacklist (verbotene Konstrukte)",
     "blacklistPlaceholder": "z.B. recursion, lambda, ternary",
@@ -1124,8 +1125,8 @@
     "targetLanguage": "Aufgabensprache",
     "tierCount": "Anzahl Stufen",
     "distractors": "Distraktoren",
-    "contextMode": "Kontext-Modus — vollständigerer Code mit Gerüst (Beta)",
-    "split": "Inline-Split-Blöcke generieren (Beta)",
+    "contextMode": "Kontext-Modus — vollständigerer Code mit Gerüst",
+    "split": "Inline-Split-Blöcke generieren",
     "freeText": "Freitext zur Wunsch-Aufgabe",
     "freeTextPlaceholder": "z. B. rekursiv lösbar, Bezug zu Tieren, deutsche Variablennamen, Fokus auf Schleifen …",
     "freeTextHint": "Alles, was die generierte Aufgabe berücksichtigen soll — fließt direkt in den Generierungsprompt ein.",
@@ -1151,7 +1152,6 @@
     "advancedOptions": "Erweiterte Optionen",
     "backToTopics": "Zurück zur Übersicht",
     "grade": "Jgst. {{level}}",
-    "beta": "Beta",
     "errorGenerating": "Fehler bei der Generierung.",
     "errorLoading": "Fehler beim Laden der Lehrplan-Daten.",
     "successGenerated": "Sequenz erfolgreich generiert!",
@@ -1300,8 +1300,7 @@
       "learnMore": "Mehr erfahren",
       "fullOverview": "Zur vollständigen Hilfe-Übersicht",
       "notFound": "Für diesen Bereich ist keine Hilfe verfügbar.",
-      "adminOnly": "Diese Seite ist nur für Admins zugänglich.",
-      "beta": "Beta"
+      "adminOnly": "Diese Seite ist nur für Admins zugänglich."
     },
     "overview": {
       "title": "CodeOwl Hilfe-Center",
@@ -1663,7 +1662,7 @@
     "curriculum": {
       "title": "Hilfe zum Lehrplan",
       "intro": "Die Lehrplan-Seite bildet CodeOwl auf einen Themenbaum ab: bayerische Jahrgangsstufen (LehrplanPLUS G9 Informatik) und Hochschulmodule wie „Programmieren 1“. Navigiere nach Eintrag und Lernbereich und generiere dann eine Sequenz, deren Schwierigkeit und Konzepte automatisch auf dieses Thema kalibriert sind — ganz ohne manuelle Einrichtung.",
-      "betaNote": "<strong>Beta-Funktion.</strong> Aus dem Lehrplan generierte Sequenzen nutzen einen eigenen Prompt, der den Bildungsbereich des Themas berücksichtigt — Schule oder Hochschule. Die zugrunde liegenden Codebeispiele sind handkuratiert und bisher nur für einzelne Themen hinterlegt; ohne Beispiel ist die Generierung deaktiviert.",
+      "note": "Aus dem Lehrplan generierte Sequenzen nutzen einen eigenen Prompt, der den Bildungsbereich des Themas berücksichtigt — Schule oder Hochschule. Die zugrunde liegenden Codebeispiele sind handkuratiert und bisher nur für einzelne Themen hinterlegt; ohne Beispiel ist die Generierung deaktiviert.",
       "treeTitle": "Themenbaum",
       "tree": [
         "Die Themen sind nach Jahrgangsstufe (Jgst. 7, 9, 10, 11, 12/13) und Lernbereich gegliedert.",
