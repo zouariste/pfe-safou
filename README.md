@@ -185,12 +185,18 @@ docker compose up db
 
 ```bash
 cd backend
-export OPENAI_API_KEY=sk-...
-export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/codeowl
-export SPRING_DATASOURCE_USERNAME=postgres
-export SPRING_DATASOURCE_PASSWORD=postgres
 ./mvnw spring-boot:run
 ```
+
+This starts the backend with the `local` profile
+([`application-local.yml`](backend/src/main/resources/application-local.yml)),
+which points at the database container on `localhost:5432` and reads
+`OPENAI_API_KEY`, `ROOT_ADMIN_EMAIL` and the other settings from the same
+`.env` file Docker Compose uses (see [Quick start](#quick-start-docker-compose)).
+Write values in `.env` unquoted
+(`KEY=value`), since quotes are kept as part of the value. In IntelliJ, set the
+run configuration's active profile to `local`. Real environment variables still
+take precedence, and `-Dspring-boot.run.profiles=...` picks a different profile.
 > **Code analysis (tree-sitter):** complexity and change metrics use the
 > official [jtreesitter](https://github.com/tree-sitter/java-tree-sitter)
 > bindings, which need the tree-sitter runtime and grammar libraries for your
