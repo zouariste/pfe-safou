@@ -196,7 +196,8 @@ export SPRING_DATASOURCE_PASSWORD=postgres
 > bindings, which need the tree-sitter runtime and grammar libraries for your
 > platform. The Docker image builds them itself; for a native run, build them
 > once into `backend/native/` (Linux, macOS, or Windows from Git Bash/MSYS2 with
-> MinGW gcc or `CC="zig cc"`):
+> MinGW gcc or zig; the script picks the first of `cc`, `gcc`, `clang` and `zig` on
+> the PATH unless `CC` is set):
 > ```bash
 > cd backend
 > scripts/build-treesitter-natives.sh

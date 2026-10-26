@@ -23,8 +23,8 @@
 #
 #   scripts/build-treesitter-natives.sh [output-dir]     (default: backend/native)
 #
-# Needs curl, tar and a C compiler ($CC, default cc). On Windows run it from Git Bash
-# or MSYS2 with MinGW gcc or zig (CC="zig cc"). The backend finds the libraries in
+# Needs curl, tar and a C compiler ($CC, or else the first of cc, gcc, clang and zig
+# found on the PATH). On Windows run it from Git Bash or MSYS2 with MinGW gcc or zig. The backend finds the libraries in
 # backend/native when started from backend/, or wherever TREESITTER_NATIVE_DIR points.
 
 set -eu
@@ -45,7 +45,20 @@ tree-sitter-rust:v0.24.2:.
 tree-sitter-go:v0.25.0:.
 "
 
-CC=${CC:-cc}
+# Without $CC, take the first compiler on the PATH; Git Bash ships none named cc.
+if [ -z "${CC:-}" ]; then
+    for candidate in cc gcc clang zig; do
+        if command -v "$candidate" >/dev/null 2>&1; then
+            CC=$candidate
+            [ "$candidate" = zig ] && CC="zig cc"
+            break
+        fi
+    done
+fi
+if [ -z "${CC:-}" ]; then
+    echo "No C compiler found (tried cc, gcc, clang, zig). Install one or set CC." >&2
+    exit 1
+fi
 OUT=${1:-$(cd "$(dirname "$0")/.." && pwd)/native}
 
 case "$(uname -s)" in
