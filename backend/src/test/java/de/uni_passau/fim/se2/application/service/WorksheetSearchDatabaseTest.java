@@ -93,6 +93,7 @@ class WorksheetSearchDatabaseTest {
 
     @AfterAll
     static void cleanup() {
+        if (jdbc == null) return; // connect() aborted: there was no test database
         clearFixtures();
         jdbc.update("DELETE FROM users WHERE user_id IN (?, ?)", teacher, otherTeacher);
         jdbc.update("DELETE FROM versions WHERE id = ?", versionId);

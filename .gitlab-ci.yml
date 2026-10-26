@@ -42,7 +42,7 @@ frontend-build:  # tsc -b (typechecks src and tests) + vite production bundle.
 
 backend-build:   # Compiles and packages the Spring Boot jar via the Maven wrapper.
   stage: build
-  image: eclipse-temurin:21-jdk   # Matches java.version in backend/pom.xml.
+  image: eclipse-temurin:25-jdk   # Matches java.version in backend/pom.xml.
   cache:
     key:
       files:
@@ -85,7 +85,7 @@ frontend-test:   # Runs the vitest suite in frontend/.
 
 backend-test:    # Runs the JUnit suite in backend/, database tests included.
   stage: test
-  image: eclipse-temurin:21-jdk   # Matches java.version in backend/pom.xml.
+  image: eclipse-temurin:25-jdk   # Matches java.version in backend/pom.xml.
   cache:
     key:
       files:
@@ -121,6 +121,9 @@ backend-test:    # Runs the JUnit suite in backend/, database tests included.
     # The executable bit on mvnw is easily lost when the repository is edited
     # from Windows; without this the job dies on a bare permission denied.
     - chmod +x mvnw
+    # The tree-sitter native libraries, without which TreeSitterCodeAnalyzerTest skips.
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends gcc libc6-dev curl
+    - sh scripts/build-treesitter-natives.sh
     # GitLab starts the service and the job together rather than waiting for Postgres to
     # finish initialising, so the first connection can beat the database to it. Maven is
     # usually slow enough to hide that; this makes it not a matter of luck.

@@ -1,15 +1,30 @@
-FROM eclipse-temurin:17-jdk-jammy AS build
+#
+# AP26: tree-sitter native libraries (runtime + grammars) for jtreesitter
+#
+FROM debian:bookworm-slim AS natives
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc libc6-dev curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+COPY scripts/build-treesitter-natives.sh /tmp/
+RUN sh /tmp/build-treesitter-natives.sh /natives
+
+FROM eclipse-temurin:25-jdk AS build
 ENV HOME=/usr/app
 RUN mkdir -p $HOME
 WORKDIR $HOME
 ADD . $HOME
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -f $HOME/pom.xml clean package
+# In ./native so the tree-sitter tests run during the build instead of skipping.
+# The database tests skip: there is no database to run against here.
+COPY --from=natives /natives $HOME/native
+RUN --mount=type=cache,target=/root/.m2 ./mvnw -f $HOME/pom.xml clean package spring-boot:repackage
 
 #
 # Package stage
 #
-FROM eclipse-temurin:17-jre-jammy 
+FROM eclipse-temurin:25-jre
 ARG JAR_FILE=/usr/app/target/*.jar
 COPY --from=build $JAR_FILE /app/runner.jar
+COPY --from=natives /natives /app/native
+ENV TREESITTER_NATIVE_DIR=/app/native
 EXPOSE 8080
-ENTRYPOINT java -jar /app/runner.jar
+ENTRYPOINT java --enable-native-access=ALL-UNNAMED -jar /app/runner.jar

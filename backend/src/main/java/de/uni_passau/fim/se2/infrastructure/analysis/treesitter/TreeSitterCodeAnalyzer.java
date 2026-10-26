@@ -18,8 +18,11 @@
  */
 package de.uni_passau.fim.se2.infrastructure.analysis.treesitter;
 
-import ch.usi.si.seart.treesitter.*;
 import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
+import io.github.treesitter.jtreesitter.Language;
+import io.github.treesitter.jtreesitter.Node;
+import io.github.treesitter.jtreesitter.Parser;
+import io.github.treesitter.jtreesitter.Tree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -29,7 +32,9 @@ import java.util.*;
 /**
  * AP26 — Infrastructure implementation of {@link CodeAnalyzer} using tree-sitter.
  * Supports 9 languages: Java, Python, JavaScript, TypeScript, C, C++, C#, Rust, Go.
- * All analysis runs in-process via JNI — no external containers or processes needed.
+ * All analysis runs in-process via the FFM API (jtreesitter) — no external containers
+ * or processes needed. Without the native libraries (see {@link TreeSitterNatives})
+ * complexity is zero and change analysis falls back to the line-based heuristic.
  */
 @Component
 @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
@@ -38,8 +43,14 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
 
     private static final Logger logger = LoggerFactory.getLogger(TreeSitterCodeAnalyzer.class);
 
-    static {
-        LibraryLoader.load();
+    private final boolean nativesAvailable;
+
+    public TreeSitterCodeAnalyzer() {
+        this(TreeSitterNatives.isAvailable());
+    }
+
+    TreeSitterCodeAnalyzer(boolean nativesAvailable) {
+        this.nativesAvailable = nativesAvailable;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -53,7 +64,7 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
 
     @Override
     public ComplexityResult computeComplexity(String code, String language) {
-        if (code == null || code.isBlank()) return ComplexityResult.zero();
+        if (code == null || code.isBlank() || !nativesAvailable) return ComplexityResult.zero();
 
         Language tsLang = LanguageRegistry.resolve(language).orElse(null);
         LanguageRegistry.LanguageConfig config = LanguageRegistry.getConfig(language);
@@ -62,8 +73,8 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
             return ComplexityResult.zero();
         }
 
-        try (Parser parser = Parser.getFor(tsLang);
-             Tree tree = parser.parse(code)) {
+        try (Parser parser = new Parser(tsLang);
+             Tree tree = parser.parse(code).orElseThrow()) {
             Node root = tree.getRootNode();
             int loc = countLinesOfCode(code);
             int cc = computeCC(root, config);
@@ -81,6 +92,7 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
     public AstAnalysisResult analyzeChanges(String originalCode, String editedCode, String language) {
         if (originalCode == null) originalCode = "";
         if (editedCode == null) editedCode = "";
+        if (!nativesAvailable) return heuristicAnalysis(originalCode, editedCode);
 
         Language tsLang = LanguageRegistry.resolve(language).orElse(null);
         LanguageRegistry.LanguageConfig config = LanguageRegistry.getConfig(language);
@@ -127,8 +139,7 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
         int depth = isNesting ? currentDepth + 1 : currentDepth;
         int maxDepth = depth;
 
-        for (int i = 0; i < node.getChildCount(); i++) {
-            Node child = node.getChild(i);
+        for (Node child : node.getChildren()) {
             int childMax = computeMaxNestingDepth(child, config, depth);
             maxDepth = Math.max(maxDepth, childMax);
         }
@@ -140,8 +151,8 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
      */
     private int countNodeTypes(Node node, Set<String> types) {
         int count = types.contains(node.getType()) ? 1 : 0;
-        for (int i = 0; i < node.getChildCount(); i++) {
-            count += countNodeTypes(node.getChild(i), types);
+        for (Node child : node.getChildren()) {
+            count += countNodeTypes(child, types);
         }
         return count;
     }
@@ -157,13 +168,13 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
 
     private void collectIdentifiers(Node node, Set<String> identifierTypes, Set<String> names) {
         if (identifierTypes.contains(node.getType())) {
-            String content = node.getContent();
+            String content = node.getText();
             if (content != null && !content.isBlank()) {
                 names.add(content);
             }
         }
-        for (int i = 0; i < node.getChildCount(); i++) {
-            collectIdentifiers(node.getChild(i), identifierTypes, names);
+        for (Node child : node.getChildren()) {
+            collectIdentifiers(child, identifierTypes, names);
         }
     }
 
@@ -179,8 +190,8 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
             return profile;
         }
 
-        try (Parser parser = Parser.getFor(tsLang);
-             Tree tree = parser.parse(code)) {
+        try (Parser parser = new Parser(tsLang);
+             Tree tree = parser.parse(code).orElseThrow()) {
             Node root = tree.getRootNode();
 
             profile.put("functions", countNodeTypes(root, config.functionTypes()));
@@ -195,8 +206,8 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
 
     private int countAllNodes(Node node) {
         int count = 1;
-        for (int i = 0; i < node.getChildCount(); i++) {
-            count += countAllNodes(node.getChild(i));
+        for (Node child : node.getChildren()) {
+            count += countAllNodes(child);
         }
         return count;
     }
