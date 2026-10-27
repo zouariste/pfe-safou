@@ -18,48 +18,73 @@
  */
 package de.uni_passau.fim.se2.infrastructure.analysis.treesitter;
 
-import ch.usi.si.seart.treesitter.Language;
+import io.github.treesitter.jtreesitter.Language;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * AP26 — Maps user-facing language names to tree-sitter {@link Language} enums
+ * AP26 — Maps user-facing language names to tree-sitter grammars ({@link Language})
  * and provides node-type mappings for each language so that a single traversal
  * algorithm can compute metrics across all supported languages.
  */
 public final class LanguageRegistry {
 
+    private static final Logger logger = LoggerFactory.getLogger(LanguageRegistry.class);
+
     private LanguageRegistry() {}
 
     // ── Language resolution ──
 
-    private static final Map<String, Language> LANGUAGE_MAP = new HashMap<>();
+    /** User-facing name → tree-sitter grammar id (see {@link TreeSitterNatives#loadLanguage}). */
+    private static final Map<String, String> LANGUAGE_MAP = new HashMap<>();
 
     static {
-        LANGUAGE_MAP.put("java", Language.JAVA);
-        LANGUAGE_MAP.put("python", Language.PYTHON);
-        LANGUAGE_MAP.put("javascript", Language.JAVASCRIPT);
-        LANGUAGE_MAP.put("js", Language.JAVASCRIPT);
-        LANGUAGE_MAP.put("typescript", Language.TYPESCRIPT);
-        LANGUAGE_MAP.put("ts", Language.TYPESCRIPT);
-        LANGUAGE_MAP.put("c", Language.C);
-        LANGUAGE_MAP.put("c++", Language.CPP);
-        LANGUAGE_MAP.put("cpp", Language.CPP);
-        LANGUAGE_MAP.put("c#", Language.C_SHARP);
-        LANGUAGE_MAP.put("csharp", Language.C_SHARP);
-        LANGUAGE_MAP.put("cs", Language.C_SHARP);
-        LANGUAGE_MAP.put("rust", Language.RUST);
-        LANGUAGE_MAP.put("go", Language.GO);
-        LANGUAGE_MAP.put("golang", Language.GO);
+        LANGUAGE_MAP.put("java", "java");
+        LANGUAGE_MAP.put("python", "python");
+        LANGUAGE_MAP.put("javascript", "javascript");
+        LANGUAGE_MAP.put("js", "javascript");
+        LANGUAGE_MAP.put("typescript", "typescript");
+        LANGUAGE_MAP.put("ts", "typescript");
+        LANGUAGE_MAP.put("c", "c");
+        LANGUAGE_MAP.put("c++", "cpp");
+        LANGUAGE_MAP.put("cpp", "cpp");
+        LANGUAGE_MAP.put("c#", "c_sharp");
+        LANGUAGE_MAP.put("csharp", "c_sharp");
+        LANGUAGE_MAP.put("cs", "c_sharp");
+        LANGUAGE_MAP.put("rust", "rust");
+        LANGUAGE_MAP.put("go", "go");
+        LANGUAGE_MAP.put("golang", "go");
     }
 
+    /** Grammars are loaded on first use; a failed load is cached as empty and logged once. */
+    private static final Map<String, Optional<Language>> LOADED = new ConcurrentHashMap<>();
+
     public static Optional<Language> resolve(String language) {
-        if (language == null) return Optional.empty();
-        return Optional.ofNullable(LANGUAGE_MAP.get(language.toLowerCase().trim()));
+        String grammarId = grammarId(language);
+        if (grammarId == null) return Optional.empty();
+        return LOADED.computeIfAbsent(grammarId, LanguageRegistry::load);
+    }
+
+    private static Optional<Language> load(String grammarId) {
+        try {
+            return Optional.of(TreeSitterNatives.loadLanguage(grammarId));
+        } catch (Throwable e) {
+            logger.warn("Could not load tree-sitter grammar '{}' from {}: {}",
+                    grammarId, TreeSitterNatives.nativeDir(), e.toString());
+            return Optional.empty();
+        }
+    }
+
+    private static String grammarId(String language) {
+        if (language == null) return null;
+        return LANGUAGE_MAP.get(language.toLowerCase().trim());
     }
 
     public static boolean isSupported(String language) {
-        return resolve(language).isPresent();
+        return grammarId(language) != null;
     }
 
     // ── Node-type classifications per language ──
@@ -163,11 +188,11 @@ public final class LanguageRegistry {
         // ── C# ──
         CONFIGS.put("csharp", new LanguageConfig(
                 Set.of("method_declaration", "constructor_declaration", "local_function_statement"),
-                Set.of("for_statement", "for_each_statement", "while_statement", "do_statement"),
+                Set.of("for_statement", "foreach_statement", "while_statement", "do_statement"),
                 Set.of("if_statement", "switch_statement"),
-                Set.of("if_statement", "for_statement", "for_each_statement", "while_statement",
+                Set.of("if_statement", "for_statement", "foreach_statement", "while_statement",
                         "do_statement", "switch_section"),
-                Set.of("if_statement", "for_statement", "for_each_statement", "while_statement",
+                Set.of("if_statement", "for_statement", "foreach_statement", "while_statement",
                         "do_statement", "switch_statement", "try_statement"),
                 Set.of("invocation_expression"),
                 Set.of("identifier"),
@@ -211,6 +236,7 @@ public final class LanguageRegistry {
     }
 
     public static LanguageConfig getConfig(String language) {
+        if (language == null) return null;
         return CONFIGS.get(language.toLowerCase().trim());
     }
 }

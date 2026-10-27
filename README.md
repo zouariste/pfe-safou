@@ -46,7 +46,7 @@ CodeOwl runs as three core containers orchestrated by Docker Compose:
 | Service    | Tech                                             | Port (host) |
 |------------|--------------------------------------------------|-------------|
 | `db`       | PostgreSQL 17                                    | `5432`      |
-| `backend`  | Spring Boot 3.3 (Java 21), Spring JDBC           | `8080`      |
+| `backend`  | Spring Boot 3.5 (Java 25), Spring JDBC           | `8080`      |
 | `frontend` | React 19 + TypeScript + Vite, served by nginx    | `5175`      |
 
 ```
@@ -73,14 +73,11 @@ database backups.
 
 For local development outside Docker you additionally need:
 
-- **JDK 21** (the backend ships a Maven wrapper, `./mvnw`)
+- **JDK 25** (the backend ships a Maven wrapper, `./mvnw`)
 - **Node.js 24+** and npm
+- Optionally a **C compiler**, `curl` and `tar`, to build the tree-sitter native
+  libraries for code analysis — see the note in [Local development](#local-development).
 
-> **Windows:** the backend's code-analysis dependency (`java-tree-sitter`) only
-> ships native libraries for Linux and macOS, so `./mvnw spring-boot:run` cannot
-> start natively on Windows. Run the backend under **WSL2**, or via **Docker
-> Compose**, instead — see the note in [Local development](#local-development).
->
 > Running the backend's **tests** under WSL2 additionally needs Docker Desktop's
 > **WSL Integration** enabled for that distro. Without it the Testcontainers-backed
 > database tests skip and the build still reports success — see
@@ -188,28 +185,33 @@ docker compose up db
 
 ```bash
 cd backend
-export OPENAI_API_KEY=sk-...
-export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/codeowl
-export SPRING_DATASOURCE_USERNAME=postgres
-export SPRING_DATASOURCE_PASSWORD=postgres
 ./mvnw spring-boot:run
 ```
-> **Windows:** `java-tree-sitter` (used for code analysis) has no native
-> Windows build — running `./mvnw spring-boot:run` directly will fail with
-> `TreeSitterException: ... not compiled for this platform`. Run the backend
-> under **WSL2** instead (Docker Compose also works, since the backend
-> container is Linux-based, but you lose devtools live-reload).
->
-> **WSL2:** the `java-tree-sitter` native library is compiled against musl
-> libc, so it also fails to load on a stock Ubuntu/Debian WSL2 distro with
-> `UnsatisfiedLinkError: ...libc.musl-x86_64.so.1: cannot open shared object
-> file`. Install musl and symlink it under the expected name (the backend
-> Docker image does the same thing on startup — see `backend/Dockerfile`):
+
+This starts the backend with the `local` profile
+([`application-local.yml`](backend/src/main/resources/application-local.yml)),
+which points at the database container on `localhost:5432` and reads
+`OPENAI_API_KEY`, `ROOT_ADMIN_EMAIL` and the other settings from the same
+`.env` file Docker Compose uses (see [Quick start](#quick-start-docker-compose)).
+Write values in `.env` unquoted
+(`KEY=value`), since quotes are kept as part of the value. In IntelliJ, set the
+run configuration's active profile to `local`. Real environment variables still
+take precedence, and `-Dspring-boot.run.profiles=...` picks a different profile.
+> **Code analysis (tree-sitter):** complexity and change metrics use the
+> official [jtreesitter](https://github.com/tree-sitter/java-tree-sitter)
+> bindings, which need the tree-sitter runtime and grammar libraries for your
+> platform. The Docker image builds them itself; for a native run, build them
+> once into `backend/native/` (Linux, macOS, or Windows from Git Bash/MSYS2 with
+> MinGW gcc or zig; the script picks the first of `cc`, `gcc`, `clang` and `zig` on
+> the PATH unless `CC` is set):
 > ```bash
-> sudo apt-get update
-> sudo apt-get install -y musl
-> sudo ln -sf /usr/lib/x86_64-linux-musl/libc.so /lib/libc.musl-x86_64.so.1
+> cd backend
+> scripts/build-treesitter-natives.sh
 > ```
+> The backend looks in `./native` relative to where it starts, or wherever
+> `TREESITTER_NATIVE_DIR` points. Without the libraries it still starts, logs a
+> warning, and falls back to zero complexity and line-based change analysis.
+> The tree-sitter tests skip in that case.
 
 
 **Frontend** (Vite dev server, port 5173):
@@ -230,7 +232,7 @@ via `VITE_DEV_PROXY_TARGET` (and optional `VITE_DEV_PROXY_REWRITE_TO`) — see
 
 ```
 codeowl/
-├── backend/            # Spring Boot 3.3 / Java 21 (package de.uni_passau.fim.se2)
+├── backend/            # Spring Boot 3.5 / Java 25 (package de.uni_passau.fim.se2)
 │   ├── src/main/java/  # API controllers, services, domain, persistence, AI clients
 │   ├── src/main/resources/
 │   │   ├── application.yml

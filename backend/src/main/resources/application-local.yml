@@ -1,0 +1,27 @@
+# === Local development profile ===
+# Active by default under `./mvnw spring-boot:run` (spring-boot.run.profiles in pom.xml);
+# in IntelliJ, set the run configuration's active profile to "local". Never used by the
+# Docker image or the tests.
+#
+# The values match docker-compose.yml, pointed at the db container from the host
+# (`docker compose up db`). Secrets are not set here: OPENAI_API_KEY, JWT_SECRET,
+# ROOT_ADMIN_EMAIL, MAIL_* and the rest are read from the repository's .env, the same
+# gitignored file Docker Compose uses, whether the backend starts in backend/ or in the
+# repository root. Real environment variables still override everything.
+
+spring:
+  config:
+    # .env has no extension, so [.properties] says how to read it. Quoted values keep
+    # their quotes: write KEY=value, not KEY="value".
+    import:
+      - optional:file:../.env[.properties]
+      - optional:file:.env[.properties]
+  datasource:
+    url: jdbc:postgresql://localhost:5432/codeowl
+    username: postgres
+    password: postgres
+
+auth:
+  app:
+    # The Vite dev server, rather than .env's APP_BASE_URL, which is the Docker frontend.
+    base-url: http://localhost:5173

@@ -55,3 +55,6 @@ gpt-debug-response.json
 # .claude/ holds machine-specific settings
 CLAUDE.md
 .claude/
+
+# tree-sitter native libraries built by backend/scripts/build-treesitter-natives.sh
+backend/native/

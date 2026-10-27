@@ -17,8 +17,17 @@
 # along with CodeOwl. If not, see <http://www.gnu.org/licenses/>.
 #
 
+# ===== AP26: tree-sitter native libraries (runtime + grammars) for jtreesitter =====
+# Built for whatever architecture the image is built on (x86_64 or arm64).
+FROM debian:bookworm-slim AS natives
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc libc6-dev curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+COPY scripts/build-treesitter-natives.sh /tmp/
+RUN sh /tmp/build-treesitter-natives.sh /natives
+
 # ===== Build stage (Debian-based, includes JDK) =====
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app
 
 # Prime the dependency cache
@@ -30,15 +39,8 @@ COPY src ./src
 RUN mvn -q -Dmaven.test.skip=true package spring-boot:repackage
 
 # ===== Runtime stage (Debian/Ubuntu JDK – needed for javac at runtime) =====
-FROM eclipse-temurin:21-jdk
+FROM eclipse-temurin:25-jdk
 WORKDIR /app
-
-# ── AP26: musl compatibility for tree-sitter native library ──
-# The java-tree-sitter JNI lib is compiled against musl libc.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends musl && \
-    ln -sf /usr/lib/x86_64-linux-musl/libc.so /lib/libc.musl-x86_64.so.1 && \
-    rm -rf /var/lib/apt/lists/*
 
 # ── AP13: Install Ruff (Python linter for hint system) ──
 RUN apt-get update && \
@@ -65,11 +67,16 @@ RUN curl -L -o /tmp/spotbugs.tgz \
     ln -s /opt/spotbugs-4.8.6/lib/spotbugs.jar /opt/spotbugs.jar && \
     rm /tmp/spotbugs.tgz
 
+# ── AP26: tree-sitter native libraries, found via TREESITTER_NATIVE_DIR ──
+COPY --from=natives /natives /app/native
+ENV TREESITTER_NATIVE_DIR=/app/native
+
 # Copy fat jar
 COPY --from=build /app/target/*.jar /app/app.jar
 
-# Container-aware JVM memory settings (21 auto-detects cgroups)
+# Container-aware JVM memory settings (the JDK auto-detects cgroups)
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=70"
 
 EXPOSE 8080
-ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar /app/app.jar"]
+# --enable-native-access: jtreesitter calls the native libraries through the FFM API.
+ENTRYPOINT ["sh","-c","java --enable-native-access=ALL-UNNAMED $JAVA_OPTS -jar /app/app.jar"]

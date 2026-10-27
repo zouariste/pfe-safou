@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * No-op fallback when tree-sitter native library is unavailable.
+ * No-op fallback when tree-sitter is disabled ({@code app.treesitter.enabled=false}).
  * Returns zero/empty metrics so the application can still start.
  */
 @Component
@@ -38,7 +38,7 @@ public class NoOpCodeAnalyzer implements CodeAnalyzer {
     private static final Logger logger = LoggerFactory.getLogger(NoOpCodeAnalyzer.class);
 
     public NoOpCodeAnalyzer() {
-        logger.warn("Tree-sitter unavailable — using NoOpCodeAnalyzer (all metrics will be zero)");
+        logger.warn("Tree-sitter disabled — using NoOpCodeAnalyzer (all metrics will be zero)");
     }
 
     @Override

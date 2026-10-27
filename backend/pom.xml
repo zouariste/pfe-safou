@@ -12,16 +12,21 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.0</version>
+        <version>3.5.16</version>
         <relativePath/>
     </parent>
 
     <properties>
-        <java.version>21</java.version>
-        <maven.compiler.release>21</maven.compiler.release>
+        <!-- 25 rather than 21: jtreesitter (below) is built for JDK 23+. -->
+        <java.version>25</java.version>
+        <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <lombok.version>1.18.44</lombok.version>
-        <!-- Overrides Spring Boot 3.3.0's managed 1.19.8. Note this does NOT by itself
+        <!-- `./mvnw spring-boot:run` starts with application-local.yml (localhost database,
+             secrets from the repository's .env). A property rather than plugin
+             configuration, so -Dspring-boot.run.profiles=... on the command line still wins. -->
+        <spring-boot.run.profiles>local</spring-boot.run.profiles>
+        <!-- Overrides the Spring Boot parent's managed version. Note this does NOT by itself
              fix the Docker API mismatch: docker-java still defaults to API 1.32, and
              Docker Engine 29 (MinAPIVersion 1.40) answers that with a 400. Testcontainers
              reads the 400 as "no valid Docker environment", and because the database
@@ -33,6 +38,10 @@
              daemon's MinAPIVersion (1.40 on Docker Engine 29) and <= its ApiVersion.
              1.44 ships with Docker 25 and later. -->
         <docker.api.version>1.44</docker.api.version>
+        <!-- Empty default so Surefire's late-bound @{argLine} resolves when no agent sets it. -->
+        <argLine></argLine>
+        <!-- jtreesitter calls restricted FFM methods; without this the JDK warns on startup. -->
+        <spring-boot.run.jvmArguments>--enable-native-access=ALL-UNNAMED</spring-boot.run.jvmArguments>
     </properties>
 
     <dependencies>
@@ -61,7 +70,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.4.0</version>
+            <version>2.8.17</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -138,11 +147,14 @@
             <version>3.27.0</version>
         </dependency>
 
-        <!-- AP26: tree-sitter for multi-language code analysis (complexity + change-analysis) -->
+        <!-- AP26: tree-sitter for multi-language code analysis (complexity + change-analysis).
+             The official bindings call the native library through the FFM API and ship no
+             native code themselves: the tree-sitter runtime and grammar libraries are built
+             by scripts/build-treesitter-natives.sh (the Docker image does this itself). -->
         <dependency>
-            <groupId>ch.usi.si.seart</groupId>
-            <artifactId>java-tree-sitter</artifactId>
-            <version>1.12.0</version>
+            <groupId>io.github.tree-sitter</groupId>
+            <artifactId>jtreesitter</artifactId>
+            <version>0.26.1</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -264,6 +276,8 @@
                     <systemPropertyVariables>
                         <api.version>${docker.api.version}</api.version>
                     </systemPropertyVariables>
+                    <!-- jtreesitter calls restricted FFM methods; without this the JDK warns. -->
+                    <argLine>@{argLine} --enable-native-access=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
         </plugins>
