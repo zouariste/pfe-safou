@@ -1,7 +1,7 @@
 type LogLevel = "log" | "warn" | "error" | "info" | "debug";
 
 export class PersistentLogger {
-    static log(level: LogLevel, ...args: any[]) {
+    static log(level: LogLevel, ...args: unknown[]) {
         // Print to console as usual
         console[level](...args);
 
@@ -25,7 +25,7 @@ export class PersistentLogger {
         localStorage.removeItem("logs");
     }
 
-    static logWithContext(context: string, level: LogLevel, ...args: any[]) {
+    static logWithContext(context: string, level: LogLevel, ...args: unknown[]) {
         const msg = `[${context}] ${args.map(String).join(" ")}`;
         PersistentLogger.log(level, msg);
     }

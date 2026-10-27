@@ -140,12 +140,35 @@ backend-test:    # Runs the JUnit suite in backend/, database tests included.
     reports:
       junit: backend/target/surefire-reports/TEST-*.xml
 
-lint-test-job:   # This job also runs in the test stage.
-  stage: test    # It can run at the same time as unit-test-job (in parallel).
+frontend-lint:   # ESLint over frontend/; errors fail the job, warnings are only reported.
+  stage: test
+  image: node:24
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+    paths:
+      - frontend/.npm/
+  before_script:
+    - cd frontend
+    - npm ci --cache .npm --prefer-offline
   script:
-    - echo "Linting code... This will take about 10 seconds."
-    - sleep 10
-    - echo "No lint issues found."
+    - npm run lint
+
+backend-lint:    # The GPL header check; bound to verify, so package and test never run it.
+  stage: test
+  image: eclipse-temurin:25-jdk   # Matches java.version in backend/pom.xml.
+  cache:
+    key:
+      files:
+        - backend/pom.xml
+    paths:
+      - backend/.m2/repository/
+  before_script:
+    - cd backend
+    - chmod +x mvnw   # See backend-build: the executable bit is easily lost from Windows.
+  script:
+    - ./mvnw -B -ntp -Dmaven.repo.local=.m2/repository license:check
 
 deploy-job:      # This job runs in the deploy stage.
   stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.

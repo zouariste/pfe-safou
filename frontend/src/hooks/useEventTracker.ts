@@ -5,7 +5,7 @@ export function useEventTracker() {
   const logEvent = useCallback(async (
     taskId: string,
     eventType: string,
-    eventData: Record<string, any> = {},
+    eventData: Record<string, unknown> = {},
     sequenceId?: string,
     tierLevel?: number
   ) => {

@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import { loginLandingPath } from "../lib/homePath.ts";
+import type { ApiError } from "../lib/api";
 
 export default function LoginPage() {
     const { t } = useTranslation();
@@ -31,8 +32,8 @@ export default function LoginPage() {
             // straight into a class when they had exactly one, which made the
             // landing page depend on how many classes they happened to be in.
             navigate(loginLandingPath(result.role));
-        } catch (err: any) {
-            setError(err.response?.data?.error || t("login.failed"));
+        } catch (err) {
+            setError((err as ApiError).response?.data?.error || t("login.failed"));
         } finally {
             setLoading(false);
         }

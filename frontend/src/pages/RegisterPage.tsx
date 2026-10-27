@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, type ApiError } from "../lib/api";
 import { useTranslation } from "react-i18next";
 
 export default function RegisterPage() {
@@ -31,8 +31,8 @@ export default function RegisterPage() {
         try {
             await api.post("/auth/register", { email, password, firstName, lastName });
             setSuccess(true);
-        } catch (err: any) {
-            setError(err.response?.data?.error || t("register.failed"));
+        } catch (err) {
+            setError((err as ApiError).response?.data?.error || t("register.failed"));
         } finally {
             setLoading(false);
         }

@@ -45,6 +45,25 @@ export function isNotFound(err: unknown): boolean {
     return axiosError?.response?.status === 404;
 }
 
+/**
+ * The parts of a failed request that pages read in their catch blocks.
+ *
+ * <p>A catch variable can only be typed `unknown`, so pages cast it to this instead of `any`.
+ * Everything is optional: a request that never reached the server has no response, and not
+ * every endpoint fills every field of its error body. An endpoint whose body looks different
+ * passes its own shape as `Body`.
+ */
+export type ApiError<Body = ApiErrorBody> = {
+    message?: string;
+    response?: {
+        status?: number;
+        data?: Body;
+    };
+};
+
+/** The error bodies the backend sends, GlobalExceptionHandler's ApiErrorResponse among them. */
+export type ApiErrorBody = { error?: string; message?: string; details?: string; code?: string };
+
 export const api = axios.create({
     baseURL,
     timeout: 120000,

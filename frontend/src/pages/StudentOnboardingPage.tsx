@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, type ApiError } from "../lib/api";
 import { useTranslation } from "react-i18next";
 
 export default function StudentOnboardingPage() {
@@ -25,8 +25,8 @@ export default function StudentOnboardingPage() {
             const res = await api.post("/auth/validate-token", { token: tokenInput });
             setStudentName(`${res.data.firstName} ${res.data.lastName}`);
             setStep("form");
-        } catch (err: any) {
-            setError(err.response?.data?.error || t("studentOnboarding.invalidToken"));
+        } catch (err) {
+            setError((err as ApiError).response?.data?.error || t("studentOnboarding.invalidToken"));
         } finally {
             setLoading(false);
         }
@@ -53,8 +53,8 @@ export default function StudentOnboardingPage() {
                 password,
             });
             setStep("done");
-        } catch (err: any) {
-            setError(err.response?.data?.error || t("studentOnboarding.setupFailed"));
+        } catch (err) {
+            setError((err as ApiError).response?.data?.error || t("studentOnboarding.setupFailed"));
         } finally {
             setLoading(false);
         }

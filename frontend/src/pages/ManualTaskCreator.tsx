@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api } from "../lib/api";
+import { api, type ApiError, type ApiErrorBody } from "../lib/api";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useHomePath } from "../hooks/useHomePath.ts";
 import { renderGapLine } from "../lib/gapMarkers";
@@ -158,13 +158,11 @@ export default function ManualTaskCreator() {
                 }
             }
             navigate(`/sequence/${data.id}`);
-        } catch (err: any) {
-            const msg =
-                err?.response?.data?.message ||
-                err?.response?.data ||
-                err?.message ||
-                t("manual.errorCreating");
-            setError(typeof msg === "string" ? msg : JSON.stringify(msg));
+        } catch (caught) {
+            const err = caught as ApiError<ApiErrorBody | string>;
+            const data = err.response?.data;
+            const body = typeof data === "string" ? data : data?.message || (data && JSON.stringify(data));
+            setError(body || err.message || t("manual.errorCreating"));
         } finally {
             setSubmitting(false);
             setGeneratingDistractors(false);

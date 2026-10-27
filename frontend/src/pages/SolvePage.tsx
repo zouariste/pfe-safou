@@ -1,7 +1,7 @@
 /* eslint-env browser */
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useNavigate, useParams} from "react-router-dom";
-import {api} from "../lib/api.ts";
+import {api, type ApiError} from "../lib/api.ts";
 import type {Task} from "../types/models.ts";
 import {parseSplitPlan} from "../types/models.ts";
 import $ from "jquery";
@@ -20,10 +20,11 @@ import { readArrangement } from "../lib/readArrangement.ts";
 import { applyHintLabels } from "../lib/hintHighlight.ts";
 import { shuffleElementChildren } from "../lib/shuffleSource.ts";
 import { taskName } from "../lib/taskName.ts";
+import type { ParsonsCodeLine, ParsonsLogEntry, ParsonsSplitFragment, ParsonsWidget, ParsonsWidgetConstructor } from "../types/parsons.ts";
 
 declare global {
     interface Window {
-        ParsonsWidget?: any;
+        ParsonsWidget?: ParsonsWidgetConstructor;
         prettyPrint?: (whenDone?: () => void) => void;
     }
 }
@@ -232,7 +233,7 @@ export default function SolvePage() {
                     PersistentLogger.logWithContext("SolvePage", "debug", "Language fetch success:", data.programmingLanguage);
                     setLanguage(data.programmingLanguage);
                 })
-                .catch((err: any) => {
+                .catch((err: ApiError) => {
                     PersistentLogger.logWithContext("SolvePage", "error", "Language fetch failed:", err?.message);
                 });
         }
@@ -289,7 +290,7 @@ export default function SolvePage() {
                 PersistentLogger.logWithContext("SolvePage", "debug", "AP22 context fields — before:", t.contextBefore ? "present (" + t.contextBefore.split("\n").length + " lines)" : "null", "after:", t.contextAfter ? "present (" + t.contextAfter.split("\n").length + " lines)" : "null");
                 setTask(t);
             })
-            .catch((err: any) => {
+            .catch((err: ApiError) => {
                 const msg = err?.response?.data?.message || err?.message || t("solve.apiError");
                 PersistentLogger.logWithContext("SolvePage", "error", "Task fetch failed:", msg);
                 setError(msg);
@@ -462,7 +463,7 @@ export default function SolvePage() {
         };
     }, [taskId]);
 
-    const widgetRef = useRef<any>(null);
+    const widgetRef = useRef<ParsonsWidget | null>(null);
     const [feedbackHTML, setFeedbackHTML] = useState("");
 
     // Grading produces already-resolved strings, so text on screen cannot
@@ -474,9 +475,10 @@ export default function SolvePage() {
         return () => { i18n.off("languageChanged", onLanguageChanged); };
     }, [i18n]);
     useEffect(() => {
-        if (!task?.solution || !window.ParsonsWidget) return;
+        const Parsons = window.ParsonsWidget;
+        if (!task?.solution || !Parsons) return;
 
-        const widget = new window.ParsonsWidget({
+        const widget = new Parsons({
             sortableId: "jsparsons-target",
             trashId: "jsparsons-source",
             can_indent: true,
@@ -495,8 +497,8 @@ export default function SolvePage() {
             trash_label: "",
             solution_label: "",
 
-            grader: function CustomLineBasedGrader(p: any) {
-                const base = new window.ParsonsWidget._graders.LineBasedGrader(p);
+            grader: function CustomLineBasedGrader(p) {
+                const base = new Parsons._graders.LineBasedGrader(p);
 
                 this.grade = (elementId?: string) => {
                     // Run base grader
@@ -665,7 +667,7 @@ export default function SolvePage() {
         flushMovesRef.current = flushMoves;
 
         const originalAddLogEntry = widget.addLogEntry.bind(widget);
-        widget.addLogEntry = function (entry: any, isMove?: boolean) {
+        widget.addLogEntry = function (entry: ParsonsLogEntry, isMove?: boolean) {
             const result = originalAddLogEntry(entry, isMove);
             try {
                 if (!entry || !MOVE_ACTIONS.has(entry.type)) return result;
@@ -710,7 +712,7 @@ export default function SolvePage() {
         widget.getFeedback = function () {
             const feedback = originalGetFeedback();
             const ul = document.getElementById(`ul-${this.options.sortableId}`);
-            (this as any)._lastSuccess = !!ul?.classList.contains("correct");
+            this._lastSuccess = !!ul?.classList.contains("correct");
             // The Parsons widget sets CSS classes on DOM elements after grading:
             // correctPosition, incorrectPosition, correctIndent, incorrectIndent
             // We read those classes to determine correctness and apply our own styling.
@@ -724,7 +726,7 @@ export default function SolvePage() {
             }
 
             const allLines = [...(this.modified_lines ?? []), ...(this.extra_lines ?? [])];
-            allLines.forEach((line: any) => {
+            allLines.forEach((line) => {
                 // line.elem() returns a jQuery object — use [0] to get the raw HTMLElement
                 const jqEl = line.elem ? line.elem() : null;
                 const el: HTMLElement | null = jqEl ? (jqEl[0] ?? jqEl.get?.(0) ?? null) : document.getElementById(line.id);
@@ -788,7 +790,7 @@ export default function SolvePage() {
             // required gap must ALSO veto the overall success verdict below — otherwise a
             // perfectly ordered puzzle reports "solved" while a gap value is still wrong.
             let anyGapIncorrect = false;
-            (this.modified_lines ?? []).forEach((line: any) => {
+            (this.modified_lines ?? []).forEach((line) => {
                 const blanks = line._blanks ?? [];
                 if (!blanks.length) return;
                 const jqEl = line.elem ? line.elem() : null;
@@ -802,7 +804,7 @@ export default function SolvePage() {
                     : [];
                 const isInSolution = solutionBlockIds.has(line.id);
                 let allGapsCorrect = true;
-                blanks.forEach((b: any, gi: number) => {
+                blanks.forEach((b, gi) => {
                     const input = (liveInputs[gi] ?? b.el) as HTMLInputElement;
                     if (!input) return;
                     const val = input.value ?? "";
@@ -836,20 +838,20 @@ export default function SolvePage() {
             // AP31: evaluate inline-split lines. A split line is fully correct only when its
             // block position AND its fragment order are correct ("UND"-Urteil). Mirrors gaps.
             let anySplitIncorrect = false;
-            (this.modified_lines ?? []).forEach((line: any) => {
-                if (!line?.isSplitLine || !line.isSplitLine()) return;
+            (this.modified_lines ?? []).forEach((line) => {
+                if (!line?.isSplitLine || !line.isSplitLine() || !line._split) return;
                 const jqEl = line.elem ? line.elem() : null;
                 const el: HTMLElement | null = jqEl ? (jqEl[0] ?? jqEl.get?.(0) ?? null) : null;
                 const isInSolution = solutionBlockIds.has(line.id);
                 const order = line._split.currentOrder();
-                const canonical = line._split.canonical as string[];
+                const canonical = line._split.canonical;
                 const ok = line.splitCorrect();
 
                 if (el) {
                     const slotEls = el.querySelectorAll(".split-slot");
                     slotEls.forEach((s) => s.classList.remove("split-correct", "split-incorrect"));
                     if (isInSolution) {
-                        order.forEach((o: any, i: number) => {
+                        order.forEach((o, i) => {
                             if (!o) return;
                             const good = !o.distractor && o.text === canonical[i];
                             slotEls[i]?.classList.add(good ? "split-correct" : "split-incorrect");
@@ -869,7 +871,7 @@ export default function SolvePage() {
                 if (isInSolution && task?.id) {
                     logEvent(task.id, ok ? "split_line_correct" : "split_line_incorrect", {
                         lineId: line.id,
-                        order: order.map((o: any) => (o ? o.text : null)),
+                        order: order.map((o) => (o ? o.text : null)),
                         expected: canonical,
                     }, task.sequenceId, task.tierLevel);
                 }
@@ -879,7 +881,7 @@ export default function SolvePage() {
             // _lastSuccess (read by the Feedback handler) is otherwise position-only, and
             // js-parsons' own `correct` class on the solution list must be retracted too.
             if (anyGapIncorrect || anySplitIncorrect) {
-                (this as any)._lastSuccess = false;
+                this._lastSuccess = false;
                 ul?.classList.remove("correct");
             }
 
@@ -986,7 +988,7 @@ export default function SolvePage() {
             if (!plan?.splits?.length) return;
             plan.splits.forEach((entry) => {
                 const reconstructed = ((entry.prefix ?? "") + (entry.fragments ?? []).join("") + (entry.suffix ?? "")).trim();
-                const line = (widget.modified_lines ?? []).find((l: any) =>
+                const line = (widget.modified_lines ?? []).find((l) =>
                     l && !l._split && typeof l.code === "string" && l.code.trim() === reconstructed);
                 if (line && typeof line._renderSplit === "function") {
                     // AP31: per-line handler so we can also detect when a split-distractor
@@ -998,7 +1000,7 @@ export default function SolvePage() {
                         logEvent(task.id, "fragment_placed", {}, task.sequenceId, task.tierLevel);
                         try {
                             const order = line._split?.currentOrder?.() ?? [];
-                            const distractorsInSlots = order.filter((s: any) => s && s.distractor).length;
+                            const distractorsInSlots = order.filter((s: ParsonsSplitFragment | null) => s && s.distractor).length;
                             if (distractorsInSlots > prevDistractorsInSlots) {
                                 logEvent(task.id, "split_distractor_placed", {}, task.sequenceId, task.tierLevel);
                             }
@@ -1158,11 +1160,12 @@ export default function SolvePage() {
             // guessing the cost here, so the two can never drift apart.
             refreshHintConfig();
 
-        } catch (err: any) {
+        } catch (caught) {
+            const err = caught as ApiError<{ hintText?: string; message?: string }>;
             // A 403 here means the server refused (hints disabled, or no credits
             // left). Re-read the config so the buttons reflect that immediately.
-            if (err?.response?.status === 403) refreshHintConfig();
-            const msg = err?.response?.data?.hintText || err?.response?.data?.message || err?.message || t("solve.hintLoadFailed");
+            if (err.response?.status === 403) refreshHintConfig();
+            const msg = err.response?.data?.hintText || err.response?.data?.message || err.message || t("solve.hintLoadFailed");
             setHintError(msg);
         } finally {
             setHintLoading(false);
@@ -1432,7 +1435,7 @@ export default function SolvePage() {
                                 className={`btn ${interactionMode === "drag" ? "btn-primary" : "btn-outline-secondary"}`}
                                 onClick={() => {
                                     setInteractionMode("drag");
-                                    try { localStorage.setItem("codeowl_interaction_mode", "drag"); } catch {}
+                                    try { localStorage.setItem("codeowl_interaction_mode", "drag"); } catch { /* storage unavailable */ }
                                 }}
                                 title={t("solve.dragModeTitle")}
                             >
@@ -1443,7 +1446,7 @@ export default function SolvePage() {
                                 className={`btn ${interactionMode === "click" ? "btn-primary" : "btn-outline-secondary"}`}
                                 onClick={() => {
                                     setInteractionMode("click");
-                                    try { localStorage.setItem("codeowl_interaction_mode", "click"); } catch {}
+                                    try { localStorage.setItem("codeowl_interaction_mode", "click"); } catch { /* storage unavailable */ }
                                 }}
                                 title={t("solve.clickModeTitle")}
                             >
@@ -1465,7 +1468,7 @@ export default function SolvePage() {
 
                                 // jQuery UI caches each item's position for dragging,
                                 // so it has to recompute them after the nodes move.
-                                try { ($(sourceUl as HTMLElement) as any).sortable("refresh"); } catch { /* not sortable */ }
+                                try { ($(sourceUl as HTMLElement) as JQuery & { sortable(method: "refresh"): void }).sortable("refresh"); } catch { /* not sortable */ }
 
                                 // The nodes themselves are reused, so click-to-move
                                 // handlers survive; re-binding is cheap insurance
@@ -1474,7 +1477,7 @@ export default function SolvePage() {
                                     try {
                                         widgetRef.current.disableClickToMove();
                                         widgetRef.current.enableClickToMove();
-                                    } catch {}
+                                    } catch { /* not enabled */ }
                                 }
 
                                 // Feedback and hints are deliberately left alone: they
@@ -1660,11 +1663,11 @@ export default function SolvePage() {
                                 const totalBlocks = domBlocks.length;
 
                                 // Count correct blocks from modified_lines (after grading sets isCorrect)
-                                const codeLines = [...(widget.modified_lines ?? []), ...(widget.extra_lines ?? [])] as any[];
+                                const codeLines: ParsonsCodeLine[] = [...(widget.modified_lines ?? []), ...(widget.extra_lines ?? [])];
                                 let currentCorrectCount = 0;
                                 const currentCorrectIds = new Set<string>();
 
-                                codeLines.forEach((line: any) => {
+                                codeLines.forEach((line) => {
                                     if (line.isCorrect) {
                                         currentCorrectCount++;
                                         if (line.id) currentCorrectIds.add(line.id);
@@ -1909,7 +1912,7 @@ export default function SolvePage() {
                                                 `Logged feedback click for task ${task.id}, correct=${allCorrect}`
                                             );
                                         })
-                                        .catch((err: any) => {
+                                        .catch((err: ApiError) => {
                                             PersistentLogger.logWithContext(
                                                 "SolvePage",
                                                 "warn",

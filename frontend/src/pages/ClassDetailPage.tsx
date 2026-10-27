@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, apiErrorMessage } from "../lib/api";
+import { api, apiErrorMessage, type ApiError } from "../lib/api";
 import { readCsvFile } from "../lib/csv.ts";
 import { useAuth } from "../context/AuthContext";
 import type { ClassInfo, StudentInfo, StudentProgress, Worksheet } from "../types/models";
@@ -101,7 +101,8 @@ export default function ClassDetailPage() {
             setClassData(res.data);
             setEditName(res.data.name);
             setEditDesc(res.data.description);
-        } catch (e: any) {
+        } catch (caught) {
+            const e = caught as ApiError;
             setError(e.response?.data?.details || e.response?.data?.error || t("classDetail.notFound"));
         } finally {
             setLoading(false);
@@ -119,8 +120,8 @@ export default function ClassDetailPage() {
             setEditing(false);
             setSuccess(t("classDetail.updated"));
             setTimeout(() => setSuccess(""), 3000);
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("classDetail.errorUpdating"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("classDetail.errorUpdating"));
         }
     };
 
@@ -142,8 +143,8 @@ export default function ClassDetailPage() {
             setShowAddStudent(false);
             setSuccess(t("classDetail.studentCreated", { name: `${res.data.firstName} ${res.data.lastName}` }));
             setTimeout(() => setSuccess(""), 5000);
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("classDetail.errorCreatingStudent"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("classDetail.errorCreatingStudent"));
         } finally {
             setAddingStudent(false);
         }
@@ -171,8 +172,8 @@ export default function ClassDetailPage() {
                     ? { ...prev, students: prev.students.filter((s) => s.userId !== studentId) }
                     : prev
             );
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("classDetail.errorRemoving"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("classDetail.errorRemoving"));
         }
     };
 
@@ -209,8 +210,8 @@ export default function ClassDetailPage() {
             setShowAssignWorksheet(false);
             setSuccess(t("classDetail.worksheetAssigned"));
             setTimeout(() => setSuccess(""), 3000);
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("classDetail.errorAssigning"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("classDetail.errorAssigning"));
         } finally {
             setAssigningWorksheet(false);
         }
@@ -234,8 +235,8 @@ export default function ClassDetailPage() {
             setShowCreateWorksheet(false);
             setSuccess(t("classDetail.worksheetCreated"));
             setTimeout(() => setSuccess(""), 3000);
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("classDetail.errorCreatingWorksheet"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("classDetail.errorCreatingWorksheet"));
         } finally {
             setCreatingWorksheet(false);
         }
@@ -250,8 +251,8 @@ export default function ClassDetailPage() {
                     ? { ...prev, worksheets: prev.worksheets.filter((w) => w.worksheetId !== wsId) }
                     : prev
             );
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("classDetail.errorRemoving"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("classDetail.errorRemoving"));
         }
     };
 
@@ -265,8 +266,8 @@ export default function ClassDetailPage() {
                 { locale }
             );
             setTempPassword(res.data.tempPassword);
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("classDetail.errorResetPassword"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("classDetail.errorResetPassword"));
             setResetingStudent(null);
         } finally {
             setResetting(false);
@@ -387,8 +388,8 @@ export default function ClassDetailPage() {
             }
             setSuccess(newValue ? t("classDetail.trackingOn") : t("classDetail.trackingOff"));
             setTimeout(() => setSuccess(""), 3000);
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("classDetail.errorToggleTracking"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("classDetail.errorToggleTracking"));
         } finally {
             setTogglingTracking(false);
         }
@@ -399,7 +400,7 @@ export default function ClassDetailPage() {
             setLoadingProgress(true);
             const res = await api.get<StudentProgress[]>(`/classes/${id}/progress`);
             setProgress(res.data);
-        } catch (e: any) {
+        } catch (e) {
             console.error("Error loading progress", e);
         } finally {
             setLoadingProgress(false);

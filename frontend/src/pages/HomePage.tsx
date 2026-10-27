@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { api, apiErrorMessage } from "../lib/api.ts";
+import { api, apiErrorMessage, type ApiError } from "../lib/api.ts";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { SequenceView } from "../components/SequenceView.tsx";
 import type { TieredTaskSequence } from "../types/models.ts";
@@ -64,7 +64,7 @@ export default function HomePage() {
             });
             setShowModal(false);
             navigate(`/worksheets/${data.id}`);
-        } catch (err: any) {
+        } catch (err) {
             setModalError(apiErrorMessage(err, "Error creating worksheet"));
         } finally {
             setCreating(false);
@@ -75,7 +75,7 @@ export default function HomePage() {
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "enter" && !loading) {
-                void handleSubmit(new Event("submit") as any);
+                void handleSubmit();
             }
         };
         window.addEventListener("keydown", onKey);
@@ -92,7 +92,7 @@ export default function HomePage() {
         setResult(null);
         setLoading(true);
 
-        const payload: any = {};
+        const payload: Record<string, unknown> = {};
         if (codeSnippet.trim() !== "") payload.codeSnippet = codeSnippet;
         if (problemStatement.trim() !== "") payload.problemStatement = problemStatement;
         if (language.trim() !== "") payload.language = language;
@@ -123,15 +123,16 @@ export default function HomePage() {
             setTimeout(() => {
                 document.getElementById("preview-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
             }, 50);
-        } catch (err: any) {
+        } catch (caught) {
+            const err = caught as ApiError;
             // The backend sends a stable `code` for the errors it expects us to explain
             // properly; everything else still falls back to its (German) message, and then
             // to whatever axios reports if the request never reached the server.
-            const code = err?.response?.data?.code;
+            const code = err.response?.data?.code;
             setError(
                 code === "UNSUPPORTED_LANGUAGE"
                     ? t("home.errorUnsupportedLanguage")
-                    : err?.response?.data?.message || err?.message || "Error during API request"
+                    : err.response?.data?.message || err.message || "Error during API request"
             );
         } finally {
             setLoading(false);

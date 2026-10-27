@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api } from "../lib/api";
+import { api, type ApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 
 /**
@@ -47,8 +47,8 @@ export default function ChangePasswordPage() {
             await api.post("/auth/change-temp-password", { newPassword });
             clearMustChangePassword();
             navigate("/", { replace: true });
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("changePassword.error"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("changePassword.error"));
         } finally {
             setLoading(false);
         }
