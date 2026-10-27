@@ -18,16 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.application.util.CsvWriter;
-import de.uni_passau.fim.se2.domain.entities.ResearchDataset;
-import de.uni_passau.fim.se2.domain.entities.ResearchLog;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.ResearchLogRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.io.OutputStream;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -36,14 +26,25 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import de.uni_passau.fim.se2.application.util.CsvWriter;
+import de.uni_passau.fim.se2.domain.entities.ResearchDataset;
+import de.uni_passau.fim.se2.domain.entities.ResearchLog;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.ResearchLogRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Reads the research tables for the admin research page.
  *
- * <p>Deliberately separate from {@link LearningEventService}, which owns the write path. The
- * two aggregations that already existed there load whole result sets and group them in Java
- * ({@code getSequenceSummary} over one sequence, {@code getAllEvents} over the entire table);
- * everything here is filtered, counted and aggregated in SQL instead, because the page is
- * pointed at a whole class rather than a single sequence.
+ * <p>
+ * Deliberately separate from {@link LearningEventService}, which owns the write path. The two aggregations that already
+ * existed there load whole result sets and group them in Java ({@code getSequenceSummary} over one sequence,
+ * {@code getAllEvents} over the entire table); everything here is filtered, counted and aggregated in SQL instead,
+ * because the page is pointed at a whole class rather than a single sequence.
  */
 @Slf4j
 @Service
@@ -59,20 +60,24 @@ public class ResearchLogService {
     /**
      * Normalises what arrived on the query string into a filter the DAO can trust.
      *
-     * <p>Paging is clamped rather than rejected — a hand-edited {@code size=100000} is a
-     * request for everything, and the answer to that is the CSV download, not an OOM.
+     * <p>
+     * Paging is clamped rather than rejected — a hand-edited {@code size=100000} is a request for everything, and the
+     * answer to that is the CSV download, not an OOM.
      *
-     * @param from inclusive; {@code to} is made exclusive by adding a day, so picking the same
-     *             date for both still selects that whole day rather than nothing
+     * @param from inclusive; {@code to} is made exclusive by adding a day, so picking the same date for both still
+     *             selects that whole day rather than nothing
      */
-    public ResearchLog.Filter buildFilter(ResearchDataset dataset, UUID classId, String eventType,
-                                          LocalDate from, LocalDate to, Integer page, Integer size) {
+    public ResearchLog.Filter buildFilter(
+        ResearchDataset dataset, UUID classId, String eventType,
+        LocalDate from, LocalDate to, Integer page, Integer size
+    ) {
 
         String type = (eventType == null || eventType.isBlank()) ? null : eventType.trim();
         if (type != null) {
             if (!dataset.isEventTyped()) {
                 throw new DomainValidationException(
-                        "eventType only applies to the events dataset, not " + dataset.wireName());
+                    "eventType only applies to the events dataset, not " + dataset.wireName()
+                );
             }
             if (!LearningEventService.allowedEventTypes().contains(type)) {
                 throw new DomainValidationException("Unknown eventType: " + type);
@@ -87,12 +92,12 @@ public class ResearchLogService {
         int safeSize = (size == null || size < 1) ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
 
         return new ResearchLog.Filter(
-                classId,
-                type,
-                from != null ? from.atStartOfDay() : null,
-                to != null ? to.plusDays(1).atStartOfDay() : null,
-                safePage,
-                safeSize
+            classId,
+            type,
+            from != null ? from.atStartOfDay() : null,
+            to != null ? to.plusDays(1).atStartOfDay() : null,
+            safePage,
+            safeSize
         );
     }
 
@@ -103,7 +108,8 @@ public class ResearchLogService {
 
         int totalPages = (int) Math.ceil((double) total / filter.size());
         return new ResearchLog.Page(
-                dataset.columns(), rows, total, totalPages, filter.page(), filter.size());
+            dataset.columns(), rows, total, totalPages, filter.page(), filter.size()
+        );
     }
 
     /** The stats strip over the same filter the table is showing. */
@@ -114,9 +120,9 @@ public class ResearchLogService {
     /**
      * Writes every matching row as CSV to {@code output}, ignoring the filter's paging.
      *
-     * <p>Read-only transaction so the DAO's fetch size takes effect: without it the driver
-     * buffers the whole result before the first row is written, which defeats the point of
-     * streaming an export of a table this size.
+     * <p>
+     * Read-only transaction so the DAO's fetch size takes effect: without it the driver buffers the whole result before
+     * the first row is written, which defeats the point of streaming an export of a table this size.
      *
      * @return rows written, for the audit entry
      */
@@ -126,16 +132,19 @@ public class ResearchLogService {
         long rows = writeRows(csv, dataset, filter);
         csv.flush();
 
-        log.info("Research CSV export: dataset={}, classId={}, rows={}",
-                dataset.wireName(), filter.classId(), rows);
+        log.info(
+            "Research CSV export: dataset={}, classId={}, rows={}",
+            dataset.wireName(), filter.classId(), rows
+        );
         return rows;
     }
 
     /**
      * Header plus every matching row, onto a writer the caller owns.
      *
-     * <p>Shared with the per-class ZIP, which writes four of these into one archive and must
-     * not close the stream between them.
+     * <p>
+     * Shared with the per-class ZIP, which writes four of these into one archive and must not close the stream between
+     * them.
      *
      * @return rows written, not counting the header
      */

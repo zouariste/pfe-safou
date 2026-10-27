@@ -18,22 +18,23 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.exceptions.*;
-import de.uni_passau.fim.se2.domain.strategy.*;
-import de.uni_passau.fim.se2.infrastructure.ai.openai.*;
-import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
-import de.uni_passau.fim.se2.domain.exceptions.UnsupportedLanguageException;
-import de.uni_passau.fim.se2.domain.strategy.TaskGenerationStrategy;
-import de.uni_passau.fim.se2.infrastructure.ai.openai.OpenAiClient;
+import java.io.*;
+import java.util.*;
+
 import org.slf4j.*;
 import org.springframework.beans.factory.annotation.*;
 import org.springframework.stereotype.*;
 
-import java.io.*;
-import java.util.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.exceptions.*;
+import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
+import de.uni_passau.fim.se2.domain.exceptions.UnsupportedLanguageException;
+import de.uni_passau.fim.se2.domain.strategy.*;
+import de.uni_passau.fim.se2.domain.strategy.TaskGenerationStrategy;
+import de.uni_passau.fim.se2.infrastructure.ai.openai.*;
+import de.uni_passau.fim.se2.infrastructure.ai.openai.OpenAiClient;
 
 // AP20: constraint-aware generation
 
@@ -42,7 +43,6 @@ import java.util.*;
  */
 @Service
 public class TaskGeneratorService {
-
 
     private final TaskEnricher taskEnricher;
 
@@ -60,19 +60,19 @@ public class TaskGeneratorService {
     private final TaskPersistenceService taskPersistenceService;
 
     /**
-     * The ChatGPTClient instance, responsible for Communication with OpenAI
-     * API.
+     * The ChatGPTClient instance, responsible for Communication with OpenAI API.
      */
     private final OpenAiClient gptClient;
 
     /**
      * Constructs the TaskGeneratorService instance.
      *
-     * @param client The ChatGPTClient instance, responsible for
-     *               Communication with OpenAI API.
+     * @param client The ChatGPTClient instance, responsible for Communication with OpenAI API.
      */
-    public TaskGeneratorService(final OpenAiClient client, final TaskPersistenceService taskPersistenceService,
-                                final TaskEnricher taskEnricher) {
+    public TaskGeneratorService(
+        final OpenAiClient client, final TaskPersistenceService taskPersistenceService,
+        final TaskEnricher taskEnricher
+    ) {
         this.gptClient = client;
         this.taskPersistenceService = taskPersistenceService;
         this.taskEnricher = taskEnricher;
@@ -89,74 +89,97 @@ public class TaskGeneratorService {
      * @throws IOException          GPT interaction failed.
      * @throws InterruptedException Thread interruption.
      */
-    public TieredTaskSequenceDTO tryGenerate(final String taskDescription, final List<String> concepts,
-                                             final String language,
-                                             final String codeSnippet,
-                                             final String targetLanguage,
-                                             final boolean distractorsEnabled) throws IOException, InterruptedException {
-        return tryGenerate(taskDescription, concepts, language, codeSnippet, targetLanguage, distractorsEnabled, false, null);
+    public TieredTaskSequenceDTO tryGenerate(
+        final String taskDescription, final List<String> concepts,
+        final String language,
+        final String codeSnippet,
+        final String targetLanguage,
+        final boolean distractorsEnabled
+    ) throws IOException, InterruptedException {
+        return tryGenerate(
+            taskDescription, concepts, language, codeSnippet, targetLanguage, distractorsEnabled, false, null
+        );
     }
 
-    public TieredTaskSequenceDTO tryGenerate(final String taskDescription, final List<String> concepts,
-                                          final String language,
-                                          final String codeSnippet,
-                                          final String targetLanguage,
-                                          final boolean distractorsEnabled,
-                                          final boolean contextModeEnabled) throws IOException, InterruptedException {
-        return tryGenerate(taskDescription, concepts, language, codeSnippet, targetLanguage, distractorsEnabled, contextModeEnabled, null);
+    public TieredTaskSequenceDTO tryGenerate(
+        final String taskDescription, final List<String> concepts,
+        final String language,
+        final String codeSnippet,
+        final String targetLanguage,
+        final boolean distractorsEnabled,
+        final boolean contextModeEnabled
+    ) throws IOException, InterruptedException {
+        return tryGenerate(
+            taskDescription, concepts, language, codeSnippet, targetLanguage, distractorsEnabled, contextModeEnabled,
+            null
+        );
     }
 
     /** AP20: constraint-aware tryGenerate */
-    public TieredTaskSequenceDTO tryGenerate(final String taskDescription, final List<String> concepts,
-                                          final String language,
-                                          final String codeSnippet,
-                                          final String targetLanguage,
-                                          final boolean distractorsEnabled,
-                                          final boolean contextModeEnabled,
-                                          final GenerationConstraints constraints) throws IOException, InterruptedException {
-        return tryGenerate(taskDescription, concepts, language, codeSnippet, targetLanguage,
-                           distractorsEnabled, contextModeEnabled, constraints, 3, false);
+    public TieredTaskSequenceDTO tryGenerate(
+        final String taskDescription, final List<String> concepts,
+        final String language,
+        final String codeSnippet,
+        final String targetLanguage,
+        final boolean distractorsEnabled,
+        final boolean contextModeEnabled,
+        final GenerationConstraints constraints
+    ) throws IOException, InterruptedException {
+        return tryGenerate(
+            taskDescription, concepts, language, codeSnippet, targetLanguage,
+            distractorsEnabled, contextModeEnabled, constraints, 3, false
+        );
     }
 
     /** AP21: tier-count-aware tryGenerate */
-    public TieredTaskSequenceDTO tryGenerate(final String taskDescription, final List<String> concepts,
-                                          final String language,
-                                          final String codeSnippet,
-                                          final String targetLanguage,
-                                          final boolean distractorsEnabled,
-                                          final boolean contextModeEnabled,
-                                          final GenerationConstraints constraints,
-                                          final int tierCount) throws IOException, InterruptedException {
-        return tryGenerate(taskDescription, concepts, language, codeSnippet, targetLanguage,
-                           distractorsEnabled, contextModeEnabled, constraints, tierCount, false);
+    public TieredTaskSequenceDTO tryGenerate(
+        final String taskDescription, final List<String> concepts,
+        final String language,
+        final String codeSnippet,
+        final String targetLanguage,
+        final boolean distractorsEnabled,
+        final boolean contextModeEnabled,
+        final GenerationConstraints constraints,
+        final int tierCount
+    ) throws IOException, InterruptedException {
+        return tryGenerate(
+            taskDescription, concepts, language, codeSnippet, targetLanguage,
+            distractorsEnabled, contextModeEnabled, constraints, tierCount, false
+        );
     }
 
     /** AP31: split-aware tryGenerate */
-    public TieredTaskSequenceDTO tryGenerate(final String taskDescription, final List<String> concepts,
-                                          final String language,
-                                          final String codeSnippet,
-                                          final String targetLanguage,
-                                          final boolean distractorsEnabled,
-                                          final boolean contextModeEnabled,
-                                          final GenerationConstraints constraints,
-                                          final int tierCount,
-                                          final boolean splitEnabled) throws IOException, InterruptedException {
+    public TieredTaskSequenceDTO tryGenerate(
+        final String taskDescription, final List<String> concepts,
+        final String language,
+        final String codeSnippet,
+        final String targetLanguage,
+        final boolean distractorsEnabled,
+        final boolean contextModeEnabled,
+        final GenerationConstraints constraints,
+        final int tierCount,
+        final boolean splitEnabled
+    ) throws IOException, InterruptedException {
 
-        logger.debug("Generating task sequence for language: {}, concepts: {}, targetLanguage: {}, distractors: {}, context: {}, constraints: {}, tierCount: {}",
-                     language, concepts, targetLanguage, distractorsEnabled, contextModeEnabled,
-                     constraints != null && constraints.hasAny(), tierCount);
+        logger.debug(
+            "Generating task sequence for language: {}, concepts: {}, targetLanguage: {}, distractors: {}, context: {}, constraints: {}, tierCount: {}",
+            language, concepts, targetLanguage, distractorsEnabled, contextModeEnabled,
+            constraints != null && constraints.hasAny(), tierCount
+        );
 
-        TaskGenerationStrategy strategy =
-                TaskGenerationStrategyFactory.choose(taskDescription, codeSnippet, concepts, language, targetLanguage);
+        TaskGenerationStrategy strategy = TaskGenerationStrategyFactory
+            .choose(taskDescription, codeSnippet, concepts, language, targetLanguage);
         logger.trace("Selected strategy: {}", strategy.getClass().getSimpleName());
 
         TieredTaskSequenceDTO rawSequence = strategy.generate(gptClient, distractorsEnabled, constraints, tierCount);
         rawSequence.setTargetLanguage(targetLanguage);
         rawSequence.setTierCount(tierCount);
-        if (constraints != null) rawSequence.setConstraints(constraints);
+        if (constraints != null)
+            rawSequence.setConstraints(constraints);
         logger.debug("Generated raw sequence with {} tasks", rawSequence.getTasks().size());
 
-        TieredTaskSequenceDTO enrichedSequence = taskEnricher.enrichWithSolutions(rawSequence, distractorsEnabled, contextModeEnabled, splitEnabled);
+        TieredTaskSequenceDTO enrichedSequence = taskEnricher
+            .enrichWithSolutions(rawSequence, distractorsEnabled, contextModeEnabled, splitEnabled);
         logger.debug("Enriched sequence with solutions");
 
         enrichedSequence.setStrategyName(strategy.getClass().getSimpleName());
@@ -165,45 +188,60 @@ public class TaskGeneratorService {
         return enrichedSequence;
     }
 
-    public TieredTaskSequenceDTO generate(final String taskDescription, final List<String> concepts,
-                                                   final String language, final String codeSnippet,
-                                                   final UUID ownerId, final String targetLanguage,
-                                                   final boolean distractorsEnabled)
-            throws IOException, InterruptedException {
-        return generate(taskDescription, concepts, language, codeSnippet, ownerId, targetLanguage, distractorsEnabled, false, null);
+    public TieredTaskSequenceDTO generate(
+        final String taskDescription, final List<String> concepts,
+        final String language, final String codeSnippet,
+        final UUID ownerId, final String targetLanguage,
+        final boolean distractorsEnabled
+    )
+        throws IOException, InterruptedException {
+        return generate(
+            taskDescription, concepts, language, codeSnippet, ownerId, targetLanguage, distractorsEnabled, false, null
+        );
     }
 
-    public TieredTaskSequenceDTO generate(final String taskDescription, final List<String> concepts,
-                                                   final String language, final String codeSnippet,
-                                                   final UUID ownerId, final String targetLanguage,
-                                                   final boolean distractorsEnabled,
-                                                   final boolean contextModeEnabled)
-            throws IOException, InterruptedException {
-        return generate(taskDescription, concepts, language, codeSnippet, ownerId, targetLanguage, distractorsEnabled, contextModeEnabled, null);
+    public TieredTaskSequenceDTO generate(
+        final String taskDescription, final List<String> concepts,
+        final String language, final String codeSnippet,
+        final UUID ownerId, final String targetLanguage,
+        final boolean distractorsEnabled,
+        final boolean contextModeEnabled
+    )
+        throws IOException, InterruptedException {
+        return generate(
+            taskDescription, concepts, language, codeSnippet, ownerId, targetLanguage, distractorsEnabled,
+            contextModeEnabled, null
+        );
     }
 
     /** AP20: constraint-aware generate with retry loop */
-    public TieredTaskSequenceDTO generate(final String taskDescription, final List<String> concepts,
-                                                   final String language, final String codeSnippet,
-                                                   final UUID ownerId, final String targetLanguage,
-                                                   final boolean distractorsEnabled,
-                                                   final boolean contextModeEnabled,
-                                                   final GenerationConstraints constraints)
-            throws IOException, InterruptedException {
-        return generate(taskDescription, concepts, language, codeSnippet, ownerId, targetLanguage,
-                        distractorsEnabled, contextModeEnabled, constraints, 3, false);
+    public TieredTaskSequenceDTO generate(
+        final String taskDescription, final List<String> concepts,
+        final String language, final String codeSnippet,
+        final UUID ownerId, final String targetLanguage,
+        final boolean distractorsEnabled,
+        final boolean contextModeEnabled,
+        final GenerationConstraints constraints
+    )
+        throws IOException, InterruptedException {
+        return generate(
+            taskDescription, concepts, language, codeSnippet, ownerId, targetLanguage,
+            distractorsEnabled, contextModeEnabled, constraints, 3, false
+        );
     }
 
     /** AP21/AP31: tier-count- and split-aware generate with retry loop */
-    public TieredTaskSequenceDTO generate(final String taskDescription, final List<String> concepts,
-                                                   final String language, final String codeSnippet,
-                                                   final UUID ownerId, final String targetLanguage,
-                                                   final boolean distractorsEnabled,
-                                                   final boolean contextModeEnabled,
-                                                   final GenerationConstraints constraints,
-                                                   final int tierCount,
-                                                   final boolean splitEnabled)
-            throws IOException, InterruptedException {
+    public TieredTaskSequenceDTO generate(
+        final String taskDescription, final List<String> concepts,
+        final String language, final String codeSnippet,
+        final UUID ownerId, final String targetLanguage,
+        final boolean distractorsEnabled,
+        final boolean contextModeEnabled,
+        final GenerationConstraints constraints,
+        final int tierCount,
+        final boolean splitEnabled
+    )
+        throws IOException, InterruptedException {
 
         IOException ioEx = null;
         IllegalStateException validationEx = null;
@@ -217,8 +255,10 @@ public class TaskGeneratorService {
             try {
                 logger.info("Attempt {}/{} for task generation (tierCount={})", attempt, maxAttempts, tierCount);
 
-                TieredTaskSequenceDTO seq = tryGenerate(taskDescription, concepts, language, codeSnippet,
-                        targetLanguage, distractorsEnabled, contextModeEnabled, constraints, tierCount, splitEnabled);
+                TieredTaskSequenceDTO seq = tryGenerate(
+                    taskDescription, concepts, language, codeSnippet,
+                    targetLanguage, distractorsEnabled, contextModeEnabled, constraints, tierCount, splitEnabled
+                );
 
                 SequenceValidator.validateLocLimit(seq, effectiveMaxLoc);
 
@@ -228,32 +268,39 @@ public class TaskGeneratorService {
                 handlePersistence(seq);
                 return seq;
 
-            } catch (IllegalStateException e) {
+            }
+            catch (IllegalStateException e) {
                 validationEx = e;
                 logger.warn("Validation failed on attempt {}: {}", attempt, e.getMessage());
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 ioEx = e;
                 logger.warn("IO failure on attempt {}: {}", attempt, e.getMessage());
-            } catch (UnsupportedLanguageException e) {
+            }
+            catch (UnsupportedLanguageException e) {
                 // Not worth a second attempt: the snippet's language does not change between
                 // tries, so retrying spends two more LLM calls to fail identically. Rethrown
                 // straight away so the teacher gets the real reason instead of the generic
                 // "failed after N attempts" this loop ends with.
                 logger.warn("Unsupported language on attempt {}: {}", attempt, e.getMessage());
                 throw e;
-            } catch (GenerationException e) {
+            }
+            catch (GenerationException e) {
                 logger.warn("Enrichment failed on attempt {}: {}", attempt, e.getMessage());
                 lastGenEx = e;
             }
         }
 
         // Failed after retries → throw meaningful exception
-        if (validationEx != null) throw validationEx;
-        if (ioEx != null) throw ioEx;
+        if (validationEx != null)
+            throw validationEx;
+        if (ioEx != null)
+            throw ioEx;
         // lastGenEx was collected and then dropped on the floor here, so a generation failure
         // surfaced as the bare IllegalStateException below and reached the client as a generic
         // 500 -- GlobalExceptionHandler has a GenerationException handler that never saw one.
-        if (lastGenEx != null) throw lastGenEx;
+        if (lastGenEx != null)
+            throw lastGenEx;
 
         throw new IllegalStateException("Task generation failed after " + maxAttempts + " attempts");
     }
@@ -264,6 +311,5 @@ public class TaskGeneratorService {
         taskPersistenceService.persistSequence(enrichedSequence);
         logger.debug("Persisted sequence with version ID: {}", versionId);
     }
-
 
 }

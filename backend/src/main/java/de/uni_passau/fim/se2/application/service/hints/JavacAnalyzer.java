@@ -38,8 +38,8 @@ public class JavacAnalyzer {
     private static final Logger logger = LoggerFactory.getLogger(JavacAnalyzer.class);
 
     /**
-     * Runs javac on the given Java code and returns compiler diagnostics as findings.
-     * Also returns the path to compiled .class files if compilation succeeded.
+     * Runs javac on the given Java code and returns compiler diagnostics as findings. Also returns the path to compiled
+     * .class files if compilation succeeded.
      */
     public JavacResult analyze(String javaCode) {
         Path tempDir = null;
@@ -76,7 +76,8 @@ public class JavacAnalyzer {
 
             return new JavacResult(findings, compiled, compiled ? outputDir : null);
 
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("javac analysis failed", e);
             return new JavacResult(List.of(), false, null);
         }
@@ -84,12 +85,12 @@ public class JavacAnalyzer {
     }
 
     /**
-     * Parse javac error/warning output into AnalysisFindings.
-     * Format: "FileName.java:LINE: error: message"
+     * Parse javac error/warning output into AnalysisFindings. Format: "FileName.java:LINE: error: message"
      */
     private List<AnalysisFinding> parseJavacOutput(String output) {
         List<AnalysisFinding> findings = new ArrayList<>();
-        if (output == null || output.isBlank()) return findings;
+        if (output == null || output.isBlank())
+            return findings;
 
         // Pattern: Solution.java:5: error: variable x might not have been initialized
         Pattern pattern = Pattern.compile(".*\\.java:(\\d+):\\s*(error|warning):\\s*(.+)");
@@ -104,9 +105,11 @@ public class JavacAnalyzer {
                 String ruleId = categorizeJavacError(message);
                 String category = categorizeJavacCategory(message);
 
-                findings.add(new AnalysisFinding(
-                    ruleId, message, severity, lineNum, lineNum, "javac", category
-                ));
+                findings.add(
+                    new AnalysisFinding(
+                        ruleId, message, severity, lineNum, lineNum, "javac", category
+                    )
+                );
             }
         }
         return findings;
@@ -116,24 +119,34 @@ public class JavacAnalyzer {
         // Try to find "class ClassName"
         Pattern classPattern = Pattern.compile("class\\s+(\\w+)");
         Matcher matcher = classPattern.matcher(code);
-        if (matcher.find()) return matcher.group(1);
+        if (matcher.find())
+            return matcher.group(1);
         return "Solution"; // fallback
     }
 
     private String categorizeJavacError(String message) {
-        if (message.contains("might not have been initialized")) return "compiler:not-initialized";
-        if (message.contains("cannot find symbol")) return "compiler:undefined-symbol";
-        if (message.contains("incompatible types")) return "compiler:type-mismatch";
-        if (message.contains("unreachable statement")) return "compiler:unreachable";
-        if (message.contains("missing return")) return "compiler:missing-return";
+        if (message.contains("might not have been initialized"))
+            return "compiler:not-initialized";
+        if (message.contains("cannot find symbol"))
+            return "compiler:undefined-symbol";
+        if (message.contains("incompatible types"))
+            return "compiler:type-mismatch";
+        if (message.contains("unreachable statement"))
+            return "compiler:unreachable";
+        if (message.contains("missing return"))
+            return "compiler:missing-return";
         return "compiler:general";
     }
 
     private String categorizeJavacCategory(String message) {
-        if (message.contains("might not have been initialized")) return "undefined_variable";
-        if (message.contains("cannot find symbol")) return "undefined_variable";
-        if (message.contains("incompatible types")) return "type_error";
-        if (message.contains("unreachable statement")) return "dead_code";
+        if (message.contains("might not have been initialized"))
+            return "undefined_variable";
+        if (message.contains("cannot find symbol"))
+            return "undefined_variable";
+        if (message.contains("incompatible types"))
+            return "type_error";
+        if (message.contains("unreachable statement"))
+            return "dead_code";
         return "syntax";
     }
 
@@ -141,14 +154,22 @@ public class JavacAnalyzer {
         List<AnalysisFinding> findings,
         boolean compiled,
         Path classOutputDir  // null if compilation failed
-    ) {}
+    ) {
+    }
 
     public void cleanupTempDir(Path dir) {
-        if (dir == null) return;
+        if (dir == null)
+            return;
         try {
             Files.walk(dir).sorted(Comparator.reverseOrder()).forEach(p -> {
-                try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                try {
+                    Files.deleteIfExists(p);
+                }
+                catch (IOException ignored) {
+                }
             });
-        } catch (IOException ignored) {}
+        }
+        catch (IOException ignored) {
+        }
     }
 }

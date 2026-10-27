@@ -18,16 +18,15 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.security.SecureRandom;
+import java.util.Base64;
+
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 import org.springframework.stereotype.Service;
 
-import java.security.SecureRandom;
-import java.util.Base64;
-
 /**
- * Argon2id password hashing service.
- * Parameters aligned with OWASP recommendations.
+ * Argon2id password hashing service. Parameters aligned with OWASP recommendations.
  */
 @Service
 public class PasswordHasherService {
@@ -48,8 +47,8 @@ public class PasswordHasherService {
 
         // Format: $argon2id$salt$hash (both Base64 encoded)
         return "$argon2id$" +
-                Base64.getEncoder().encodeToString(salt) + "$" +
-                Base64.getEncoder().encodeToString(hash);
+            Base64.getEncoder().encodeToString(salt) + "$" +
+            Base64.getEncoder().encodeToString(hash);
     }
 
     public boolean verifyPassword(String password, String storedHash) {
@@ -59,7 +58,8 @@ public class PasswordHasherService {
 
         String[] parts = storedHash.split("\\$");
         // parts: ["", "argon2id", salt, hash]
-        if (parts.length != 4) return false;
+        if (parts.length != 4)
+            return false;
 
         byte[] salt = Base64.getDecoder().decode(parts[2]);
         byte[] expectedHash = Base64.getDecoder().decode(parts[3]);
@@ -70,11 +70,11 @@ public class PasswordHasherService {
 
     private byte[] generateArgon2Hash(String password, byte[] salt) {
         Argon2Parameters params = new Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
-                .withSalt(salt)
-                .withMemoryAsKB(MEMORY)
-                .withIterations(ITERATIONS)
-                .withParallelism(PARALLELISM)
-                .build();
+            .withSalt(salt)
+            .withMemoryAsKB(MEMORY)
+            .withIterations(ITERATIONS)
+            .withParallelism(PARALLELISM)
+            .build();
 
         Argon2BytesGenerator generator = new Argon2BytesGenerator();
         generator.init(params);
@@ -85,7 +85,8 @@ public class PasswordHasherService {
     }
 
     private boolean constantTimeEquals(byte[] a, byte[] b) {
-        if (a.length != b.length) return false;
+        if (a.length != b.length)
+            return false;
         int result = 0;
         for (int i = 0; i < a.length; i++) {
             result |= a[i] ^ b[i];

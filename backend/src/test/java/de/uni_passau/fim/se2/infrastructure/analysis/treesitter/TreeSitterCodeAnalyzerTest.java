@@ -18,8 +18,12 @@
  */
 package de.uni_passau.fim.se2.infrastructure.analysis.treesitter;
 
-import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer.AstAnalysisResult;
-import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer.ComplexityResult;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -27,20 +31,18 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.List;
-import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer.AstAnalysisResult;
+import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer.ComplexityResult;
 
 /**
  * The node-type names in {@link LanguageRegistry} are tied to the grammar versions pinned in
- * {@code scripts/build-treesitter-natives.sh}; a grammar update that renames a node silently
- * zeroes a metric. Each snippet below has one function with a call inside an {@code if} inside
- * a loop, so every metric must come out non-trivial for every language.
+ * {@code scripts/build-treesitter-natives.sh}; a grammar update that renames a node silently zeroes a metric. Each
+ * snippet below has one function with a call inside an {@code if} inside a loop, so every metric must come out
+ * non-trivial for every language.
  *
- * <p>The grammar tests need the native libraries and are skipped without them, like the
- * database tests without Docker: build them with {@code scripts/build-treesitter-natives.sh}.
+ * <p>
+ * The grammar tests need the native libraries and are skipped without them, like the database tests without Docker:
+ * build them with {@code scripts/build-treesitter-natives.sh}.
  */
 class TreeSitterCodeAnalyzerTest {
 
@@ -50,74 +52,75 @@ class TreeSitterCodeAnalyzerTest {
 
     static Stream<Arguments> snippets() {
         return Stream.of(
-                Arguments.of("java", """
-                        class A {
-                            void run(int[] xs) {
-                                for (int x : xs) {
-                                    if (x > 0) { System.out.println(x); }
-                                }
-                            }
+            Arguments.of("java", """
+                class A {
+                    void run(int[] xs) {
+                        for (int x : xs) {
+                            if (x > 0) { System.out.println(x); }
                         }
-                        """),
-                Arguments.of("python", """
-                        def run(xs):
-                            for x in xs:
-                                if x > 0:
-                                    print(x)
-                        """),
-                Arguments.of("javascript", """
-                        function run(xs) {
-                            for (let i = 0; i < xs.length; i++) {
-                                if (xs[i] > 0) { console.log(xs[i]); }
-                            }
+                    }
+                }
+                """),
+            Arguments.of("python", """
+                def run(xs):
+                    for x in xs:
+                        if x > 0:
+                            print(x)
+                """),
+            Arguments.of("javascript", """
+                function run(xs) {
+                    for (let i = 0; i < xs.length; i++) {
+                        if (xs[i] > 0) { console.log(xs[i]); }
+                    }
+                }
+                """),
+            Arguments.of("typescript", """
+                function run(xs: number[]): void {
+                    for (let i = 0; i < xs.length; i++) {
+                        if (xs[i] > 0) { console.log(xs[i]); }
+                    }
+                }
+                """),
+            Arguments.of("c", """
+                void run(int *xs, int n) {
+                    for (int i = 0; i < n; i++) {
+                        if (xs[i] > 0) { printf("%d", xs[i]); }
+                    }
+                }
+                """),
+            Arguments.of("cpp", """
+                void run(std::vector<int> xs) {
+                    for (int x : xs) {
+                        if (x > 0) { print(x); }
+                    }
+                }
+                """),
+            Arguments.of("csharp", """
+                class A {
+                    void Run(int[] xs) {
+                        foreach (var x in xs) {
+                            if (x > 0) { Console.WriteLine(x); }
                         }
-                        """),
-                Arguments.of("typescript", """
-                        function run(xs: number[]): void {
-                            for (let i = 0; i < xs.length; i++) {
-                                if (xs[i] > 0) { console.log(xs[i]); }
-                            }
-                        }
-                        """),
-                Arguments.of("c", """
-                        void run(int *xs, int n) {
-                            for (int i = 0; i < n; i++) {
-                                if (xs[i] > 0) { printf("%d", xs[i]); }
-                            }
-                        }
-                        """),
-                Arguments.of("cpp", """
-                        void run(std::vector<int> xs) {
-                            for (int x : xs) {
-                                if (x > 0) { print(x); }
-                            }
-                        }
-                        """),
-                Arguments.of("csharp", """
-                        class A {
-                            void Run(int[] xs) {
-                                foreach (var x in xs) {
-                                    if (x > 0) { Console.WriteLine(x); }
-                                }
-                            }
-                        }
-                        """),
-                Arguments.of("rust", """
-                        fn run(xs: Vec<i32>) {
-                            for x in xs {
-                                if x > 0 { show(x); }
-                            }
-                        }
-                        """),
-                Arguments.of("go", """
-                        package main
+                    }
+                }
+                """),
+            Arguments.of("rust", """
+                fn run(xs: Vec<i32>) {
+                    for x in xs {
+                        if x > 0 { show(x); }
+                    }
+                }
+                """),
+            Arguments.of("go", """
+                package main
 
-                        func run(xs []int) {
-                            for _, x := range xs {
-                                if x > 0 { fmt.Println(x) }
-                            }
-                        }
-                        """));
+                func run(xs []int) {
+                    for _, x := range xs {
+                        if x > 0 { fmt.Println(x) }
+                    }
+                }
+                """)
+        );
     }
 
     @ParameterizedTest(name = "{0}")
@@ -141,9 +144,10 @@ class TreeSitterCodeAnalyzerTest {
     @DisplayName("change analysis reports an added loop")
     void detectsAddedLoop() {
         AstAnalysisResult result = new TreeSitterCodeAnalyzer().analyzeChanges(
-                "def f(x):\n    return x\n",
-                "def f(xs):\n    for x in xs:\n        print(x)\n",
-                "python");
+            "def f(x):\n    return x\n",
+            "def f(xs):\n    for x in xs:\n        print(x)\n",
+            "python"
+        );
 
         assertTrue(result.changeTypes().contains("ADD_LOOPS"), result.changeTypes().toString());
     }

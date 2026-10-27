@@ -18,15 +18,16 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+
 import de.uni_passau.fim.se2.domain.entities.AuthTokenDTO;
 import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
 import de.uni_passau.fim.se2.domain.interfaces.AuthTokenRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -70,7 +71,7 @@ public class TokenService {
      */
     public AuthTokenDTO validateAndConsume(String tokenValue, AuthTokenDTO.TokenType expectedType) {
         AuthTokenDTO token = tokenRepository.findByTokenValue(tokenValue)
-                .orElseThrow(() -> new AuthenticationException("Ungültiger Token."));
+            .orElseThrow(() -> new AuthenticationException("Ungültiger Token."));
 
         if (token.isUsed()) {
             throw new AuthenticationException("Token wurde bereits verwendet.");
@@ -94,7 +95,7 @@ public class TokenService {
      */
     public AuthTokenDTO validateWithoutConsuming(String tokenValue, AuthTokenDTO.TokenType expectedType) {
         AuthTokenDTO token = tokenRepository.findByTokenValue(tokenValue)
-                .orElseThrow(() -> new AuthenticationException("Ungültiger Token."));
+            .orElseThrow(() -> new AuthenticationException("Ungültiger Token."));
 
         if (token.isUsed()) {
             throw new AuthenticationException("Token wurde bereits verwendet.");
@@ -110,12 +111,12 @@ public class TokenService {
 
     private AuthTokenDTO createToken(UUID userId, String tokenValue, AuthTokenDTO.TokenType type, int hoursValid) {
         AuthTokenDTO token = AuthTokenDTO.builder()
-                .userId(userId)
-                .tokenValue(tokenValue)
-                .tokenType(type)
-                .expiresAt(LocalDateTime.now().plusHours(hoursValid))
-                .used(false)
-                .build();
+            .userId(userId)
+            .tokenValue(tokenValue)
+            .tokenType(type)
+            .expiresAt(LocalDateTime.now().plusHours(hoursValid))
+            .used(false)
+            .build();
         return tokenRepository.save(token);
     }
 
@@ -125,7 +126,8 @@ public class TokenService {
     private String generateShortToken() {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 9; i++) {
-            if (i == 3 || i == 6) sb.append('-');
+            if (i == 3 || i == 6)
+                sb.append('-');
             sb.append(CHARS.charAt(secureRandom.nextInt(CHARS.length())));
         }
         return sb.toString();

@@ -22,32 +22,34 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Concept-facet mirror of {@link BulkRetagJobStatus} — same shape, same meaning, for {@link
- * BulkConceptReclassifyService} jobs instead of tag jobs. Kept as its own type rather than reused
- * so a job's status unambiguously says which kind of job it is, in logs and in the API response.
+ * Concept-facet mirror of {@link BulkRetagJobStatus} — same shape, same meaning, for
+ * {@link BulkConceptReclassifyService} jobs instead of tag jobs. Kept as its own type rather than reused so a job's
+ * status unambiguously says which kind of job it is, in logs and in the API response.
  *
- * <p>Status values:
+ * <p>
+ * Status values:
  * <ul>
- *   <li>{@code QUEUED}   &mdash; job created, worker not yet started</li>
- *   <li>{@code RUNNING}  &mdash; worker iterating candidates</li>
- *   <li>{@code DONE}     &mdash; all candidates processed (some may still have failed individually)</li>
- *   <li>{@code FAILED}   &mdash; fatal error aborted the loop; {@code errorMessage} is set</li>
+ * <li>{@code QUEUED} &mdash; job created, worker not yet started</li>
+ * <li>{@code RUNNING} &mdash; worker iterating candidates</li>
+ * <li>{@code DONE} &mdash; all candidates processed (some may still have failed individually)</li>
+ * <li>{@code FAILED} &mdash; fatal error aborted the loop; {@code errorMessage} is set</li>
  * </ul>
  */
 public record BulkConceptReclassifyJobStatus(
-        UUID jobId,
-        String status,
-        String filter,
-        int total,
-        int processed,
-        int succeeded,
-        int failed,
-        Instant startedAt,
-        Instant finishedAt,
-        String errorMessage
+    UUID jobId,
+    String status,
+    String filter,
+    int total,
+    int processed,
+    int succeeded,
+    int failed,
+    Instant startedAt,
+    Instant finishedAt,
+    String errorMessage
 ) {
-    public static final String QUEUED  = "QUEUED";
+
+    public static final String QUEUED = "QUEUED";
     public static final String RUNNING = "RUNNING";
-    public static final String DONE    = "DONE";
-    public static final String FAILED  = "FAILED";
+    public static final String DONE = "DONE";
+    public static final String FAILED = "FAILED";
 }

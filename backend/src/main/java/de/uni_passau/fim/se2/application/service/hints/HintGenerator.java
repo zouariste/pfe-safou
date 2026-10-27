@@ -30,32 +30,33 @@ public class HintGenerator {
     }
 
     /** @deprecated Use the full overload with block-count context. */
-    public String generate(List<BlockMapper.BlockFinding> blockFindings, String language,
-                           List<Integer> distractorBlockIndices) {
+    public String generate(
+        List<BlockMapper.BlockFinding> blockFindings, String language,
+        List<Integer> distractorBlockIndices
+    ) {
         return generate(blockFindings, language, distractorBlockIndices, false, 0, 0, HintLocale.DE);
     }
 
     /**
      * Generates hint text for Level-1 hints (static, no LLM).
      *
-     * Priority order:
-     *   1. Too few blocks placed (student has not moved enough blocks into the solution area)
-     *   2. Distractors in the solution space (blocks that must not be there)
-     *   3. Static analysis findings (compiler / linter errors per block)
-     *   4. Fallback: no issues found, check block order
+     * Priority order: 1. Too few blocks placed (student has not moved enough blocks into the solution area) 2.
+     * Distractors in the solution space (blocks that must not be there) 3. Static analysis findings (compiler / linter
+     * errors per block) 4. Fallback: no issues found, check block order
      *
-     * Written in the UI language the client reports. Note that the per-finding
-     * messages in step 3 come from Ruff, javac and SpotBugs, which only emit
-     * English — so a German hint stays a German frame around an English tool
-     * message. Translating those would mean mapping every rule id by hand.
+     * Written in the UI language the client reports. Note that the per-finding messages in step 3 come from Ruff, javac
+     * and SpotBugs, which only emit English — so a German hint stays a German frame around an English tool message.
+     * Translating those would mean mapping every rule id by hand.
      *
      * @param language the programming language, not the UI language
      * @param locale   the UI language to write the hint in
      */
-    public String generate(List<BlockMapper.BlockFinding> blockFindings, String language,
-                           List<Integer> distractorBlockIndices,
-                           boolean tooFewBlocks, int studentNonDistractorCount, int correctBlockCount,
-                           HintLocale locale) {
+    public String generate(
+        List<BlockMapper.BlockFinding> blockFindings, String language,
+        List<Integer> distractorBlockIndices,
+        boolean tooFewBlocks, int studentNonDistractorCount, int correctBlockCount,
+        HintLocale locale
+    ) {
         boolean en = locale == HintLocale.EN;
         StringBuilder sb = new StringBuilder();
 
@@ -63,12 +64,13 @@ public class HintGenerator {
         if (tooFewBlocks) {
             if (en) {
                 sb.append("• Only ").append(studentNonDistractorCount)
-                  .append(" of ").append(correctBlockCount)
-                  .append(" required blocks have been placed. Drag the missing blocks into the solution area.\n");
-            } else {
+                    .append(" of ").append(correctBlockCount)
+                    .append(" required blocks have been placed. Drag the missing blocks into the solution area.\n");
+            }
+            else {
                 sb.append("• Es wurden nur ").append(studentNonDistractorCount)
-                  .append(" von ").append(correctBlockCount)
-                  .append(" benötigten Blöcken platziert. Ziehe noch fehlende Blöcke in den Lösungsbereich.\n");
+                    .append(" von ").append(correctBlockCount)
+                    .append(" benötigten Blöcken platziert. Ziehe noch fehlende Blöcke in den Lösungsbereich.\n");
             }
         }
 
@@ -78,20 +80,25 @@ public class HintGenerator {
                 String block = BlockLabels.of(distractorBlockIndices.get(0));
                 if (en) {
                     sb.append("• Block ").append(block)
-                      .append(" does not belong in the solution (distractor). Move it back to the source area.\n");
-                } else {
-                    sb.append("• Block ").append(block)
-                      .append(" gehört nicht zur Lösung (Distraktor). Verschiebe ihn zurück in den Quellbereich.\n");
+                        .append(" does not belong in the solution (distractor). Move it back to the source area.\n");
                 }
-            } else {
+                else {
+                    sb.append("• Block ").append(block)
+                        .append(" gehört nicht zur Lösung (Distraktor). Verschiebe ihn zurück in den Quellbereich.\n");
+                }
+            }
+            else {
                 sb.append(en ? "• Blocks " : "• Blöcke ");
                 for (int i = 0; i < distractorBlockIndices.size(); i++) {
-                    if (i > 0) sb.append(", ");
+                    if (i > 0)
+                        sb.append(", ");
                     sb.append(BlockLabels.of(distractorBlockIndices.get(i)));
                 }
-                sb.append(en
+                sb.append(
+                    en
                         ? " do not belong in the solution (distractors). Move them back to the source area.\n"
-                        : " gehören nicht zur Lösung (Distraktoren). Verschiebe sie zurück in den Quellbereich.\n");
+                        : " gehören nicht zur Lösung (Distraktoren). Verschiebe sie zurück in den Quellbereich.\n"
+                );
             }
         }
 
@@ -99,14 +106,14 @@ public class HintGenerator {
         for (BlockMapper.BlockFinding bf : blockFindings) {
             AnalysisFinding f = bf.finding();
             sb.append("• Block ").append(BlockLabels.of(bf.blockIndex()))
-              .append(" [").append(f.ruleId()).append("]: ")
-              .append(f.message()).append("\n");
+                .append(" [").append(f.ruleId()).append("]: ")
+                .append(f.message()).append("\n");
         }
 
         if (sb.isEmpty()) {
             return en
-                    ? "No static errors found. Check the order of your blocks."
-                    : "Keine statischen Fehler gefunden. Prüfe die Reihenfolge deiner Blöcke.";
+                ? "No static errors found. Check the order of your blocks."
+                : "Keine statischen Fehler gefunden. Prüfe die Reihenfolge deiner Blöcke.";
         }
 
         return sb.toString().trim();

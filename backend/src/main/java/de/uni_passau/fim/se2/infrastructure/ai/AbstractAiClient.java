@@ -18,13 +18,14 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai;
 
+import java.io.*;
+import java.util.*;
+
+import com.fasterxml.jackson.databind.*;
+
 import de.uni_passau.fim.se2.application.service.*;
 import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.interfaces.*;
-import com.fasterxml.jackson.databind.*;
-
-import java.io.*;
-import java.util.*;
 
 public class AbstractAiClient implements AiModelClient {
 
@@ -39,17 +40,17 @@ public class AbstractAiClient implements AiModelClient {
 
     }
 
-        /**
-         * Sends a single problem statement to the provider and returns a code-only solution.
-         *
-         * <p>The prompt strictly instructs the provider to return only properly formatted
-         * code, without any explanation, comments, or extra output.
-         *
-         * @param contract@return a {@link JsonNode} containing one field "code" with the solution
-         * @throws IOException          if API communication fails
-         * @throws InterruptedException if the thread is interrupted during the
-         *                              request
-         */
+    /**
+     * Sends a single problem statement to the provider and returns a code-only solution.
+     *
+     * <p>
+     * The prompt strictly instructs the provider to return only properly formatted code, without any explanation,
+     * comments, or extra output.
+     *
+     * @param contract@return a {@link JsonNode} containing one field "code" with the solution
+     * @throws IOException          if API communication fails
+     * @throws InterruptedException if the thread is interrupted during the request
+     */
     @Override
     public JsonNode solveProblem(SolveContract contract) throws IOException, InterruptedException {
         return null;
@@ -64,7 +65,7 @@ public class AbstractAiClient implements AiModelClient {
      */
     @Override
     public JsonNode solveProblemSimple(String taskDescription, String language)
-            throws IOException, InterruptedException {
+        throws IOException, InterruptedException {
         return null;
     }
 
@@ -80,9 +81,11 @@ public class AbstractAiClient implements AiModelClient {
      * @throws InterruptedException throws InterruptedException.
      */
     @Override
-    public JsonNode generateTieredTaskSequence(String taskDescription, List<String> concepts,
-                                               String codeSnippet, String language)
-            throws IOException, InterruptedException {
+    public JsonNode generateTieredTaskSequence(
+        String taskDescription, List<String> concepts,
+        String codeSnippet, String language
+    )
+        throws IOException, InterruptedException {
         return null;
     }
 
@@ -110,7 +113,7 @@ public class AbstractAiClient implements AiModelClient {
      */
     @Override
     public String generateTaskDescription(List<String> concepts, String language)
-            throws IOException, InterruptedException {
+        throws IOException, InterruptedException {
         return "";
     }
 
@@ -128,8 +131,8 @@ public class AbstractAiClient implements AiModelClient {
     }
 
     /**
-     * Generates a List of programming concepts contained in
-     * {@param codeSnippet}, constrained to the fixed concept catalog (AP25).
+     * Generates a List of programming concepts contained in {@param codeSnippet}, constrained to the fixed concept
+     * catalog (AP25).
      *
      * @param codeSnippet String representing the codeSnippet to be analyzed.
      * @param language    Programming language of the snippet.
@@ -143,18 +146,22 @@ public class AbstractAiClient implements AiModelClient {
     }
 
     @Override
-    public List<String> generateDistractors(String solutionCode, String language,
-                                             String taskStatement, int tierLevel,
-                                             String distractorPlan, int count)
-            throws IOException, InterruptedException {
+    public List<String> generateDistractors(
+        String solutionCode, String language,
+        String taskStatement, int tierLevel,
+        String distractorPlan, int count
+    )
+        throws IOException, InterruptedException {
         return List.of();
     }
 
     @Override
-    public JsonNode generateTieredTaskSequence(String taskDescription, List<String> concepts,
-                                               String codeSnippet, String language,
-                                               String targetLanguage, boolean distractorsEnabled)
-            throws IOException, InterruptedException {
+    public JsonNode generateTieredTaskSequence(
+        String taskDescription, List<String> concepts,
+        String codeSnippet, String language,
+        String targetLanguage, boolean distractorsEnabled
+    )
+        throws IOException, InterruptedException {
         return generateTieredTaskSequence(taskDescription, concepts, codeSnippet, language, targetLanguage);
     }
 }

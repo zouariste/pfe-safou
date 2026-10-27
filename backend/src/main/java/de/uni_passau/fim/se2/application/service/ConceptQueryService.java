@@ -18,19 +18,20 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
-import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
+import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
 
 /**
  * Reads the concept catalogue for the pickers.
  *
- * <p>Uses {@link ConceptRepository#loadAll()} rather than {@code loadAllOriginal()}:
- * the latter filters to {@code generated = false}, which would hide every concept
- * the LLM or an admin has added since — exactly the ones someone is most likely
- * to want to reuse.
+ * <p>
+ * Uses {@link ConceptRepository#loadAll()} rather than {@code loadAllOriginal()}: the latter filters to
+ * {@code generated = false}, which would hide every concept the LLM or an admin has added since — exactly the ones
+ * someone is most likely to want to reuse.
  */
 @Service
 public class ConceptQueryService {
@@ -44,9 +45,9 @@ public class ConceptQueryService {
     /** Every known concept name, sorted case-insensitively. */
     public List<String> getCatalogue() {
         return conceptRepo.loadAll().stream()
-                .map(ConceptDTO::getName)
-                .filter(name -> name != null && !name.isBlank())
-                .sorted(String.CASE_INSENSITIVE_ORDER)
-                .toList();
+            .map(ConceptDTO::getName)
+            .filter(name -> name != null && !name.isBlank())
+            .sorted(String.CASE_INSENSITIVE_ORDER)
+            .toList();
     }
 }

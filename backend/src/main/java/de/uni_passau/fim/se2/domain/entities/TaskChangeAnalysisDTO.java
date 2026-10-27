@@ -18,14 +18,14 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.*;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import lombok.*;
+
 /**
- * Stores the change-analysis results for a task (AP12 — Change-Analysis-Engine).
- * One analysis per task, comparing current version against the original.
+ * Stores the change-analysis results for a task (AP12 — Change-Analysis-Engine). One analysis per task, comparing
+ * current version against the original.
  */
 @Getter
 @Setter

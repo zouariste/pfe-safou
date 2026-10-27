@@ -18,28 +18,25 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
+import java.util.List;
+
 import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.ConceptCurriculumTopicDTO;
 import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
 import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
 
-import java.util.List;
-
 /**
- * Repository interface responsible for managing the association
- * between programming concepts and curriculum topics.
- * Provides methods to persist, retrieve, and delete mappings
- * between these entities.
+ * Repository interface responsible for managing the association between programming concepts and curriculum topics.
+ * Provides methods to persist, retrieve, and delete mappings between these entities.
  */
 public interface ConceptCurriculumTopicRepository {
 
     /**
-     * Persists the specified ConceptCurriculumTopicDTO instance in the repository.
-     * This method is used to save or update the association between a programming concept
-     * and a curriculum topic.
+     * Persists the specified ConceptCurriculumTopicDTO instance in the repository. This method is used to save or
+     * update the association between a programming concept and a curriculum topic.
      *
-     * @param dto the ConceptCurriculumTopicDTO object containing the identifiers
-     *            of a programming concept and a curriculum topic for the association to be saved
+     * @param dto the ConceptCurriculumTopicDTO object containing the identifiers of a programming concept and a
+     *            curriculum topic for the association to be saved
      */
     void save(ConceptCurriculumTopicDTO dto);
 
@@ -47,7 +44,8 @@ public interface ConceptCurriculumTopicRepository {
      * Retrieves all curriculum topics associated with the given programming concept.
      *
      * @param concept the programming concept for which associated curriculum topics are to be retrieved
-     * @return a list of CurriculumTopicDTO objects linked to the specified concept, or an empty list if no associations are found
+     * @return a list of CurriculumTopicDTO objects linked to the specified concept, or an empty list if no associations
+     *         are found
      */
     List<CurriculumTopicDTO> findAllByConcept(ConceptDTO concept);
 
@@ -60,11 +58,11 @@ public interface ConceptCurriculumTopicRepository {
     List<ConceptDTO> findAllByCurriculumTopic(CurriculumTopicDTO topic);
 
     /**
-     * Deletes the given association between a programming concept and a curriculum topic.
-     * This method removes the mapping identified by the provided data transfer object (DTO).
+     * Deletes the given association between a programming concept and a curriculum topic. This method removes the
+     * mapping identified by the provided data transfer object (DTO).
      *
-     * @param dto the ConceptCurriculumTopicDTO containing the identifiers of the programming concept
-     *            and the curriculum topic for the association to be deleted
+     * @param dto the ConceptCurriculumTopicDTO containing the identifiers of the programming concept and the curriculum
+     *            topic for the association to be deleted
      */
     void delete(ConceptCurriculumTopicDTO dto);
 }

@@ -18,21 +18,23 @@
  */
 package de.uni_passau.fim.se2.api.dto;
 
+import java.util.List;
+
 import de.uni_passau.fim.se2.domain.entities.SplitPlan;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.List;
-
 /**
  * Request body for POST /api/sequence/{id}/tasks: a new tier, written by the teacher.
  *
- * <p>The same fields as {@link TaskEditRequest}, minus the adjustment rating — there is no
- * generated original to rate — plus where the tier goes.
+ * <p>
+ * The same fields as {@link TaskEditRequest}, minus the adjustment rating — there is no generated original to rate —
+ * plus where the tier goes.
  */
 @Getter
 @Setter
 public class TierCreateRequest {
+
     private String problemStatement;
     private String code;
 
@@ -43,8 +45,8 @@ public class TierCreateRequest {
     private List<SplitPlan.SplitEntry> splits;
 
     /**
-     * The tier level the new tier takes, from 1 to one past the current last tier. Tiers at or
-     * above it move up by one. Null appends it at the end.
+     * The tier level the new tier takes, from 1 to one past the current last tier. Tiers at or above it move up by one.
+     * Null appends it at the end.
      */
     private Integer tierLevel;
 }

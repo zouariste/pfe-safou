@@ -18,19 +18,19 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.SplitPlan;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import de.uni_passau.fim.se2.domain.entities.SplitPlan;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 
 public class SequenceValidator {
 
     public static void validateLocLimit(TieredTaskSequenceDTO seq, int maxLoc) {
         boolean tooLarge = seq.getTasks().stream()
-                .anyMatch(t -> t.getLinesOfCode() > maxLoc);
+            .anyMatch(t -> t.getLinesOfCode() > maxLoc);
 
         if (tooLarge) {
             throw new IllegalStateException("Sequence invalid: LOC > " + maxLoc);
@@ -42,12 +42,11 @@ public class SequenceValidator {
     /**
      * Validates a split plan against a solution. Each split must:
      * <ul>
-     *   <li>reference a valid line index (0-based, split on '\n'), each line at most once;</li>
-     *   <li>have 2–4 non-empty fragments;</li>
-     *   <li>reconstruct its line exactly: {@code prefix + join("", fragments) + suffix == line}.</li>
+     * <li>reference a valid line index (0-based, split on '\n'), each line at most once;</li>
+     * <li>have 2–4 non-empty fragments;</li>
+     * <li>reconstruct its line exactly: {@code prefix + join("", fragments) + suffix == line}.</li>
      * </ul>
-     * A {@code null}/empty plan is valid (no splits). Throws {@link DomainValidationException}
-     * on the first violation.
+     * A {@code null}/empty plan is valid (no splits). Throws {@link DomainValidationException} on the first violation.
      */
     public static void validateSplitPlan(SplitPlan plan, String solution) {
         if (plan == null || plan.getSplits() == null || plan.getSplits().isEmpty()) {
@@ -60,7 +59,8 @@ public class SequenceValidator {
             int idx = s.getLineIndex();
             if (idx < 0 || idx >= lines.length) {
                 throw new DomainValidationException(
-                        "Split lineIndex out of range: " + idx + " (solution has " + lines.length + " lines).");
+                    "Split lineIndex out of range: " + idx + " (solution has " + lines.length + " lines)."
+                );
             }
             if (!seenLines.add(idx)) {
                 throw new DomainValidationException("Duplicate split for lineIndex " + idx + ".");
@@ -68,8 +68,9 @@ public class SequenceValidator {
             List<String> frags = s.getFragments();
             if (frags == null || frags.size() < 2 || frags.size() > 4) {
                 throw new DomainValidationException(
-                        "Split at line " + idx + " must have 2–4 fragments (got "
-                                + (frags == null ? 0 : frags.size()) + ").");
+                    "Split at line " + idx + " must have 2–4 fragments (got "
+                        + (frags == null ? 0 : frags.size()) + ")."
+                );
             }
             for (String f : frags) {
                 if (f == null || f.isEmpty()) {
@@ -81,8 +82,9 @@ public class SequenceValidator {
             String reconstructed = prefix + String.join("", frags) + suffix;
             if (!reconstructed.equals(lines[idx])) {
                 throw new DomainValidationException(
-                        "Split at line " + idx + " does not reconstruct the line.\n  expected: ["
-                                + lines[idx] + "]\n  got:      [" + reconstructed + "]");
+                    "Split at line " + idx + " does not reconstruct the line.\n  expected: ["
+                        + lines[idx] + "]\n  got:      [" + reconstructed + "]"
+                );
             }
         }
     }
@@ -92,7 +94,8 @@ public class SequenceValidator {
         try {
             validateSplitPlan(plan, solution);
             return true;
-        } catch (RuntimeException e) {
+        }
+        catch (RuntimeException e) {
             return false;
         }
     }

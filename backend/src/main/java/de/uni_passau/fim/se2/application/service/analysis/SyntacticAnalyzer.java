@@ -18,16 +18,15 @@
  */
 package de.uni_passau.fim.se2.application.service.analysis;
 
+import java.util.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
-
 /**
- * AP12 — Change-Analysis-Engine: Syntactic analysis utilities.
- * Provides Levenshtein distance, Jaccard similarity, word diff, line diff,
- * and token change ratio calculations.
+ * AP12 — Change-Analysis-Engine: Syntactic analysis utilities. Provides Levenshtein distance, Jaccard similarity, word
+ * diff, line diff, and token change ratio calculations.
  */
 @Service
 public class SyntacticAnalyzer {
@@ -36,41 +35,52 @@ public class SyntacticAnalyzer {
 
     // ── Inner result records ──
 
-    public record WordDiffResult(int wordsAdded, int wordsRemoved, int wordsModified, int lengthDelta) {}
+    public record WordDiffResult(int wordsAdded, int wordsRemoved, int wordsModified, int lengthDelta) {
+    }
 
-    public record LineDiffResult(int linesAdded, int linesRemoved, int linesModified, int linesReordered, int locDelta) {}
+    public record LineDiffResult(
+        int linesAdded, int linesRemoved, int linesModified, int linesReordered, int locDelta
+    ) {
+    }
 
     // ── Public API ──
 
     /**
-     * Normalized Levenshtein distance: editDistance / max(|a|, |b|).
-     * Returns 0.0 when both strings are identical, 1.0 when completely different.
+     * Normalized Levenshtein distance: editDistance / max(|a|, |b|). Returns 0.0 when both strings are identical, 1.0
+     * when completely different.
      */
     public double levenshteinRatio(String a, String b) {
-        if (a == null) a = "";
-        if (b == null) b = "";
-        if (a.equals(b)) return 0.0;
+        if (a == null)
+            a = "";
+        if (b == null)
+            b = "";
+        if (a.equals(b))
+            return 0.0;
 
         int maxLen = Math.max(a.length(), b.length());
-        if (maxLen == 0) return 0.0;
+        if (maxLen == 0)
+            return 0.0;
 
         int dist = levenshteinDistance(a, b);
         return (double) dist / maxLen;
     }
 
     /**
-     * Word-level Jaccard index: |intersection| / |union|.
-     * Returns 1.0 when identical, 0.0 when no overlap.
+     * Word-level Jaccard index: |intersection| / |union|. Returns 1.0 when identical, 0.0 when no overlap.
      */
     public double jaccardSimilarity(String a, String b) {
-        if (a == null) a = "";
-        if (b == null) b = "";
+        if (a == null)
+            a = "";
+        if (b == null)
+            b = "";
 
         Set<String> setA = tokenize(a);
         Set<String> setB = tokenize(b);
 
-        if (setA.isEmpty() && setB.isEmpty()) return 1.0;
-        if (setA.isEmpty() || setB.isEmpty()) return 0.0;
+        if (setA.isEmpty() && setB.isEmpty())
+            return 1.0;
+        if (setA.isEmpty() || setB.isEmpty())
+            return 0.0;
 
         Set<String> intersection = new HashSet<>(setA);
         intersection.retainAll(setB);
@@ -85,8 +95,10 @@ public class SyntacticAnalyzer {
      * Computes word-level diff statistics between two texts.
      */
     public WordDiffResult wordDiff(String a, String b) {
-        if (a == null) a = "";
-        if (b == null) b = "";
+        if (a == null)
+            a = "";
+        if (b == null)
+            b = "";
 
         String[] wordsA = splitWords(a);
         String[] wordsB = splitWords(b);
@@ -115,7 +127,8 @@ public class SyntacticAnalyzer {
             int countB = freqB.getOrDefault(word, 0);
             if (countA == 0) {
                 added += countB;
-            } else if (countB == 0) {
+            }
+            else if (countB == 0) {
                 removed += countA;
             }
             // Words present in both but with different frequencies
@@ -124,7 +137,8 @@ public class SyntacticAnalyzer {
                 int diff = Math.abs(countA - countB);
                 if (countB > countA) {
                     added += diff;
-                } else {
+                }
+                else {
                     removed += diff;
                 }
             }
@@ -154,8 +168,10 @@ public class SyntacticAnalyzer {
      * Computes line-level diff statistics between two texts.
      */
     public LineDiffResult lineDiff(String a, String b) {
-        if (a == null) a = "";
-        if (b == null) b = "";
+        if (a == null)
+            a = "";
+        if (b == null)
+            b = "";
 
         String[] linesA = splitLines(a);
         String[] linesB = splitLines(b);
@@ -180,23 +196,26 @@ public class SyntacticAnalyzer {
     }
 
     /**
-     * Whitespace-normalized token-level change ratio.
-     * Returns 0.0 when identical, 1.0 when completely different.
+     * Whitespace-normalized token-level change ratio. Returns 0.0 when identical, 1.0 when completely different.
      */
     public double tokenChangeRatio(String a, String b) {
-        if (a == null) a = "";
-        if (b == null) b = "";
+        if (a == null)
+            a = "";
+        if (b == null)
+            b = "";
 
         String[] tokensA = normalizeAndTokenize(a);
         String[] tokensB = normalizeAndTokenize(b);
 
-        if (tokensA.length == 0 && tokensB.length == 0) return 0.0;
+        if (tokensA.length == 0 && tokensB.length == 0)
+            return 0.0;
 
         int[][] lcs = lcsTable(tokensA, tokensB);
         int lcsLen = lcs[tokensA.length][tokensB.length];
 
         int totalTokens = Math.max(tokensA.length, tokensB.length);
-        if (totalTokens == 0) return 0.0;
+        if (totalTokens == 0)
+            return 0.0;
 
         int changedTokens = totalTokens - lcsLen;
         return (double) changedTokens / totalTokens;
@@ -221,8 +240,8 @@ public class SyntacticAnalyzer {
             for (int j = 1; j <= lenB; j++) {
                 int cost = (a.charAt(i - 1) == b.charAt(j - 1)) ? 0 : 1;
                 curr[j] = Math.min(
-                        Math.min(curr[j - 1] + 1, prev[j] + 1),
-                        prev[j - 1] + cost
+                    Math.min(curr[j - 1] + 1, prev[j] + 1),
+                    prev[j - 1] + cost
                 );
             }
             int[] tmp = prev;
@@ -244,7 +263,8 @@ public class SyntacticAnalyzer {
             for (int j = 1; j <= n; j++) {
                 if (a[i - 1].equals(b[j - 1])) {
                     dp[i][j] = dp[i - 1][j - 1] + 1;
-                } else {
+                }
+                else {
                     dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
                 }
             }
@@ -262,9 +282,11 @@ public class SyntacticAnalyzer {
                 result.add(a[i - 1]);
                 i--;
                 j--;
-            } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+            }
+            else if (dp[i - 1][j] >= dp[i][j - 1]) {
                 i--;
-            } else {
+            }
+            else {
                 j--;
             }
         }
@@ -323,18 +345,21 @@ public class SyntacticAnalyzer {
     }
 
     private String[] splitWords(String text) {
-        if (text.isBlank()) return new String[0];
+        if (text.isBlank())
+            return new String[0];
         return text.split("\\s+");
     }
 
     private String[] splitLines(String text) {
-        if (text.isBlank()) return new String[0];
+        if (text.isBlank())
+            return new String[0];
         return text.split("\\r?\\n", -1);
     }
 
     private String[] normalizeAndTokenize(String text) {
         String normalized = text.replaceAll("\\s+", " ").trim();
-        if (normalized.isEmpty()) return new String[0];
+        if (normalized.isEmpty())
+            return new String[0];
         return normalized.split(" ");
     }
 

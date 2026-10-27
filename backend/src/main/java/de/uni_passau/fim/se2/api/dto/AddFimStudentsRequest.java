@@ -18,9 +18,9 @@
  */
 package de.uni_passau.fim.se2.api.dto;
 
-import lombok.Data;
-
 import java.util.List;
+
+import lombok.Data;
 
 @Data
 public class AddFimStudentsRequest {

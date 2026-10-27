@@ -18,19 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.UserDTO;
-import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
-import de.uni_passau.fim.se2.domain.interfaces.FimAccountDirectory;
-import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
-import de.uni_passau.fim.se2.domain.model.FimAccount;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -42,17 +29,31 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import de.uni_passau.fim.se2.domain.entities.UserDTO;
+import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
+import de.uni_passau.fim.se2.domain.interfaces.FimAccountDirectory;
+import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
+import de.uni_passau.fim.se2.domain.model.FimAccount;
+
 /**
  * Logging in with a FIM-Account.
  *
- * The LDAP server decides whether the password is right; what is worth pinning is
- * which CodeOwl account a valid FIM-Account ends up in, since a wrong link hands one
- * person's classes and worksheets to another.
+ * The LDAP server decides whether the password is right; what is worth pinning is which CodeOwl account a valid
+ * FIM-Account ends up in, since a wrong link hands one person's classes and worksheets to another.
  */
 class AuthServiceFimLoginTest {
 
-    private static final FimAccount ACCOUNT =
-            new FimAccount("mustermann", "max.mustermann@uni-passau.de", "Max", "Mustermann");
+    private static final FimAccount ACCOUNT = new FimAccount(
+        "mustermann", "max.mustermann@uni-passau.de", "Max", "Mustermann"
+    );
 
     private UserRepository userRepository;
     private FimAccountDirectory directory;
@@ -65,13 +66,13 @@ class AuthServiceFimLoginTest {
         directory = mock(FimAccountDirectory.class);
         jwtService = mock(JwtService.class);
         service = new AuthService(
-                userRepository,
-                mock(PasswordHasherService.class),
-                jwtService,
-                mock(TokenService.class),
-                mock(EmailService.class),
-                directory,
-                ""
+            userRepository,
+            mock(PasswordHasherService.class),
+            jwtService,
+            mock(TokenService.class),
+            mock(EmailService.class),
+            directory,
+            ""
         );
         when(jwtService.generateToken(any(UserDTO.class))).thenReturn("jwt");
         when(userRepository.findByFimUid(any())).thenReturn(Optional.empty());
@@ -99,13 +100,13 @@ class AuthServiceFimLoginTest {
         verify(userRepository).save(saved.capture());
         UserDTO user = saved.getValue();
         assertAll(
-                () -> assertEquals("mustermann", user.getFimUid()),
-                () -> assertEquals("max.mustermann@uni-passau.de", user.getEmail()),
-                () -> assertEquals("Max", user.getFirstName()),
-                () -> assertEquals("Mustermann", user.getLastName()),
-                () -> assertEquals(UserDTO.UserRole.STUDENT, user.getRole()),
-                () -> assertTrue(user.isVerified()),
-                () -> assertNull(user.getPasswordHash())
+            () -> assertEquals("mustermann", user.getFimUid()),
+            () -> assertEquals("max.mustermann@uni-passau.de", user.getEmail()),
+            () -> assertEquals("Max", user.getFirstName()),
+            () -> assertEquals("Mustermann", user.getLastName()),
+            () -> assertEquals(UserDTO.UserRole.STUDENT, user.getRole()),
+            () -> assertTrue(user.isVerified()),
+            () -> assertNull(user.getPasswordHash())
         );
     }
 
@@ -138,10 +139,11 @@ class AuthServiceFimLoginTest {
         service.loginWithFimAccount("mustermann", "secret");
 
         assertAll(
-                () -> assertEquals("Max", placeholder.getFirstName()),
-                () -> assertEquals("Mustermann", placeholder.getLastName()),
-                () -> assertEquals("max.mustermann@uni-passau.de", placeholder.getEmail()),
-                () -> assertEquals(UserDTO.UserRole.STUDENT, placeholder.getRole()));
+            () -> assertEquals("Max", placeholder.getFirstName()),
+            () -> assertEquals("Mustermann", placeholder.getLastName()),
+            () -> assertEquals("max.mustermann@uni-passau.de", placeholder.getEmail()),
+            () -> assertEquals(UserDTO.UserRole.STUDENT, placeholder.getRole())
+        );
         verify(userRepository).update(placeholder);
         verify(userRepository, never()).save(any());
         verify(jwtService).generateToken(placeholder);
@@ -161,8 +163,9 @@ class AuthServiceFimLoginTest {
         service.loginWithFimAccount("mustermann", "secret");
 
         assertAll(
-                () -> assertEquals("Maximilian", student.getFirstName()),
-                () -> assertNull(student.getEmail()));
+            () -> assertEquals("Maximilian", student.getFirstName()),
+            () -> assertNull(student.getEmail())
+        );
         verify(userRepository, never()).update(any());
     }
 
@@ -220,30 +223,30 @@ class AuthServiceFimLoginTest {
     @DisplayName("missing name attributes fall back to the uid instead of violating NOT NULL")
     void fallsBackWhenDirectoryLacksNames() {
         when(directory.authenticate("mustermann", "secret"))
-                .thenReturn(Optional.of(new FimAccount("mustermann", null, null, null)));
+            .thenReturn(Optional.of(new FimAccount("mustermann", null, null, null)));
 
         service.loginWithFimAccount("mustermann", "secret");
 
         ArgumentCaptor<UserDTO> saved = ArgumentCaptor.forClass(UserDTO.class);
         verify(userRepository).save(saved.capture());
         assertAll(
-                () -> assertEquals("mustermann", saved.getValue().getFirstName()),
-                () -> assertEquals("", saved.getValue().getLastName()),
-                () -> assertNull(saved.getValue().getEmail())
+            () -> assertEquals("mustermann", saved.getValue().getFirstName()),
+            () -> assertEquals("", saved.getValue().getLastName()),
+            () -> assertNull(saved.getValue().getEmail())
         );
     }
 
     private static UserDTO user(boolean verified, String fimUid) {
         return UserDTO.builder()
-                .userId(UUID.randomUUID())
-                .email(ACCOUNT.email())
-                .firstName("Max")
-                .lastName("Mustermann")
-                .passwordHash("hash")
-                .role(UserDTO.UserRole.TEACHER)
-                .verified(verified)
-                .active(true)
-                .fimUid(fimUid)
-                .build();
+            .userId(UUID.randomUUID())
+            .email(ACCOUNT.email())
+            .firstName("Max")
+            .lastName("Mustermann")
+            .passwordHash("hash")
+            .role(UserDTO.UserRole.TEACHER)
+            .verified(verified)
+            .active(true)
+            .fimUid(fimUid)
+            .build();
     }
 }

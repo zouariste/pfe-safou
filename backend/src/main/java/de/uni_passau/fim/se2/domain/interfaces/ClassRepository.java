@@ -18,11 +18,11 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import de.uni_passau.fim.se2.domain.entities.ClassDTO;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import de.uni_passau.fim.se2.domain.entities.ClassDTO;
 
 public interface ClassRepository {
 
@@ -51,11 +51,10 @@ public interface ClassRepository {
     void removeWorksheet(UUID classId, UUID worksheetId);
 
     /**
-     * Points one class's assignment at a different worksheet, keeping its schedule and
-     * published state.
+     * Points one class's assignment at a different worksheet, keeping its schedule and published state.
      *
-     * @throws de.uni_passau.fim.se2.domain.exceptions.DomainValidationException if the old
-     *         worksheet is not assigned to the class
+     * @throws de.uni_passau.fim.se2.domain.exceptions.DomainValidationException if the old worksheet is not assigned to
+     *                                                                           the class
      */
     void replaceWorksheet(UUID classId, UUID oldWorksheetId, UUID newWorksheetId);
 

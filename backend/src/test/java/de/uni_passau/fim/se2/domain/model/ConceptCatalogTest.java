@@ -18,27 +18,27 @@
  */
 package de.uni_passau.fim.se2.domain.model;
 
-import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
-import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
+import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
+
 /**
- * A concept typed by hand — in {@code ConceptPicker}, or as a curriculum topic's mapping — used
- * to be invisible to the LLM classifier forever: {@code getCatalogForPrompt}/{@code normalize}
- * read only the static {@code concept-catalog.json}, never the {@code concepts} table the typed
- * concept was actually saved to. This pins down the fix: anything in that table beyond the
- * file's own slugs must be offered to the LLM and survive validating its response, without
- * duplicating a slug the file already has.
+ * A concept typed by hand — in {@code ConceptPicker}, or as a curriculum topic's mapping — used to be invisible to the
+ * LLM classifier forever: {@code getCatalogForPrompt}/{@code normalize} read only the static
+ * {@code concept-catalog.json}, never the {@code concepts} table the typed concept was actually saved to. This pins
+ * down the fix: anything in that table beyond the file's own slugs must be offered to the LLM and survive validating
+ * its response, without duplicating a slug the file already has.
  */
 class ConceptCatalogTest {
 
@@ -62,8 +62,10 @@ class ConceptCatalogTest {
     @DisplayName("a concept added beyond the file is offered to the LLM for every language")
     void addedConceptAppearsInPrompt() {
         String prompt = catalog.getCatalogForPrompt("java");
-        assertTrue(prompt.contains("quantum-computing"),
-                "a concept only in the database, not the file, must still reach the prompt");
+        assertTrue(
+            prompt.contains("quantum-computing"),
+            "a concept only in the database, not the file, must still reach the prompt"
+        );
     }
 
     @Test

@@ -25,17 +25,17 @@ import java.util.Optional;
  * The programming languages CodeOwl can actually work with, and the only values
  * {@code tiered_task_sequences.programming_language} is meant to hold.
  *
- * <p>"Can work with" means there is a static analyzer behind it: Ruff for Python, javac plus
- * SpotBugs for Java. A sequence tagged anything else still generates and still renders, but its
- * hints are built from an empty finding list -- which is why this type exists rather than the
- * string literals that used to be spread across the prompt schema, the client and the hint
- * service.
+ * <p>
+ * "Can work with" means there is a static analyzer behind it: Ruff for Python, javac plus SpotBugs for Java. A sequence
+ * tagged anything else still generates and still renders, but its hints are built from an empty finding list -- which
+ * is why this type exists rather than the string literals that used to be spread across the prompt schema, the client
+ * and the hint service.
  *
- * <p>It exists because that spread let a typo through. The language is detected by an LLM, and
- * for one batch on 2026-09-10 the model answered "Pyhton". Nothing compared that against
- * anything: the response schema typed the field as an unconstrained string, the client checked
- * only that it was non-empty, and the column is free text. Six sequences and thirty tasks
- * silently lost static analysis. One list, referenced everywhere, is what stops the next one.
+ * <p>
+ * It exists because that spread let a typo through. The language is detected by an LLM, and for one batch on 2026-09-10
+ * the model answered "Pyhton". Nothing compared that against anything: the response schema typed the field as an
+ * unconstrained string, the client checked only that it was non-empty, and the column is free text. Six sequences and
+ * thirty tasks silently lost static analysis. One list, referenced everywhere, is what stops the next one.
  */
 public enum SupportedLanguage {
 
@@ -48,10 +48,10 @@ public enum SupportedLanguage {
     /**
      * What the language-detection model answers when a snippet is neither of the above.
      *
-     * <p>Offered as an explicit choice on purpose. Restricted to {@code python} and {@code java}
-     * alone, a model handed C++ has to pick one of them and the sequence is confidently
-     * mislabelled; given somewhere to put "neither", it says so and generation fails with a
-     * message naming the real problem.
+     * <p>
+     * Offered as an explicit choice on purpose. Restricted to {@code python} and {@code java} alone, a model handed C++
+     * has to pick one of them and the sequence is confidently mislabelled; given somewhere to put "neither", it says so
+     * and generation fails with a message naming the real problem.
      */
     public static final String UNSUPPORTED = "other";
 
@@ -74,9 +74,10 @@ public enum SupportedLanguage {
     /**
      * Resolves a stored or model-supplied string, or empty if it names no supported language.
      *
-     * <p>Deliberately strict: it accepts case and whitespace variation and nothing else. A near
-     * miss like "Pyhton" returns empty rather than being guessed at, because a wrong guess is
-     * how bad data reaches the database in the first place.
+     * <p>
+     * Deliberately strict: it accepts case and whitespace variation and nothing else. A near miss like "Pyhton" returns
+     * empty rather than being guessed at, because a wrong guess is how bad data reaches the database in the first
+     * place.
      *
      * @param raw the value to resolve, may be {@code null}
      * @return the matching language, or empty
@@ -99,8 +100,7 @@ public enum SupportedLanguage {
     }
 
     /**
-     * Every value the detection model may answer: the supported languages plus
-     * {@link #UNSUPPORTED}.
+     * Every value the detection model may answer: the supported languages plus {@link #UNSUPPORTED}.
      */
     public static List<String> detectionChoices() {
         return List.of(PYTHON.canonicalName, JAVA.canonicalName, UNSUPPORTED);

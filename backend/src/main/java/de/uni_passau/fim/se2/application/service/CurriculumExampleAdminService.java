@@ -18,20 +18,20 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.util.Set;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.interfaces.CurriculumCodeExampleRepository;
 import de.uni_passau.fim.se2.domain.interfaces.CurriculumTopicRepository;
-import org.springframework.stereotype.Service;
-
-import java.util.Set;
-import java.util.UUID;
 
 /**
- * AP32 admin use case: create / update / delete curated curriculum code examples.
- * Validation lives here (not in the controller or DAO). Not-found conditions throw
- * {@link IllegalArgumentException} (mapped to 404 by the controller); invalid input
- * throws {@link DomainValidationException} (mapped to 400 by the global handler).
+ * AP32 admin use case: create / update / delete curated curriculum code examples. Validation lives here (not in the
+ * controller or DAO). Not-found conditions throw {@link IllegalArgumentException} (mapped to 404 by the controller);
+ * invalid input throws {@link DomainValidationException} (mapped to 400 by the global handler).
  */
 @Service
 public class CurriculumExampleAdminService {
@@ -41,8 +41,10 @@ public class CurriculumExampleAdminService {
     private final CurriculumCodeExampleRepository exampleRepo;
     private final CurriculumTopicRepository topicRepo;
 
-    public CurriculumExampleAdminService(CurriculumCodeExampleRepository exampleRepo,
-                                         CurriculumTopicRepository topicRepo) {
+    public CurriculumExampleAdminService(
+        CurriculumCodeExampleRepository exampleRepo,
+        CurriculumTopicRepository topicRepo
+    ) {
         this.exampleRepo = exampleRepo;
         this.topicRepo = topicRepo;
     }

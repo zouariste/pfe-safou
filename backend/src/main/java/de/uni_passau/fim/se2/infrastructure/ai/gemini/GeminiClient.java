@@ -18,14 +18,16 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai.gemini;
 
+import java.io.*;
+import java.util.*;
+
+import org.springframework.stereotype.*;
+
+import com.fasterxml.jackson.databind.*;
+
 import de.uni_passau.fim.se2.application.service.*;
 import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.infrastructure.ai.*;
-import com.fasterxml.jackson.databind.*;
-import org.springframework.stereotype.*;
-
-import java.io.*;
-import java.util.*;
 
 @Component
 public class GeminiClient extends AbstractAiClient {
@@ -47,8 +49,10 @@ public class GeminiClient extends AbstractAiClient {
      * {@inheritDoc}
      */
     @Override
-    public JsonNode generateTieredTaskSequence(String taskDescription, List<String> concepts, String codeSnippet, String language)
-            throws IOException, InterruptedException {
+    public JsonNode generateTieredTaskSequence(
+        String taskDescription, List<String> concepts, String codeSnippet, String language
+    )
+        throws IOException, InterruptedException {
         throw new UnsupportedOperationException("GeminiClient not implemented yet");
     }
 
@@ -70,7 +74,8 @@ public class GeminiClient extends AbstractAiClient {
      * {@inheritDoc}
      */
     @Override
-    public String generateTaskDescription(List<String> concepts, String language) throws IOException, InterruptedException {
+    public String generateTaskDescription(List<String> concepts, String language)
+        throws IOException, InterruptedException {
         throw new UnsupportedOperationException("GeminiClient not implemented yet");
     }
 

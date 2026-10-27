@@ -18,17 +18,18 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import de.uni_passau.fim.se2.domain.entities.AuthTokenDTO;
 import de.uni_passau.fim.se2.domain.entities.UserDTO;
 import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
 import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -58,37 +59,39 @@ public class AdminService {
         long total = userRepository.countAll(search);
 
         return new PaginatedUsersResponse(
-                users.stream().map(AdminUserResponse::from).toList(),
-                total,
-                (int) Math.ceil((double) total / size),
-                page,
-                size
+            users.stream().map(AdminUserResponse::from).toList(),
+            total,
+            (int) Math.ceil((double) total / size),
+            page,
+            size
         );
     }
 
     public record PaginatedUsersResponse(
-            List<AdminUserResponse> content,
-            long totalElements,
-            int totalPages,
-            int page,
-            int size
-    ) {}
+        List<AdminUserResponse> content,
+        long totalElements,
+        int totalPages,
+        int page,
+        int size
+    ) {
+    }
 
     public record AdminUserResponse(
-            String userId, String email, String firstName, String lastName,
-            String role, boolean verified, boolean active, String createdAt, boolean fimAccount
+        String userId, String email, String firstName, String lastName,
+        String role, boolean verified, boolean active, String createdAt, boolean fimAccount
     ) {
+
         static AdminUserResponse from(UserDTO user) {
             return new AdminUserResponse(
-                    user.getUserId().toString(),
-                    user.getEmail(),
-                    user.getFirstName(),
-                    user.getLastName(),
-                    user.getRole().name(),
-                    user.isVerified(),
-                    user.isActive(),
-                    user.getCreatedAt() != null ? user.getCreatedAt().toString() : null,
-                    user.getFimUid() != null
+                user.getUserId().toString(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getRole().name(),
+                user.isVerified(),
+                user.isActive(),
+                user.getCreatedAt() != null ? user.getCreatedAt().toString() : null,
+                user.getFimUid() != null
             );
         }
     }
@@ -98,7 +101,7 @@ public class AdminService {
      */
     public UserDTO updateUser(UUID userId, String firstName, String lastName, String email, String role) {
         UserDTO user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
 
         // Users without an email (students before onboarding, FIM-Accounts whose
         // directory entry has none) arrive here with a blank one; store that as null
@@ -129,7 +132,7 @@ public class AdminService {
      */
     public void deleteUser(UUID userId) {
         userRepository.findById(userId)
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
         userRepository.deleteById(userId);
         log.info("Admin deleted user: {}", userId);
     }
@@ -139,11 +142,12 @@ public class AdminService {
      */
     public UserDTO toggleAdmin(UUID userId) {
         UserDTO user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
 
         if (user.getRole() == UserDTO.UserRole.ADMIN) {
             user.setRole(UserDTO.UserRole.TEACHER);
-        } else {
+        }
+        else {
             user.setRole(UserDTO.UserRole.ADMIN);
         }
         userRepository.update(user);
@@ -157,11 +161,12 @@ public class AdminService {
     @Transactional
     public void resetPassword(UUID userId) {
         UserDTO user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
 
         if (user.getFimUid() != null) {
             throw new AuthenticationException(
-                    "Das Passwort eines FIM-Accounts kann nicht in CodeOwl zurückgesetzt werden.");
+                "Das Passwort eines FIM-Accounts kann nicht in CodeOwl zurückgesetzt werden."
+            );
         }
 
         if (user.getEmail() == null || user.getEmail().isBlank()) {

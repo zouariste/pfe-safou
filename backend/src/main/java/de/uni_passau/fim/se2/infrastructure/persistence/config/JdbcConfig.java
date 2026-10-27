@@ -18,10 +18,10 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.config;
 
+import javax.sql.*;
+
 import org.springframework.context.annotation.*;
 import org.springframework.jdbc.core.*;
-
-import javax.sql.*;
 
 @Configuration
 public class JdbcConfig {

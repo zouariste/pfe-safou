@@ -18,13 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
-import de.uni_passau.fim.se2.domain.interfaces.SequenceTagRepository;
-import de.uni_passau.fim.se2.domain.model.ConceptCatalog;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -35,20 +28,30 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
+import de.uni_passau.fim.se2.domain.interfaces.SequenceTagRepository;
+import de.uni_passau.fim.se2.domain.model.ConceptCatalog;
+
 /**
  * Central service for sequence tags (AP19 Teil A), shown to users as <em>topics</em>.
  *
- * <p>Topics describe what a sequence is about and are disjoint from its concepts (which live in
+ * <p>
+ * Topics describe what a sequence is about and are disjoint from its concepts (which live in
  * {@code tiered_task_sequence_concepts}). Two sources, stored in the same table:
  * <ul>
- *   <li><b>llm</b> &mdash; semantic tags derived from an LLM call. Written asynchronously via
- *       {@link de.uni_passau.fim.se2.application.events.SequenceGeneratedEvent} (see AsyncConfig).</li>
- *   <li><b>manual</b> &mdash; teacher-set. Must never be overwritten by auto-retag.</li>
+ * <li><b>llm</b> &mdash; semantic tags derived from an LLM call. Written asynchronously via
+ * {@link de.uni_passau.fim.se2.application.events.SequenceGeneratedEvent} (see AsyncConfig).</li>
+ * <li><b>manual</b> &mdash; teacher-set. Must never be overwritten by auto-retag.</li>
  * </ul>
  *
- * <p>All tag names are normalized to lowercase-trimmed slugs by the DAO layer, so callers
- * can pass user-typed variants ("Fibonacci", " fibonacci ", "FIBONACCI") without worry.
- * The canonical name is German; LLM tags also carry an English slug in {@code topic_translations}.
+ * <p>
+ * All tag names are normalized to lowercase-trimmed slugs by the DAO layer, so callers can pass user-typed variants
+ * ("Fibonacci", " fibonacci ", "FIBONACCI") without worry. The canonical name is German; LLM tags also carry an English
+ * slug in {@code topic_translations}.
  */
 @Service
 public class SequenceTagService {
@@ -68,34 +71,39 @@ public class SequenceTagService {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Writes semantic LLM tags (source='llm'). Primary and alias are both stored so they all
-     * contribute to search; primaries get a higher confidence.
+     * Writes semantic LLM tags (source='llm'). Primary and alias are both stored so they all contribute to search;
+     * primaries get a higher confidence.
      *
-     * <p>Tags that name a concept — in German or in their English translation — are dropped:
-     * the prompt asks the LLM not to emit them, this makes sure, so topics and concepts stay
-     * disjoint.
+     * <p>
+     * Tags that name a concept — in German or in their English translation — are dropped: the prompt asks the LLM not
+     * to emit them, this makes sure, so topics and concepts stay disjoint.
      *
      * @param translations canonical (German) tag name → English slug; may be null or partial
      */
-    public void writeLlmTags(UUID sequenceId, List<String> primaryTags, List<String> aliases,
-                             Map<String, String> translations) {
-        if (sequenceId == null) return;
+    public void writeLlmTags(
+        UUID sequenceId, List<String> primaryTags, List<String> aliases,
+        Map<String, String> translations
+    ) {
+        if (sequenceId == null)
+            return;
 
         Map<String, String> english = translations == null ? Map.of() : translations;
         Set<String> conceptNames = conceptCatalog.getConceptNamesAsTopicSlugs();
         Predicate<String> namesConcept = tag -> conceptNames.contains(tag)
-                || conceptNames.contains(ConceptCatalog.toTopicSlug(english.get(tag)));
+            || conceptNames.contains(ConceptCatalog.toTopicSlug(english.get(tag)));
 
         List<SequenceTagDTO> tags = new java.util.ArrayList<>();
         if (primaryTags != null) {
             for (String p : primaryTags) {
-                if (p == null || p.isBlank()) continue;
+                if (p == null || p.isBlank())
+                    continue;
                 tags.add(new SequenceTagDTO(sequenceId, p.trim().toLowerCase(Locale.ROOT), "llm", 0.9f));
             }
         }
         if (aliases != null) {
             for (String a : aliases) {
-                if (a == null || a.isBlank()) continue;
+                if (a == null || a.isBlank())
+                    continue;
                 tags.add(new SequenceTagDTO(sequenceId, a.trim().toLowerCase(Locale.ROOT), "llm", 0.6f));
             }
         }
@@ -104,16 +112,20 @@ public class SequenceTagService {
         if (tags.size() < before) {
             logger.debug("Dropped {} LLM tags naming a concept for sequence {}", before - tags.size(), sequenceId);
         }
-        if (tags.isEmpty()) return;
+        if (tags.isEmpty())
+            return;
 
         try {
             // Replace previous LLM tags so a re-tag doesn't accumulate stale ones.
             tagRepo.replaceForSource(sequenceId, "llm", tags);
-            logger.debug("LLM-tagged sequence {} with {} tags ({} primary, {} alias)",
-                    sequenceId, tags.size(),
-                    primaryTags == null ? 0 : primaryTags.size(),
-                    aliases == null ? 0 : aliases.size());
-        } catch (Exception e) {
+            logger.debug(
+                "LLM-tagged sequence {} with {} tags ({} primary, {} alias)",
+                sequenceId, tags.size(),
+                primaryTags == null ? 0 : primaryTags.size(),
+                aliases == null ? 0 : aliases.size()
+            );
+        }
+        catch (Exception e) {
             logger.warn("LLM tag write failed for sequence {}: {}", sequenceId, e.getMessage());
             return;
         }
@@ -121,12 +133,14 @@ public class SequenceTagService {
         Map<String, String> keptTranslations = new java.util.HashMap<>();
         for (SequenceTagDTO t : tags) {
             String en = english.get(t.getTagName());
-            if (en != null) keptTranslations.put(t.getTagName(), en);
+            if (en != null)
+                keptTranslations.put(t.getTagName(), en);
         }
         if (!keptTranslations.isEmpty()) {
             try {
                 tagRepo.upsertTranslations(keptTranslations);
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 logger.warn("Topic translation write failed for sequence {}: {}", sequenceId, e.getMessage());
             }
         }
@@ -138,9 +152,13 @@ public class SequenceTagService {
 
     /** Adds a manually-set tag. Idempotent via ON CONFLICT DO NOTHING. */
     public void addManualTag(UUID sequenceId, String tagName) {
-        if (sequenceId == null || tagName == null || tagName.isBlank()) return;
-        tagRepo.upsertAll(List.of(
-                new SequenceTagDTO(sequenceId, tagName.trim().toLowerCase(Locale.ROOT), "manual")));
+        if (sequenceId == null || tagName == null || tagName.isBlank())
+            return;
+        tagRepo.upsertAll(
+            List.of(
+                new SequenceTagDTO(sequenceId, tagName.trim().toLowerCase(Locale.ROOT), "manual")
+            )
+        );
     }
 
     /** Removes a tag regardless of source. The teacher is the final authority. */
@@ -174,14 +192,17 @@ public class SequenceTagService {
     }
 
     /**
-     * Groups tags by source for a single sequence — convenient for UI rendering
-     * which typically shows manual and LLM tags differently from auto ones.
+     * Groups tags by source for a single sequence — convenient for UI rendering which typically shows manual and LLM
+     * tags differently from auto ones.
      */
     public Map<String, List<String>> getTagsGroupedBySource(UUID sequenceId) {
         return tagRepo.findBySequenceId(sequenceId).stream()
-                .collect(Collectors.groupingBy(
-                        SequenceTagDTO::getSource,
-                        Collectors.mapping(SequenceTagDTO::getTagName, Collectors.toList())));
+            .collect(
+                Collectors.groupingBy(
+                    SequenceTagDTO::getSource,
+                    Collectors.mapping(SequenceTagDTO::getTagName, Collectors.toList())
+                )
+            );
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -189,9 +210,9 @@ public class SequenceTagService {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Tags that appeared for the first time within the past {@code daysBack} days. Used by the
-     * admin dashboard's weekly "new topics" widget — a cheap signal for "the LLM is coining
-     * something we should canonicalise" or "teachers are tagging a new recurring theme".
+     * Tags that appeared for the first time within the past {@code daysBack} days. Used by the admin dashboard's weekly
+     * "new topics" widget — a cheap signal for "the LLM is coining something we should canonicalise" or "teachers are
+     * tagging a new recurring theme".
      *
      * @param daysBack how far to look back (clamped to 1..90 days)
      * @param limit    max rows (clamped by the DAO to 1..200)
@@ -203,9 +224,9 @@ public class SequenceTagService {
     }
 
     /**
-     * Renames a tag across the whole system. Intended for admins cleaning up near-duplicates
-     * ("rekursion" → "recursion", "fib-folge" → "fibonacci"). Idempotent — merging a tag into
-     * itself or into a non-existent source is a safe no-op.
+     * Renames a tag across the whole system. Intended for admins cleaning up near-duplicates ("rekursion" →
+     * "recursion", "fib-folge" → "fibonacci"). Idempotent — merging a tag into itself or into a non-existent source is
+     * a safe no-op.
      *
      * @return total rows affected (duplicates dropped + renames)
      */

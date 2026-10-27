@@ -18,16 +18,16 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import com.fasterxml.jackson.annotation.*;
-import lombok.*;
-
 import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.annotation.*;
+
+import lombok.*;
+
 /**
- * Represents a complete sequence of tiered programming tasks.
- * Typically, includes one task per tier level (e.g., 1–3).
+ * Represents a complete sequence of tiered programming tasks. Typically, includes one task per tier level (e.g., 1–3).
  */
 @Getter
 @Setter
@@ -82,9 +82,8 @@ public class TieredTaskSequenceDTO {
     private String taskDescription;
 
     /**
-     * A name the sequence owner gave this sequence, e.g. "Loops for beginners".
-     * NULL when none was given; clients then show a generic heading, or "Sequence N" on a
-     * worksheet, in the viewer's language.
+     * A name the sequence owner gave this sequence, e.g. "Loops for beginners". NULL when none was given; clients then
+     * show a generic heading, or "Sequence N" on a worksheet, in the viewer's language.
      */
     private String title;
 
@@ -106,21 +105,20 @@ public class TieredTaskSequenceDTO {
     private String strategyName;
 
     /**
-     * The owner (teacher/admin) who created this sequence.
-     * NULL for legacy/anonymous sequences.
+     * The owner (teacher/admin) who created this sequence. NULL for legacy/anonymous sequences.
      */
     private UUID ownerId;
 
     /**
-     * The human language chosen for problem-statement generation (e.g. "de", "en").
-     * NULL for legacy sequences; defaults to "de" for new ones.
+     * The human language chosen for problem-statement generation (e.g. "de", "en"). NULL for legacy sequences; defaults
+     * to "de" for new ones.
      */
     @Builder.Default
     private String targetLanguage = "de";
 
     /**
-     * AP20: Generation constraints (blacklist, whitelist, difficulty slope, etc.).
-     * Stored as JSONB in the database. NULL for unconstrained sequences.
+     * AP20: Generation constraints (blacklist, whitelist, difficulty slope, etc.). Stored as JSONB in the database.
+     * NULL for unconstrained sequences.
      */
     private GenerationConstraints constraints;
 
@@ -131,30 +129,31 @@ public class TieredTaskSequenceDTO {
     private int tierCount = 3;
 
     /**
-     * AP19: Curriculum topic this sequence was generated from (optional).
-     * NULL for non-curriculum sequences.
+     * AP19: Curriculum topic this sequence was generated from (optional). NULL for non-curriculum sequences.
      */
     private UUID curriculumTopicId;
 
     /**
      * The sequence this one was copied from, if it was.
      *
-     * <p>Never displayed. It is there so the library search can tell an original from a clone:
-     * copying a worksheet duplicates its sequences, and a marketplace that makes copying routine
-     * would otherwise fill the library with near-identical entries nobody can tell apart.
+     * <p>
+     * Never displayed. It is there so the library search can tell an original from a clone: copying a worksheet
+     * duplicates its sequences, and a marketplace that makes copying routine would otherwise fill the library with
+     * near-identical entries nobody can tell apart.
      */
     private UUID copiedFrom;
 
     /**
      * When this copy was first edited, or {@code null} if it never was.
      *
-     * <p>Only ever set on a copy. {@link #copiedFrom} alone cannot distinguish a clone nobody
-     * has touched from one its new owner has reworked into different material, because it is
-     * written once and never cleared — so an edited copy stayed out of the library for good.
-     * The library lists a sequence when it is an original <em>or</em> has diverged.
+     * <p>
+     * Only ever set on a copy. {@link #copiedFrom} alone cannot distinguish a clone nobody has touched from one its new
+     * owner has reworked into different material, because it is written once and never cleared — so an edited copy
+     * stayed out of the library for good. The library lists a sequence when it is an original <em>or</em> has diverged.
      *
-     * <p>A timestamp rather than a flag: it is the same cost to store and it answers "since
-     * when", which a boolean throws away.
+     * <p>
+     * A timestamp rather than a flag: it is the same cost to store and it answers "since when", which a boolean throws
+     * away.
      */
     private Instant divergedAt;
 
@@ -165,7 +164,8 @@ public class TieredTaskSequenceDTO {
      * @return an optional task with that level
      */
     public Optional<TaskDTO> getTaskByTierLevel(final int tierLevel) {
-        if (tasks == null) return Optional.empty();
+        if (tasks == null)
+            return Optional.empty();
         return tasks.stream().filter(task -> task.getTierLevel() == tierLevel).findFirst();
     }
 
@@ -179,13 +179,12 @@ public class TieredTaskSequenceDTO {
             return Collections.emptyList();
         }
         return tasks.stream()
-                .sorted(Comparator.comparingInt(TaskDTO::getTierLevel))
-                .collect(Collectors.toList());
+            .sorted(Comparator.comparingInt(TaskDTO::getTierLevel))
+            .collect(Collectors.toList());
     }
 
     /**
-     * Checks whether the sequence is complete — i.e., it has exactly 3 tasks,
-     * and each tier level is unique.
+     * Checks whether the sequence is complete — i.e., it has exactly 3 tasks, and each tier level is unique.
      *
      * @return true if a sequence is complete, false otherwise
      */
@@ -197,42 +196,43 @@ public class TieredTaskSequenceDTO {
     /**
      * A detached copy of this sequence, belonging to a different owner.
      *
-     * <p>Built from {@code toBuilder()} for the same reason as {@link TaskDTO#copyFor(UUID)}:
-     * a field added later travels with the copy without anyone having to remember it. Naming
-     * fields by hand is how {@code tierCount}, {@code targetLanguage}, {@code constraints} and
-     * {@code curriculumTopicId} were lost by the worksheet copy — and silently, because the
-     * {@code @Builder.Default} values stepped in and made a five-tier sequence look like a
+     * <p>
+     * Built from {@code toBuilder()} for the same reason as {@link TaskDTO#copyFor(UUID)}: a field added later travels
+     * with the copy without anyone having to remember it. Naming fields by hand is how {@code tierCount},
+     * {@code targetLanguage}, {@code constraints} and {@code curriculumTopicId} were lost by the worksheet copy — and
+     * silently, because the {@code @Builder.Default} values stepped in and made a five-tier sequence look like a
      * perfectly ordinary three-tier one.
      *
-     * <p>Reset here is only what must not be shared:
+     * <p>
+     * Reset here is only what must not be shared:
      * <ul>
-     *   <li>{@code id} — a copy is a new row</li>
-     *   <li>{@code ownerId} — the copy belongs to whoever made it</li>
-     *   <li>{@code createdAt} — the copy is new; the database stamps it</li>
-     *   <li>{@code divergedAt} — the copy has not been edited yet, however much the sequence
-     *       it came from had been; inheriting it would put an untouched clone straight into
-     *       the library, which is the listing rule inverted</li>
-     *   <li>{@code tasks} — emptied, because the caller refills it with task copies rather
-     *       than letting both sequences point at the same task objects</li>
+     * <li>{@code id} — a copy is a new row</li>
+     * <li>{@code ownerId} — the copy belongs to whoever made it</li>
+     * <li>{@code createdAt} — the copy is new; the database stamps it</li>
+     * <li>{@code divergedAt} — the copy has not been edited yet, however much the sequence it came from had been;
+     * inheriting it would put an untouched clone straight into the library, which is the listing rule inverted</li>
+     * <li>{@code tasks} — emptied, because the caller refills it with task copies rather than letting both sequences
+     * point at the same task objects</li>
      * </ul>
      *
-     * <p>{@code concepts} is defensively copied for the same aliasing reason.
+     * <p>
+     * {@code concepts} is defensively copied for the same aliasing reason.
      *
      * @param newOwnerId the user the copy belongs to
      * @return a new sequence with no tasks, ready to be persisted and refilled
      */
     public TieredTaskSequenceDTO copyFor(UUID newOwnerId) {
         return toBuilder()
-                .id(null)
-                .ownerId(newOwnerId)
-                .createdAt(null)
-                .divergedAt(null)
-                // Provenance points at the immediate source, not at the root of a copy chain.
-                // A copy of a copy came from the copy; that is the honest answer, and following
-                // the chain back is the reader's business, not this method's.
-                .copiedFrom(id)
-                .tasks(new ArrayList<>())
-                .concepts(concepts == null ? null : new ArrayList<>(concepts))
-                .build();
+            .id(null)
+            .ownerId(newOwnerId)
+            .createdAt(null)
+            .divergedAt(null)
+            // Provenance points at the immediate source, not at the root of a copy chain.
+            // A copy of a copy came from the copy; that is the honest answer, and following
+            // the chain back is the reader's business, not this method's.
+            .copiedFrom(id)
+            .tasks(new ArrayList<>())
+            .concepts(concepts == null ? null : new ArrayList<>(concepts))
+            .build();
     }
 }

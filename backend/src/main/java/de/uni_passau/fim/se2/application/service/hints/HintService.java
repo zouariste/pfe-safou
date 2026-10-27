@@ -18,16 +18,9 @@
  */
 package de.uni_passau.fim.se2.application.service.hints;
 
-import de.uni_passau.fim.se2.domain.entities.HintUsageDTO;
-import de.uni_passau.fim.se2.domain.entities.TaskDTO;
-import de.uni_passau.fim.se2.domain.model.SupportedLanguage;
-import de.uni_passau.fim.se2.domain.interfaces.HintUsageRepository;
-import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
-import de.uni_passau.fim.se2.application.service.OwnershipService;
-import de.uni_passau.fim.se2.application.service.WorksheetAccessService;
-import de.uni_passau.fim.se2.application.util.GapMarkers;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.*;
+import java.util.Arrays;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -35,8 +28,17 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
-import java.util.Arrays;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import de.uni_passau.fim.se2.application.service.OwnershipService;
+import de.uni_passau.fim.se2.application.service.WorksheetAccessService;
+import de.uni_passau.fim.se2.application.util.GapMarkers;
+import de.uni_passau.fim.se2.domain.entities.HintUsageDTO;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.interfaces.HintUsageRepository;
+import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
+import de.uni_passau.fim.se2.domain.model.SupportedLanguage;
 
 @Service
 public class HintService {
@@ -57,13 +59,15 @@ public class HintService {
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public HintService(CodeAssembler codeAssembler, RuffAnalyzer ruffAnalyzer,
-                       JavacAnalyzer javacAnalyzer, SpotBugsAnalyzer spotBugsAnalyzer,
-                       BlockMapper blockMapper, HintGenerator hintGenerator,
-                       HintExplainer hintExplainer, SarifParser sarifParser,
-                       TaskRepository taskRepository, HintUsageRepository hintUsageRepository,
-                       OwnershipService ownershipService,
-                       WorksheetAccessService worksheetAccessService, JdbcTemplate jdbc) {
+    public HintService(
+        CodeAssembler codeAssembler, RuffAnalyzer ruffAnalyzer,
+        JavacAnalyzer javacAnalyzer, SpotBugsAnalyzer spotBugsAnalyzer,
+        BlockMapper blockMapper, HintGenerator hintGenerator,
+        HintExplainer hintExplainer, SarifParser sarifParser,
+        TaskRepository taskRepository, HintUsageRepository hintUsageRepository,
+        OwnershipService ownershipService,
+        WorksheetAccessService worksheetAccessService, JdbcTemplate jdbc
+    ) {
         this.codeAssembler = codeAssembler;
         this.ruffAnalyzer = ruffAnalyzer;
         this.javacAnalyzer = javacAnalyzer;
@@ -80,8 +84,8 @@ public class HintService {
     }
 
     /**
-     * Resolves hint-configuration for a task by walking task → sequence → worksheet.
-     * Returns true when no worksheet is linked (default) or when the worksheet has hints enabled.
+     * Resolves hint-configuration for a task by walking task → sequence → worksheet. Returns true when no worksheet is
+     * linked (default) or when the worksheet has hints enabled.
      */
     public boolean isHintsEnabled(UUID taskId) {
         String sql = """
@@ -95,24 +99,24 @@ public class HintService {
         try {
             Boolean enabled = jdbc.queryForObject(sql, Boolean.class, taskId);
             return enabled == null || enabled;
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             // Standalone sequence (no worksheet) → hints enabled by default
             return true;
         }
     }
 
     /**
-     * What one hint costs. Level 2 asks the LLM for an explanation on top of the
-     * deterministic finding, so it is charged double.
+     * What one hint costs. Level 2 asks the LLM for an explanation on top of the deterministic finding, so it is
+     * charged double.
      */
     public static int creditCost(int hintLevel) {
         return hintLevel >= 2 ? 2 : 1;
     }
 
     /**
-     * The credit budget configured for a task's worksheet, or {@code null} for
-     * unlimited — which is also the answer for a task that is not in any
-     * worksheet.
+     * The credit budget configured for a task's worksheet, or {@code null} for unlimited — which is also the answer for
+     * a task that is not in any worksheet.
      */
     public Integer resolveCreditsPerTask(UUID taskId) {
         String sql = """
@@ -125,7 +129,8 @@ public class HintService {
             """;
         try {
             return jdbc.queryForObject(sql, Integer.class, taskId);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             // Standalone sequence (no worksheet) → unlimited
             return null;
         }
@@ -134,12 +139,12 @@ public class HintService {
     /**
      * Credits this student has already spent on this task.
      *
-     * Derived from hint_usage rather than a counter column, so resetting the
-     * puzzle does not refund anything: the usage rows outlive the reset.
-     * Anonymous requests cannot be attributed to anyone and always report 0.
+     * Derived from hint_usage rather than a counter column, so resetting the puzzle does not refund anything: the usage
+     * rows outlive the reset. Anonymous requests cannot be attributed to anyone and always report 0.
      */
     public int creditsSpent(UUID taskId, UUID userId) {
-        if (userId == null) return 0;
+        if (userId == null)
+            return 0;
         String sql = """
             SELECT COALESCE(SUM(CASE WHEN hint_level >= 2 THEN 2 ELSE 1 END), 0)
             FROM hint_usage
@@ -150,8 +155,8 @@ public class HintService {
     }
 
     /**
-     * Everything the client needs to render the hint buttons: whether the
-     * teacher enabled hints at all, the budget, and what is left of it.
+     * Everything the client needs to render the hint buttons: whether the teacher enabled hints at all, the budget, and
+     * what is left of it.
      */
     public HintStatus getStatus(UUID taskId, UUID userId) {
         boolean enabled = isHintsEnabled(taskId);
@@ -162,21 +167,26 @@ public class HintService {
     }
 
     @Transactional
-    public HintResponse getHint(UUID taskId, List<String> blockOrder, List<Integer> indentLevels, int hintLevel, UUID userId) {
+    public HintResponse getHint(
+        UUID taskId, List<String> blockOrder, List<Integer> indentLevels, int hintLevel, UUID userId
+    ) {
         return getHint(taskId, blockOrder, indentLevels, hintLevel, userId, HintLocale.DE);
     }
 
     /**
-     * @param locale the UI language the hint text should be written in; hints
-     *               used to be German-only, so a client that sends nothing keeps
-     *               German.
+     * @param locale the UI language the hint text should be written in; hints used to be German-only, so a client that
+     *               sends nothing keeps German.
      */
     @Transactional
-    public HintResponse getHint(UUID taskId, List<String> blockOrder, List<Integer> indentLevels, int hintLevel,
-                                UUID userId, HintLocale locale) {
+    public HintResponse getHint(
+        UUID taskId, List<String> blockOrder, List<Integer> indentLevels, int hintLevel,
+        UUID userId, HintLocale locale
+    ) {
         // Guard against null inputs from the client — treat as empty lists rather than crashing.
-        if (blockOrder == null) blockOrder = List.of();
-        if (indentLevels == null) indentLevels = List.of();
+        if (blockOrder == null)
+            blockOrder = List.of();
+        if (indentLevels == null)
+            indentLevels = List.of();
 
         // 0. Authorisation, before any analysis runs.
         //
@@ -197,7 +207,8 @@ public class HintService {
             int cost = creditCost(hintLevel);
             if (spent + cost > creditsPerTask) {
                 throw new AccessDeniedException(
-                        "No hint credits left for this task (" + spent + "/" + creditsPerTask + " used).");
+                    "No hint credits left for this task (" + spent + "/" + creditsPerTask + " used)."
+                );
             }
         }
 
@@ -205,7 +216,8 @@ public class HintService {
         TaskDTO task = new TaskDTO();
         task.setId(taskId);
         taskRepository.loadById(task);
-        String language = task.getProgrammingLanguage() != null ? task.getProgrammingLanguage().toLowerCase() : "python";
+        String language = task.getProgrammingLanguage() != null ? task.getProgrammingLanguage().toLowerCase()
+            : "python";
 
         // AP15: Identify which blocks in the solution space are distractors
         Set<String> distractorLines = parseDistractorLines(task.getDistractors());
@@ -239,14 +251,16 @@ public class HintService {
         }
 
         // 5. Detect whether student has placed enough blocks in the solution area.
-        //    The correct block count is approximated from non-empty lines in the solution.
-        //    The student's effective count excludes distractors they accidentally placed.
+        // The correct block count is approximated from non-empty lines in the solution.
+        // The student's effective count excludes distractors they accidentally placed.
         int correctBlockCount = countSolutionBlocks(GapMarkers.strip(task.getSolution())); // AP30: ignore gap markers
         int studentNonDistractorCount = blockOrder.size() - distractorBlockIndices.size();
         boolean tooFewBlocks = correctBlockCount > 0 && studentNonDistractorCount < correctBlockCount;
         if (tooFewBlocks) {
-            logger.info("Block count mismatch: student placed {} non-distractor blocks, correct solution has {}",
-                    studentNonDistractorCount, correctBlockCount);
+            logger.info(
+                "Block count mismatch: student placed {} non-distractor blocks, correct solution has {}",
+                studentNonDistractorCount, correctBlockCount
+            );
         }
 
         // 6. Generate hint/explanation
@@ -254,17 +268,28 @@ public class HintService {
         String explanation = null;
 
         if (hintLevel == 1) {
-            hintText = hintGenerator.generate(blockFindings, language, distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount, locale);
-        } else if (hintLevel == 2) {
-            hintText = hintGenerator.generate(blockFindings, language, distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount, locale);
-            explanation = hintExplainer.explain(blockFindings, assembly.code(), GapMarkers.strip(task.getSolution()), language,
-                    distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount, locale);
+            hintText = hintGenerator.generate(
+                blockFindings, language, distractorBlockIndices, tooFewBlocks, studentNonDistractorCount,
+                correctBlockCount, locale
+            );
+        }
+        else if (hintLevel == 2) {
+            hintText = hintGenerator.generate(
+                blockFindings, language, distractorBlockIndices, tooFewBlocks, studentNonDistractorCount,
+                correctBlockCount, locale
+            );
+            explanation = hintExplainer.explain(
+                blockFindings, assembly.code(), GapMarkers.strip(task.getSolution()), language,
+                distractorBlockIndices, tooFewBlocks, studentNonDistractorCount, correctBlockCount, locale
+            );
         }
 
         // 7. Get affected block indices (include distractor blocks as affected)
-        List<Integer> affectedBlocks = new ArrayList<>(blockFindings.stream()
+        List<Integer> affectedBlocks = new ArrayList<>(
+            blockFindings.stream()
                 .map(BlockMapper.BlockFinding::blockIndex)
-                .toList());
+                .toList()
+        );
         // Add distractor blocks to affected list if they aren't already there
         for (Integer idx : distractorBlockIndices) {
             if (!affectedBlocks.contains(idx)) {
@@ -279,31 +304,34 @@ public class HintService {
     }
 
     /**
-     * Counts the number of non-empty lines in the correct solution.
-     * Used to detect when the student has placed too few blocks in the solution area.
-     * This is an approximation — accurate enough to flag "you're missing blocks" without
+     * Counts the number of non-empty lines in the correct solution. Used to detect when the student has placed too few
+     * blocks in the solution area. This is an approximation — accurate enough to flag "you're missing blocks" without
      * needing the actual block list (which is assembled at the frontend, not stored in DB).
      */
     private int countSolutionBlocks(String solution) {
-        if (solution == null || solution.isBlank()) return 0;
+        if (solution == null || solution.isBlank())
+            return 0;
         return (int) Arrays.stream(solution.split("\n"))
-                .filter(line -> !line.isBlank())
-                .count();
+            .filter(line -> !line.isBlank())
+            .count();
     }
 
     /**
-     * AP15: Parses the distractor lines from the DB field into a set of trimmed code strings
-     * (without the #distractor marker) for comparison against block text.
+     * AP15: Parses the distractor lines from the DB field into a set of trimmed code strings (without the #distractor
+     * marker) for comparison against block text.
      */
     private Set<String> parseDistractorLines(String distractors) {
-        if (distractors == null || distractors.isBlank()) return Set.of();
+        if (distractors == null || distractors.isBlank())
+            return Set.of();
         Set<String> result = new HashSet<>();
         for (String line : distractors.split("\n")) {
             String trimmed = line.trim();
-            if (trimmed.isEmpty()) continue;
+            if (trimmed.isEmpty())
+                continue;
             // Remove #distractor suffix to match against block text (widget strips it)
             String clean = trimmed.replaceAll("\\s*#distractor\\s*$", "").trim();
-            if (!clean.isEmpty()) result.add(clean);
+            if (!clean.isEmpty())
+                result.add(clean);
         }
         return result;
     }
@@ -311,17 +339,20 @@ public class HintService {
     private List<AnalysisFinding> runAnalysis(String code, String language) {
         if (SupportedLanguage.PYTHON.matches(language)) {
             return ruffAnalyzer.analyze(code);
-        } else if (SupportedLanguage.JAVA.matches(language)) {
+        }
+        else if (SupportedLanguage.JAVA.matches(language)) {
             JavacAnalyzer.JavacResult javacResult = javacAnalyzer.analyze(code);
             List<AnalysisFinding> findings = new ArrayList<>(javacResult.findings());
 
             if (javacResult.compiled() && javacResult.classOutputDir() != null) {
                 try {
                     findings.addAll(spotBugsAnalyzer.analyze(javacResult.classOutputDir()));
-                } finally {
+                }
+                finally {
                     javacAnalyzer.cleanupTempDir(javacResult.classOutputDir().getParent());
                 }
-            } else if (javacResult.classOutputDir() != null) {
+            }
+            else if (javacResult.classOutputDir() != null) {
                 javacAnalyzer.cleanupTempDir(javacResult.classOutputDir().getParent());
             }
 
@@ -331,27 +362,33 @@ public class HintService {
         // no findings at all. That is a silent quality loss for the student, and the cause is
         // always bad data rather than an unsupported language -- the column is free text
         // filled from the language-detection LLM, and a typo ("Pyhton") lands here.
-        logger.warn("No static analysis for programming language '{}' -- hint will be generated "
-                + "without findings. Check tiered_task_sequences.programming_language.", language);
+        logger.warn(
+            "No static analysis for programming language '{}' -- hint will be generated "
+                + "without findings. Check tiered_task_sequences.programming_language.",
+            language
+        );
         return List.of();
     }
 
-    private void saveHintUsage(UUID taskId, UUID userId, int hintLevel,
-                               List<String> blockOrder, List<AnalysisFinding> findings,
-                               String hintText, String explanation, List<Integer> affectedBlocks) {
+    private void saveHintUsage(
+        UUID taskId, UUID userId, int hintLevel,
+        List<String> blockOrder, List<AnalysisFinding> findings,
+        String hintText, String explanation, List<Integer> affectedBlocks
+    ) {
         try {
             HintUsageDTO usage = HintUsageDTO.builder()
-                    .taskId(taskId)
-                    .userId(userId)
-                    .hintLevel(hintLevel)
-                    .blockOrderAtRequest(objectMapper.writeValueAsString(blockOrder))
-                    .findings(objectMapper.writeValueAsString(findings))
-                    .hintText(hintText)
-                    .llmExplanation(explanation)
-                    .affectedBlockIds(objectMapper.writeValueAsString(affectedBlocks))
-                    .build();
+                .taskId(taskId)
+                .userId(userId)
+                .hintLevel(hintLevel)
+                .blockOrderAtRequest(objectMapper.writeValueAsString(blockOrder))
+                .findings(objectMapper.writeValueAsString(findings))
+                .hintText(hintText)
+                .llmExplanation(explanation)
+                .affectedBlockIds(objectMapper.writeValueAsString(affectedBlocks))
+                .build();
             hintUsageRepository.save(usage);
-        } catch (JsonProcessingException e) {
+        }
+        catch (JsonProcessingException e) {
             logger.error("Failed to serialize hint usage data", e);
         }
     }
@@ -362,7 +399,8 @@ public class HintService {
         Integer creditsPerTask,  // null = unlimited
         int creditsUsed,
         Integer creditsRemaining // null = unlimited
-    ) {}
+    ) {
+    }
 
     // Response record
     public record HintResponse(
@@ -370,5 +408,6 @@ public class HintService {
         List<Integer> affectedBlocks,
         String explanation,
         List<AnalysisFinding> findings
-    ) {}
+    ) {
+    }
 }

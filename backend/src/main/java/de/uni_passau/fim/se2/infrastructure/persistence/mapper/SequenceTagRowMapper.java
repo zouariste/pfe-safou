@@ -18,14 +18,16 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.mapper;
 
-import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
-import org.springframework.jdbc.core.RowMapper;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
 
+import org.springframework.jdbc.core.RowMapper;
+
+import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
+
 public class SequenceTagRowMapper implements RowMapper<SequenceTagDTO> {
+
     @Override
     public SequenceTagDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
         SequenceTagDTO dto = new SequenceTagDTO();
@@ -33,9 +35,11 @@ public class SequenceTagRowMapper implements RowMapper<SequenceTagDTO> {
         dto.setTagName(rs.getString("tag_name"));
         dto.setSource(rs.getString("source"));
         float conf = rs.getFloat("confidence");
-        if (!rs.wasNull()) dto.setConfidence(conf);
+        if (!rs.wasNull())
+            dto.setConfidence(conf);
         var ts = rs.getTimestamp("created_at");
-        if (ts != null) dto.setCreatedAt(ts.toLocalDateTime());
+        if (ts != null)
+            dto.setCreatedAt(ts.toLocalDateTime());
         return dto;
     }
 }

@@ -18,15 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.ConceptCurriculumTopicDTO;
-import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
-import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.ConceptCurriculumTopicRepository;
-import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
-import de.uni_passau.fim.se2.domain.interfaces.CurriculumTopicRepository;
-import org.springframework.stereotype.Service;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -35,24 +26,31 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.Service;
+
+import de.uni_passau.fim.se2.domain.entities.ConceptCurriculumTopicDTO;
+import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
+import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.ConceptCurriculumTopicRepository;
+import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
+import de.uni_passau.fim.se2.domain.interfaces.CurriculumTopicRepository;
+
 /**
- * Admin use case: extend and edit the curriculum tree — top-level entries
- * (Jahrgangsstufen or university modules) and the Lernbereiche below them.
- * Validation lives
- * here, as in {@link CurriculumExampleAdminService}: not-found conditions throw
- * {@link IllegalArgumentException} (mapped to 404 by the controller), invalid
- * input throws {@link DomainValidationException} (400 via the global handler).
+ * Admin use case: extend and edit the curriculum tree — top-level entries (Jahrgangsstufen or university modules) and
+ * the Lernbereiche below them. Validation lives here, as in {@link CurriculumExampleAdminService}: not-found conditions
+ * throw {@link IllegalArgumentException} (mapped to 404 by the controller), invalid input throws
+ * {@link DomainValidationException} (400 via the global handler).
  *
- * <p>German is the source language and English is optional throughout — a topic
- * without a translation falls back to German in the UI rather than rendering
- * blank, the same rule db/migration/V11__curriculum_i18n.sql follows.
+ * <p>
+ * German is the source language and English is optional throughout — a topic without a translation falls back to German
+ * in the UI rather than rendering blank, the same rule db/migration/V11__curriculum_i18n.sql follows.
  *
- * <p>A top-level topic comes in two shapes. A Jahrgangsstufe has a grade level
- * and gets its name derived from it; a module ("Programmieren 1") has no grade
- * number and carries its own name. Which shape it is follows from whether a
- * grade level was given, independently of {@code educationLevel} — nothing
- * stops a university semester from being numbered, or a school entry from
- * being named.
+ * <p>
+ * A top-level topic comes in two shapes. A Jahrgangsstufe has a grade level and gets its name derived from it; a module
+ * ("Programmieren 1") has no grade number and carries its own name. Which shape it is follows from whether a grade
+ * level was given, independently of {@code educationLevel} — nothing stops a university semester from being numbered,
+ * or a school entry from being named.
  */
 @Service
 public class CurriculumTopicAdminService {
@@ -73,9 +71,11 @@ public class CurriculumTopicAdminService {
     private final ConceptRepository conceptRepo;
     private final ConceptCurriculumTopicRepository conceptTopicRepo;
 
-    public CurriculumTopicAdminService(CurriculumTopicRepository topicRepo,
-                                       ConceptRepository conceptRepo,
-                                       ConceptCurriculumTopicRepository conceptTopicRepo) {
+    public CurriculumTopicAdminService(
+        CurriculumTopicRepository topicRepo,
+        ConceptRepository conceptRepo,
+        ConceptCurriculumTopicRepository conceptTopicRepo
+    ) {
         this.topicRepo = topicRepo;
         this.conceptRepo = conceptRepo;
         this.conceptTopicRepo = conceptTopicRepo;
@@ -84,20 +84,18 @@ public class CurriculumTopicAdminService {
     /** The concept names mapped to a topic, for the edit form to start from. */
     public List<String> getConceptNames(UUID topicId) {
         CurriculumTopicDTO topic = topicRepo.findById(topicId)
-                .orElseThrow(() -> new IllegalArgumentException("Curriculum topic not found: " + topicId));
+            .orElseThrow(() -> new IllegalArgumentException("Curriculum topic not found: " + topicId));
         return conceptTopicRepo.findAllByCurriculumTopic(topic).stream()
-                .map(ConceptDTO::getName)
-                .sorted(String.CASE_INSENSITIVE_ORDER)
-                .toList();
+            .map(ConceptDTO::getName)
+            .sorted(String.CASE_INSENSITIVE_ORDER)
+            .toList();
     }
 
     /**
-     * Creates a top-level curriculum entry: a Jahrgangsstufe when a grade level
-     * is given, otherwise a named module. A Jahrgangsstufe's name is derived
-     * from grade level and track rather than typed, because that is exactly
-     * what the curriculum page displays for it — asking for a name too would
-     * let the two drift apart. A module has no such derivation, so it keeps the
-     * name it was given.
+     * Creates a top-level curriculum entry: a Jahrgangsstufe when a grade level is given, otherwise a named module. A
+     * Jahrgangsstufe's name is derived from grade level and track rather than typed, because that is exactly what the
+     * curriculum page displays for it — asking for a name too would let the two drift apart. A module has no such
+     * derivation, so it keeps the name it was given.
      */
     public CurriculumTopicDTO createTopLevelTopic(CurriculumTopicDTO dto) {
         Integer grade = dto.getGradeLevel();
@@ -107,7 +105,8 @@ public class CurriculumTopicAdminService {
         }
         if (grade != null && (grade < GRADE_MIN || grade > GRADE_MAX)) {
             throw new DomainValidationException(
-                    "gradeLevel must be between " + GRADE_MIN + " and " + GRADE_MAX + ".");
+                "gradeLevel must be between " + GRADE_MIN + " and " + GRADE_MAX + "."
+            );
         }
 
         String track = trimToNull(dto.getTrack());
@@ -124,7 +123,8 @@ public class CurriculumTopicAdminService {
         if (grade != null) {
             topic.setName(gradeLabel("Jgst. ", grade, track));
             topic.setNameEn(gradeLabel("Grade ", grade, trackEn != null ? trackEn : track));
-        } else {
+        }
+        else {
             topic.setName(name);
             topic.setNameEn(trimToNull(dto.getNameEn()));
         }
@@ -140,18 +140,18 @@ public class CurriculumTopicAdminService {
     }
 
     /**
-     * Creates a Lernbereich under an existing top-level entry. Grade level,
-     * track and education level are inherited from the parent, so a sub-topic
-     * cannot contradict the Jahrgangsstufe or module it hangs under.
+     * Creates a Lernbereich under an existing top-level entry. Grade level, track and education level are inherited
+     * from the parent, so a sub-topic cannot contradict the Jahrgangsstufe or module it hangs under.
      */
     public CurriculumTopicDTO createSubTopic(UUID parentId, CurriculumTopicDTO dto) {
         CurriculumTopicDTO parent = topicRepo.findById(parentId)
-                .orElseThrow(() -> new IllegalArgumentException("Curriculum topic not found: " + parentId));
+            .orElseThrow(() -> new IllegalArgumentException("Curriculum topic not found: " + parentId));
         if (parent.getParentId() != null) {
             // The curriculum page renders exactly two levels; a deeper topic
             // would be created but never reachable.
             throw new DomainValidationException(
-                    "Sub-topics can only be added to a top-level curriculum entry.");
+                "Sub-topics can only be added to a top-level curriculum entry."
+            );
         }
 
         String name = trimToNull(dto.getName());
@@ -182,24 +182,22 @@ public class CurriculumTopicAdminService {
     }
 
     /**
-     * Edits an existing entry, at either level. Which fields an edit may touch
-     * follows from where the topic sits: a top-level entry owns its grade
-     * level, track and education level, while a sub-topic inherits all three
-     * and owns its learning area instead. Neither can be moved to a different
-     * parent — that would be a different operation, and the page offers no way
-     * to ask for it.
+     * Edits an existing entry, at either level. Which fields an edit may touch follows from where the topic sits: a
+     * top-level entry owns its grade level, track and education level, while a sub-topic inherits all three and owns
+     * its learning area instead. Neither can be moved to a different parent — that would be a different operation, and
+     * the page offers no way to ask for it.
      *
-     * <p>A top-level entry may also change shape: clearing its grade level
-     * turns a Jahrgangsstufe into a module, which then needs a name of its own,
-     * and giving a module a grade level turns it back.
+     * <p>
+     * A top-level entry may also change shape: clearing its grade level turns a Jahrgangsstufe into a module, which
+     * then needs a name of its own, and giving a module a grade level turns it back.
      */
     public CurriculumTopicDTO update(UUID id, CurriculumTopicDTO dto) {
         CurriculumTopicDTO existing = topicRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Curriculum topic not found: " + id));
+            .orElseThrow(() -> new IllegalArgumentException("Curriculum topic not found: " + id));
 
         return existing.getParentId() == null
-                ? updateTopLevel(existing, dto)
-                : updateSubTopic(existing, dto);
+            ? updateTopLevel(existing, dto)
+            : updateSubTopic(existing, dto);
     }
 
     private CurriculumTopicDTO updateTopLevel(CurriculumTopicDTO existing, CurriculumTopicDTO dto) {
@@ -210,7 +208,8 @@ public class CurriculumTopicAdminService {
         }
         if (grade != null && (grade < GRADE_MIN || grade > GRADE_MAX)) {
             throw new DomainValidationException(
-                    "gradeLevel must be between " + GRADE_MIN + " and " + GRADE_MAX + ".");
+                "gradeLevel must be between " + GRADE_MIN + " and " + GRADE_MAX + "."
+            );
         }
 
         String track = trimToNull(dto.getTrack());
@@ -227,7 +226,8 @@ public class CurriculumTopicAdminService {
         if (grade != null) {
             topic.setName(gradeLabel("Jgst. ", grade, track));
             topic.setNameEn(gradeLabel("Grade ", grade, trackEn != null ? trackEn : track));
-        } else {
+        }
+        else {
             topic.setName(name);
             topic.setNameEn(trimToNull(dto.getNameEn()));
         }
@@ -275,18 +275,16 @@ public class CurriculumTopicAdminService {
     }
 
     /**
-     * Sub-topics keep their own copy of the fields they inherit, so that a row
-     * can be classified without looking at its parent. Editing the parent has
-     * to push those copies along, or a Jahrgangsstufe moved to grade 10 would
-     * leave its Lernbereiche claiming grade 9 — to the topic list, and to the
-     * generation prompt.
+     * Sub-topics keep their own copy of the fields they inherit, so that a row can be classified without looking at its
+     * parent. Editing the parent has to push those copies along, or a Jahrgangsstufe moved to grade 10 would leave its
+     * Lernbereiche claiming grade 9 — to the topic list, and to the generation prompt.
      */
     private void cascadeToChildren(CurriculumTopicDTO parent) {
         for (CurriculumTopicDTO child : topicRepo.findByParentId(parent.getId())) {
             boolean unchanged = Objects.equals(child.getGradeLevel(), parent.getGradeLevel())
-                    && Objects.equals(child.getTrack(), parent.getTrack())
-                    && Objects.equals(child.getTrackEn(), parent.getTrackEn())
-                    && Objects.equals(child.getEducationLevel(), parent.getEducationLevel());
+                && Objects.equals(child.getTrack(), parent.getTrack())
+                && Objects.equals(child.getTrackEn(), parent.getTrackEn())
+                && Objects.equals(child.getEducationLevel(), parent.getEducationLevel());
             if (unchanged) {
                 continue;
             }
@@ -299,16 +297,14 @@ public class CurriculumTopicAdminService {
     }
 
     /**
-     * Replaces a topic's concept mapping with the given names. Null means the
-     * request did not mention concepts, so the mapping is left alone; an empty
-     * list clears it.
+     * Replaces a topic's concept mapping with the given names. Null means the request did not mention concepts, so the
+     * mapping is left alone; an empty list clears it.
      *
-     * <p>Names are matched against the catalogue and created when they are not
-     * in it yet, which is what a new module's vocabulary needs — the catalogue
-     * was written for the school curriculum. Matching is the repository's
-     * insert-or-select on the unique name, so an existing concept is reused
-     * rather than duplicated. Only the difference is written, so re-saving a
-     * form without touching the concepts writes nothing.
+     * <p>
+     * Names are matched against the catalogue and created when they are not in it yet, which is what a new module's
+     * vocabulary needs — the catalogue was written for the school curriculum. Matching is the repository's
+     * insert-or-select on the unique name, so an existing concept is reused rather than duplicated. Only the difference
+     * is written, so re-saving a form without touching the concepts writes nothing.
      */
     private void applyConcepts(CurriculumTopicDTO topic, List<String> requested) {
         if (requested == null) {
@@ -327,8 +323,8 @@ public class CurriculumTopicAdminService {
 
         List<ConceptDTO> existing = conceptTopicRepo.findAllByCurriculumTopic(topic);
         Set<String> existingKeys = existing.stream()
-                .map(c -> c.getName().toLowerCase(Locale.ROOT))
-                .collect(Collectors.toSet());
+            .map(c -> c.getName().toLowerCase(Locale.ROOT))
+            .collect(Collectors.toSet());
 
         for (ConceptDTO concept : existing) {
             if (!wanted.containsKey(concept.getName().toLowerCase(Locale.ROOT))) {
@@ -357,17 +353,15 @@ public class CurriculumTopicAdminService {
     }
 
     /**
-     * curriculum_topics.name is UNIQUE, so a clash would otherwise surface as a
-     * 500 from the driver. Checked case-insensitively: two Jahrgangsstufen whose
-     * names differ only in case would be indistinguishable in the topic list.
-     * {@code selfId} is the topic being edited, which may of course keep its own
-     * name; it is null when creating.
+     * curriculum_topics.name is UNIQUE, so a clash would otherwise surface as a 500 from the driver. Checked
+     * case-insensitively: two Jahrgangsstufen whose names differ only in case would be indistinguishable in the topic
+     * list. {@code selfId} is the topic being edited, which may of course keep its own name; it is null when creating.
      */
     private void requireNameIsFree(String name, UUID selfId) {
         String candidate = name.toLowerCase(Locale.ROOT);
         boolean taken = topicRepo.findAll().stream()
-                .filter(t -> !t.getId().equals(selfId))
-                .anyMatch(t -> t.getName() != null && t.getName().toLowerCase(Locale.ROOT).equals(candidate));
+            .filter(t -> !t.getId().equals(selfId))
+            .anyMatch(t -> t.getName() != null && t.getName().toLowerCase(Locale.ROOT).equals(candidate));
         if (taken) {
             throw new DomainValidationException("A curriculum topic named \"" + name + "\" already exists.");
         }
@@ -385,8 +379,8 @@ public class CurriculumTopicAdminService {
     }
 
     /**
-     * Jahrgangsstufe 12 sorts at 12; a second track for grade 12 sorts at 1012,
-     * a third at 2012. A module has no number to sort by, so it goes last.
+     * Jahrgangsstufe 12 sorts at 12; a second track for grade 12 sorts at 1012, a third at 2012. A module has no number
+     * to sort by, so it goes last.
      */
     private int nextTopLevelSortOrder(Integer grade) {
         List<CurriculumTopicDTO> siblings = topicRepo.findTopLevel();
@@ -402,9 +396,9 @@ public class CurriculumTopicAdminService {
 
     private int nextChildSortOrder(UUID parentId) {
         return topicRepo.findByParentId(parentId).stream()
-                .mapToInt(CurriculumTopicDTO::getSortOrder)
-                .max()
-                .orElse(0) + 1;
+            .mapToInt(CurriculumTopicDTO::getSortOrder)
+            .max()
+            .orElse(0) + 1;
     }
 
     private static boolean hasSortOrder(List<CurriculumTopicDTO> topics, int order) {

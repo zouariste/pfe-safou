@@ -18,13 +18,13 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.*;
-
 import java.util.List;
 
+import lombok.*;
+
 /**
- * AP20: Constraints that control what programming constructs are allowed/forbidden
- * in generated task sequences. Stored as JSONB in the sequences table.
+ * AP20: Constraints that control what programming constructs are allowed/forbidden in generated task sequences. Stored
+ * as JSONB in the sequences table.
  */
 @Data
 @Builder
@@ -33,26 +33,23 @@ import java.util.List;
 public class GenerationConstraints {
 
     /**
-     * Constructs that MUST NOT appear in generated code.
-     * e.g. ["ternary", "lambda", "list comprehension"]
+     * Constructs that MUST NOT appear in generated code. e.g. ["ternary", "lambda", "list comprehension"]
      */
     private List<String> blacklist;
 
     /**
-     * If non-empty, ONLY these constructs may appear.
-     * e.g. ["if/else", "for", "while", "print"]
+     * If non-empty, ONLY these constructs may appear. e.g. ["if/else", "for", "while", "print"]
      */
     private List<String> whitelist;
 
     /**
-     * Controls how steeply difficulty increases across tiers.
-     * Values: "gentle", "moderate", "steep"
+     * Controls how steeply difficulty increases across tiers. Values: "gentle", "moderate", "steep"
      */
     private String difficultySlope;
 
     /**
-     * Free-text teacher instructions injected into the generation prompt.
-     * e.g. "Use German variable names", "Focus on string manipulation"
+     * Free-text teacher instructions injected into the generation prompt. e.g. "Use German variable names", "Focus on
+     * string manipulation"
      */
     private String additionalContext;
 
@@ -61,8 +58,8 @@ public class GenerationConstraints {
      */
     public boolean hasAny() {
         return (blacklist != null && !blacklist.isEmpty())
-                || (whitelist != null && !whitelist.isEmpty())
-                || (difficultySlope != null && !difficultySlope.isBlank())
-                || (additionalContext != null && !additionalContext.isBlank());
+            || (whitelist != null && !whitelist.isEmpty())
+            || (difficultySlope != null && !difficultySlope.isBlank())
+            || (additionalContext != null && !additionalContext.isBlank());
     }
 }

@@ -23,14 +23,15 @@ import java.util.Locale;
 /**
  * How far a worksheet reaches beyond its owner.
  *
- * <p>Three values rather than a published flag, because "shared" already meant two different
- * things before the marketplace existed. Every worksheet was readable by anyone holding its
- * link — that is how a teacher hands one to a colleague, and how a student opens one without
- * an account. Turning that into "not published" would have broken every link already in
- * circulation, so it keeps its own value and stays the default.
+ * <p>
+ * Three values rather than a published flag, because "shared" already meant two different things before the marketplace
+ * existed. Every worksheet was readable by anyone holding its link — that is how a teacher hands one to a colleague,
+ * and how a student opens one without an account. Turning that into "not published" would have broken every link
+ * already in circulation, so it keeps its own value and stays the default.
  *
- * <p>What is new is a worksheet being <em>findable</em> by someone who was never sent a link,
- * and that is the only thing {@link #PUBLIC} adds.
+ * <p>
+ * What is new is a worksheet being <em>findable</em> by someone who was never sent a link, and that is the only thing
+ * {@link #PUBLIC} adds.
  */
 public enum WorksheetVisibility {
 
@@ -38,8 +39,8 @@ public enum WorksheetVisibility {
     PRIVATE,
 
     /**
-     * Readable by anyone holding the link, listed nowhere. The behaviour every worksheet had
-     * before this enum existed, and the default for new ones.
+     * Readable by anyone holding the link, listed nowhere. The behaviour every worksheet had before this enum existed,
+     * and the default for new ones.
      */
     UNLISTED,
 
@@ -62,10 +63,11 @@ public enum WorksheetVisibility {
     /**
      * Parses a stored or submitted value.
      *
-     * <p>Null and blank mean "unset", which is {@link #DEFAULT} rather than an error: rows
-     * written before the column existed have no opinion, and neither do clients that do not
-     * send the field. Anything else that is not a known value <em>is</em> an error — quietly
-     * downgrading an unrecognised visibility to a permissive default is how data gets exposed.
+     * <p>
+     * Null and blank mean "unset", which is {@link #DEFAULT} rather than an error: rows written before the column
+     * existed have no opinion, and neither do clients that do not send the field. Anything else that is not a known
+     * value <em>is</em> an error — quietly downgrading an unrecognised visibility to a permissive default is how data
+     * gets exposed.
      *
      * @param raw the value, in any case, optionally padded
      * @return the parsed visibility

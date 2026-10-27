@@ -26,4 +26,5 @@ public record AnalysisFinding(
     int endLine,
     String tool,         // "ruff", "javac", "spotbugs"
     String category      // "undefined_variable", "null_safety", "dead_code", "syntax"
-) {}
+) {
+}

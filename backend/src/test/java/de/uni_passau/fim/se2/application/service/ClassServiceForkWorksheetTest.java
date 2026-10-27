@@ -18,20 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.ClassDTO;
-import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
-import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.security.access.AccessDeniedException;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -42,12 +28,27 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.access.AccessDeniedException;
+
+import de.uni_passau.fim.se2.domain.entities.ClassDTO;
+import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
+import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
+
 /**
  * A teacher taking their own copy of someone else's worksheet that their class uses.
  *
- * <p>The copy itself is {@link WorksheetCloneService}'s business. What only this service can get
- * wrong is who may ask, which assignment moves, and that nothing is copied when the request is
- * refused.
+ * <p>
+ * The copy itself is {@link WorksheetCloneService}'s business. What only this service can get wrong is who may ask,
+ * which assignment moves, and that nothing is copied when the request is refused.
  */
 class ClassServiceForkWorksheetTest {
 
@@ -70,32 +71,33 @@ class ClassServiceForkWorksheetTest {
         worksheetService = mock(WorksheetService.class);
         cloneService = mock(WorksheetCloneService.class);
         service = new ClassService(
-                classRepository,
-                mock(UserRepository.class),
-                ownershipService,
-                mock(TokenService.class),
-                mock(FeedbackLogService.class),
-                mock(TempPasswordGenerator.class),
-                mock(PasswordHasherService.class),
-                worksheetService,
-                cloneService,
-                mock(TaskPersistenceService.class),
-                mock(TaskSubmissionService.class));
+            classRepository,
+            mock(UserRepository.class),
+            ownershipService,
+            mock(TokenService.class),
+            mock(FeedbackLogService.class),
+            mock(TempPasswordGenerator.class),
+            mock(PasswordHasherService.class),
+            worksheetService,
+            cloneService,
+            mock(TaskPersistenceService.class),
+            mock(TaskSubmissionService.class)
+        );
 
         when(ownershipService.getCurrentUserId()).thenReturn(TEACHER);
         when(classRepository.findByIdWithDetails(CLASS_ID)).thenReturn(Optional.of(classUsing(SOURCE)));
         when(worksheetService.loadWorksheetById(SOURCE))
-                .thenReturn(WorksheetDTO.builder().id(SOURCE).ownerId(AUTHOR).build());
+            .thenReturn(WorksheetDTO.builder().id(SOURCE).ownerId(AUTHOR).build());
         when(cloneService.copyShallow(SOURCE, TEACHER))
-                .thenReturn(WorksheetDTO.builder().id(COPY).ownerId(TEACHER).build());
+            .thenReturn(WorksheetDTO.builder().id(COPY).ownerId(TEACHER).build());
     }
 
     private static ClassDTO classUsing(UUID worksheetId) {
         return ClassDTO.builder()
-                .id(CLASS_ID)
-                .ownerId(TEACHER)
-                .worksheets(List.of(ClassDTO.WorksheetInfo.builder().worksheetId(worksheetId).build()))
-                .build();
+            .id(CLASS_ID)
+            .ownerId(TEACHER)
+            .worksheets(List.of(ClassDTO.WorksheetInfo.builder().worksheetId(worksheetId).build()))
+            .build();
     }
 
     @Test
@@ -104,19 +106,22 @@ class ClassServiceForkWorksheetTest {
         WorksheetDTO copy = service.forkAssignedWorksheet(CLASS_ID, SOURCE);
 
         assertAll(
-                () -> assertEquals(COPY, copy.getId()),
-                () -> verify(cloneService).copyShallow(SOURCE, TEACHER),
-                () -> verify(classRepository).replaceWorksheet(CLASS_ID, SOURCE, COPY));
+            () -> assertEquals(COPY, copy.getId()),
+            () -> verify(cloneService).copyShallow(SOURCE, TEACHER),
+            () -> verify(classRepository).replaceWorksheet(CLASS_ID, SOURCE, COPY)
+        );
     }
 
     @Test
     @DisplayName("someone else's class is refused before anything is copied")
     void refusesForeignClass() {
         doThrow(new AccessDeniedException("not yours"))
-                .when(ownershipService).checkOwnership(TEACHER, "class");
+            .when(ownershipService).checkOwnership(TEACHER, "class");
 
-        assertThrows(AccessDeniedException.class,
-                () -> service.forkAssignedWorksheet(CLASS_ID, SOURCE));
+        assertThrows(
+            AccessDeniedException.class,
+            () -> service.forkAssignedWorksheet(CLASS_ID, SOURCE)
+        );
         verify(cloneService, never()).copyShallow(any(), any());
     }
 
@@ -125,8 +130,10 @@ class ClassServiceForkWorksheetTest {
     void refusesUnassignedWorksheet() {
         UUID elsewhere = UUID.randomUUID();
 
-        assertThrows(DomainValidationException.class,
-                () -> service.forkAssignedWorksheet(CLASS_ID, elsewhere));
+        assertThrows(
+            DomainValidationException.class,
+            () -> service.forkAssignedWorksheet(CLASS_ID, elsewhere)
+        );
         verify(cloneService, never()).copyShallow(any(), any());
     }
 
@@ -134,10 +141,12 @@ class ClassServiceForkWorksheetTest {
     @DisplayName("the teacher's own worksheet is refused: it is already editable")
     void refusesOwnWorksheet() {
         when(worksheetService.loadWorksheetById(SOURCE))
-                .thenReturn(WorksheetDTO.builder().id(SOURCE).ownerId(TEACHER).build());
+            .thenReturn(WorksheetDTO.builder().id(SOURCE).ownerId(TEACHER).build());
 
-        assertThrows(DomainValidationException.class,
-                () -> service.forkAssignedWorksheet(CLASS_ID, SOURCE));
+        assertThrows(
+            DomainValidationException.class,
+            () -> service.forkAssignedWorksheet(CLASS_ID, SOURCE)
+        );
         verify(cloneService, never()).copyShallow(any(), any());
         verify(classRepository, never()).replaceWorksheet(any(), any(), any());
     }

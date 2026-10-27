@@ -23,6 +23,7 @@ import lombok.Data;
 
 @Data
 public class FimLoginRequest {
+
     @NotBlank
     private String username;
     @NotBlank

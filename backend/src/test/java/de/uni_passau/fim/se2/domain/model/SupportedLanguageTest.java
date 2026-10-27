@@ -18,27 +18,27 @@
  */
 package de.uni_passau.fim.se2.domain.model;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import java.util.Optional;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 /**
  * The guard that "Pyhton" was able to walk past.
  *
- * <p>The behaviour worth pinning is not that "python" resolves -- it is that a near miss does
- * not. Anything that tries to be helpful about a misspelling reopens the hole this type was
- * added to close, because a wrong guess is indistinguishable from correct data once it reaches
- * the column.
+ * <p>
+ * The behaviour worth pinning is not that "python" resolves -- it is that a near miss does not. Anything that tries to
+ * be helpful about a misspelling reopens the hole this type was added to close, because a wrong guess is
+ * indistinguishable from correct data once it reaches the column.
  */
 @DisplayName("supported programming languages")
 class SupportedLanguageTest {
@@ -48,22 +48,24 @@ class SupportedLanguageTest {
     class Resolving {
 
         @ParameterizedTest
-        @ValueSource(strings = {"python", "Python", "PYTHON", "  python  "})
+        @ValueSource(strings = { "python", "Python", "PYTHON", "  python  " })
         @DisplayName("case and surrounding whitespace do not matter")
         void acceptsCaseAndWhitespaceVariants(String raw) {
             assertEquals(Optional.of(SupportedLanguage.PYTHON), SupportedLanguage.fromString(raw));
         }
 
         @ParameterizedTest
-        @ValueSource(strings = {"Pyhton", "pyhton", "PYHTON", "jvaa", "pyton", "python3"})
+        @ValueSource(strings = { "Pyhton", "pyhton", "PYHTON", "jvaa", "pyton", "python3" })
         @DisplayName("a near miss resolves to nothing rather than being guessed at")
         void rejectsNearMisses(String raw) {
-            assertEquals(Optional.empty(), SupportedLanguage.fromString(raw),
-                    "'" + raw + "' was guessed at; that is how the typo reached the database");
+            assertEquals(
+                Optional.empty(), SupportedLanguage.fromString(raw),
+                "'" + raw + "' was guessed at; that is how the typo reached the database"
+            );
         }
 
         @ParameterizedTest
-        @ValueSource(strings = {"c++", "ruby", "javascript", "other", ""})
+        @ValueSource(strings = { "c++", "ruby", "javascript", "other", "" })
         @DisplayName("an unsupported language resolves to nothing")
         void rejectsUnsupportedLanguages(String raw) {
             assertEquals(Optional.empty(), SupportedLanguage.fromString(raw));
@@ -79,10 +81,11 @@ class SupportedLanguageTest {
         @DisplayName("matches() agrees with fromString()")
         void matchesAgreesWithFromString() {
             assertAll(
-                    () -> assertTrue(SupportedLanguage.JAVA.matches("Java")),
-                    () -> assertFalse(SupportedLanguage.JAVA.matches("Pyhton")),
-                    () -> assertFalse(SupportedLanguage.PYTHON.matches("Pyhton")),
-                    () -> assertFalse(SupportedLanguage.PYTHON.matches(null)));
+                () -> assertTrue(SupportedLanguage.JAVA.matches("Java")),
+                () -> assertFalse(SupportedLanguage.JAVA.matches("Pyhton")),
+                () -> assertFalse(SupportedLanguage.PYTHON.matches("Pyhton")),
+                () -> assertFalse(SupportedLanguage.PYTHON.matches(null))
+            );
         }
     }
 
@@ -105,8 +108,10 @@ class SupportedLanguageTest {
         @Test
         @DisplayName("'other' is not itself a supported language")
         void unsupportedSentinelIsNotALanguage() {
-            assertEquals(Optional.empty(),
-                    SupportedLanguage.fromString(SupportedLanguage.UNSUPPORTED));
+            assertEquals(
+                Optional.empty(),
+                SupportedLanguage.fromString(SupportedLanguage.UNSUPPORTED)
+            );
         }
     }
 }

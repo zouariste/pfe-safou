@@ -18,27 +18,30 @@
  */
 package de.uni_passau.fim.se2.infrastructure.analysis.treesitter;
 
+import java.util.*;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
 import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
 import io.github.treesitter.jtreesitter.Language;
 import io.github.treesitter.jtreesitter.Node;
 import io.github.treesitter.jtreesitter.Parser;
 import io.github.treesitter.jtreesitter.Tree;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-
-import java.util.*;
 
 /**
- * AP26 — Infrastructure implementation of {@link CodeAnalyzer} using tree-sitter.
- * Supports 9 languages: Java, Python, JavaScript, TypeScript, C, C++, C#, Rust, Go.
- * All analysis runs in-process via the FFM API (jtreesitter) — no external containers
- * or processes needed. Without the native libraries (see {@link TreeSitterNatives})
- * complexity is zero and change analysis falls back to the line-based heuristic.
+ * AP26 — Infrastructure implementation of {@link CodeAnalyzer} using tree-sitter. Supports 9 languages: Java, Python,
+ * JavaScript, TypeScript, C, C++, C#, Rust, Go. All analysis runs in-process via the FFM API (jtreesitter) — no
+ * external containers or processes needed. Without the native libraries (see {@link TreeSitterNatives}) complexity is
+ * zero and change analysis falls back to the line-based heuristic.
  */
 @Component
 @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
-        name = "app.treesitter.enabled", havingValue = "true", matchIfMissing = true)
+    name = "app.treesitter.enabled",
+    havingValue = "true",
+    matchIfMissing = true
+)
 public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
 
     private static final Logger logger = LoggerFactory.getLogger(TreeSitterCodeAnalyzer.class);
@@ -64,7 +67,8 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
 
     @Override
     public ComplexityResult computeComplexity(String code, String language) {
-        if (code == null || code.isBlank() || !nativesAvailable) return ComplexityResult.zero();
+        if (code == null || code.isBlank() || !nativesAvailable)
+            return ComplexityResult.zero();
 
         Language tsLang = LanguageRegistry.resolve(language).orElse(null);
         LanguageRegistry.LanguageConfig config = LanguageRegistry.getConfig(language);
@@ -73,8 +77,10 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
             return ComplexityResult.zero();
         }
 
-        try (Parser parser = new Parser(tsLang);
-             Tree tree = parser.parse(code).orElseThrow()) {
+        try (
+            Parser parser = new Parser(tsLang);
+            Tree tree = parser.parse(code).orElseThrow()
+        ) {
             Node root = tree.getRootNode();
             int loc = countLinesOfCode(code);
             int cc = computeCC(root, config);
@@ -82,7 +88,8 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
             int mcc = countNodeTypes(root, config.callTypes());
             int dic = countDistinctIdentifiers(root, config.identifierTypes());
             return new ComplexityResult(loc, cc, mnd, mcc, dic);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.warn("tree-sitter complexity analysis failed for '{}': {}", language, e.getMessage());
             return ComplexityResult.zero();
         }
@@ -90,9 +97,12 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
 
     @Override
     public AstAnalysisResult analyzeChanges(String originalCode, String editedCode, String language) {
-        if (originalCode == null) originalCode = "";
-        if (editedCode == null) editedCode = "";
-        if (!nativesAvailable) return heuristicAnalysis(originalCode, editedCode);
+        if (originalCode == null)
+            originalCode = "";
+        if (editedCode == null)
+            editedCode = "";
+        if (!nativesAvailable)
+            return heuristicAnalysis(originalCode, editedCode);
 
         Language tsLang = LanguageRegistry.resolve(language).orElse(null);
         LanguageRegistry.LanguageConfig config = LanguageRegistry.getConfig(language);
@@ -105,7 +115,8 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
             Map<String, Integer> origProfile = profileCode(originalCode, tsLang, config);
             Map<String, Integer> editProfile = profileCode(editedCode, tsLang, config);
             return compareProfiles(origProfile, editProfile);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.warn("tree-sitter change analysis failed for '{}': {}", language, e.getMessage());
             return heuristicAnalysis(originalCode, editedCode);
         }
@@ -182,16 +193,20 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
     // Change analysis (AST profiling + comparison)
     // ═══════════════════════════════════════════════════════════════
 
-    private Map<String, Integer> profileCode(String code, Language tsLang,
-                                             LanguageRegistry.LanguageConfig config) {
+    private Map<String, Integer> profileCode(
+        String code, Language tsLang,
+        LanguageRegistry.LanguageConfig config
+    ) {
         Map<String, Integer> profile = new LinkedHashMap<>();
         if (code.isBlank()) {
             profile.put("totalNodes", 0);
             return profile;
         }
 
-        try (Parser parser = new Parser(tsLang);
-             Tree tree = parser.parse(code).orElseThrow()) {
+        try (
+            Parser parser = new Parser(tsLang);
+            Tree tree = parser.parse(code).orElseThrow()
+        ) {
             Node root = tree.getRootNode();
 
             profile.put("functions", countNodeTypes(root, config.functionTypes()));
@@ -216,8 +231,10 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
     // Profile comparison (shared between tree-sitter and heuristic)
     // ═══════════════════════════════════════════════════════════════
 
-    private AstAnalysisResult compareProfiles(Map<String, Integer> origProfile,
-                                              Map<String, Integer> editProfile) {
+    private AstAnalysisResult compareProfiles(
+        Map<String, Integer> origProfile,
+        Map<String, Integer> editProfile
+    ) {
         int nodesAdded = 0;
         int nodesRemoved = 0;
         int nodesModified = 0;
@@ -236,7 +253,8 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
             if (delta > 0) {
                 nodesAdded += delta;
                 changeTypes.add("ADD_" + key.toUpperCase());
-            } else if (delta < 0) {
+            }
+            else if (delta < 0) {
                 nodesRemoved += Math.abs(delta);
                 changeTypes.add("REMOVE_" + key.toUpperCase());
             }
@@ -253,15 +271,17 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
         double structuralScore;
         if (origTotal == 0 && editTotal == 0) {
             structuralScore = 0.0;
-        } else if (origTotal == 0 || editTotal == 0) {
+        }
+        else if (origTotal == 0 || editTotal == 0) {
             structuralScore = 1.0;
-        } else {
+        }
+        else {
             int totalChanges = nodesAdded + nodesRemoved + nodesModified;
             structuralScore = Math.min(1.0, (double) totalChanges / Math.max(origTotal, 1));
         }
 
-        boolean isDistractor = changeTypes.stream().allMatch(ct ->
-                ct.contains("LITERAL") || ct.contains("CONTENT") || ct.contains("COMMENT"));
+        boolean isDistractor = changeTypes.stream()
+            .allMatch(ct -> ct.contains("LITERAL") || ct.contains("CONTENT") || ct.contains("COMMENT"));
         int distractorModified = isDistractor ? nodesModified : 0;
 
         Map<String, Object> distractorChanges = new LinkedHashMap<>();
@@ -270,8 +290,8 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
         distractorChanges.put("modified", distractorModified);
 
         return new AstAnalysisResult(
-                nodesAdded, nodesRemoved, nodesModified,
-                structuralScore, changeTypes, distractorChanges
+            nodesAdded, nodesRemoved, nodesModified,
+            structuralScore, changeTypes, distractorChanges
         );
     }
 

@@ -19,14 +19,16 @@
 package de.uni_passau.fim.se2.infrastructure.persistence.mapper;
 
 import java.sql.ResultSet;
-
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.entities.ConceptCurriculumTopicDTO;
-import org.springframework.jdbc.core.RowMapper;
 import java.sql.SQLException;
 import java.util.UUID;
 
+import org.springframework.jdbc.core.RowMapper;
+
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.ConceptCurriculumTopicDTO;
+
 public class ConceptCurriculumTopicRowMapper implements RowMapper<ConceptCurriculumTopicDTO> {
+
     @Override
     public ConceptCurriculumTopicDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
         ConceptCurriculumTopicDTO dto = new ConceptCurriculumTopicDTO();

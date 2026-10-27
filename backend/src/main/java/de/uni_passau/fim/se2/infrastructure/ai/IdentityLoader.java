@@ -18,11 +18,6 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -30,15 +25,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.stereotype.Component;
+
 /**
  * Loads identity prompt resources for GPT from the classpath.
  * <p>
- * The base directory can be configured via the property
- * {@code prompts.identity.base}. If not set, it defaults to
+ * The base directory can be configured via the property {@code prompts.identity.base}. If not set, it defaults to
  * {@code classpath:PromptStuff/Identity/}.
  * <p>
- * Note: The file name is resolved exactly as provided. If your file is
- * {@code CodeOnly.txt}, pass {@code "CodeOnly.txt"} as the {@code name}.
+ * Note: The file name is resolved exactly as provided. If your file is {@code CodeOnly.txt}, pass
+ * {@code "CodeOnly.txt"} as the {@code name}.
  */
 @Component
 public final class IdentityLoader {
@@ -48,8 +47,7 @@ public final class IdentityLoader {
     private final PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
 
     /**
-     * Base location for identity files. Supports Spring resource prefixes
-     * such as {@code classpath:} and {@code file:}.
+     * Base location for identity files. Supports Spring resource prefixes such as {@code classpath:} and {@code file:}.
      * Ensured to end with a trailing slash.
      */
     private final String base;
@@ -66,8 +64,7 @@ public final class IdentityLoader {
     /**
      * Loads an identity file by name from the configured base directory.
      * <p>
-     * Example: if your file is {@code classpath:PromptStuff/Identity/CodeOnly.txt},
-     * call {@code load("CodeOnly.txt")}.
+     * Example: if your file is {@code classpath:PromptStuff/Identity/CodeOnly.txt}, call {@code load("CodeOnly.txt")}.
      *
      * @param name the file name (without a path), e.g. {@code "CodeOnly.txt"}
      * @return the file contents as UTF-8 string
@@ -80,7 +77,8 @@ public final class IdentityLoader {
             try (InputStream in = r.getInputStream()) {
                 return new String(in.readAllBytes(), StandardCharsets.UTF_8);
             }
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             logger.log(Level.SEVERE, "Identity resource not found or unreadable: " + resourcePath, e);
             throw new UncheckedIOException("Identity resource not found or unreadable: " + resourcePath, e);
         }

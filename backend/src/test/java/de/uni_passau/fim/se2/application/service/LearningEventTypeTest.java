@@ -18,33 +18,35 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.LearningEventRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.LearningEventRepository;
+
 /**
  * The allowlist, which is the easiest thing in this system to forget.
  *
- * <p>An event type missing from {@code ALLOWED_EVENT_TYPES} is rejected with a 400 that
- * {@code useEventTracker} swallows on purpose, so the client reports success, nothing is
- * stored, and nobody finds out until a researcher goes looking for data that was never there.
+ * <p>
+ * An event type missing from {@code ALLOWED_EVENT_TYPES} is rejected with a 400 that {@code useEventTracker} swallows
+ * on purpose, so the client reports success, nothing is stored, and nobody finds out until a researcher goes looking
+ * for data that was never there.
  *
- * <p>Four event types the solve page emits were being dropped that way — the gap and
- * inline-split checks — and are now on the list and pinned below. Nothing recovers what was
- * lost before that, so the point of these tests is that it does not happen again: every type
- * {@code SolvePage} emits belongs here, and adding an emit site without adding the type is
+ * <p>
+ * Four event types the solve page emits were being dropped that way — the gap and inline-split checks — and are now on
+ * the list and pinned below. Nothing recovers what was lost before that, so the point of these tests is that it does
+ * not happen again: every type {@code SolvePage} emits belongs here, and adding an emit site without adding the type is
  * silent.
  */
 class LearningEventTypeTest {
@@ -59,8 +61,10 @@ class LearningEventTypeTest {
     }
 
     private void log(String eventType) {
-        service.logEvent(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1,
-                eventType, "{\"moves\":[]}");
+        service.logEvent(
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), 1,
+            eventType, "{\"moves\":[]}"
+        );
     }
 
     @Test
@@ -79,14 +83,14 @@ class LearningEventTypeTest {
     /**
      * The four the class comment above was counting.
      *
-     * <p>SolvePage emits these from the gap check ({@code :770}) and the inline-split check
-     * ({@code :824}), and every one was rejected until they were added to the allowlist. They
-     * carry the only record of what a student typed into a gap or how they ordered a split
-     * line — {@code task_submissions} stores the visible text of each block, and neither of
-     * those contributes any, so nothing else in the system holds them.
+     * <p>
+     * SolvePage emits these from the gap check ({@code :770}) and the inline-split check ({@code :824}), and every one
+     * was rejected until they were added to the allowlist. They carry the only record of what a student typed into a
+     * gap or how they ordered a split line — {@code task_submissions} stores the visible text of each block, and
+     * neither of those contributes any, so nothing else in the system holds them.
      */
     @ParameterizedTest(name = "{0} is recorded rather than dropped")
-    @ValueSource(strings = {"gap_correct", "gap_incorrect", "split_line_correct", "split_line_incorrect"})
+    @ValueSource(strings = { "gap_correct", "gap_incorrect", "split_line_correct", "split_line_incorrect" })
     void gapAndSplitEventsAreAllowed(String eventType) {
         assertDoesNotThrow(() -> log(eventType));
         verify(repository).save(any());

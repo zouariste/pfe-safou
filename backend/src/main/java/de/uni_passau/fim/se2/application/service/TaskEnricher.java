@@ -18,45 +18,49 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.exceptions.*;
-import de.uni_passau.fim.se2.domain.interfaces.*;
-import de.uni_passau.fim.se2.domain.entities.SolveContract;
-import de.uni_passau.fim.se2.domain.entities.TaskDTO;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
-import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
-import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
-import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer.ComplexityResult;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-import org.springframework.stereotype.*;
-
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.time.LocalDateTime;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.stereotype.*;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.SolveContract;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.exceptions.*;
+import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
+import de.uni_passau.fim.se2.domain.interfaces.*;
+import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
+import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
+import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer.ComplexityResult;
 
 /**
- * Enriches a TieredTaskSequence by adding code solutions and (optional)
- * complexity metrics. New Task instances are created with fresh IDs.
+ * Enriches a TieredTaskSequence by adding code solutions and (optional) complexity metrics. New Task instances are
+ * created with fresh IDs.
  *
- * <p>Enrichment is parallelized at two levels (BA-Optimierung OPT-1 + OPT-3):
+ * <p>
+ * Enrichment is parallelized at two levels (BA-Optimierung OPT-1 + OPT-3):
  * <ul>
- *   <li><b>Inter-Task (OPT-1):</b> Alle Tasks einer Sequenz werden parallel angereichert,
- *       da die einzelnen Tasks nach dem strategy.generate(…) voneinander unabhängig sind.</li>
- *   <li><b>Intra-Task (OPT-3):</b> Context-Annotator und Distractor-Generator hängen beide
- *       nicht voneinander ab und laufen pro Task ebenfalls parallel.</li>
+ * <li><b>Inter-Task (OPT-1):</b> Alle Tasks einer Sequenz werden parallel angereichert, da die einzelnen Tasks nach dem
+ * strategy.generate(…) voneinander unabhängig sind.</li>
+ * <li><b>Intra-Task (OPT-3):</b> Context-Annotator und Distractor-Generator hängen beide nicht voneinander ab und
+ * laufen pro Task ebenfalls parallel.</li>
  * </ul>
  *
- * <p>Backing-Executor: virtual threads (JDK 21), damit die blockierenden HTTP-Calls
- * ohne Thread-Starvation horizontal skalieren.
+ * <p>
+ * Backing-Executor: virtual threads (JDK 21), damit die blockierenden HTTP-Calls ohne Thread-Starvation horizontal
+ * skalieren.
  */
 @Service
 public final class TaskEnricher {
@@ -71,19 +75,19 @@ public final class TaskEnricher {
     private final CodeAnalyzer codeAnalyzer;
 
     /**
-     * Dedicated virtual-thread executor for LLM-bound I/O.
-     * Virtual threads are cheap, so we can allocate one per task without pool tuning.
-     * Shared across requests — Spring bean lifecycle handles disposal implicitly
-     * (JVM shutdown cleans up).
+     * Dedicated virtual-thread executor for LLM-bound I/O. Virtual threads are cheap, so we can allocate one per task
+     * without pool tuning. Shared across requests — Spring bean lifecycle handles disposal implicitly (JVM shutdown
+     * cleans up).
      */
-    private final ExecutorService enrichmentExecutor =
-            Executors.newVirtualThreadPerTaskExecutor();
+    private final ExecutorService enrichmentExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
-    public TaskEnricher(AiModelClient client,
-                        InterchangeableAnnotator interchangeableAnnotator,
-                        ContextAnnotator contextAnnotator,
-                        CodeSanitizerService codeSanitizerService,
-                        CodeAnalyzer codeAnalyzer) {
+    public TaskEnricher(
+        AiModelClient client,
+        InterchangeableAnnotator interchangeableAnnotator,
+        ContextAnnotator contextAnnotator,
+        CodeSanitizerService codeSanitizerService,
+        CodeAnalyzer codeAnalyzer
+    ) {
         this.client = client;
         this.interchangeableAnnotator = interchangeableAnnotator;
         this.contextAnnotator = contextAnnotator;
@@ -92,8 +96,8 @@ public final class TaskEnricher {
     }
 
     /**
-     * For each task in the given sequence, fetches the code solution from GPT
-     * and returns a new TieredTaskSequence with enriched task objects.
+     * For each task in the given sequence, fetches the code solution from GPT and returns a new TieredTaskSequence with
+     * enriched task objects.
      *
      * @param incompleteSequence the task sequence with only problem statements
      * @return a fully enriched sequence including solutions
@@ -105,31 +109,40 @@ public final class TaskEnricher {
     /**
      * Enriches tasks with solutions and optionally generates distractors (AP15).
      */
-    public TieredTaskSequenceDTO enrichWithSolutions(final TieredTaskSequenceDTO incompleteSequence,
-                                                     final boolean distractorsEnabled) {
+    public TieredTaskSequenceDTO enrichWithSolutions(
+        final TieredTaskSequenceDTO incompleteSequence,
+        final boolean distractorsEnabled
+    ) {
         return enrichWithSolutions(incompleteSequence, distractorsEnabled, false);
     }
 
     /**
      * Enriches tasks with solutions, optional distractors (AP15), and optional context annotation (AP22).
-     * <p>All tasks are enriched in parallel (OPT-1).
+     * <p>
+     * All tasks are enriched in parallel (OPT-1).
      */
-    public TieredTaskSequenceDTO enrichWithSolutions(final TieredTaskSequenceDTO incompleteSequence,
-                                                     final boolean distractorsEnabled,
-                                                     final boolean contextModeEnabled) {
+    public TieredTaskSequenceDTO enrichWithSolutions(
+        final TieredTaskSequenceDTO incompleteSequence,
+        final boolean distractorsEnabled,
+        final boolean contextModeEnabled
+    ) {
         return enrichWithSolutions(incompleteSequence, distractorsEnabled, contextModeEnabled, false);
     }
 
     /**
-     * AP31: additionally generates inline-split plans (post-solve, validated against the
-     * final puzzle; invalid or failed splits are dropped — fail-open).
+     * AP31: additionally generates inline-split plans (post-solve, validated against the final puzzle; invalid or
+     * failed splits are dropped — fail-open).
      */
-    public TieredTaskSequenceDTO enrichWithSolutions(final TieredTaskSequenceDTO incompleteSequence,
-                                                     final boolean distractorsEnabled,
-                                                     final boolean contextModeEnabled,
-                                                     final boolean splitEnabled) {
-        logger.trace("Enriching task sequence with solutions (distractors={}, context={}, split={}): {}",
-                distractorsEnabled, contextModeEnabled, splitEnabled, incompleteSequence);
+    public TieredTaskSequenceDTO enrichWithSolutions(
+        final TieredTaskSequenceDTO incompleteSequence,
+        final boolean distractorsEnabled,
+        final boolean contextModeEnabled,
+        final boolean splitEnabled
+    ) {
+        logger.trace(
+            "Enriching task sequence with solutions (distractors={}, context={}, split={}): {}",
+            distractorsEnabled, contextModeEnabled, splitEnabled, incompleteSequence
+        );
 
         final String lang = incompleteSequence.getProgrammingLanguage();
         final UUID sequenceId = incompleteSequence.getId();
@@ -139,27 +152,37 @@ public final class TaskEnricher {
         // Ordering of enrichedTasks preserves the original (Tier 1, 2, 3, …) order
         // because CompletableFuture.join() is called in list-order.
         List<CompletableFuture<TaskDTO>> futures = incompleteSequence.getTasks().stream()
-                .map(task -> CompletableFuture.supplyAsync(
-                        () -> enrichSingleTask(task, lang, sequenceId, contextModeEnabled, distractorsEnabled, splitEnabled),
-                        enrichmentExecutor))
-                .toList();
+            .map(
+                task -> CompletableFuture.supplyAsync(
+                    () -> enrichSingleTask(
+                        task, lang, sequenceId, contextModeEnabled, distractorsEnabled, splitEnabled
+                    ),
+                    enrichmentExecutor
+                )
+            )
+            .toList();
 
         List<TaskDTO> enrichedTasks;
         try {
             enrichedTasks = futures.stream()
-                    .map(CompletableFuture::join)
-                    .toList();
-        } catch (CompletionException ce) {
+                .map(CompletableFuture::join)
+                .toList();
+        }
+        catch (CompletionException ce) {
             // Unwrap to the original GenerationException for consistent error handling upstream.
             Throwable cause = ce.getCause();
-            if (cause instanceof GenerationException ge) throw ge;
-            if (cause instanceof RuntimeException re) throw re;
+            if (cause instanceof GenerationException ge)
+                throw ge;
+            if (cause instanceof RuntimeException re)
+                throw re;
             throw new GenerationException("Parallel task enrichment failed: " + cause, cause);
         }
 
         long elapsedMs = (System.nanoTime() - t0) / 1_000_000L;
-        logger.debug("Enriched {} tasks in {}ms (parallel, distractors={}, context={})",
-                enrichedTasks.size(), elapsedMs, distractorsEnabled, contextModeEnabled);
+        logger.debug(
+            "Enriched {} tasks in {}ms (parallel, distractors={}, context={})",
+            enrichedTasks.size(), elapsedMs, distractorsEnabled, contextModeEnabled
+        );
 
         // toBuilder(), not a fresh builder() naming a handful of fields: naming fields by hand is
         // exactly how tierCount, targetLanguage, constraints and curriculumTopicId went missing
@@ -169,25 +192,28 @@ public final class TaskEnricher {
         // same way). Only what must genuinely change is named below; everything else — including
         // fields added after this comment — travels with the copy by default.
         return incompleteSequence.toBuilder()
-                .id(UUID.randomUUID())
-                .tasks(enrichedTasks)
-                .createdAt(LocalDateTime.now())
-                .build();
+            .id(UUID.randomUUID())
+            .tasks(enrichedTasks)
+            .createdAt(LocalDateTime.now())
+            .build();
     }
 
     /**
      * Enriches a single task. Designed to be invoked on a dedicated (virtual) thread.
-     * <p>Internally parallelizes independent LLM calls (OPT-3): ContextAnnotator and
-     * Distractor-Generation both only need {@code sanitizedCode} + {@code complexity},
-     * so they can run concurrently.
+     * <p>
+     * Internally parallelizes independent LLM calls (OPT-3): ContextAnnotator and Distractor-Generation both only need
+     * {@code sanitizedCode} + {@code complexity}, so they can run concurrently.
      */
-    private TaskDTO enrichSingleTask(TaskDTO task, String lang, UUID sequenceId,
-                                     boolean contextModeEnabled, boolean distractorsEnabled,
-                                     boolean splitEnabled) {
+    private TaskDTO enrichSingleTask(
+        TaskDTO task, String lang, UUID sequenceId,
+        boolean contextModeEnabled, boolean distractorsEnabled,
+        boolean splitEnabled
+    ) {
         // Add task identifier to MDC so parallel log lines remain traceable.
         String previousMdc = MDC.get("taskId");
         MDC.put("taskId", task.getId() != null ? task.getId().toString() : "new");
-        if (sequenceId != null) MDC.put("sequenceId", sequenceId.toString());
+        if (sequenceId != null)
+            MDC.put("sequenceId", sequenceId.toString());
 
         try {
             logger.debug("Contract: {}", task.getContract());
@@ -196,16 +222,18 @@ public final class TaskEnricher {
             SolveContract solveContract = task.getContract();
             if (contextModeEnabled) {
                 solveContract = SolveContract.builder()
-                        .language(solveContract.language())
-                        .taskStatement(solveContract.taskStatement())
-                        .functionSignature(solveContract.functionSignature())
-                        .purposeBehavior(solveContract.purposeBehavior()
-                                + "\n\nCONTEXT MODE: Generate a COMPLETE program, not just a single function. "
-                                + "Include imports, class/module declarations, and a main method or test harness. "
-                                + "The solution should be 25-40 lines total with realistic boilerplate.")
-                        .prePostConditions(solveContract.prePostConditions())
-                        .examples(solveContract.examples())
-                        .build();
+                    .language(solveContract.language())
+                    .taskStatement(solveContract.taskStatement())
+                    .functionSignature(solveContract.functionSignature())
+                    .purposeBehavior(
+                        solveContract.purposeBehavior()
+                            + "\n\nCONTEXT MODE: Generate a COMPLETE program, not just a single function. "
+                            + "Include imports, class/module declarations, and a main method or test harness. "
+                            + "The solution should be 25-40 lines total with realistic boilerplate."
+                    )
+                    .prePostConditions(solveContract.prePostConditions())
+                    .examples(solveContract.examples())
+                    .build();
             }
 
             // Pass 0: GPT solves the problem (blocking LLM call).
@@ -222,23 +250,24 @@ public final class TaskEnricher {
             ComplexityResult complexity = codeAnalyzer.computeComplexity(sanitizedCode, lang);
 
             // OPT-3: ContextAnnotator and DistractorGenerator are independent — run in parallel.
-            CompletableFuture<ContextAnnotator.ContextResult> ctxFut =
-                    contextModeEnabled
-                            ? CompletableFuture.supplyAsync(
-                                    () -> contextAnnotator.annotate(annotatedCode, lang),
-                                    enrichmentExecutor)
-                            : CompletableFuture.completedFuture(null);
+            CompletableFuture<ContextAnnotator.ContextResult> ctxFut = contextModeEnabled
+                ? CompletableFuture.supplyAsync(
+                    () -> contextAnnotator.annotate(annotatedCode, lang),
+                    enrichmentExecutor
+                )
+                : CompletableFuture.completedFuture(null);
 
             final String distractorSource = sanitizedCode;
             final int loc = complexity.linesOfCode();
-            CompletableFuture<String> distFut =
-                    distractorsEnabled
-                            ? CompletableFuture.supplyAsync(
-                                    () -> generateDistractorsForTask(
-                                            distractorSource, lang, task.getStatement(),
-                                            task.getTierLevel(), task.getDistractorPlan(), loc),
-                                    enrichmentExecutor)
-                            : CompletableFuture.completedFuture(null);
+            CompletableFuture<String> distFut = distractorsEnabled
+                ? CompletableFuture.supplyAsync(
+                    () -> generateDistractorsForTask(
+                        distractorSource, lang, task.getStatement(),
+                        task.getTierLevel(), task.getDistractorPlan(), loc
+                    ),
+                    enrichmentExecutor
+                )
+                : CompletableFuture.completedFuture(null);
 
             ContextAnnotator.ContextResult ctxResult = ctxFut.join();
             String distractors = distFut.join();
@@ -250,55 +279,66 @@ public final class TaskEnricher {
                 finalPuzzle = ctxResult.puzzleSolution();
                 contextBefore = ctxResult.contextBefore();
                 contextAfter = ctxResult.contextAfter();
-                logger.debug("Context separation applied for tier {} task (before={}, after={})",
-                        task.getTierLevel(),
-                        contextBefore != null ? contextBefore.split("\n").length : 0,
-                        contextAfter != null ? contextAfter.split("\n").length : 0);
+                logger.debug(
+                    "Context separation applied for tier {} task (before={}, after={})",
+                    task.getTierLevel(),
+                    contextBefore != null ? contextBefore.split("\n").length : 0,
+                    contextAfter != null ? contextAfter.split("\n").length : 0
+                );
             }
 
             // AP31: post-solve inline-split generation (opt-in), validated against the final
             // puzzle. Fail-open: any failure or reconstruction mismatch yields no splits.
             String splitPlanJson = splitEnabled
-                    ? generateSplitPlanForTask(finalPuzzle, lang, task.getStatement(), task.getTierLevel(), distractorsEnabled)
-                    : null;
+                ? generateSplitPlanForTask(
+                    finalPuzzle, lang, task.getStatement(), task.getTierLevel(), distractorsEnabled
+                )
+                : null;
 
             // toBuilder(), not a fresh builder() — see TaskDTO.copyFor(): naming fields by hand is
             // how distractorsEnabled's @Builder.Default silently flipped a disabled task back on
             // before. statement/tierLevel/contract/distractorPlan are unchanged from `task` and
             // travel across automatically; only what this pass actually computes is named below.
             return task.toBuilder()
-                    .id(UUID.randomUUID())
-                    .solution(finalPuzzle)
-                    .cyclomaticComplexity(complexity.cyclomaticComplexity())
-                    .maximalNestingDepth(complexity.maxNestingDepth())
-                    .distinctIdentifierCount(complexity.distinctIdentifierCount())
-                    .linesOfCode(complexity.linesOfCode())
-                    .methodCallCount(complexity.methodCallCount())
-                    .distractors(distractors)
-                    .contextBefore(contextBefore)
-                    .contextAfter(contextAfter)
-                    .splitPlan(splitPlanJson)
-                    .build();
-        } catch (GenerationException ge) {
+                .id(UUID.randomUUID())
+                .solution(finalPuzzle)
+                .cyclomaticComplexity(complexity.cyclomaticComplexity())
+                .maximalNestingDepth(complexity.maxNestingDepth())
+                .distinctIdentifierCount(complexity.distinctIdentifierCount())
+                .linesOfCode(complexity.linesOfCode())
+                .methodCallCount(complexity.methodCallCount())
+                .distractors(distractors)
+                .contextBefore(contextBefore)
+                .contextAfter(contextAfter)
+                .splitPlan(splitPlanJson)
+                .build();
+        }
+        catch (GenerationException ge) {
             throw ge;
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new GenerationException("Failed to enrich task: " + task.getStatement(), e);
-        } finally {
-            if (previousMdc != null) MDC.put("taskId", previousMdc);
-            else MDC.remove("taskId");
+        }
+        finally {
+            if (previousMdc != null)
+                MDC.put("taskId", previousMdc);
+            else
+                MDC.remove("taskId");
             MDC.remove("sequenceId");
         }
     }
 
     /**
-     * Generates distractors for a single task via the Antagonist-Call (AP15).
-     * Applies the Mengen-Heuristik (T1: 1-2, T2: 2-3, T3: 3-4) capped at 30% of LOC.
+     * Generates distractors for a single task via the Antagonist-Call (AP15). Applies the Mengen-Heuristik (T1: 1-2,
+     * T2: 2-3, T3: 3-4) capped at 30% of LOC.
      *
      * @return newline-separated distractor lines (each ending with #distractor), or null on failure
      */
-    public String generateDistractorsForTask(String solutionCode, String language,
-                                               String taskStatement, int tierLevel,
-                                               String distractorPlan, int linesOfCode) {
+    public String generateDistractorsForTask(
+        String solutionCode, String language,
+        String taskStatement, int tierLevel,
+        String distractorPlan, int linesOfCode
+    ) {
         try {
             // Mengen-Heuristik: tier-based count (AP21: extended for 5-tier)
             int baseCount = switch (tierLevel) {
@@ -316,7 +356,8 @@ public final class TaskEnricher {
             logger.debug("Generating {} distractors for tier {} task (LOC={})", count, tierLevel, linesOfCode);
 
             List<String> distractorLines = client.generateDistractors(
-                    solutionCode, language, taskStatement, tierLevel, distractorPlan, count);
+                solutionCode, language, taskStatement, tierLevel, distractorPlan, count
+            );
 
             if (distractorLines == null || distractorLines.isEmpty()) {
                 logger.warn("No distractors returned for task: {}", taskStatement);
@@ -325,12 +366,12 @@ public final class TaskEnricher {
 
             // Ensure every line ends with #distractor and does NOT contain #swap or #group
             List<String> validated = distractorLines.stream()
-                    .map(String::trim)
-                    .filter(line -> !line.isBlank())
-                    .filter(line -> !line.contains("#swap") && !line.contains("#group"))
-                    .map(line -> line.endsWith("#distractor") ? line : line + " #distractor")
-                    .filter(line -> !solutionCode.contains(line.replace(" #distractor", "").trim())) // identity check
-                    .toList();
+                .map(String::trim)
+                .filter(line -> !line.isBlank())
+                .filter(line -> !line.contains("#swap") && !line.contains("#group"))
+                .map(line -> line.endsWith("#distractor") ? line : line + " #distractor")
+                .filter(line -> !solutionCode.contains(line.replace(" #distractor", "").trim())) // identity check
+                .toList();
 
             if (validated.isEmpty()) {
                 logger.warn("All distractors filtered out for task: {}", taskStatement);
@@ -341,21 +382,26 @@ public final class TaskEnricher {
             logger.debug("Generated {} validated distractors for tier {} task", validated.size(), tierLevel);
             return result;
 
-        } catch (Exception e) {
-            logger.warn("Distractor generation failed for task '{}', continuing without distractors: {}",
-                         taskStatement, e.getMessage());
+        }
+        catch (Exception e) {
+            logger.warn(
+                "Distractor generation failed for task '{}', continuing without distractors: {}",
+                taskStatement, e.getMessage()
+            );
             return null;
         }
     }
 
     /**
-     * AP31: Generates an inline-split plan for a single (already solved) task via the LLM,
-     * then validates it against the solution. Returns the validated split_plan JSON, or
-     * {@code null} on any failure / reconstruction mismatch (fail-open).
+     * AP31: Generates an inline-split plan for a single (already solved) task via the LLM, then validates it against
+     * the solution. Returns the validated split_plan JSON, or {@code null} on any failure / reconstruction mismatch
+     * (fail-open).
      */
-    public String generateSplitPlanForTask(String solutionCode, String language,
-                                           String taskStatement, int tierLevel,
-                                           boolean distractorsEnabled) {
+    public String generateSplitPlanForTask(
+        String solutionCode, String language,
+        String taskStatement, int tierLevel,
+        boolean distractorsEnabled
+    ) {
         try {
             String raw = client.generateSplitPlan(solutionCode, language, taskStatement, tierLevel);
             if (raw == null || raw.isBlank()) {
@@ -378,27 +424,35 @@ public final class TaskEnricher {
             // distractors are enabled AND the tier warrants a trap (Tier 1 stays distractor-free).
             boolean allowSplitDistractor = distractorsEnabled && tierLevel >= 2;
             for (SplitPlan.SplitEntry entry : plan.getSplits()) {
-                entry.setDistractors(allowSplitDistractor
+                entry.setDistractors(
+                    allowSplitDistractor
                         ? generateSplitDistractorFor(entry, language, taskStatement, tierLevel)
-                        : null);
+                        : null
+                );
             }
             return MAPPER.writeValueAsString(plan);
-        } catch (Exception e) {
-            logger.warn("Split generation failed for task '{}', continuing without splits: {}",
-                         taskStatement, e.getMessage());
+        }
+        catch (Exception e) {
+            logger.warn(
+                "Split generation failed for task '{}', continuing without splits: {}",
+                taskStatement, e.getMessage()
+            );
             return null;
         }
     }
 
     /**
-     * AP31: Second pass — asks the model for ONE fragment-level distractor that fits a single slot,
-     * given the fragments already chosen for this split. Fail-open: returns {@code null} on any issue.
+     * AP31: Second pass — asks the model for ONE fragment-level distractor that fits a single slot, given the fragments
+     * already chosen for this split. Fail-open: returns {@code null} on any issue.
      */
     private java.util.List<SplitPlan.SplitDistractor> generateSplitDistractorFor(
-            SplitPlan.SplitEntry entry, String language, String taskStatement, int tierLevel) {
+        SplitPlan.SplitEntry entry, String language, String taskStatement, int tierLevel
+    ) {
         try {
-            String raw = client.generateSplitDistractor(entry.getFragments(), entry.getPrefix(),
-                    entry.getSuffix(), language, taskStatement, tierLevel);
+            String raw = client.generateSplitDistractor(
+                entry.getFragments(), entry.getPrefix(),
+                entry.getSuffix(), language, taskStatement, tierLevel
+            );
             if (raw == null || raw.isBlank()) {
                 return null;
             }
@@ -410,17 +464,18 @@ public final class TaskEnricher {
                 d.setType("OFF_BY_ONE");
             }
             return java.util.List.of(d);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.warn("Split-distractor generation failed (tier {}): {}", tierLevel, e.getMessage());
             return null;
         }
     }
 
     /**
-     * AP31: LLMs frequently miscount the 0-based {@code lineIndex} on longer solutions (Tier 3),
-     * so an otherwise-correct split fails the exact-reconstruction check. When a split's
-     * {@code prefix + fragments + suffix} reconstructs exactly ONE solution line, snap its
-     * lineIndex to that line. Ambiguous or non-matching splits are left for validation to drop.
+     * AP31: LLMs frequently miscount the 0-based {@code lineIndex} on longer solutions (Tier 3), so an
+     * otherwise-correct split fails the exact-reconstruction check. When a split's {@code prefix + fragments + suffix}
+     * reconstructs exactly ONE solution line, snap its lineIndex to that line. Ambiguous or non-matching splits are
+     * left for validation to drop.
      */
     private static void repairSplitLineIndices(SplitPlan plan, String solution) {
         if (plan == null || plan.getSplits() == null) {
@@ -442,7 +497,10 @@ public final class TaskEnricher {
             int match = -1;
             for (int j = 0; j < lines.length; j++) {
                 if (reconstructed.equals(lines[j])) {
-                    if (match >= 0) { match = -1; break; } // ambiguous — don't guess
+                    if (match >= 0) {
+                        match = -1;
+                        break;
+                    } // ambiguous — don't guess
                     match = j;
                 }
             }

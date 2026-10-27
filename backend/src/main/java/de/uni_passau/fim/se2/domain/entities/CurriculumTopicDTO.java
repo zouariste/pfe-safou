@@ -18,13 +18,15 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
+import java.util.UUID;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.util.UUID;
 
 @Data
 @NoArgsConstructor
 public class CurriculumTopicDTO {
+
     private UUID id;
     private String name;
     private String description;
@@ -41,24 +43,22 @@ public class CurriculumTopicDTO {
     private String descriptionEn;
     private String trackEn;
     /**
-     * SCHOOL (Jahrgangsstufen) or UNIVERSITY (modules), from
-     * 12_migration_curriculum_education_level.sql. Sub-topics repeat their
-     * parent's value, so a row can be classified without looking at its parent.
+     * SCHOOL (Jahrgangsstufen) or UNIVERSITY (modules), from 12_migration_curriculum_education_level.sql. Sub-topics
+     * repeat their parent's value, so a row can be classified without looking at its parent.
      */
     private String educationLevel;
     /**
-     * Concept names mapped to this topic through concept_curriculum_topic —
-     * a relation, not a column, so the row mappers never fill it and it stays
-     * null on an ordinary read. Admin requests carry it to set the mapping:
-     * null leaves the mapping alone, a list replaces it (an empty one clears
-     * it). Read it back through /api/curriculum/topics/{id}/concepts.
+     * Concept names mapped to this topic through concept_curriculum_topic — a relation, not a column, so the row
+     * mappers never fill it and it stays null on an ordinary read. Admin requests carry it to set the mapping: null
+     * leaves the mapping alone, a list replaces it (an empty one clears it). Read it back through
+     * /api/curriculum/topics/{id}/concepts.
      */
     private java.util.List<String> concepts;
     /**
-     * How many sequences match this topic's mapped concepts (any of them) — the same set "View
-     * sequences" on the Curriculum page opens the Library filtered to. Computed alongside {@link
-     * #concepts}, not stored on the row, so it defaults to 0 and is only ever non-zero when a
-     * caller explicitly asked for it (currently {@code CurriculumGenerationService.getSubTopics}).
+     * How many sequences match this topic's mapped concepts (any of them) — the same set "View sequences" on the
+     * Curriculum page opens the Library filtered to. Computed alongside {@link #concepts}, not stored on the row, so it
+     * defaults to 0 and is only ever non-zero when a caller explicitly asked for it (currently
+     * {@code CurriculumGenerationService.getSubTopics}).
      */
     private int sequenceCount;
 }

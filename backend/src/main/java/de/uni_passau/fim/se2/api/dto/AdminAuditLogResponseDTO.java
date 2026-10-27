@@ -25,6 +25,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AdminAuditLogResponseDTO {
+
     private Long id;
     private String adminId;     // UUID as string
     private String action;

@@ -18,25 +18,25 @@
  */
 package de.uni_passau.fim.se2.application.service.hints;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 class HintLocaleTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"en", "EN", "en-US", "en-GB"})
+    @ValueSource(strings = { "en", "EN", "en-US", "en-GB" })
     @DisplayName("any English tag selects English")
     void englishTags(String tag) {
         assertEquals(HintLocale.EN, HintLocale.from(tag));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"de", "DE", "de-DE", "de-AT"})
+    @ValueSource(strings = { "de", "DE", "de-DE", "de-AT" })
     @DisplayName("any German tag selects German")
     void germanTags(String tag) {
         assertEquals(HintLocale.DE, HintLocale.from(tag));
@@ -44,7 +44,7 @@ class HintLocaleTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"", "fr", "nonsense"})
+    @ValueSource(strings = { "", "fr", "nonsense" })
     @DisplayName("anything unrecognised falls back to German")
     void fallsBackToGerman(String tag) {
         // Hints were German-only before the locale was threaded through, so a

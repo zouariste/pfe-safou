@@ -18,16 +18,10 @@
  */
 package de.uni_passau.fim.se2.api;
 
-import de.uni_passau.fim.se2.application.service.LearningEventService;
-import de.uni_passau.fim.se2.application.service.OwnershipService;
-import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
-import de.uni_passau.fim.se2.domain.entities.LearningEventDTO;
-import de.uni_passau.fim.se2.domain.entities.TaskDTO;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -35,9 +29,17 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import de.uni_passau.fim.se2.application.service.LearningEventService;
+import de.uni_passau.fim.se2.application.service.OwnershipService;
+import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
+import de.uni_passau.fim.se2.domain.entities.LearningEventDTO;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
@@ -54,17 +56,16 @@ public class LearningEventController {
      * Request data transfer object for logging events.
      */
     public record LogEventRequest(
-            String taskId,
-            String sequenceId,
-            Integer tierLevel,
-            String eventType,
-            Map<String, Object> eventData
+        String taskId,
+        String sequenceId,
+        Integer tierLevel,
+        String eventType,
+        Map<String, Object> eventData
     ) {
     }
 
     /**
-     * POST /api/events — public, anonymous allowed.
-     * Extracts userId from JWT if present.
+     * POST /api/events — public, anonymous allowed. Extracts userId from JWT if present.
      *
      * @param request the event logging request payload
      * @return a ResponseEntity indicating success or failure
@@ -76,7 +77,8 @@ public class LearningEventController {
         UUID taskId;
         try {
             taskId = UUID.fromString(request.taskId());
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid taskId"));
         }
 
@@ -84,7 +86,8 @@ public class LearningEventController {
         if (request.sequenceId() != null && !request.sequenceId().isBlank()) {
             try {
                 sequenceId = UUID.fromString(request.sequenceId());
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Invalid sequenceId"));
             }
         }
@@ -93,30 +96,31 @@ public class LearningEventController {
         if (request.eventData() != null) {
             try {
                 eventDataJson = objectMapper.writeValueAsString(request.eventData());
-            } catch (JsonProcessingException e) {
+            }
+            catch (JsonProcessingException e) {
                 eventDataJson = "{}";
             }
         }
 
         learningEventService.logEvent(
-                userId,
-                taskId,
-                sequenceId,
-                request.tierLevel(),
-                request.eventType(),
-                eventDataJson
+            userId,
+            taskId,
+            sequenceId,
+            request.tierLevel(),
+            request.eventType(),
+            eventDataJson
         );
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("message", "Event logged"));
+            .body(Map.of("message", "Event logged"));
     }
 
     /**
      * GET /api/events/task/{taskId} — the owning teacher, or an admin.
      *
-     * <p>Events carry the arrangements students built, move by move. Being logged in is not a
-     * reason to read another student's work, so this is scoped to whoever owns the sequence the
-     * task belongs to.
+     * <p>
+     * Events carry the arrangements students built, move by move. Being logged in is not a reason to read another
+     * student's work, so this is scoped to whoever owns the sequence the task belongs to.
      *
      * @param taskId the task ID to filter events by
      * @return list of events associated with the specified task
@@ -168,9 +172,8 @@ public class LearningEventController {
     /**
      * Allows the sequence's owner and admins through, and nobody else.
      *
-     * The same check {@code TasksController} and {@code LibraryController} apply to
-     * sequence-scoped data. A student is never a sequence owner, so this denies them without
-     * needing a role test.
+     * The same check {@code TasksController} and {@code LibraryController} apply to sequence-scoped data. A student is
+     * never a sequence owner, so this denies them without needing a role test.
      *
      * @param sequenceId the sequence whose events are being read
      * @throws AccessDeniedException if the caller does not own the sequence and is not an admin
@@ -195,7 +198,8 @@ public class LearningEventController {
         }
         try {
             return (UUID) auth.getPrincipal();
-        } catch (ClassCastException e) {
+        }
+        catch (ClassCastException e) {
             return null;
         }
     }

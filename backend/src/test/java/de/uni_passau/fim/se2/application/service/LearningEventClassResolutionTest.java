@@ -18,17 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.LearningEventDTO;
-import de.uni_passau.fim.se2.domain.interfaces.LearningEventRepository;
-import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreLearningEventDao;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -38,14 +27,26 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import de.uni_passau.fim.se2.domain.entities.LearningEventDTO;
+import de.uni_passau.fim.se2.domain.interfaces.LearningEventRepository;
+import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreLearningEventDao;
+
 /**
  * Which of the two things attached to an event survives, and which does not.
  *
- * <p>V22 gave learning_events a class_id so a per-class research view is answerable at all.
- * The whole point rests on one ordering: the class is resolved <em>before</em> the tracking
- * check nulls the user id, and is kept afterwards. Swap those two and every event from a
- * tracking-disabled class silently loses its class as well as its student — which looks like
- * no data rather than like a bug, the failure mode this codebase keeps running into.
+ * <p>
+ * V22 gave learning_events a class_id so a per-class research view is answerable at all. The whole point rests on one
+ * ordering: the class is resolved <em>before</em> the tracking check nulls the user id, and is kept afterwards. Swap
+ * those two and every event from a tracking-disabled class silently loses its class as well as its student — which
+ * looks like no data rather than like a bug, the failure mode this codebase keeps running into.
  */
 @DisplayName("learning event class resolution")
 class LearningEventClassResolutionTest {
@@ -86,8 +87,8 @@ class LearningEventClassResolutionTest {
         void classSurvivesAnonymization() {
             LearningEventDTO event = logAndCapture(USER);
             assertAll(
-                    () -> assertNull(event.getUserId(), "user id must not survive"),
-                    () -> assertEquals(CLASS, event.getClassId(), "class id must survive")
+                () -> assertNull(event.getUserId(), "user id must not survive"),
+                () -> assertEquals(CLASS, event.getClassId(), "class id must survive")
             );
         }
     }
@@ -104,8 +105,8 @@ class LearningEventClassResolutionTest {
 
             LearningEventDTO event = logAndCapture(USER);
             assertAll(
-                    () -> assertEquals(USER, event.getUserId()),
-                    () -> assertEquals(CLASS, event.getClassId())
+                () -> assertEquals(USER, event.getUserId()),
+                () -> assertEquals(CLASS, event.getClassId())
             );
         }
 
@@ -117,8 +118,8 @@ class LearningEventClassResolutionTest {
 
             LearningEventDTO event = logAndCapture(USER);
             assertAll(
-                    () -> assertEquals(USER, event.getUserId()),
-                    () -> assertNull(event.getClassId())
+                () -> assertEquals(USER, event.getUserId()),
+                () -> assertNull(event.getClassId())
             );
         }
     }
@@ -129,11 +130,11 @@ class LearningEventClassResolutionTest {
         LearningEventDTO event = logAndCapture(null);
 
         assertAll(
-                () -> assertNull(event.getUserId()),
-                () -> assertNull(event.getClassId()),
-                // There is no student to resolve a class from, so asking the database would be
-                // a query per anonymous event for a guaranteed null.
-                () -> verify(dao, never()).resolveClassId(any(), any())
+            () -> assertNull(event.getUserId()),
+            () -> assertNull(event.getClassId()),
+            // There is no student to resolve a class from, so asking the database would be
+            // a query per anonymous event for a guaranteed null.
+            () -> verify(dao, never()).resolveClassId(any(), any())
         );
     }
 

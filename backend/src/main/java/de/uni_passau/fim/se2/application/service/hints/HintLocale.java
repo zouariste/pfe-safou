@@ -23,23 +23,23 @@ import java.util.Locale;
 /**
  * The language a hint should be written in.
  *
- * Hint text is produced on the server — the level-1 text here, the level-2
- * explanation by the LLM — so the client has to say which language its UI is
- * currently in. Not to be confused with the programming language, which several
- * methods in this package also call "language".
+ * Hint text is produced on the server — the level-1 text here, the level-2 explanation by the LLM — so the client has
+ * to say which language its UI is currently in. Not to be confused with the programming language, which several methods
+ * in this package also call "language".
  */
 public enum HintLocale {
+
     DE, EN;
 
     /**
      * Maps a client locale tag onto a supported language.
      *
-     * Anything unrecognised, including null, falls back to German: it is the
-     * platform's default UI language and was the only language hints existed in
-     * before this, so an older client that sends nothing keeps what it had.
+     * Anything unrecognised, including null, falls back to German: it is the platform's default UI language and was the
+     * only language hints existed in before this, so an older client that sends nothing keeps what it had.
      */
     public static HintLocale from(String tag) {
-        if (tag == null) return DE;
+        if (tag == null)
+            return DE;
         return tag.toLowerCase(Locale.ROOT).startsWith("en") ? EN : DE;
     }
 

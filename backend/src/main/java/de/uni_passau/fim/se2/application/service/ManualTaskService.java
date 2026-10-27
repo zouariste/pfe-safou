@@ -18,31 +18,32 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.api.dto.ManualTaskRequest;
-import de.uni_passau.fim.se2.domain.entities.SplitPlan;
-import de.uni_passau.fim.se2.domain.entities.TaskDTO;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.application.util.GapMarkers;
-import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
-import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer.ComplexityResult;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import de.uni_passau.fim.se2.api.dto.ManualTaskRequest;
+import de.uni_passau.fim.se2.application.util.GapMarkers;
+import de.uni_passau.fim.se2.domain.entities.SplitPlan;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
+import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer.ComplexityResult;
+
 /**
- * Creates a TieredTaskSequence from teacher-supplied code — no LLM involved.
- * Comments are NOT stripped: in manual mode the teacher controls the code as-is.
- * Validates the input, computes complexity metrics, and persists the sequence.
- * The sequence is marked with strategyName="ManualCreation" in the DB.
+ * Creates a TieredTaskSequence from teacher-supplied code — no LLM involved. Comments are NOT stripped: in manual mode
+ * the teacher controls the code as-is. Validates the input, computes complexity metrics, and persists the sequence. The
+ * sequence is marked with strategyName="ManualCreation" in the DB.
  */
 @Service
 public class ManualTaskService {
@@ -56,9 +57,11 @@ public class ManualTaskService {
     private final CodeAnalyzer codeAnalyzer;
     private final ObjectMapper objectMapper;
 
-    public ManualTaskService(TaskPersistenceService persistenceService,
-                             CodeAnalyzer codeAnalyzer,
-                             ObjectMapper objectMapper) {
+    public ManualTaskService(
+        TaskPersistenceService persistenceService,
+        CodeAnalyzer codeAnalyzer,
+        ObjectMapper objectMapper
+    ) {
         this.persistenceService = persistenceService;
         this.codeAnalyzer = codeAnalyzer;
         this.objectMapper = objectMapper;
@@ -72,7 +75,9 @@ public class ManualTaskService {
      * @return the persisted sequence with IDs
      */
     public TieredTaskSequenceDTO createManualSequence(ManualTaskRequest request, UUID ownerId) {
-        logger.info("Creating manual task sequence for language={}, concepts={}", request.getLanguage(), request.getConcepts());
+        logger.info(
+            "Creating manual task sequence for language={}, concepts={}", request.getLanguage(), request.getConcepts()
+        );
 
         // ── Validate request ────────────────────────────────────
         validateRequest(request);
@@ -84,8 +89,12 @@ public class ManualTaskService {
         List<TaskDTO> tasks = new ArrayList<>();
 
         for (ManualTaskRequest.ManualTierEntry tier : request.getTiers()) {
-            tasks.add(buildTask(tier.getStatement(), tier.getSolution(), tier.getTierLevel(),
-                    tier.getSplits(), language, sequenceId));
+            tasks.add(
+                buildTask(
+                    tier.getStatement(), tier.getSolution(), tier.getTierLevel(),
+                    tier.getSplits(), language, sequenceId
+                )
+            );
         }
 
         // ── Build sequence ──────────────────────────────────────
@@ -97,20 +106,20 @@ public class ManualTaskService {
         // "3 tiers" and both mislabel and drop out of the library's tier-count filter, the same
         // failure TieredTaskSequenceDTO.copyFor() documents for the worksheet-copy path.
         TieredTaskSequenceDTO sequence = TieredTaskSequenceDTO.builder()
-                .id(sequenceId)
-                .programmingLanguage(language)
-                .concepts(request.getConcepts())
-                .tasks(tasks)
-                // No input snippet in manual mode, but TaskPersistenceService.validateSequence
-                // requires a non-blank one: use the first tier's solution as representative.
-                .codeSnippet(tasks.get(0).getSolution())
-                .taskDescription(taskDescription)
-                .createdAt(LocalDateTime.now())
-                .versionId(versionId)
-                .strategyName("ManualCreation")
-                .ownerId(ownerId)
-                .tierCount(tasks.size())
-                .build();
+            .id(sequenceId)
+            .programmingLanguage(language)
+            .concepts(request.getConcepts())
+            .tasks(tasks)
+            // No input snippet in manual mode, but TaskPersistenceService.validateSequence
+            // requires a non-blank one: use the first tier's solution as representative.
+            .codeSnippet(tasks.get(0).getSolution())
+            .taskDescription(taskDescription)
+            .createdAt(LocalDateTime.now())
+            .versionId(versionId)
+            .strategyName("ManualCreation")
+            .ownerId(ownerId)
+            .tierCount(tasks.size())
+            .build();
 
         // ── Persist ─────────────────────────────────────────────
         persistenceService.persistSequence(sequence);
@@ -122,14 +131,16 @@ public class ManualTaskService {
     /**
      * Builds one teacher-written tier, metrics and split plan included, without saving it.
      *
-     * <p>Public because adding a tier to an existing sequence ({@link SequenceTierService}) must
-     * produce exactly what manual creation produces; a second copy of this would drift the way
-     * the old worksheet copy did.
+     * <p>
+     * Public because adding a tier to an existing sequence ({@link SequenceTierService}) must produce exactly what
+     * manual creation produces; a second copy of this would drift the way the old worksheet copy did.
      *
      * @throws DomainValidationException if a split fails the reconstruction check
      */
-    public TaskDTO buildTask(String statement, String solution, int tierLevel,
-                             List<SplitPlan.SplitEntry> splits, String language, UUID sequenceId) {
+    public TaskDTO buildTask(
+        String statement, String solution, int tierLevel,
+        List<SplitPlan.SplitEntry> splits, String language, UUID sequenceId
+    ) {
         // No comment-sanitizing — in manual mode the teacher decides what stays
         String code = solution.trim();
 
@@ -146,24 +157,23 @@ public class ManualTaskService {
         String splitPlanJson = buildSplitPlanJson(splits, code, tierLevel);
 
         return TaskDTO.builder()
-                .id(UUID.randomUUID())
-                .statement(statement.trim())
-                .solution(code)
-                .tierLevel(tierLevel)
-                .cyclomaticComplexity(metrics.cyclomaticComplexity())
-                .linesOfCode(metrics.linesOfCode())
-                .maximalNestingDepth(metrics.maxNestingDepth())
-                .methodCallCount(metrics.methodCallCount())
-                .distinctIdentifierCount(metrics.distinctIdentifierCount())
-                .sequenceId(sequenceId)
-                .splitPlan(splitPlanJson)
-                .build();
+            .id(UUID.randomUUID())
+            .statement(statement.trim())
+            .solution(code)
+            .tierLevel(tierLevel)
+            .cyclomaticComplexity(metrics.cyclomaticComplexity())
+            .linesOfCode(metrics.linesOfCode())
+            .maximalNestingDepth(metrics.maxNestingDepth())
+            .methodCallCount(metrics.methodCallCount())
+            .distinctIdentifierCount(metrics.distinctIdentifierCount())
+            .sequenceId(sequenceId)
+            .splitPlan(splitPlanJson)
+            .build();
     }
 
     /**
-     * AP31: Turns the tier's split entries into a validated {@code split_plan} JSON string.
-     * Returns {@code null} when there are no splits. Throws {@link DomainValidationException}
-     * if any split fails the reconstruction check.
+     * AP31: Turns the tier's split entries into a validated {@code split_plan} JSON string. Returns {@code null} when
+     * there are no splits. Throws {@link DomainValidationException} if any split fails the reconstruction check.
      */
     private String buildSplitPlanJson(List<SplitPlan.SplitEntry> splits, String solution, int tierLevel) {
         if (splits == null || splits.isEmpty()) {
@@ -172,12 +182,14 @@ public class ManualTaskService {
         SplitPlan plan = SplitPlan.builder().splits(splits).build();
         try {
             SequenceValidator.validateSplitPlan(plan, solution);
-        } catch (DomainValidationException e) {
+        }
+        catch (DomainValidationException e) {
             throw new DomainValidationException("Tier " + tierLevel + " split invalid: " + e.getMessage());
         }
         try {
             return objectMapper.writeValueAsString(plan);
-        } catch (JsonProcessingException e) {
+        }
+        catch (JsonProcessingException e) {
             logger.warn("Failed to serialize split_plan for tier {}: {}", tierLevel, e.getMessage());
             return null;
         }
@@ -213,9 +225,9 @@ public class ManualTaskService {
 
         // Check for duplicate tier levels
         long distinctTiers = request.getTiers().stream()
-                .mapToInt(ManualTaskRequest.ManualTierEntry::getTierLevel)
-                .distinct()
-                .count();
+            .mapToInt(ManualTaskRequest.ManualTierEntry::getTierLevel)
+            .distinct()
+            .count();
         if (distinctTiers != request.getTiers().size()) {
             throw new DomainValidationException("Duplicate tier levels are not allowed.");
         }

@@ -18,12 +18,20 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Getter @Setter @ToString @EqualsAndHashCode(of = "id") @Builder @NoArgsConstructor @AllArgsConstructor
+import lombok.*;
+
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode(of = "id")
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class HintUsageDTO {
+
     private UUID id;
     private UUID userId;
     private UUID taskId;

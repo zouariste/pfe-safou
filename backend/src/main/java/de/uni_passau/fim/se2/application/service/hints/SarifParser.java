@@ -37,19 +37,21 @@ public class SarifParser {
     public List<AnalysisFinding> parse(String sarifJson, String toolName) {
         // Parse the SARIF JSON
         // SARIF structure: runs[0].results[] with each result having:
-        //   - ruleId
-        //   - message.text
-        //   - level (error/warning/note)
-        //   - locations[0].physicalLocation.region.startLine/endLine
+        // - ruleId
+        // - message.text
+        // - level (error/warning/note)
+        // - locations[0].physicalLocation.region.startLine/endLine
 
         List<AnalysisFinding> findings = new ArrayList<>();
         try {
             JsonNode root = objectMapper.readTree(sarifJson);
             JsonNode runs = root.path("runs");
-            if (!runs.isArray() || runs.isEmpty()) return findings;
+            if (!runs.isArray() || runs.isEmpty())
+                return findings;
 
             JsonNode results = runs.get(0).path("results");
-            if (!results.isArray()) return findings;
+            if (!results.isArray())
+                return findings;
 
             for (JsonNode result : results) {
                 String ruleId = result.path("ruleId").asText("");
@@ -69,7 +71,8 @@ public class SarifParser {
                 String category = categorizeRule(ruleId, toolName);
                 findings.add(new AnalysisFinding(ruleId, message, severity, startLine, endLine, toolName, category));
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             // Log but don't throw - partial results are fine
         }
         return findings;
@@ -93,10 +96,14 @@ public class SarifParser {
                 case "E111", "E112", "E113", "E117" -> "indentation";
                 default -> "other";
             };
-        } else if ("spotbugs".equals(tool)) {
-            if (ruleId.startsWith("NP_")) return "null_safety";
-            if (ruleId.startsWith("DLS_")) return "dead_code";
-            if (ruleId.startsWith("UC_")) return "logic";
+        }
+        else if ("spotbugs".equals(tool)) {
+            if (ruleId.startsWith("NP_"))
+                return "null_safety";
+            if (ruleId.startsWith("DLS_"))
+                return "dead_code";
+            if (ruleId.startsWith("UC_"))
+                return "logic";
             return "other";
         }
         return "other";

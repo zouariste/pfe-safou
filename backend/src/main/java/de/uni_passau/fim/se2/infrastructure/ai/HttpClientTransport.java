@@ -23,7 +23,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
-
 public class HttpClientTransport implements AiTransport {
 
     /**
@@ -33,6 +32,7 @@ public class HttpClientTransport implements AiTransport {
 
     /**
      * Constructs a new instance of the HttpClientTransport.
+     * 
      * @param client the HttpClient used to send and receive requests.
      */
     public HttpClientTransport(final HttpClient client) {
@@ -41,14 +41,15 @@ public class HttpClientTransport implements AiTransport {
 
     /**
      * Sends a request using the HttpClient.
+     * 
      * @param request GPT request body.
      * @return the HttpResponse.
-     * @throws IOException throws IOException
+     * @throws IOException          throws IOException
      * @throws InterruptedException throws InterruptedException
      */
     @Override
     public HttpResponse<String> sendRequest(final HttpRequest request)
-            throws IOException, InterruptedException {
+        throws IOException, InterruptedException {
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
     }
 }

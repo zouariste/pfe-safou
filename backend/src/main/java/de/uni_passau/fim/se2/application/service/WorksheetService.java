@@ -18,6 +18,12 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.util.*;
+
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
@@ -27,11 +33,6 @@ import de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy;
 import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -78,10 +79,11 @@ public class WorksheetService {
     /**
      * A worksheet, if it exists.
      *
-     * <p>Preferred over {@link #loadWorksheetById(UUID)} wherever the answer might legitimately
-     * be "there is none". That method throws, which turns a missing worksheet into a 400 saying
-     * so — and an endpoint that answers 404 for a worksheet the caller may not see then tells
-     * that caller which ids are real. An empty result lets both cases answer alike.
+     * <p>
+     * Preferred over {@link #loadWorksheetById(UUID)} wherever the answer might legitimately be "there is none". That
+     * method throws, which turns a missing worksheet into a 400 saying so — and an endpoint that answers 404 for a
+     * worksheet the caller may not see then tells that caller which ids are real. An empty result lets both cases
+     * answer alike.
      */
     @Transactional(readOnly = true)
     public Optional<WorksheetDTO> findWorksheetById(UUID id) {
@@ -98,22 +100,21 @@ public class WorksheetService {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * A sentinel embedded in the description field of the auto-created "Library Inbox" worksheet.
-     * Lookup is done by sentinel (not name) so a teacher can rename the worksheet freely without
-     * breaking the one-click-copy behavior.
+     * A sentinel embedded in the description field of the auto-created "Library Inbox" worksheet. Lookup is done by
+     * sentinel (not name) so a teacher can rename the worksheet freely without breaking the one-click-copy behavior.
      */
     public static final String LIBRARY_INBOX_SENTINEL = "[codeowl:library-inbox]";
 
     private static final String LIBRARY_INBOX_DEFAULT_NAME = "Library Inbox";
-    private static final String LIBRARY_INBOX_DEFAULT_DESC =
-            "Quick-copied sequences from the Library. " + LIBRARY_INBOX_SENTINEL;
+    private static final String LIBRARY_INBOX_DEFAULT_DESC = "Quick-copied sequences from the Library. "
+        + LIBRARY_INBOX_SENTINEL;
 
     /**
      * Returns the teacher's "Library Inbox" worksheet, creating it on first access.
      *
-     * <p>The inbox is identified by a sentinel embedded in the description rather than by name,
-     * so renaming the worksheet does not orphan the copy target. If a teacher deletes the inbox,
-     * the next one-click copy creates a fresh one.
+     * <p>
+     * The inbox is identified by a sentinel embedded in the description rather than by name, so renaming the worksheet
+     * does not orphan the copy target. If a teacher deletes the inbox, the next one-click copy creates a fresh one.
      */
     @Transactional
     public WorksheetDTO getOrCreateDefaultWorksheet(UUID ownerId) {
@@ -122,18 +123,20 @@ public class WorksheetService {
         }
 
         Optional<WorksheetDTO> existing = worksheetRepo.findByOwnerId(ownerId).stream()
-                .filter(w -> w.getDescription() != null
-                        && w.getDescription().contains(LIBRARY_INBOX_SENTINEL))
-                .findFirst();
+            .filter(
+                w -> w.getDescription() != null
+                    && w.getDescription().contains(LIBRARY_INBOX_SENTINEL)
+            )
+            .findFirst();
         if (existing.isPresent()) {
             return existing.get();
         }
 
         WorksheetDTO fresh = WorksheetDTO.builder()
-                .name(LIBRARY_INBOX_DEFAULT_NAME)
-                .description(LIBRARY_INBOX_DEFAULT_DESC)
-                .ownerId(ownerId)
-                .build();
+            .name(LIBRARY_INBOX_DEFAULT_NAME)
+            .description(LIBRARY_INBOX_DEFAULT_DESC)
+            .ownerId(ownerId)
+            .build();
         worksheetRepo.createWorksheet(fresh);
         log.info("Created Library Inbox worksheet {} for owner {}", fresh.getId(), ownerId);
         return fresh;
@@ -161,8 +164,8 @@ public class WorksheetService {
 
         WorksheetDTO worksheet = WorksheetDTO.builder().id(worksheetId).build();
         List<TieredTaskSequenceDTO> sequences = sequenceIds.stream()
-                .map(id -> TieredTaskSequenceDTO.builder().id(id).build())
-                .toList();
+            .map(id -> TieredTaskSequenceDTO.builder().id(id).build())
+            .toList();
 
         worksheetRepo.addSequencesToWorksheet(worksheet, sequences);
         log.debug("Linked {} sequences to worksheet id={}", sequenceIds.size(), worksheetId);
@@ -193,12 +196,13 @@ public class WorksheetService {
     }
 
     /**
-     * Deep-copies a worksheet including all sequences and tasks.
-     * The copy gets new UUIDs for everything and the specified newOwnerId.
+     * Deep-copies a worksheet including all sequences and tasks. The copy gets new UUIDs for everything and the
+     * specified newOwnerId.
      *
-     * <p>Kept as the single entry point callers already know, but the work now lives in
-     * {@link WorksheetCloneService}. It used to be inline here and rebuilt sequences and tasks
-     * field by field, which meant every column added afterwards quietly stopped being copied.
+     * <p>
+     * Kept as the single entry point callers already know, but the work now lives in {@link WorksheetCloneService}. It
+     * used to be inline here and rebuilt sequences and tasks field by field, which meant every column added afterwards
+     * quietly stopped being copied.
      */
     @Transactional
     public WorksheetDTO copyWorksheet(UUID sourceWorksheetId, UUID newOwnerId) {
@@ -212,10 +216,10 @@ public class WorksheetService {
     /**
      * Publishes or unpublishes a worksheet.
      *
-     * <p>The decision itself lives in {@link WorksheetAccessPolicy}; this method's job is to
-     * gather the facts the policy needs — who owns the worksheet, and whether it is the Library
-     * Inbox, which is knowledge about a sentinel in the description and therefore not something
-     * the domain should have to carry.
+     * <p>
+     * The decision itself lives in {@link WorksheetAccessPolicy}; this method's job is to gather the facts the policy
+     * needs — who owns the worksheet, and whether it is the Library Inbox, which is knowledge about a sentinel in the
+     * description and therefore not something the domain should have to carry.
      *
      * @param worksheetId the worksheet to change
      * @param visibility  the visibility to set
@@ -226,18 +230,24 @@ public class WorksheetService {
      * @throws DomainValidationException if the id is null or no such worksheet exists
      */
     @Transactional
-    public WorksheetDTO setVisibility(UUID worksheetId, WorksheetVisibility visibility,
-                                      UUID actorId, UserDTO.UserRole actorRole) {
+    public WorksheetDTO setVisibility(
+        UUID worksheetId, WorksheetVisibility visibility,
+        UUID actorId, UserDTO.UserRole actorRole
+    ) {
         if (visibility == null) {
             throw new DomainValidationException("Visibility must not be null.");
         }
 
         WorksheetDTO worksheet = loadWorksheetById(worksheetId);
 
-        if (!WorksheetAccessPolicy.canChangeVisibility(
-                worksheet.getOwnerId(), actorId, actorRole, isLibraryInbox(worksheet))) {
+        if (
+            !WorksheetAccessPolicy.canChangeVisibility(
+                worksheet.getOwnerId(), actorId, actorRole, isLibraryInbox(worksheet)
+            )
+        ) {
             throw new AccessDeniedException(
-                    "You do not have permission to change this worksheet's visibility");
+                "You do not have permission to change this worksheet's visibility"
+            );
         }
 
         worksheetRepo.updateVisibility(worksheetId, visibility);
@@ -248,14 +258,14 @@ public class WorksheetService {
     /**
      * Whether this is the auto-created Library Inbox.
      *
-     * <p>Identified by the sentinel in the description, the same way
-     * {@link #getOrCreateDefaultWorksheet(UUID)} finds it — so renaming the worksheet does not
-     * turn it into an ordinary one.
+     * <p>
+     * Identified by the sentinel in the description, the same way {@link #getOrCreateDefaultWorksheet(UUID)} finds it —
+     * so renaming the worksheet does not turn it into an ordinary one.
      */
     public static boolean isLibraryInbox(WorksheetDTO worksheet) {
         return worksheet != null
-                && worksheet.getDescription() != null
-                && worksheet.getDescription().contains(LIBRARY_INBOX_SENTINEL);
+            && worksheet.getDescription() != null
+            && worksheet.getDescription().contains(LIBRARY_INBOX_SENTINEL);
     }
 
     private void validateWorksheetForCreate(WorksheetDTO worksheet) {

@@ -18,22 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.ClassDTO;
-import de.uni_passau.fim.se2.domain.entities.UserDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
-import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.security.access.AccessDeniedException;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -49,12 +33,28 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.security.access.AccessDeniedException;
+
+import de.uni_passau.fim.se2.domain.entities.ClassDTO;
+import de.uni_passau.fim.se2.domain.entities.UserDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
+import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
+
 /**
  * Adding students to a class by FIM username.
  *
- * The teacher does this before the school year starts, when most students have
- * never logged in, so the accounts have to exist up front and be the very ones
- * the students' first FIM login later finds.
+ * The teacher does this before the school year starts, when most students have never logged in, so the accounts have to
+ * exist up front and be the very ones the students' first FIM login later finds.
  */
 class ClassServiceFimStudentsTest {
 
@@ -72,24 +72,29 @@ class ClassServiceFimStudentsTest {
         userRepository = mock(UserRepository.class);
         ownershipService = mock(OwnershipService.class);
         service = new ClassService(
-                classRepository,
-                userRepository,
-                ownershipService,
-                mock(TokenService.class),
-                mock(FeedbackLogService.class),
-                mock(TempPasswordGenerator.class),
-                mock(PasswordHasherService.class),
-                mock(WorksheetService.class),
-                mock(WorksheetCloneService.class),
-                mock(TaskPersistenceService.class),
-                mock(TaskSubmissionService.class));
+            classRepository,
+            userRepository,
+            ownershipService,
+            mock(TokenService.class),
+            mock(FeedbackLogService.class),
+            mock(TempPasswordGenerator.class),
+            mock(PasswordHasherService.class),
+            mock(WorksheetService.class),
+            mock(WorksheetCloneService.class),
+            mock(TaskPersistenceService.class),
+            mock(TaskSubmissionService.class)
+        );
 
-        when(classRepository.findById(CLASS_ID)).thenReturn(Optional.of(ClassDTO.builder()
-                .id(CLASS_ID)
-                .name("Programmierung I")
-                .description("")
-                .ownerId(OWNER)
-                .build()));
+        when(classRepository.findById(CLASS_ID)).thenReturn(
+            Optional.of(
+                ClassDTO.builder()
+                    .id(CLASS_ID)
+                    .name("Programmierung I")
+                    .description("")
+                    .ownerId(OWNER)
+                    .build()
+            )
+        );
         when(userRepository.findByFimUid(anyString())).thenReturn(Optional.empty());
         // Saving is what hands the new user its id, the way the DAO does.
         when(userRepository.save(any(UserDTO.class))).thenAnswer(invocation -> {
@@ -108,17 +113,18 @@ class ClassServiceFimStudentsTest {
         verify(userRepository).save(saved.capture());
         UserDTO user = saved.getValue();
         assertAll(
-                () -> assertEquals("mustermann", user.getFimUid()),
-                () -> assertEquals(UserDTO.UserRole.STUDENT, user.getRole()),
-                // The name is a placeholder until the first login fills it in.
-                () -> assertEquals("mustermann", user.getFirstName()),
-                () -> assertEquals("", user.getLastName()),
-                () -> assertNull(user.getEmail()),
-                () -> assertNull(user.getPasswordHash()),
-                () -> assertTrue(user.isActive()),
-                () -> assertEquals(1, added.size()),
-                () -> assertEquals("mustermann", added.get(0).getFimUid()),
-                () -> assertNull(added.get(0).getInviteToken()));
+            () -> assertEquals("mustermann", user.getFimUid()),
+            () -> assertEquals(UserDTO.UserRole.STUDENT, user.getRole()),
+            // The name is a placeholder until the first login fills it in.
+            () -> assertEquals("mustermann", user.getFirstName()),
+            () -> assertEquals("", user.getLastName()),
+            () -> assertNull(user.getEmail()),
+            () -> assertNull(user.getPasswordHash()),
+            () -> assertTrue(user.isActive()),
+            () -> assertEquals(1, added.size()),
+            () -> assertEquals("mustermann", added.get(0).getFimUid()),
+            () -> assertNull(added.get(0).getInviteToken())
+        );
         verify(classRepository).addStudent(CLASS_ID, user.getUserId());
     }
 
@@ -133,8 +139,9 @@ class ClassServiceFimStudentsTest {
         verify(userRepository, never()).save(any());
         verify(classRepository).addStudent(CLASS_ID, existing.getUserId());
         assertAll(
-                () -> assertEquals("Max", added.get(0).getFirstName()),
-                () -> assertEquals(existing.getEmail(), added.get(0).getEmail()));
+            () -> assertEquals("Max", added.get(0).getFirstName()),
+            () -> assertEquals(existing.getEmail(), added.get(0).getEmail())
+        );
     }
 
     @Test
@@ -151,7 +158,8 @@ class ClassServiceFimStudentsTest {
     @Test
     @DisplayName("a username listed twice is added once")
     void collapsesDuplicates() {
-        List<ClassDTO.StudentInfo> added = service.addFimStudents(CLASS_ID, List.of("mustermann", "Mustermann", "musterfrau"));
+        List<ClassDTO.StudentInfo> added = service
+            .addFimStudents(CLASS_ID, List.of("mustermann", "Mustermann", "musterfrau"));
 
         assertEquals(2, added.size());
         verify(userRepository, times(2)).save(any());
@@ -161,8 +169,10 @@ class ClassServiceFimStudentsTest {
     @Test
     @DisplayName("one invalid username rejects the whole list before any account exists")
     void rejectsInvalidUsernameUpFront() {
-        DomainValidationException e = assertThrows(DomainValidationException.class,
-                () -> service.addFimStudents(CLASS_ID, List.of("mustermann", "max.mustermann@uni-passau.de", "musterfrau")));
+        DomainValidationException e = assertThrows(
+            DomainValidationException.class,
+            () -> service.addFimStudents(CLASS_ID, List.of("mustermann", "max.mustermann@uni-passau.de", "musterfrau"))
+        );
 
         assertTrue(e.getMessage().contains("max.mustermann@uni-passau.de"), e.getMessage());
         verify(userRepository, never()).save(any());
@@ -173,8 +183,10 @@ class ClassServiceFimStudentsTest {
     @DisplayName("names, blanks and other things that are not usernames are refused")
     void rejectsThingsThatAreNotUsernames() {
         for (String notAUsername : new String[] { "", "   ", "Max Mustermann", "-mustermann", "a".repeat(65) }) {
-            assertThrows(DomainValidationException.class,
-                    () -> service.addFimStudents(CLASS_ID, List.of(notAUsername)), notAUsername);
+            assertThrows(
+                DomainValidationException.class,
+                () -> service.addFimStudents(CLASS_ID, List.of(notAUsername)), notAUsername
+            );
         }
         verify(userRepository, never()).save(any());
     }
@@ -182,10 +194,13 @@ class ClassServiceFimStudentsTest {
     @Test
     @DisplayName("a FIM-Account that belongs to a teacher is not added as a student")
     void rejectsTeacherAccount() {
-        when(userRepository.findByFimUid("lehrer")).thenReturn(Optional.of(fimUser("lehrer", UserDTO.UserRole.TEACHER)));
+        when(userRepository.findByFimUid("lehrer"))
+            .thenReturn(Optional.of(fimUser("lehrer", UserDTO.UserRole.TEACHER)));
 
-        assertThrows(DomainValidationException.class,
-                () -> service.addFimStudents(CLASS_ID, List.of("mustermann", "lehrer")));
+        assertThrows(
+            DomainValidationException.class,
+            () -> service.addFimStudents(CLASS_ID, List.of("mustermann", "lehrer"))
+        );
         verify(userRepository, never()).save(any());
         verify(classRepository, never()).addStudent(any(), any());
     }
@@ -195,8 +210,10 @@ class ClassServiceFimStudentsTest {
     void rejectsEmptyAndOversizedLists() {
         assertThrows(DomainValidationException.class, () -> service.addFimStudents(CLASS_ID, List.of()));
         assertThrows(DomainValidationException.class, () -> service.addFimStudents(CLASS_ID, null));
-        assertThrows(DomainValidationException.class,
-                () -> service.addFimStudents(CLASS_ID, Collections.nCopies(201, "mustermann")));
+        assertThrows(
+            DomainValidationException.class,
+            () -> service.addFimStudents(CLASS_ID, Collections.nCopies(201, "mustermann"))
+        );
         verify(userRepository, never()).save(any());
     }
 
@@ -213,28 +230,34 @@ class ClassServiceFimStudentsTest {
     @DisplayName("a FIM student gets no temporary password beside their FIM password")
     void refusesTempPasswordForFimStudent() {
         UserDTO student = fimUser("mustermann", UserDTO.UserRole.STUDENT);
-        when(classRepository.findById(CLASS_ID)).thenReturn(Optional.of(ClassDTO.builder()
-                .id(CLASS_ID)
-                .ownerId(OWNER)
-                .students(List.of(ClassDTO.StudentInfo.builder().userId(student.getUserId()).build()))
-                .build()));
+        when(classRepository.findById(CLASS_ID)).thenReturn(
+            Optional.of(
+                ClassDTO.builder()
+                    .id(CLASS_ID)
+                    .ownerId(OWNER)
+                    .students(List.of(ClassDTO.StudentInfo.builder().userId(student.getUserId()).build()))
+                    .build()
+            )
+        );
         when(userRepository.findById(student.getUserId())).thenReturn(Optional.of(student));
 
-        assertThrows(DomainValidationException.class,
-                () -> service.resetTempPassword(CLASS_ID, student.getUserId(), "de"));
+        assertThrows(
+            DomainValidationException.class,
+            () -> service.resetTempPassword(CLASS_ID, student.getUserId(), "de")
+        );
         verify(userRepository, never()).update(any());
     }
 
     private static UserDTO fimUser(String uid, UserDTO.UserRole role) {
         return UserDTO.builder()
-                .userId(UUID.randomUUID())
-                .firstName("Max")
-                .lastName("Mustermann")
-                .email(uid + "@uni-passau.de")
-                .fimUid(uid)
-                .role(role)
-                .verified(true)
-                .active(true)
-                .build();
+            .userId(UUID.randomUUID())
+            .firstName("Max")
+            .lastName("Mustermann")
+            .email(uid + "@uni-passau.de")
+            .fimUid(uid)
+            .role(role)
+            .verified(true)
+            .active(true)
+            .build();
     }
 }

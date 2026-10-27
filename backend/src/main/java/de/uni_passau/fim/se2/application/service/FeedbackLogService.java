@@ -18,16 +18,17 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
-import de.uni_passau.fim.se2.domain.interfaces.FeedbackLogRepository;
+import java.util.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
+import de.uni_passau.fim.se2.domain.interfaces.FeedbackLogRepository;
 
 @Service
 public class FeedbackLogService {
@@ -43,9 +44,8 @@ public class FeedbackLogService {
     }
 
     /**
-     * Logs a feedback click with tracking-awareness:
-     * resolves the student's class, checks if tracking is enabled,
-     * and anonymizes the userId when tracking is off.
+     * Logs a feedback click with tracking-awareness: resolves the student's class, checks if tracking is enabled, and
+     * anonymizes the userId when tracking is off.
      */
     @Transactional
     public void logFeedbackClickWithTracking(UUID taskId, boolean correct, UUID userId) {
@@ -73,23 +73,28 @@ public class FeedbackLogService {
     @Transactional
     public void logFeedbackClick(UUID taskId, boolean correct, UUID userId, UUID classId) {
         try {
-            logger.debug("Logging feedback click for taskId={}, correct={}, userId={}, classId={}",
-                    taskId, correct, userId, classId);
+            logger.debug(
+                "Logging feedback click for taskId={}, correct={}, userId={}, classId={}",
+                taskId, correct, userId, classId
+            );
             if (taskId == null) {
                 throw new DomainValidationException("Task ID must not be null when logging feedback.");
             }
 
             FeedbackLogDTO logEntry = FeedbackLogDTO.builder()
-                    .taskId(taskId)
-                    .correct(correct)
-                    .userId(userId)
-                    .classId(classId)
-                    .build();
+                .taskId(taskId)
+                .correct(correct)
+                .userId(userId)
+                .classId(classId)
+                .build();
 
             feedbackRepo.save(logEntry);
-            logger.debug("Saved feedback log for taskId={}, correct={}, userId={}, classId={}",
-                    taskId, correct, userId, classId);
-        } catch (Exception e) {
+            logger.debug(
+                "Saved feedback log for taskId={}, correct={}, userId={}, classId={}",
+                taskId, correct, userId, classId
+            );
+        }
+        catch (Exception e) {
             logger.error("Error logging feedback click for taskId={}", taskId, e);
             throw e;
         }
@@ -112,7 +117,8 @@ public class FeedbackLogService {
             List<FeedbackLogDTO> logs = feedbackRepo.findByTaskId(taskId);
             logger.debug("Loaded {} feedback logs for taskId={}", logs.size(), taskId);
             return logs;
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Error loading feedback logs for taskId={}", taskId, e);
             throw e;
         }
@@ -132,7 +138,8 @@ public class FeedbackLogService {
             List<FeedbackLogDTO> logs = feedbackRepo.findByClassId(classId);
             logger.debug("Loaded {} feedback logs for classId={}", logs.size(), classId);
             return logs;
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Error loading feedback logs for classId={}", classId, e);
             throw e;
         }
@@ -153,7 +160,8 @@ public class FeedbackLogService {
 
             feedbackRepo.deleteByTaskId(taskId);
             logger.debug("Deleted feedback logs for taskId={}", taskId);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Error deleting feedback logs for taskId={}", taskId, e);
             throw e;
         }

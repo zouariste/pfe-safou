@@ -18,24 +18,23 @@
  */
 package de.uni_passau.fim.se2.application.service.hints;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
 /**
  * Level-1 hint text.
  *
- * Two things went wrong here and both are worth holding onto: the text was
- * German whatever the UI language, and the German was written with ASCII
- * transliterations (Bloecke, Loesung) rather than umlauts.
+ * Two things went wrong here and both are worth holding onto: the text was German whatever the UI language, and the
+ * German was written with ASCII transliterations (Bloecke, Loesung) rather than umlauts.
  */
 class HintGeneratorTest {
 
@@ -43,9 +42,13 @@ class HintGeneratorTest {
 
     /** A static-analysis finding pinned to one block of the solution. */
     private static BlockMapper.BlockFinding findingOn(int blockIndex) {
-        return new BlockMapper.BlockFinding(blockIndex,
-                new AnalysisFinding("F821", "Undefined name 'x'", "error",
-                        blockIndex + 1, blockIndex + 1, "ruff", "undefined_variable"));
+        return new BlockMapper.BlockFinding(
+            blockIndex,
+            new AnalysisFinding(
+                "F821", "Undefined name 'x'", "error",
+                blockIndex + 1, blockIndex + 1, "ruff", "undefined_variable"
+            )
+        );
     }
 
     /** No findings, no distractors, nothing missing — just the requested locale. */
@@ -68,8 +71,9 @@ class HintGeneratorTest {
         void english() {
             String text = generator.generate(List.of(), "python", List.of(), true, 2, 5, HintLocale.EN);
             assertAll(
-                    () -> assertTrue(text.contains("Only 2 of 5"), text),
-                    () -> assertFalse(text.contains("Es wurden nur"), text));
+                () -> assertTrue(text.contains("Only 2 of 5"), text),
+                () -> assertFalse(text.contains("Es wurden nur"), text)
+            );
         }
 
         @Test
@@ -90,12 +94,13 @@ class HintGeneratorTest {
         void tooFewBlocks() {
             String text = generator.generate(List.of(), "python", List.of(), true, 2, 5, HintLocale.DE);
             assertAll(
-                    () -> assertTrue(text.contains("benötigten"), text),
-                    () -> assertTrue(text.contains("Blöcken"), text),
-                    () -> assertTrue(text.contains("Lösungsbereich"), text),
-                    () -> assertFalse(text.contains("benoetigten"), text),
-                    () -> assertFalse(text.contains("Bloecken"), text),
-                    () -> assertFalse(text.contains("Loesungsbereich"), text));
+                () -> assertTrue(text.contains("benötigten"), text),
+                () -> assertTrue(text.contains("Blöcken"), text),
+                () -> assertTrue(text.contains("Lösungsbereich"), text),
+                () -> assertFalse(text.contains("benoetigten"), text),
+                () -> assertFalse(text.contains("Bloecken"), text),
+                () -> assertFalse(text.contains("Loesungsbereich"), text)
+            );
         }
 
         @Test
@@ -104,11 +109,12 @@ class HintGeneratorTest {
             String one = generator.generate(List.of(), "python", List.of(2), false, 0, 0, HintLocale.DE);
             String many = generator.generate(List.of(), "python", List.of(1, 3), false, 0, 0, HintLocale.DE);
             assertAll(
-                    () -> assertTrue(one.contains("gehört nicht zur Lösung"), one),
-                    () -> assertTrue(one.contains("zurück"), one),
-                    () -> assertTrue(many.contains("Blöcke"), many),
-                    () -> assertTrue(many.contains("gehören"), many),
-                    () -> assertFalse(many.contains("gehoeren"), many));
+                () -> assertTrue(one.contains("gehört nicht zur Lösung"), one),
+                () -> assertTrue(one.contains("zurück"), one),
+                () -> assertTrue(many.contains("Blöcke"), many),
+                () -> assertTrue(many.contains("gehören"), many),
+                () -> assertFalse(many.contains("gehoeren"), many)
+            );
         }
 
         @Test
@@ -116,21 +122,28 @@ class HintGeneratorTest {
         void fallback() {
             String text = hint(HintLocale.DE);
             assertAll(
-                    () -> assertTrue(text.contains("Prüfe"), text),
-                    () -> assertTrue(text.contains("Blöcke"), text),
-                    () -> assertFalse(text.contains("Pruefe"), text));
+                () -> assertTrue(text.contains("Prüfe"), text),
+                () -> assertTrue(text.contains("Blöcke"), text),
+                () -> assertFalse(text.contains("Pruefe"), text)
+            );
         }
 
         @Test
         @DisplayName("no German output contains an ASCII transliteration")
         void noTransliterationsAnywhere() {
-            String all = String.join(" ",
-                    generator.generate(List.of(), "python", List.of(), true, 2, 5, HintLocale.DE),
-                    generator.generate(List.of(), "python", List.of(2), false, 0, 0, HintLocale.DE),
-                    generator.generate(List.of(), "python", List.of(1, 3), false, 0, 0, HintLocale.DE),
-                    hint(HintLocale.DE));
-            for (String bad : List.of("Bloeck", "bloeck", "Loesung", "loesung",
-                                      "benoetig", "zurueck", "gehoer", "Pruefe")) {
+            String all = String.join(
+                " ",
+                generator.generate(List.of(), "python", List.of(), true, 2, 5, HintLocale.DE),
+                generator.generate(List.of(), "python", List.of(2), false, 0, 0, HintLocale.DE),
+                generator.generate(List.of(), "python", List.of(1, 3), false, 0, 0, HintLocale.DE),
+                hint(HintLocale.DE)
+            );
+            for (
+                String bad : List.of(
+                    "Bloeck", "bloeck", "Loesung", "loesung",
+                    "benoetig", "zurueck", "gehoer", "Pruefe"
+                )
+            ) {
                 assertFalse(all.contains(bad), "transliteration '" + bad + "' in: " + all);
             }
         }
@@ -145,10 +158,14 @@ class HintGeneratorTest {
         void namesBlocksByLetter() {
             // Index 2 is the third block, badged "C" in the solution area. Saying
             // "Block 3" here left the student matching a number against a letter.
-            assertTrue(generator.generate(List.of(), "python", List.of(2), false, 0, 0, HintLocale.EN)
-                    .contains("Block C"));
-            assertTrue(generator.generate(List.of(), "python", List.of(1, 3), false, 0, 0, HintLocale.EN)
-                    .contains("Blocks B, D"));
+            assertTrue(
+                generator.generate(List.of(), "python", List.of(2), false, 0, 0, HintLocale.EN)
+                    .contains("Block C")
+            );
+            assertTrue(
+                generator.generate(List.of(), "python", List.of(1, 3), false, 0, 0, HintLocale.EN)
+                    .contains("Blocks B, D")
+            );
         }
 
         @Test
@@ -165,12 +182,15 @@ class HintGeneratorTest {
         void findingsUseLetters() {
             // The per-finding line is a separate branch from the distractor one
             // and was the half that kept saying "Block 5".
-            String text = generator.generate(List.of(findingOn(4)), "python", List.of(),
-                    false, 0, 0, HintLocale.EN);
+            String text = generator.generate(
+                List.of(findingOn(4)), "python", List.of(),
+                false, 0, 0, HintLocale.EN
+            );
             assertAll(
-                    () -> assertTrue(text.contains("Block E"), text),
-                    () -> assertFalse(text.contains("Block 5"), text),
-                    () -> assertTrue(text.contains("F821"), text));
+                () -> assertTrue(text.contains("Block E"), text),
+                () -> assertFalse(text.contains("Block 5"), text),
+                () -> assertTrue(text.contains("F821"), text)
+            );
         }
 
         @Test

@@ -18,16 +18,28 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai;
 
+import org.springframework.stereotype.Component;
+
 import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.AiProviderKey;
 import de.uni_passau.fim.se2.domain.entities.OpenAiModel;
-import org.springframework.stereotype.Component;
 
 @Component
 public class AiDefaultsAdapter implements AiDefaults {
-    private final AiProps props;
-    public AiDefaultsAdapter(AiProps props) { this.props = props; }
 
-    @Override public AiProviderKey defaultProvider() { return props.getDefaultProvider(); }
-    @Override public OpenAiModel defaultOpenAiModel() { return props.getOpenai().getDefaultModel(); }
+    private final AiProps props;
+
+    public AiDefaultsAdapter(AiProps props) {
+        this.props = props;
+    }
+
+    @Override
+    public AiProviderKey defaultProvider() {
+        return props.getDefaultProvider();
+    }
+
+    @Override
+    public OpenAiModel defaultOpenAiModel() {
+        return props.getOpenai().getDefaultModel();
+    }
 }

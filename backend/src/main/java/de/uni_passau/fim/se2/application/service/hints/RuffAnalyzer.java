@@ -40,8 +40,8 @@ public class RuffAnalyzer {
     }
 
     /**
-     * Runs ruff check on the given Python code and returns findings.
-     * Creates a temporary file, runs ruff, parses SARIF output.
+     * Runs ruff check on the given Python code and returns findings. Creates a temporary file, runs ruff, parses SARIF
+     * output.
      */
     public List<AnalysisFinding> analyze(String pythonCode) {
         Path tempDir = null;
@@ -73,24 +73,34 @@ public class RuffAnalyzer {
             }
 
             // Ruff returns exit code 1 when findings exist - that's expected
-            if (output.isBlank()) return List.of();
+            if (output.isBlank())
+                return List.of();
 
             return sarifParser.parse(output, "ruff");
 
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Ruff analysis failed", e);
             return List.of();
-        } finally {
+        }
+        finally {
             cleanupTempDir(tempDir);
         }
     }
 
     private void cleanupTempDir(Path dir) {
-        if (dir == null) return;
+        if (dir == null)
+            return;
         try {
             Files.walk(dir).sorted(Comparator.reverseOrder()).forEach(p -> {
-                try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                try {
+                    Files.deleteIfExists(p);
+                }
+                catch (IOException ignored) {
+                }
             });
-        } catch (IOException ignored) {}
+        }
+        catch (IOException ignored) {
+        }
     }
 }

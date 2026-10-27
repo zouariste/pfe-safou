@@ -18,18 +18,19 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.entities.UserDTO;
-import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
-import de.uni_passau.fim.se2.infrastructure.persistence.mapper.UserRowMapper;
-import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Repository;
-
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+
+import de.uni_passau.fim.se2.domain.entities.UserDTO;
+import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
+import de.uni_passau.fim.se2.infrastructure.persistence.mapper.UserRowMapper;
+import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
@@ -47,22 +48,23 @@ public class PostgreUserDao implements UserRepository {
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
 
-        jdbc.update("""
-            INSERT INTO users (user_id, email, first_name, last_name, password_hash, role, is_verified, is_active, must_change_password, fim_uid, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?::user_role, ?, ?, ?, ?, ?, ?)
-            """,
-                user.getUserId(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getPasswordHash(),
-                user.getRole().name(),
-                user.isVerified(),
-                user.isActive(),
-                user.isMustChangePassword(),
-                user.getFimUid(),
-                Timestamp.valueOf(user.getCreatedAt()),
-                Timestamp.valueOf(user.getUpdatedAt())
+        jdbc.update(
+            """
+                INSERT INTO users (user_id, email, first_name, last_name, password_hash, role, is_verified, is_active, must_change_password, fim_uid, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?::user_role, ?, ?, ?, ?, ?, ?)
+                """,
+            user.getUserId(),
+            user.getEmail(),
+            user.getFirstName(),
+            user.getLastName(),
+            user.getPasswordHash(),
+            user.getRole().name(),
+            user.isVerified(),
+            user.isActive(),
+            user.isMustChangePassword(),
+            user.getFimUid(),
+            Timestamp.valueOf(user.getCreatedAt()),
+            Timestamp.valueOf(user.getUpdatedAt())
         );
         return user;
     }
@@ -70,8 +72,8 @@ public class PostgreUserDao implements UserRepository {
     @Override
     public Optional<UserDTO> findById(UUID userId) {
         List<UserDTO> results = jdbc.query(
-                "SELECT * FROM users WHERE user_id = ?",
-                rowMapper, userId
+            "SELECT * FROM users WHERE user_id = ?",
+            rowMapper, userId
         );
         return results.stream().findFirst();
     }
@@ -79,8 +81,8 @@ public class PostgreUserDao implements UserRepository {
     @Override
     public Optional<UserDTO> findByEmail(String email) {
         List<UserDTO> results = jdbc.query(
-                "SELECT * FROM users WHERE LOWER(email) = LOWER(?)",
-                rowMapper, email
+            "SELECT * FROM users WHERE LOWER(email) = LOWER(?)",
+            rowMapper, email
         );
         return results.stream().findFirst();
     }
@@ -88,8 +90,8 @@ public class PostgreUserDao implements UserRepository {
     @Override
     public Optional<UserDTO> findByFimUid(String fimUid) {
         List<UserDTO> results = jdbc.query(
-                "SELECT * FROM users WHERE fim_uid = ?",
-                rowMapper, fimUid
+            "SELECT * FROM users WHERE fim_uid = ?",
+            rowMapper, fimUid
         );
         return results.stream().findFirst();
     }
@@ -102,22 +104,23 @@ public class PostgreUserDao implements UserRepository {
     @Override
     public void update(UserDTO user) {
         user.setUpdatedAt(LocalDateTime.now());
-        jdbc.update("""
-            UPDATE users SET email = ?, first_name = ?, last_name = ?, password_hash = ?,
-                role = ?::user_role, is_verified = ?, is_active = ?, must_change_password = ?, fim_uid = ?, updated_at = ?
-            WHERE user_id = ?
-            """,
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getPasswordHash(),
-                user.getRole().name(),
-                user.isVerified(),
-                user.isActive(),
-                user.isMustChangePassword(),
-                user.getFimUid(),
-                Timestamp.valueOf(user.getUpdatedAt()),
-                user.getUserId()
+        jdbc.update(
+            """
+                UPDATE users SET email = ?, first_name = ?, last_name = ?, password_hash = ?,
+                    role = ?::user_role, is_verified = ?, is_active = ?, must_change_password = ?, fim_uid = ?, updated_at = ?
+                WHERE user_id = ?
+                """,
+            user.getEmail(),
+            user.getFirstName(),
+            user.getLastName(),
+            user.getPasswordHash(),
+            user.getRole().name(),
+            user.isVerified(),
+            user.isActive(),
+            user.isMustChangePassword(),
+            user.getFimUid(),
+            Timestamp.valueOf(user.getUpdatedAt()),
+            user.getUserId()
         );
     }
 
@@ -129,8 +132,8 @@ public class PostgreUserDao implements UserRepository {
     @Override
     public boolean existsByEmail(String email) {
         Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM users WHERE LOWER(email) = LOWER(?)",
-                Integer.class, email
+            "SELECT COUNT(*) FROM users WHERE LOWER(email) = LOWER(?)",
+            Integer.class, email
         );
         return count != null && count > 0;
     }
@@ -151,21 +154,22 @@ public class PostgreUserDao implements UserRepository {
         if (search != null && !search.isBlank()) {
             String pattern = "%" + search.toLowerCase() + "%";
             return jdbc.query(
-                    "SELECT * FROM users WHERE LOWER(email) LIKE ? OR LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ? ORDER BY " + safeSort + " " + safeDir + " LIMIT ? OFFSET ?",
-                    rowMapper, pattern, pattern, pattern, limit, offset
+                "SELECT * FROM users WHERE LOWER(email) LIKE ? OR LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ? ORDER BY "
+                    + safeSort + " " + safeDir + " LIMIT ? OFFSET ?",
+                rowMapper, pattern, pattern, pattern, limit, offset
             );
         }
         return jdbc.query(
-                "SELECT * FROM users ORDER BY " + safeSort + " " + safeDir + " LIMIT ? OFFSET ?",
-                rowMapper, limit, offset
+            "SELECT * FROM users ORDER BY " + safeSort + " " + safeDir + " LIMIT ? OFFSET ?",
+            rowMapper, limit, offset
         );
     }
 
     @Override
     public void setMustChangePassword(UUID userId, boolean mustChangePassword) {
         jdbc.update(
-                "UPDATE users SET must_change_password = ?, updated_at = ? WHERE user_id = ?",
-                mustChangePassword, Timestamp.valueOf(LocalDateTime.now()), userId
+            "UPDATE users SET must_change_password = ?, updated_at = ? WHERE user_id = ?",
+            mustChangePassword, Timestamp.valueOf(LocalDateTime.now()), userId
         );
     }
 
@@ -174,8 +178,8 @@ public class PostgreUserDao implements UserRepository {
         if (search != null && !search.isBlank()) {
             String pattern = "%" + search.toLowerCase() + "%";
             Long count = jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM users WHERE LOWER(email) LIKE ? OR LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ?",
-                    Long.class, pattern, pattern, pattern
+                "SELECT COUNT(*) FROM users WHERE LOWER(email) LIKE ? OR LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ?",
+                Long.class, pattern, pattern, pattern
             );
             return count != null ? count : 0;
         }

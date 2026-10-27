@@ -18,18 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.AuthTokenDTO;
-import de.uni_passau.fim.se2.domain.entities.UserDTO;
-import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
-import de.uni_passau.fim.se2.domain.interfaces.FimAccountDirectory;
-import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,10 +27,22 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import de.uni_passau.fim.se2.domain.entities.AuthTokenDTO;
+import de.uni_passau.fim.se2.domain.entities.UserDTO;
+import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
+import de.uni_passau.fim.se2.domain.interfaces.FimAccountDirectory;
+import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
+
 /**
- * A FIM-Account's password lives in the FIM directory. Changing or resetting the
- * local hash would not change the one that logs the user in, so every way of
- * setting a password in CodeOwl is closed to such an account.
+ * A FIM-Account's password lives in the FIM directory. Changing or resetting the local hash would not change the one
+ * that logs the user in, so every way of setting a password in CodeOwl is closed to such an account.
  */
 class AuthServiceFimPasswordTest {
 
@@ -61,13 +61,13 @@ class AuthServiceFimPasswordTest {
         tokenService = mock(TokenService.class);
         emailService = mock(EmailService.class);
         service = new AuthService(
-                userRepository,
-                hasher,
-                mock(JwtService.class),
-                tokenService,
-                emailService,
-                mock(FimAccountDirectory.class),
-                ""
+            userRepository,
+            hasher,
+            mock(JwtService.class),
+            tokenService,
+            emailService,
+            mock(FimAccountDirectory.class),
+            ""
         );
         when(hasher.verifyPassword(anyString(), anyString())).thenReturn(true);
         when(hasher.hashPassword(anyString())).thenReturn("new-hash");
@@ -79,8 +79,10 @@ class AuthServiceFimPasswordTest {
         UserDTO fim = user("mustermann");
         when(userRepository.findById(fim.getUserId())).thenReturn(Optional.of(fim));
 
-        assertThrows(AuthenticationException.class,
-                () -> service.updatePassword(fim.getUserId(), "hash", "another-password"));
+        assertThrows(
+            AuthenticationException.class,
+            () -> service.updatePassword(fim.getUserId(), "hash", "another-password")
+        );
 
         assertEquals("hash", fim.getPasswordHash());
         verify(userRepository, never()).update(any());
@@ -115,7 +117,7 @@ class AuthServiceFimPasswordTest {
         UserDTO ordinary = user(null);
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(ordinary));
         when(tokenService.createPasswordResetToken(ordinary.getUserId()))
-                .thenReturn(resetToken(ordinary.getUserId()));
+            .thenReturn(resetToken(ordinary.getUserId()));
 
         service.requestPasswordReset(EMAIL);
 
@@ -127,11 +129,13 @@ class AuthServiceFimPasswordTest {
     void refusesResetWithOldToken() {
         UserDTO fim = user("mustermann");
         when(tokenService.validateAndConsume("reset-token", AuthTokenDTO.TokenType.PASSWORD_RESET))
-                .thenReturn(resetToken(fim.getUserId()));
+            .thenReturn(resetToken(fim.getUserId()));
         when(userRepository.findById(fim.getUserId())).thenReturn(Optional.of(fim));
 
-        assertThrows(AuthenticationException.class,
-                () -> service.resetPassword("reset-token", "another-password"));
+        assertThrows(
+            AuthenticationException.class,
+            () -> service.resetPassword("reset-token", "another-password")
+        );
 
         assertEquals("hash", fim.getPasswordHash());
         verify(userRepository, never()).update(any());
@@ -142,7 +146,7 @@ class AuthServiceFimPasswordTest {
     void allowsResetForOrdinaryAccount() {
         UserDTO ordinary = user(null);
         when(tokenService.validateAndConsume("reset-token", AuthTokenDTO.TokenType.PASSWORD_RESET))
-                .thenReturn(resetToken(ordinary.getUserId()));
+            .thenReturn(resetToken(ordinary.getUserId()));
         when(userRepository.findById(ordinary.getUserId())).thenReturn(Optional.of(ordinary));
 
         service.resetPassword("reset-token", "another-password");
@@ -158,8 +162,10 @@ class AuthServiceFimPasswordTest {
         fim.setMustChangePassword(true);
         when(userRepository.findById(fim.getUserId())).thenReturn(Optional.of(fim));
 
-        assertThrows(AuthenticationException.class,
-                () -> service.changeTempPassword(fim.getUserId(), "another-password"));
+        assertThrows(
+            AuthenticationException.class,
+            () -> service.changeTempPassword(fim.getUserId(), "another-password")
+        );
 
         assertEquals("hash", fim.getPasswordHash());
         verify(userRepository, never()).update(any());
@@ -167,24 +173,24 @@ class AuthServiceFimPasswordTest {
 
     private static AuthTokenDTO resetToken(UUID userId) {
         return AuthTokenDTO.builder()
-                .tokenId(UUID.randomUUID())
-                .userId(userId)
-                .tokenValue("reset-token")
-                .tokenType(AuthTokenDTO.TokenType.PASSWORD_RESET)
-                .build();
+            .tokenId(UUID.randomUUID())
+            .userId(userId)
+            .tokenValue("reset-token")
+            .tokenType(AuthTokenDTO.TokenType.PASSWORD_RESET)
+            .build();
     }
 
     private static UserDTO user(String fimUid) {
         return UserDTO.builder()
-                .userId(UUID.randomUUID())
-                .email(EMAIL)
-                .firstName("Max")
-                .lastName("Mustermann")
-                .passwordHash("hash")
-                .role(UserDTO.UserRole.TEACHER)
-                .verified(true)
-                .active(true)
-                .fimUid(fimUid)
-                .build();
+            .userId(UUID.randomUUID())
+            .email(EMAIL)
+            .firstName("Max")
+            .lastName("Mustermann")
+            .passwordHash("hash")
+            .role(UserDTO.UserRole.TEACHER)
+            .verified(true)
+            .active(true)
+            .fimUid(fimUid)
+            .build();
     }
 }

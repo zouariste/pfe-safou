@@ -18,9 +18,10 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import lombok.*;
 
 @Getter
 @Setter
@@ -30,6 +31,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminAuditLogDTO {
+
     private Long id;
     private UUID adminId;
     private String action;        // see Action below
@@ -43,12 +45,15 @@ public class AdminAuditLogDTO {
 
     /** Action constants — use these instead of magic strings. */
     public static final class Action {
-        public static final String FULL_BACKUP     = "FULL_BACKUP";
+
+        public static final String FULL_BACKUP = "FULL_BACKUP";
         public static final String RESEARCH_EXPORT = "RESEARCH_EXPORT";
         /** One dataset, as filtered on the research page. */
-        public static final String RESEARCH_EXPORT_CSV   = "RESEARCH_EXPORT_CSV";
+        public static final String RESEARCH_EXPORT_CSV = "RESEARCH_EXPORT_CSV";
         /** The four datasets for a single class, bundled. */
         public static final String RESEARCH_EXPORT_CLASS = "RESEARCH_EXPORT_CLASS";
-        private Action() {}
+
+        private Action() {
+        }
     }
 }

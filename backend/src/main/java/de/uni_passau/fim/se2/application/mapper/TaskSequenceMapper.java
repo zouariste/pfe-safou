@@ -18,11 +18,12 @@
  */
 package de.uni_passau.fim.se2.application.mapper;
 
-import de.uni_passau.fim.se2.domain.entities.*;
-import com.fasterxml.jackson.databind.*;
-import lombok.extern.slf4j.Slf4j;
-
 import java.util.*;
+
+import com.fasterxml.jackson.databind.*;
+
+import de.uni_passau.fim.se2.domain.entities.*;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Maps GPT JSON response to domain model objects.
@@ -36,12 +37,10 @@ public final class TaskSequenceMapper {
     public static final int NUMBER_OF_TASKS = 3;
 
     /**
-     * Error message displayed when number of statements is not equal to
-     * NUMBER_OF_TASKS int.
+     * Error message displayed when number of statements is not equal to NUMBER_OF_TASKS int.
      */
-    public static final String INVALID_NUM_STATEMENTS
-            = "GPT response must contain exactly " + NUMBER_OF_TASKS
-            + " problem statements.";
+    public static final String INVALID_NUM_STATEMENTS = "GPT response must contain exactly " + NUMBER_OF_TASKS
+        + " problem statements.";
 
     private TaskSequenceMapper() {
     }
@@ -56,15 +55,19 @@ public final class TaskSequenceMapper {
      * @param taskDescription     the problem Statement.
      * @return the mapped TieredTaskSequence
      */
-    public static TieredTaskSequenceDTO map(final JsonNode gptResponse,
-                                            final String programmingLanguage,
-                                            final List<String> concepts,
-                                            final String codeSnippet,
-                                            final String taskDescription) {
+    public static TieredTaskSequenceDTO map(
+        final JsonNode gptResponse,
+        final String programmingLanguage,
+        final List<String> concepts,
+        final String codeSnippet,
+        final String taskDescription
+    ) {
         log.debug("Mapping GPT response to TieredTaskSequence");
         JsonNode statements = gptResponse.get("problem_statements");
-        if (statements == null || !statements.isArray()
-                || statements.size() != NUMBER_OF_TASKS) {
+        if (
+            statements == null || !statements.isArray()
+                || statements.size() != NUMBER_OF_TASKS
+        ) {
             log.error("Invalid number of statements in GPT response");
             throw new IllegalArgumentException(INVALID_NUM_STATEMENTS);
         }
@@ -74,8 +77,8 @@ public final class TaskSequenceMapper {
     }
 
     /**
-     * Creates an incomplete Sequence with everything that is "given", which
-     * will then be enriched and mapped to a complete Sequence.
+     * Creates an incomplete Sequence with everything that is "given", which will then be enriched and mapped to a
+     * complete Sequence.
      *
      * @param json                the gpt response.
      * @param concepts            programming concepts found in the codeSnippet.
@@ -85,59 +88,70 @@ public final class TaskSequenceMapper {
      * @return an incomplete TieredTaskSequence.
      */
     public static TieredTaskSequenceDTO mapToIncompleteSequence(
-            final JsonNode json,
-            final List<String> concepts,
-            final String programmingLanguage,
-            final String codeSnippet,
-            final String taskDescription) {
-        return mapToIncompleteSequence(json, concepts, programmingLanguage, codeSnippet, taskDescription, NUMBER_OF_TASKS);
+        final JsonNode json,
+        final List<String> concepts,
+        final String programmingLanguage,
+        final String codeSnippet,
+        final String taskDescription
+    ) {
+        return mapToIncompleteSequence(
+            json, concepts, programmingLanguage, codeSnippet, taskDescription, NUMBER_OF_TASKS
+        );
     }
 
     /**
      * AP21: Tier-count-aware overload for 5-tier mode.
      */
     public static TieredTaskSequenceDTO mapToIncompleteSequence(
-            final JsonNode json,
-            final List<String> concepts,
-            final String programmingLanguage,
-            final String codeSnippet,
-            final String taskDescription,
-            final int tierCount) {
+        final JsonNode json,
+        final List<String> concepts,
+        final String programmingLanguage,
+        final String codeSnippet,
+        final String taskDescription,
+        final int tierCount
+    ) {
         log.debug("Mapping to incomplete sequence (tierCount={})", tierCount);
         if (json.has("tasks")) {
             log.info("Using new contract schema");
             return mapFromContracts(json, concepts, programmingLanguage, codeSnippet, taskDescription, tierCount);
-        } else if (json.has("problem_statements")) {
+        }
+        else if (json.has("problem_statements")) {
             log.info("Using legacy problem statements schema");
             return mapFromLegacyProblemStatements(json, concepts, programmingLanguage, codeSnippet, taskDescription);
-        } else {
+        }
+        else {
             log.error("Missing required fields in GPT response");
             throw new IllegalArgumentException(
-                    "GPT response missing required field: either 'tasks' (new schema) or 'problem_statements' (legacy).");
+                "GPT response missing required field: either 'tasks' (new schema) or 'problem_statements' (legacy)."
+            );
         }
     }
 
     private static TieredTaskSequenceDTO mapFromContracts(
-            final JsonNode json,
-            final List<String> concepts,
-            final String programmingLanguage,
-            final String codeSnippet,
-            final String taskDescription) {
+        final JsonNode json,
+        final List<String> concepts,
+        final String programmingLanguage,
+        final String codeSnippet,
+        final String taskDescription
+    ) {
         return mapFromContracts(json, concepts, programmingLanguage, codeSnippet, taskDescription, NUMBER_OF_TASKS);
     }
 
     private static TieredTaskSequenceDTO mapFromContracts(
-            final JsonNode json,
-            final List<String> concepts,
-            final String programmingLanguage,
-            final String codeSnippet,
-            final String taskDescription,
-            final int tierCount) {
+        final JsonNode json,
+        final List<String> concepts,
+        final String programmingLanguage,
+        final String codeSnippet,
+        final String taskDescription,
+        final int tierCount
+    ) {
         log.debug("Mapping from contracts schema (tierCount={})", tierCount);
         JsonNode tasksNode = json.get("tasks");
         if (tasksNode == null || !tasksNode.isArray() || tasksNode.size() != tierCount) {
-            log.error("Invalid number of tasks in GPT response: expected={}, got={}", tierCount,
-                      tasksNode != null ? tasksNode.size() : 0);
+            log.error(
+                "Invalid number of tasks in GPT response: expected={}, got={}", tierCount,
+                tasksNode != null ? tasksNode.size() : 0
+            );
             throw new IllegalArgumentException("GPT response must contain exactly " + tierCount + " tasks.");
         }
 
@@ -195,7 +209,8 @@ public final class TaskSequenceMapper {
                 if (ex == null || !ex.isObject()) {
                     log.error("Invalid example object for task {} example {}", i, j);
                     throw new IllegalArgumentException(
-                            "tasks[" + i + "].contract.examples[" + j + "] must be an object.");
+                        "tasks[" + i + "].contract.examples[" + j + "] must be an object."
+                    );
                 }
                 String in = requireText(ex, "input", i, j);
                 String out = requireText(ex, "output", i, j);
@@ -205,13 +220,13 @@ public final class TaskSequenceMapper {
             // SolveContract bauen
             log.debug("Building contract for task {}", i);
             SolveContract contract = SolveContract.builder()
-                    .language(cLanguage)
-                    .taskStatement(cTaskStatement)
-                    .functionSignature(cFunctionSignature)
-                    .purposeBehavior(cPurposeBehavior)
-                    .prePostConditions(cPrePostConditions)
-                    .examples(examples)
-                    .build();
+                .language(cLanguage)
+                .taskStatement(cTaskStatement)
+                .functionSignature(cFunctionSignature)
+                .purposeBehavior(cPurposeBehavior)
+                .prePostConditions(cPrePostConditions)
+                .examples(examples)
+                .build();
 
             // Optional: extract distractorPlan (AP15)
             String distractorPlanJson = null;
@@ -222,37 +237,40 @@ public final class TaskSequenceMapper {
 
             // TaskDTO bauen (solution & metrics werden später befüllt)
             log.debug("Building TaskDTO for task {}", i);
-            tasks.add(TaskDTO.builder()
-                              .statement(statement)
-                              .contract(contract)
-                              .solution("")
-                              .tierLevel(tier)
-                              .cyclomaticComplexity(0)
-                              .maximalNestingDepth(0)
-                              .methodCallCount(0)
-                              .distinctIdentifierCount(0)
-                              .linesOfCode(0)
-                              .distractorPlan(distractorPlanJson)
-                              .build());
+            tasks.add(
+                TaskDTO.builder()
+                    .statement(statement)
+                    .contract(contract)
+                    .solution("")
+                    .tierLevel(tier)
+                    .cyclomaticComplexity(0)
+                    .maximalNestingDepth(0)
+                    .methodCallCount(0)
+                    .distinctIdentifierCount(0)
+                    .linesOfCode(0)
+                    .distractorPlan(distractorPlanJson)
+                    .build()
+            );
         }
 
         log.debug("Building TieredTaskSequenceDTO (tierCount={})", tierCount);
         return TieredTaskSequenceDTO.builder()
-                .programmingLanguage(programmingLanguage)
-                .concepts(concepts)
-                .tasks(tasks)
-                .codeSnippet(codeSnippet)
-                .taskDescription(taskDescription)
-                .tierCount(tierCount)
-                .build();
+            .programmingLanguage(programmingLanguage)
+            .concepts(concepts)
+            .tasks(tasks)
+            .codeSnippet(codeSnippet)
+            .taskDescription(taskDescription)
+            .tierCount(tierCount)
+            .build();
     }
 
     private static TieredTaskSequenceDTO mapFromLegacyProblemStatements(
-            final JsonNode json,
-            final List<String> concepts,
-            final String programmingLanguage,
-            final String codeSnippet,
-            final String taskDescription) {
+        final JsonNode json,
+        final List<String> concepts,
+        final String programmingLanguage,
+        final String codeSnippet,
+        final String taskDescription
+    ) {
         log.debug("Mapping from legacy problem statements");
         JsonNode statementsNode = json.get("problem_statements");
         if (statementsNode == null || !statementsNode.isArray() || statementsNode.size() != NUMBER_OF_TASKS) {
@@ -261,35 +279,41 @@ public final class TaskSequenceMapper {
         }
 
         List<TaskDTO> tasks = new ArrayList<>(NUMBER_OF_TASKS);
-        return getTieredTaskSequenceDTO(concepts, programmingLanguage, codeSnippet, taskDescription, statementsNode,
-                                        tasks);
+        return getTieredTaskSequenceDTO(
+            concepts, programmingLanguage, codeSnippet, taskDescription, statementsNode,
+            tasks
+        );
     }
 
-    private static TieredTaskSequenceDTO getTieredTaskSequenceDTO(List<String> concepts, String programmingLanguage,
-                                                                  String codeSnippet, String taskDescription,
-                                                                  JsonNode statementsNode, List<TaskDTO> tasks) {
+    private static TieredTaskSequenceDTO getTieredTaskSequenceDTO(
+        List<String> concepts, String programmingLanguage,
+        String codeSnippet, String taskDescription,
+        JsonNode statementsNode, List<TaskDTO> tasks
+    ) {
         log.debug("Building TaskDTOs from statements");
         for (int i = 0; i < NUMBER_OF_TASKS; i++) {
             String statement = statementsNode.get(i).asText();
-            tasks.add(TaskDTO.builder()
-                              .statement(statement)
-                              .solution("")
-                              .tierLevel(i + 1)
-                              .cyclomaticComplexity(0)
-                              .build());
+            tasks.add(
+                TaskDTO.builder()
+                    .statement(statement)
+                    .solution("")
+                    .tierLevel(i + 1)
+                    .cyclomaticComplexity(0)
+                    .build()
+            );
         }
 
         log.debug("Building TieredTaskSequenceDTO from statements");
         return TieredTaskSequenceDTO.builder()
-                .programmingLanguage(programmingLanguage)
-                .concepts(concepts)
-                .tasks(tasks)
-                .codeSnippet(codeSnippet)
-                .taskDescription(taskDescription)
-                .build();
+            .programmingLanguage(programmingLanguage)
+            .concepts(concepts)
+            .tasks(tasks)
+            .codeSnippet(codeSnippet)
+            .taskDescription(taskDescription)
+            .build();
     }
 
-// ---------- kleine Feld-Helper ----------
+    // ---------- kleine Feld-Helper ----------
 
     private static String requireText(JsonNode obj, String field, int taskIdx) {
         JsonNode n = obj.get(field);
@@ -310,7 +334,8 @@ public final class TaskSequenceMapper {
         if (n == null || !n.isTextual()) {
             log.error("Missing or invalid field {} for task {} example {}", field, taskIdx, exIdx);
             throw new IllegalArgumentException(
-                    "tasks[" + taskIdx + "].contract.examples[" + exIdx + "]." + field + " must be a string.");
+                "tasks[" + taskIdx + "].contract.examples[" + exIdx + "]." + field + " must be a string."
+            );
         }
         String s = n.asText().trim();
         if (s.isEmpty()) {

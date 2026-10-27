@@ -18,19 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -43,17 +30,31 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
+
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
+
 /**
  * Forking a sequence a curator does not own.
  *
- * <p>Whether the copy is <em>complete</em> is {@link WorksheetCloneService}'s question, covered
- * by {@code CloneCompletenessTest}; this class deliberately does not re-test it, because the
- * fork calls the same method a worksheet copy does and duplicating the assertions would only
- * mean two places to update.
+ * <p>
+ * Whether the copy is <em>complete</em> is {@link WorksheetCloneService}'s question, covered by
+ * {@code CloneCompletenessTest}; this class deliberately does not re-test it, because the fork calls the same method a
+ * worksheet copy does and duplicating the assertions would only mean two places to update.
  *
- * <p>What is left is the part unique to forking, and it is all about ordering and refusal: the
- * worksheet must end up pointing at the copy and not at the original, and it must never end up
- * pointing at neither.
+ * <p>
+ * What is left is the part unique to forking, and it is all about ordering and refusal: the worksheet must end up
+ * pointing at the copy and not at the original, and it must never end up pointing at neither.
  */
 class SequenceForkServiceTest {
 
@@ -111,8 +112,10 @@ class SequenceForkServiceTest {
         // worksheet holding the sequence it was supposed to stop holding.
         service.forkForEditing(WORKSHEET, SEQUENCE, CURATOR);
 
-        verify(worksheetRepo).removeSequenceFromWorksheet(any(),
-                org.mockito.ArgumentMatchers.argThat(seq -> SEQUENCE.equals(seq.getId())));
+        verify(worksheetRepo).removeSequenceFromWorksheet(
+            any(),
+            org.mockito.ArgumentMatchers.argThat(seq -> SEQUENCE.equals(seq.getId()))
+        );
     }
 
     @Test
@@ -120,8 +123,10 @@ class SequenceForkServiceTest {
     void refusesForeignSequence() {
         UUID notInSheet = UUID.randomUUID();
 
-        assertThrows(DomainValidationException.class,
-                () -> service.forkForEditing(WORKSHEET, notInSheet, CURATOR));
+        assertThrows(
+            DomainValidationException.class,
+            () -> service.forkForEditing(WORKSHEET, notInSheet, CURATOR)
+        );
         // Nothing copied and nothing unlinked: a fork of something the worksheet does not have
         // would quietly add material to it.
         verify(cloneService, never()).copySequenceInto(any(), any(), any());
@@ -132,12 +137,19 @@ class SequenceForkServiceTest {
     @DisplayName("refuses null arguments rather than writing half a fork")
     void refusesNulls() {
         assertAll(
-                () -> assertThrows(DomainValidationException.class,
-                        () -> service.forkForEditing(null, SEQUENCE, CURATOR)),
-                () -> assertThrows(DomainValidationException.class,
-                        () -> service.forkForEditing(WORKSHEET, null, CURATOR)),
-                () -> assertThrows(DomainValidationException.class,
-                        () -> service.forkForEditing(WORKSHEET, SEQUENCE, null)));
+            () -> assertThrows(
+                DomainValidationException.class,
+                () -> service.forkForEditing(null, SEQUENCE, CURATOR)
+            ),
+            () -> assertThrows(
+                DomainValidationException.class,
+                () -> service.forkForEditing(WORKSHEET, null, CURATOR)
+            ),
+            () -> assertThrows(
+                DomainValidationException.class,
+                () -> service.forkForEditing(WORKSHEET, SEQUENCE, null)
+            )
+        );
         verify(cloneService, never()).copySequenceInto(any(), any(), any());
     }
 }

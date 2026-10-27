@@ -30,7 +30,7 @@ import java.util.List;
  * @version 1.0
  */
 public class ProblemSet {
-    
+
     /**
      * A list containing problem statements.
      */

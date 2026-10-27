@@ -18,17 +18,19 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.mapper;
 
-import de.uni_passau.fim.se2.domain.entities.AdminAuditLogDTO;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.stereotype.Component;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.UUID;
 
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Component;
+
+import de.uni_passau.fim.se2.domain.entities.AdminAuditLogDTO;
+
 @Component
 public class AdminAuditLogRowMapper implements RowMapper<AdminAuditLogDTO> {
+
     @Override
     public AdminAuditLogDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
         Timestamp created = rs.getTimestamp("created_at");
@@ -40,16 +42,16 @@ public class AdminAuditLogRowMapper implements RowMapper<AdminAuditLogDTO> {
         boolean rowsSentNull = rs.wasNull();
 
         return AdminAuditLogDTO.builder()
-                .id(rs.getLong("id"))
-                .adminId(UUID.fromString(rs.getString("admin_id")))
-                .action(rs.getString("action"))
-                .ipAddress(rs.getString("ip_address"))
-                .userAgent(rs.getString("user_agent"))
-                .bytesSent(bytesSentNull ? null : bytesSentRaw)
-                .rowsSent(rowsSentNull ? null : rowsSentRaw)
-                .success(rs.getBoolean("success"))
-                .errorMsg(rs.getString("error_msg"))
-                .createdAt(created != null ? created.toLocalDateTime() : null)
-                .build();
+            .id(rs.getLong("id"))
+            .adminId(UUID.fromString(rs.getString("admin_id")))
+            .action(rs.getString("action"))
+            .ipAddress(rs.getString("ip_address"))
+            .userAgent(rs.getString("user_agent"))
+            .bytesSent(bytesSentNull ? null : bytesSentRaw)
+            .rowsSent(rowsSentNull ? null : rowsSentRaw)
+            .success(rs.getBoolean("success"))
+            .errorMsg(rs.getString("error_msg"))
+            .createdAt(created != null ? created.toLocalDateTime() : null)
+            .build();
     }
 }

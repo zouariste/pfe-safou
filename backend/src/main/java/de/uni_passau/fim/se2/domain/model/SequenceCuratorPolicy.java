@@ -18,39 +18,41 @@
  */
 package de.uni_passau.fim.se2.domain.model;
 
-import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
-
 import java.util.UUID;
+
+import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
 
 /**
  * What a teacher may do with a sequence that sits in their worksheet but belongs to someone else.
  *
- * <p>Sequences are shared, not owned per worksheet: a library sequence can appear in many
- * worksheets at once, which is what {@code usageCount} counts. Ownership therefore stayed with
- * whoever generated it, and the teacher view — tier structure, distractors, tags, generation
- * constraints — was gated on that ownership.
+ * <p>
+ * Sequences are shared, not owned per worksheet: a library sequence can appear in many worksheets at once, which is
+ * what {@code usageCount} counts. Ownership therefore stayed with whoever generated it, and the teacher view — tier
+ * structure, distractors, tags, generation constraints — was gated on that ownership.
  *
- * <p>The result was that a teacher who had assembled a worksheet could not inspect what they
- * had assembled. They chose the material and were then treated as a stranger to it.
+ * <p>
+ * The result was that a teacher who had assembled a worksheet could not inspect what they had assembled. They chose the
+ * material and were then treated as a stranger to it.
  *
- * <p>The rule here separates two things that used to be one:
+ * <p>
+ * The rule here separates two things that used to be one:
  *
  * <ul>
- *   <li><b>Inspecting</b> is granted to the <em>curator</em> — anyone who put the sequence into
- *       a worksheet they own. Looking at material you selected changes nothing for anybody
- *       else.</li>
- *   <li><b>Editing in place</b> stays with the owner. A curator who edits would otherwise
- *       silently rewrite the sequence for every other worksheet using it, including its
- *       author's — the sharing that makes the library useful is exactly what makes editing
- *       someone else's copy dangerous.</li>
+ * <li><b>Inspecting</b> is granted to the <em>curator</em> — anyone who put the sequence into a worksheet they own.
+ * Looking at material you selected changes nothing for anybody else.</li>
+ * <li><b>Editing in place</b> stays with the owner. A curator who edits would otherwise silently rewrite the sequence
+ * for every other worksheet using it, including its author's — the sharing that makes the library useful is exactly
+ * what makes editing someone else's copy dangerous.</li>
  * </ul>
  *
- * <p>So a curator who wants to change something forks first: the sequence is copied to them,
- * their worksheet is repointed at the copy, and they edit that. {@link #mustForkToEdit} is the
- * question the UI asks to know whether to offer editing or offer the fork.
+ * <p>
+ * So a curator who wants to change something forks first: the sequence is copied to them, their worksheet is repointed
+ * at the copy, and they edit that. {@link #mustForkToEdit} is the question the UI asks to know whether to offer editing
+ * or offer the fork.
  *
- * <p>Pure functions, no Spring, no database — {@code SequenceCuratorPolicyTest} enumerates the
- * whole table, which is the only way to know a rule of this shape has no hole in it.
+ * <p>
+ * Pure functions, no Spring, no database — {@code SequenceCuratorPolicyTest} enumerates the whole table, which is the
+ * only way to know a rule of this shape has no hole in it.
  */
 public final class SequenceCuratorPolicy {
 
@@ -80,20 +82,21 @@ public final class SequenceCuratorPolicy {
     /** Whether edits land on this sequence directly. Owners and admins only. */
     public static boolean canEditInPlace(UUID ownerId, UUID viewerId, UserRole role) {
         return viewerId != null && role != null
-                && role != UserRole.STUDENT
-                && isOwnerOrAdmin(ownerId, viewerId, role);
+            && role != UserRole.STUDENT
+            && isOwnerOrAdmin(ownerId, viewerId, role);
     }
 
     /**
      * Whether the viewer may edit, but only after taking a copy.
      *
-     * <p>True exactly for the curator of someone else's sequence. Deliberately not true for
-     * anyone else: a teacher with no claim on the sequence gets no fork offer, because forking
-     * writes to their worksheet and they have none to write to.
+     * <p>
+     * True exactly for the curator of someone else's sequence. Deliberately not true for anyone else: a teacher with no
+     * claim on the sequence gets no fork offer, because forking writes to their worksheet and they have none to write
+     * to.
      */
     public static boolean mustForkToEdit(UUID ownerId, UUID viewerId, UserRole role, boolean curator) {
         return canInspect(ownerId, viewerId, role, curator)
-                && !canEditInPlace(ownerId, viewerId, role);
+            && !canEditInPlace(ownerId, viewerId, role);
     }
 
     private static boolean isOwnerOrAdmin(UUID ownerId, UUID viewerId, UserRole role) {

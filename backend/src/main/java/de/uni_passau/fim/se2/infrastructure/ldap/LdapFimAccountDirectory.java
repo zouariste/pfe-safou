@@ -18,10 +18,9 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ldap;
 
-import de.uni_passau.fim.se2.domain.exceptions.DirectoryUnavailableException;
-import de.uni_passau.fim.se2.domain.interfaces.FimAccountDirectory;
-import de.uni_passau.fim.se2.domain.model.FimAccount;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Map;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ldap.core.DirContextOperations;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -30,13 +29,14 @@ import org.springframework.security.ldap.DefaultSpringSecurityContextSource;
 import org.springframework.security.ldap.authentication.BindAuthenticator;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-import java.util.Optional;
+import de.uni_passau.fim.se2.domain.exceptions.DirectoryUnavailableException;
+import de.uni_passau.fim.se2.domain.interfaces.FimAccountDirectory;
+import de.uni_passau.fim.se2.domain.model.FimAccount;
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * Checks FIM-Account credentials by binding to the FIM LDAP server as the user
- * (bind authentication): the server verifies the password, CodeOwl never
- * compares or stores it.
+ * Checks FIM-Account credentials by binding to the FIM LDAP server as the user (bind authentication): the server
+ * verifies the password, CodeOwl never compares or stores it.
  */
 @Slf4j
 @Component
@@ -44,16 +44,20 @@ public class LdapFimAccountDirectory implements FimAccountDirectory {
 
     private final BindAuthenticator authenticator;
 
-    public LdapFimAccountDirectory(@Value("${spring.ldap.urls}") String ldapUrl,
-                                   @Value("${spring.ldap.base}") String ldapBaseDn) {
+    public LdapFimAccountDirectory(
+        @Value("${spring.ldap.urls}") String ldapUrl,
+        @Value("${spring.ldap.base}") String ldapBaseDn
+    ) {
         // The context source gets no base DN: BindAuthenticator prepends it to the
         // DN pattern, and the pattern below already carries the full DN.
         DefaultSpringSecurityContextSource contextSource = new DefaultSpringSecurityContextSource(ldapUrl);
         // Without timeouts an unresponsive server would hold the request thread indefinitely.
-        contextSource.setBaseEnvironmentProperties(Map.of(
+        contextSource.setBaseEnvironmentProperties(
+            Map.of(
                 "com.sun.jndi.ldap.connect.timeout", "5000",
                 "com.sun.jndi.ldap.read.timeout", "10000"
-        ));
+            )
+        );
         contextSource.afterPropertiesSet();
 
         authenticator = new BindAuthenticator(contextSource);
@@ -66,18 +70,22 @@ public class LdapFimAccountDirectory implements FimAccountDirectory {
         DirContextOperations entry;
         try {
             entry = authenticator.authenticate(UsernamePasswordAuthenticationToken.unauthenticated(uid, password));
-        } catch (BadCredentialsException e) {
+        }
+        catch (BadCredentialsException e) {
             return Optional.empty();
-        } catch (RuntimeException e) {
+        }
+        catch (RuntimeException e) {
             log.error("FIM LDAP login failed for uid {}: {}", uid, e.getMessage(), e);
             throw new DirectoryUnavailableException("FIM LDAP server not available", e);
         }
 
-        return Optional.of(new FimAccount(
+        return Optional.of(
+            new FimAccount(
                 uid,
                 entry.getStringAttribute("mail"),
                 entry.getStringAttribute("givenName"),
                 entry.getStringAttribute("sn")
-        ));
+            )
+        );
     }
 }

@@ -18,19 +18,20 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai;
 
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.model.SupportedLanguage;
-import com.fasterxml.jackson.databind.*;
-import com.fasterxml.jackson.databind.node.*;
-import org.springframework.stereotype.*;
-
 import java.util.*;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.*;
+
+import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.node.*;
+
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.model.SupportedLanguage;
+
 /**
- * Responsible for constructing structured GPT request payloads, including
- * appropriate system and user messages and strict JSON response validation
- * schemas.
+ * Responsible for constructing structured GPT request payloads, including appropriate system and user messages and
+ * strict JSON response validation schemas.
  */
 @Component
 public class PromptBuilder {
@@ -57,8 +58,8 @@ public class PromptBuilder {
     }
 
     /**
-     * Constructs a GPT request to generate a tiered task sequence based on
-     * task description, concepts, reference code, and target language.
+     * Constructs a GPT request to generate a tiered task sequence based on task description, concepts, reference code,
+     * and target language.
      *
      * @param taskDescription a plain English description of the task
      * @param concepts        the core programming concepts involved
@@ -66,26 +67,33 @@ public class PromptBuilder {
      * @param language        programming language to use
      * @return GPT-compliant JSON request object
      */
-    public ObjectNode buildSequenceRequest(final String taskDescription, final List<String> concepts,
-                                           final String codeSnippet, final String language) {
+    public ObjectNode buildSequenceRequest(
+        final String taskDescription, final List<String> concepts,
+        final String codeSnippet, final String language
+    ) {
         return buildSequenceRequest(taskDescription, concepts, codeSnippet, language, null);
     }
 
-    public ObjectNode buildSequenceRequest(final String taskDescription, final List<String> concepts,
-                                           final String codeSnippet, final String language,
-                                           final String targetLanguage) {
+    public ObjectNode buildSequenceRequest(
+        final String taskDescription, final List<String> concepts,
+        final String codeSnippet, final String language,
+        final String targetLanguage
+    ) {
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "system")
-                             .put("content", identityLoader.load("Sequence")));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "system")
+                .put("content", identityLoader.load("Sequence"))
+        );
 
         // Resolve human language label for the prompt instruction
         String langLabel;
         if ("en".equalsIgnoreCase(targetLanguage)) {
             langLabel = "English";
-        } else {
+        }
+        else {
             langLabel = "German";   // default
         }
 
@@ -120,12 +128,16 @@ public class PromptBuilder {
 
             Use the reference snippet only as conceptual context, not as a structural template.
             The generated tasks’ intended solutions must consist of a single function only, not full programs.
-            %s""".formatted(taskDescription, language, String.join(", ", concepts), codeSnippet,
-                            targetLanguageInstruction);
+            %s""".formatted(
+            taskDescription, language, String.join(", ", concepts), codeSnippet,
+            targetLanguageInstruction
+        );
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "user")
-                             .put("content", prompt));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "user")
+                .put("content", prompt)
+        );
 
         json.set("messages", messages);
         json.set("response_format", responseFormatTieredContracts());
@@ -135,26 +147,34 @@ public class PromptBuilder {
     /**
      * AP20: Builds a sequence request with generation constraints injected into the prompt (3-tier).
      */
-    public ObjectNode buildSequenceRequest(final String taskDescription, final List<String> concepts,
-                                           final String codeSnippet, final String language,
-                                           final String targetLanguage, final boolean distractorsEnabled,
-                                           final GenerationConstraints constraints) {
-        return buildSequenceRequest(taskDescription, concepts, codeSnippet, language,
-                                    targetLanguage, distractorsEnabled, constraints, 3);
+    public ObjectNode buildSequenceRequest(
+        final String taskDescription, final List<String> concepts,
+        final String codeSnippet, final String language,
+        final String targetLanguage, final boolean distractorsEnabled,
+        final GenerationConstraints constraints
+    ) {
+        return buildSequenceRequest(
+            taskDescription, concepts, codeSnippet, language,
+            targetLanguage, distractorsEnabled, constraints, 3
+        );
     }
 
     /**
-     * AP21: Full overload — tier-count-aware sequence request with constraints + distractors.
-     * This is the terminal overload that all other overloads ultimately delegate to for 5-tier.
+     * AP21: Full overload — tier-count-aware sequence request with constraints + distractors. This is the terminal
+     * overload that all other overloads ultimately delegate to for 5-tier.
      */
-    public ObjectNode buildSequenceRequest(final String taskDescription, final List<String> concepts,
-                                           final String codeSnippet, final String language,
-                                           final String targetLanguage, final boolean distractorsEnabled,
-                                           final GenerationConstraints constraints, final int tierCount) {
+    public ObjectNode buildSequenceRequest(
+        final String taskDescription, final List<String> concepts,
+        final String codeSnippet, final String language,
+        final String targetLanguage, final boolean distractorsEnabled,
+        final GenerationConstraints constraints, final int tierCount
+    ) {
         if (tierCount <= 3) {
             // Standard 3-tier path — delegate to existing distractor-aware overload + patch constraints
-            ObjectNode json = buildSequenceRequest(taskDescription, concepts, codeSnippet, language,
-                                                    targetLanguage, distractorsEnabled);
+            ObjectNode json = buildSequenceRequest(
+                taskDescription, concepts, codeSnippet, language,
+                targetLanguage, distractorsEnabled
+            );
             String constraintSection = buildConstraintSection(constraints, 3);
             if (!constraintSection.isEmpty()) {
                 var messages = (ArrayNode) json.get("messages");
@@ -169,9 +189,11 @@ public class PromptBuilder {
         ArrayNode messages = mapper.createArrayNode();
 
         // System: dedicated 5-tier identity prompt
-        messages.add(mapper.createObjectNode()
-                             .put("role", "system")
-                             .put("content", identityLoader.load("Sequence5Tier")));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "system")
+                .put("content", identityLoader.load("Sequence5Tier"))
+        );
 
         String langLabel = "en".equalsIgnoreCase(targetLanguage) ? "English" : "German";
 
@@ -187,16 +209,16 @@ public class PromptBuilder {
         if (distractorsEnabled) {
             distractorInstruction = """
 
-            DISTRACTOR PLANNING:
-            For each task, include a "distractorPlan" object with:
-            - "type": one of LOGIC_FLIP, OFF_BY_ONE, VARIABLE_MISMATCH, BOUNDARY_IDENTITY, STRUCTURAL_ILLOGICAL, REDUNDANT_ZOMBIE
-            - "rationale": a short sentence explaining why this error type fits the task and tier
-            Match distractor difficulty to tier level:
-            - Tier 1–2: obvious errors (LOGIC_FLIP, STRUCTURAL_ILLOGICAL)
-            - Tier 3: detail errors (OFF_BY_ONE, VARIABLE_MISMATCH)
-            - Tier 4: subtle traps (BOUNDARY_IDENTITY, REDUNDANT_ZOMBIE)
-            - Tier 5: most deceptive type for the code structure
-            """;
+                DISTRACTOR PLANNING:
+                For each task, include a "distractorPlan" object with:
+                - "type": one of LOGIC_FLIP, OFF_BY_ONE, VARIABLE_MISMATCH, BOUNDARY_IDENTITY, STRUCTURAL_ILLOGICAL, REDUNDANT_ZOMBIE
+                - "rationale": a short sentence explaining why this error type fits the task and tier
+                Match distractor difficulty to tier level:
+                - Tier 1–2: obvious errors (LOGIC_FLIP, STRUCTURAL_ILLOGICAL)
+                - Tier 3: detail errors (OFF_BY_ONE, VARIABLE_MISMATCH)
+                - Tier 4: subtle traps (BOUNDARY_IDENTITY, REDUNDANT_ZOMBIE)
+                - Tier 5: most deceptive type for the code structure
+                """;
         }
 
         String prompt = """
@@ -226,22 +248,28 @@ public class PromptBuilder {
 
             Use the reference snippet only as conceptual context, not as a structural template.
             The generated tasks' intended solutions must consist of a single function only, not full programs.
-            %s%s""".formatted(tierCount, tierCount,
-                              taskDescription, language, String.join(", ", concepts), codeSnippet,
-                              targetLanguageInstruction, distractorInstruction);
+            %s%s""".formatted(
+            tierCount, tierCount,
+            taskDescription, language, String.join(", ", concepts), codeSnippet,
+            targetLanguageInstruction, distractorInstruction
+        );
 
         // Append constraint section if any
         String constraintSection = buildConstraintSection(constraints, tierCount);
         String finalPrompt = constraintSection.isEmpty() ? prompt : prompt + constraintSection;
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "user")
-                             .put("content", finalPrompt));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "user")
+                .put("content", finalPrompt)
+        );
 
         json.set("messages", messages);
-        json.set("response_format", distractorsEnabled
+        json.set(
+            "response_format", distractorsEnabled
                 ? responseFormatTieredContractsWithDistractors(tierCount)
-                : responseFormatTieredContracts(tierCount));
+                : responseFormatTieredContracts(tierCount)
+        );
         return json;
     }
 
@@ -256,24 +284,29 @@ public class PromptBuilder {
      * AP20+AP21: Builds the constraint section, tier-count-aware for correct difficulty slope text.
      */
     String buildConstraintSection(final GenerationConstraints constraints, final int tierCount) {
-        if (constraints == null || !constraints.hasAny()) return "";
+        if (constraints == null || !constraints.hasAny())
+            return "";
 
         StringBuilder sb = new StringBuilder();
         sb.append("\n\n    GENERATION CONSTRAINTS (AP20):\n");
 
         if (constraints.getBlacklist() != null && !constraints.getBlacklist().isEmpty()) {
             sb.append("    BLACKLIST — The generated code MUST NOT use any of these constructs:\n");
-            sb.append("    ").append(constraints.getBlacklist().stream()
+            sb.append("    ").append(
+                constraints.getBlacklist().stream()
                     .map(c -> "\"" + c + "\"")
-                    .collect(Collectors.joining(", ")));
+                    .collect(Collectors.joining(", "))
+            );
             sb.append("\n    If any blacklisted construct appears in the solution, the task is INVALID.\n");
         }
 
         if (constraints.getWhitelist() != null && !constraints.getWhitelist().isEmpty()) {
             sb.append("    WHITELIST — The generated code may ONLY use these constructs:\n");
-            sb.append("    ").append(constraints.getWhitelist().stream()
+            sb.append("    ").append(
+                constraints.getWhitelist().stream()
                     .map(c -> "\"" + c + "\"")
-                    .collect(Collectors.joining(", ")));
+                    .collect(Collectors.joining(", "))
+            );
             sb.append("\n    No other programming constructs beyond basic syntax are allowed.\n");
         }
 
@@ -281,14 +314,21 @@ public class PromptBuilder {
             sb.append("    DIFFICULTY SLOPE: ").append(constraints.getDifficultySlope()).append("\n");
             if (tierCount == 5) {
                 switch (constraints.getDifficultySlope().toLowerCase()) {
-                    case "gentle" -> sb.append("    → Tiers 1–5 should progress very gently. Even Tier 5 should be approachable for students.\n");
-                    case "steep" -> sb.append("    → Tiers 1–2 trivial, Tier 3 moderate, Tiers 4–5 significantly challenging.\n");
+                    case "gentle" -> sb.append(
+                        "    → Tiers 1–5 should progress very gently. Even Tier 5 should be approachable for students.\n"
+                    );
+                    case "steep" ->
+                        sb.append("    → Tiers 1–2 trivial, Tier 3 moderate, Tiers 4–5 significantly challenging.\n");
                     default -> sb.append("    → Standard moderate difficulty progression across all 5 tiers.\n");
                 }
-            } else {
+            }
+            else {
                 switch (constraints.getDifficultySlope().toLowerCase()) {
-                    case "gentle" -> sb.append("    → Tiers 1-3 should have very gradual complexity increase. Tier 3 should still be approachable.\n");
-                    case "steep" -> sb.append("    → Tier 1 should be trivial, Tier 3 should be significantly challenging.\n");
+                    case "gentle" -> sb.append(
+                        "    → Tiers 1-3 should have very gradual complexity increase. Tier 3 should still be approachable.\n"
+                    );
+                    case "steep" ->
+                        sb.append("    → Tier 1 should be trivial, Tier 3 should be significantly challenging.\n");
                     default -> sb.append("    → Standard moderate difficulty progression across tiers.\n");
                 }
             }
@@ -301,20 +341,25 @@ public class PromptBuilder {
         return sb.toString();
     }
 
-    public ObjectNode buildSequenceRequest(final String taskDescription, final List<String> concepts,
-                                           final String codeSnippet, final String language,
-                                           final String targetLanguage, final boolean distractorsEnabled) {
+    public ObjectNode buildSequenceRequest(
+        final String taskDescription, final List<String> concepts,
+        final String codeSnippet, final String language,
+        final String targetLanguage, final boolean distractorsEnabled
+    ) {
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "system")
-                             .put("content", identityLoader.load("Sequence")));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "system")
+                .put("content", identityLoader.load("Sequence"))
+        );
 
         String langLabel;
         if ("en".equalsIgnoreCase(targetLanguage)) {
             langLabel = "English";
-        } else {
+        }
+        else {
             langLabel = "German";
         }
 
@@ -330,12 +375,12 @@ public class PromptBuilder {
         if (distractorsEnabled) {
             distractorInstruction = """
 
-            DISTRACTOR PLANNING:
-            For each task, include a "distractorPlan" object with:
-            - "type": one of LOGIC_FLIP, OFF_BY_ONE, VARIABLE_MISMATCH, BOUNDARY_IDENTITY, STRUCTURAL_ILLOGICAL, REDUNDANT_ZOMBIE
-            - "rationale": a short sentence explaining why this error type fits the task and tier
-            Match distractor difficulty to tier level (Tier 1 = obvious, Tier 3 = subtle).
-            """;
+                DISTRACTOR PLANNING:
+                For each task, include a "distractorPlan" object with:
+                - "type": one of LOGIC_FLIP, OFF_BY_ONE, VARIABLE_MISMATCH, BOUNDARY_IDENTITY, STRUCTURAL_ILLOGICAL, REDUNDANT_ZOMBIE
+                - "rationale": a short sentence explaining why this error type fits the task and tier
+                Match distractor difficulty to tier level (Tier 1 = obvious, Tier 3 = subtle).
+                """;
         }
 
         String prompt = """
@@ -361,26 +406,35 @@ public class PromptBuilder {
 
             Use the reference snippet only as conceptual context, not as a structural template.
             The generated tasks' intended solutions must consist of a single function only, not full programs.
-            %s%s""".formatted(taskDescription, language, String.join(", ", concepts), codeSnippet,
-                            targetLanguageInstruction, distractorInstruction);
+            %s%s""".formatted(
+            taskDescription, language, String.join(", ", concepts), codeSnippet,
+            targetLanguageInstruction, distractorInstruction
+        );
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "user")
-                             .put("content", prompt));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "user")
+                .put("content", prompt)
+        );
 
         json.set("messages", messages);
-        json.set("response_format", distractorsEnabled ? responseFormatTieredContractsWithDistractors() : responseFormatTieredContracts());
+        json.set(
+            "response_format",
+            distractorsEnabled ? responseFormatTieredContractsWithDistractors() : responseFormatTieredContracts()
+        );
         return json;
     }
 
     // AP21: Tier-count-aware overloads
     private ObjectNode responseFormatTieredContracts(int tierCount) {
-        if (tierCount <= 3) return responseFormatTieredContracts();
+        if (tierCount <= 3)
+            return responseFormatTieredContracts();
         return buildTieredContractSchema(tierCount, false);
     }
 
     private ObjectNode responseFormatTieredContractsWithDistractors(int tierCount) {
-        if (tierCount <= 3) return responseFormatTieredContractsWithDistractors();
+        if (tierCount <= 3)
+            return responseFormatTieredContractsWithDistractors();
         return buildTieredContractSchema(tierCount, true);
     }
 
@@ -390,9 +444,11 @@ public class PromptBuilder {
     private ObjectNode buildTieredContractSchema(int tierCount, boolean withDistractors) {
         ObjectNode rf = mapper.createObjectNode().put("type", "json_schema");
         ObjectNode js = mapper.createObjectNode();
-        js.put("name", withDistractors
+        js.put(
+            "name", withDistractors
                 ? "tiered_contracts_with_distractors_response"
-                : "tiered_contracts_response");
+                : "tiered_contracts_response"
+        );
         js.put("strict", true);
 
         ObjectNode schema = mapper.createObjectNode().put("type", "object");
@@ -436,8 +492,8 @@ public class PromptBuilder {
         cProps.set("examples", examples);
         contract.set("properties", cProps);
         contract.putArray("required")
-                .add("language").add("taskStatement").add("functionSignature")
-                .add("purposeBehavior").add("prePostConditions").add("examples");
+            .add("language").add("taskStatement").add("functionSignature")
+            .add("purposeBehavior").add("prePostConditions").add("examples");
         contract.put("additionalProperties", false);
         taskProps.set("contract", contract);
 
@@ -527,12 +583,12 @@ public class PromptBuilder {
 
         contract.set("properties", cProps);
         contract.putArray("required")
-                .add("language")
-                .add("taskStatement")
-                .add("functionSignature")
-                .add("purposeBehavior")
-                .add("prePostConditions")
-                .add("examples");
+            .add("language")
+            .add("taskStatement")
+            .add("functionSignature")
+            .add("purposeBehavior")
+            .add("prePostConditions")
+            .add("examples");
         contract.put("additionalProperties", false);
 
         taskProps.set("contract", contract);
@@ -605,12 +661,12 @@ public class PromptBuilder {
 
         contract.set("properties", cProps);
         contract.putArray("required")
-                .add("language")
-                .add("taskStatement")
-                .add("functionSignature")
-                .add("purposeBehavior")
-                .add("prePostConditions")
-                .add("examples");
+            .add("language")
+            .add("taskStatement")
+            .add("functionSignature")
+            .add("purposeBehavior")
+            .add("prePostConditions")
+            .add("examples");
         contract.put("additionalProperties", false);
 
         taskProps.set("contract", contract);
@@ -646,8 +702,7 @@ public class PromptBuilder {
     }
 
     /**
-     * Constructs a GPT request to solve a programming task and return only
-     * code.
+     * Constructs a GPT request to solve a programming task and return only code.
      *
      * @param contract SolveContract composing the input for the request
      * @return structured GPT request JSON
@@ -657,26 +712,29 @@ public class PromptBuilder {
         ArrayNode messages = mapper.createArrayNode();
 
         // SYSTEM: jetzt klar auf JSON { "code": "..." } festnageln
-        final String systemPrompt =
-                "You are CodeOwl (Solver).\n"
-                        + "Return only valid JSON matching the response schema: a single string field \"code\".\n"
-                        + "No markdown/backticks, no extra keys, no text outside JSON.\n\n"
-                        + "Rules:\n"
-                        + "- Put the entire solution as the string value of \"code\" (escape as needed).\n"
-                        + "- Single file; use only the standard library.\n"
-                        + "- No file/network I/O unless shown in the examples.\n"
-                        + "- Obey the specified language and any provided function signature.\n"
-                        + "- Implement exactly what the spec and examples require; avoid adding features.\n"
-                        + "- Prefer clear, minimal, idiomatic code.";
+        final String systemPrompt = "You are CodeOwl (Solver).\n"
+            + "Return only valid JSON matching the response schema: a single string field \"code\".\n"
+            + "No markdown/backticks, no extra keys, no text outside JSON.\n\n"
+            + "Rules:\n"
+            + "- Put the entire solution as the string value of \"code\" (escape as needed).\n"
+            + "- Single file; use only the standard library.\n"
+            + "- No file/network I/O unless shown in the examples.\n"
+            + "- Obey the specified language and any provided function signature.\n"
+            + "- Implement exactly what the spec and examples require; avoid adding features.\n"
+            + "- Prefer clear, minimal, idiomatic code.";
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "system")
-                             .put("content", systemPrompt));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "system")
+                .put("content", systemPrompt)
+        );
 
         // USER: CONTRACT wie gehabt
-        messages.add(mapper.createObjectNode()
-                             .put("role", "user")
-                             .put("content", composeContract(contract)));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "user")
+                .put("content", composeContract(contract))
+        );
 
         json.set("messages", messages);
 
@@ -685,20 +743,21 @@ public class PromptBuilder {
 
         return json;
     }
+
     private static String composeContract(SolveContract c) {
         StringBuilder sb = new StringBuilder();
         sb.append("CONTRACT\n");
         sb.append("Language: ").append(c.language()).append('\n');
 
         sb.append("Task statement (student-facing, one sentence): ")
-                .append(c.taskStatement()).append('\n');
+            .append(c.taskStatement()).append('\n');
 
         sb.append("Function signature: ").append(c.functionSignature()).append('\n');
 
         sb.append("Spec:\n\"\"\"\n")
-                .append(sanitizeTripleQuotes(c.purposeBehavior())).append('\n')
-                .append(sanitizeTripleQuotes(c.prePostConditions())).append('\n')
-                .append("\"\"\"\n");
+            .append(sanitizeTripleQuotes(c.purposeBehavior())).append('\n')
+            .append(sanitizeTripleQuotes(c.prePostConditions())).append('\n')
+            .append("\"\"\"\n");
 
         sb.append("Examples:\nInput -> Output:\n");
         for (SolveContract.ExamplePair ex : c.examples()) {
@@ -706,7 +765,7 @@ public class PromptBuilder {
         }
 
         sb.append("\nGOAL\n")
-                .append("Write the final solution that matches the spec and examples exactly.");
+            .append("Write the final solution that matches the spec and examples exactly.");
         return sb.toString();
     }
 
@@ -718,53 +777,61 @@ public class PromptBuilder {
         return s.replace("\"\"\"", "\\\"\\\"\\\"");
     }
 
-
     /**
-     * Constructs a GPT request for extracting programming concepts from a code snippet
-     * using the fixed concept catalog (AP25).
+     * Constructs a GPT request for extracting programming concepts from a code snippet using the fixed concept catalog
+     * (AP25).
      *
-     * @param codeSnippet code to analyze
-     * @param language    programming language (e.g. "java", "python", "javascript")
+     * @param codeSnippet   code to analyze
+     * @param language      programming language (e.g. "java", "python", "javascript")
      * @param catalogPrompt pre-formatted catalog string (slug — name: description) filtered for language
      * @return GPT request JSON with strict response schema
      */
-    public ObjectNode buildConceptExtractionRequest(final String codeSnippet,
-                                                    final String language,
-                                                    final String catalogPrompt) {
+    public ObjectNode buildConceptExtractionRequest(
+        final String codeSnippet,
+        final String language,
+        final String catalogPrompt
+    ) {
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "system")
-                             .put("content", identityLoader.load("ConceptExtraction")));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "system")
+                .put("content", identityLoader.load("ConceptExtraction"))
+        );
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "user")
-                             .put("content", """
-                                     Programming language: %s
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "user")
+                .put(
+                    "content",
+                    """
+                        Programming language: %s
 
-                                     Available concept catalog (only use slugs from this list, filtered for %s):
-                                     %s
+                        Available concept catalog (only use slugs from this list, filtered for %s):
+                        %s
 
-                                     ---
+                        ---
 
-                                     Code snippet:
-                                     ```%s
-                                     %s
-                                     ```
+                        Code snippet:
+                        ```%s
+                        %s
+                        ```
 
-                                     ---
+                        ---
 
-                                     Task:
-                                     Identify the programming concepts that are directly and explicitly present in the code snippet above.
+                        Task:
+                        Identify the programming concepts that are directly and explicitly present in the code snippet above.
 
-                                     Requirements:
-                                     - Return between 1 and 5 concept slugs.
-                                     - Use ONLY slugs from the catalog above.
-                                     - Only include concepts actually visible in the code — not assumed or implied.
-                                     - Do not return concepts specific to a different programming language.
-                                     - Output valid JSON using exactly this schema: {"concepts": ["slug1", "slug2"]}"""
-                                     .formatted(language, language, catalogPrompt, language, codeSnippet)));
+                        Requirements:
+                        - Return between 1 and 5 concept slugs.
+                        - Use ONLY slugs from the catalog above.
+                        - Only include concepts actually visible in the code — not assumed or implied.
+                        - Do not return concepts specific to a different programming language.
+                        - Output valid JSON using exactly this schema: {"concepts": ["slug1", "slug2"]}"""
+                        .formatted(language, language, catalogPrompt, language, codeSnippet)
+                )
+        );
 
         json.set("messages", messages);
         json.set("response_format", responseFormatConceptList());
@@ -772,46 +839,52 @@ public class PromptBuilder {
     }
 
     /**
-     * Builds a chat.completions request using an explicit system prompt and user prompt body.
-     * If the user prompt contains the token "{{CODE}}", it will be replaced with the given codeSnippet.
-     * If "{{CODE}}" is absent, the code will be appended as a "Code:" block at the end.
-     * The response is constrained to a JSON object with a single "task" field via response_format.
+     * Builds a chat.completions request using an explicit system prompt and user prompt body. If the user prompt
+     * contains the token "{{CODE}}", it will be replaced with the given codeSnippet. If "{{CODE}}" is absent, the code
+     * will be appended as a "Code:" block at the end. The response is constrained to a JSON object with a single "task"
+     * field via response_format.
      */
-    public ObjectNode buildTaskDescriptionRequest(final String codeSnippet,
-                                                  final String systemPrompt,
-                                                  final String userPromptBody) {
+    public ObjectNode buildTaskDescriptionRequest(
+        final String codeSnippet,
+        final String systemPrompt,
+        final String userPromptBody
+    ) {
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
 
-        // System message: use provided systemPrompt if non-empty; otherwise keep it empty (or you could fall back to an identity if you want)
+        // System message: use provided systemPrompt if non-empty; otherwise keep it empty (or you could fall back to an
+        // identity if you want)
         if (systemPrompt != null && !systemPrompt.isBlank()) {
-            messages.add(mapper.createObjectNode()
-                                 .put("role", "system")
-                                 .put("content", systemPrompt));
+            messages.add(
+                mapper.createObjectNode()
+                    .put("role", "system")
+                    .put("content", systemPrompt)
+            );
         }
 
         // Resolve {{CODE}} placeholder if present; else append code block
         String resolvedBody;
         if (userPromptBody != null && userPromptBody.contains("{{CODE}}")) {
             resolvedBody = userPromptBody.replace("{{CODE}}", codeSnippet);
-        } else {
+        }
+        else {
             String safeBody = userPromptBody == null ? "" : userPromptBody;
             resolvedBody = safeBody + "\n\nCode:\n" + codeSnippet;
         }
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "user")
-                             .put("content", resolvedBody));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "user")
+                .put("content", resolvedBody)
+        );
 
         json.set("messages", messages);
         json.set("response_format", responseFormatTask()); // enforce {"task": "..."}
         return json;
     }
 
-
     /**
-     * Constructs a GPT request to generate a task description from a code
-     * snippet.
+     * Constructs a GPT request to generate a task description from a code snippet.
      *
      * @param codeSnippet the code to summarize
      * @return GPT request JSON with strict task field response
@@ -820,16 +893,22 @@ public class PromptBuilder {
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "system")
-                             .put("content", identityLoader.load("TaskDescription")));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "system")
+                .put("content", identityLoader.load("TaskDescription"))
+        );
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "user")
-                             .put("content", "Given the following code, generate"
-                                     + " a concise and clear problem statement for it. "
-                                     + "Respond in JSON format only.\nCode:\n"
-                                     + codeSnippet));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "user")
+                .put(
+                    "content", "Given the following code, generate"
+                        + " a concise and clear problem statement for it. "
+                        + "Respond in JSON format only.\nCode:\n"
+                        + codeSnippet
+                )
+        );
 
         json.set("messages", messages);
         json.set("response_format", responseFormatTask());
@@ -837,31 +916,40 @@ public class PromptBuilder {
     }
 
     /**
-     * Constructs a GPT request to generate a task from a list of concepts in a
-     * given language.
+     * Constructs a GPT request to generate a task from a list of concepts in a given language.
      *
      * @param concepts list of programming concepts
      * @param language target programming language
      * @return GPT request JSON with strict task field
      */
-    public ObjectNode buildTaskDescriptionRequest(final List<String> concepts,
-                                                  final String language) {
+    public ObjectNode buildTaskDescriptionRequest(
+        final List<String> concepts,
+        final String language
+    ) {
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "system")
-                             .put("content", "You are an expert in designing"
-                                     + " programming exercises for students."));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "system")
+                .put(
+                    "content", "You are an expert in designing"
+                        + " programming exercises for students."
+                )
+        );
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "user")
-                             .put("content", "Generate a single concise"
-                                     + " programming task written in " + language
-                                     + " that emphasizes the following concepts: "
-                                     + String.join(", ", concepts)
-                                     + ".\nRespond with only a JSON object like: "
-                                     + "{\"task\": \"...\"}"));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "user")
+                .put(
+                    "content", "Generate a single concise"
+                        + " programming task written in " + language
+                        + " that emphasizes the following concepts: "
+                        + String.join(", ", concepts)
+                        + ".\nRespond with only a JSON object like: "
+                        + "{\"task\": \"...\"}"
+                )
+        );
 
         json.set("messages", messages);
         json.set("response_format", responseFormatTask());
@@ -869,8 +957,7 @@ public class PromptBuilder {
     }
 
     /**
-     * Constructs a GPT request to detect the programming language used in a
-     * code snippet.
+     * Constructs a GPT request to detect the programming language used in a code snippet.
      *
      * @param codeSnippet code whose language should be identified
      * @return GPT request JSON
@@ -879,15 +966,21 @@ public class PromptBuilder {
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "system")
-                             .put("content", identityLoader.load("LanguageDetection")));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "system")
+                .put("content", identityLoader.load("LanguageDetection"))
+        );
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "user")
-                             .put("content", "Detect the programming language"
-                                     + " used in the following code. Respond only in JSON "
-                                     + "format.\nCode:\n" + codeSnippet));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "user")
+                .put(
+                    "content", "Detect the programming language"
+                        + " used in the following code. Respond only in JSON "
+                        + "format.\nCode:\n" + codeSnippet
+                )
+        );
 
         json.set("messages", messages);
         json.set("response_format", responseFormatLanguage());
@@ -930,24 +1023,27 @@ public class PromptBuilder {
         ArrayNode messages = mapper.createArrayNode();
 
         // System: strikt JSON mit "code"
-        final String systemPrompt =
-                "You are CodeOwl (Simple Solver).\n"
-                        + "Return only valid JSON with a single string field \"code\".\n"
-                        + "No markdown/backticks, no explanations, no extra keys, no text outside JSON.\n\n"
-                        + "Rules:\n"
-                        + "- Put the entire solution as the string value of \"code\" (escape as needed).\n"
-                        + "- Single file; use only the standard library.\n"
-                        + "- No file/network I/O unless the task explicitly requires it.\n"
-                        + "- Obey the specified language.\n"
-                        + "- Prefer clear, minimal, idiomatic code.";
+        final String systemPrompt = "You are CodeOwl (Simple Solver).\n"
+            + "Return only valid JSON with a single string field \"code\".\n"
+            + "No markdown/backticks, no explanations, no extra keys, no text outside JSON.\n\n"
+            + "Rules:\n"
+            + "- Put the entire solution as the string value of \"code\" (escape as needed).\n"
+            + "- Single file; use only the standard library.\n"
+            + "- No file/network I/O unless the task explicitly requires it.\n"
+            + "- Obey the specified language.\n"
+            + "- Prefer clear, minimal, idiomatic code.";
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "system")
-                             .put("content", systemPrompt));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "system")
+                .put("content", systemPrompt)
+        );
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "user")
-                             .put("content", composeSimpleSolveContract(taskDescription, language)));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "user")
+                .put("content", composeSimpleSolveContract(taskDescription, language))
+        );
 
         json.set("messages", messages);
         json.set("response_format", responseFormatSolverResponse()); // erzwinge {"code": "..."}
@@ -955,24 +1051,25 @@ public class PromptBuilder {
     }
 
     /**
-     * Constructs a GPT request to generate distractor lines for a Parsons problem (AP15).
-     * The "Antagonist" prompt takes a correct solution and a distractor plan,
-     * then generates plausible but incorrect code lines.
+     * Constructs a GPT request to generate distractor lines for a Parsons problem (AP15). The "Antagonist" prompt takes
+     * a correct solution and a distractor plan, then generates plausible but incorrect code lines.
      *
-     * @param solutionCode  the correct solution code
-     * @param language      programming language
-     * @param taskStatement the task description
-     * @param tierLevel     difficulty tier (1-3)
+     * @param solutionCode   the correct solution code
+     * @param language       programming language
+     * @param taskStatement  the task description
+     * @param tierLevel      difficulty tier (1-3)
      * @param distractorPlan JSON string with type and rationale, or null
-     * @param count         number of distractors to generate
+     * @param count          number of distractors to generate
      * @return GPT-compliant JSON request object
      */
-    public ObjectNode buildDistractorRequest(final String solutionCode,
-                                              final String language,
-                                              final String taskStatement,
-                                              final int tierLevel,
-                                              final String distractorPlan,
-                                              final int count) {
+    public ObjectNode buildDistractorRequest(
+        final String solutionCode,
+        final String language,
+        final String taskStatement,
+        final int tierLevel,
+        final String distractorPlan,
+        final int count
+    ) {
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
 
@@ -1001,9 +1098,11 @@ public class PromptBuilder {
             - STRUCTURAL_ILLOGICAL: Code illegal in context (break outside loop, etc.)
             - REDUNDANT_ZOMBIE: Plausible but unnecessary/harmful extra lines""";
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "system")
-                             .put("content", systemPrompt));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "system")
+                .put("content", systemPrompt)
+        );
 
         String strategySection = "";
         if (distractorPlan != null && !distractorPlan.isBlank()) {
@@ -1026,11 +1125,14 @@ public class PromptBuilder {
             OUTPUT:
             Return ONLY a JSON object with a "distractors" array containing the distractor strings.
             Each string must end with " #distractor".""".formatted(
-                language, taskStatement, tierLevel, solutionCode, strategySection, count);
+            language, taskStatement, tierLevel, solutionCode, strategySection, count
+        );
 
-        messages.add(mapper.createObjectNode()
-                             .put("role", "user")
-                             .put("content", userPrompt));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "user")
+                .put("content", userPrompt)
+        );
 
         json.set("messages", messages);
         json.set("response_format", responseFormatDistractors());
@@ -1038,8 +1140,8 @@ public class PromptBuilder {
     }
 
     /**
-     * AP19 Teil A: Builds the semantic tagging request. The response is held to the tagger's own
-     * schema, so it can only come back as the tag object — not as free text.
+     * AP19 Teil A: Builds the semantic tagging request. The response is held to the tagger's own schema, so it can only
+     * come back as the tag object — not as free text.
      */
     public ObjectNode buildSemanticTagRequest(final String systemPrompt, final String userPrompt) {
         ObjectNode json = mapper.createObjectNode();
@@ -1105,15 +1207,17 @@ public class PromptBuilder {
     }
 
     /**
-     * AP31: Builds the request for inline-split generation. Given a solved task, asks the model
-     * to pick ONE syntactically complex line and decompose it into 2–4 draggable fragments that
-     * are EXACT contiguous substrings (so prefix + concat(fragments) + suffix reconstruct the
-     * line verbatim), optionally with an OFF_BY_ONE fragment distractor.
+     * AP31: Builds the request for inline-split generation. Given a solved task, asks the model to pick ONE
+     * syntactically complex line and decompose it into 2–4 draggable fragments that are EXACT contiguous substrings (so
+     * prefix + concat(fragments) + suffix reconstruct the line verbatim), optionally with an OFF_BY_ONE fragment
+     * distractor.
      */
-    public ObjectNode buildSplitPlanRequest(final String solutionCode,
-                                            final String language,
-                                            final String taskStatement,
-                                            final int tierLevel) {
+    public ObjectNode buildSplitPlanRequest(
+        final String solutionCode,
+        final String language,
+        final String taskStatement,
+        final int tierLevel
+    ) {
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
 
@@ -1150,7 +1254,8 @@ public class PromptBuilder {
             Return ONLY a JSON object of this exact shape:
             {"splits":[{"lineIndex":<int>,"fragments":["...","..."],"prefix":"...","suffix":"..."}]}
             Use an empty array {"splits": []} if no line is suitable.""".formatted(
-                language, taskStatement, tierLevel, solutionCode);
+            language, taskStatement, tierLevel, solutionCode
+        );
 
         messages.add(mapper.createObjectNode().put("role", "user").put("content", userPrompt));
 
@@ -1160,14 +1265,16 @@ public class PromptBuilder {
     }
 
     /**
-     * AP31 (second pass): asks for ONE fragment-level distractor that fits a single slot of an
-     * already-decided split. The model sees the exact fragments, so its wrong fragment matches one
-     * slot's shape instead of spanning the whole line.
+     * AP31 (second pass): asks for ONE fragment-level distractor that fits a single slot of an already-decided split.
+     * The model sees the exact fragments, so its wrong fragment matches one slot's shape instead of spanning the whole
+     * line.
      */
-    public ObjectNode buildSplitDistractorRequest(final List<String> fragments,
-                                                  final String prefix, final String suffix,
-                                                  final String language, final String taskStatement,
-                                                  final int tierLevel) {
+    public ObjectNode buildSplitDistractorRequest(
+        final List<String> fragments,
+        final String prefix, final String suffix,
+        final String language, final String taskStatement,
+        final int tierLevel
+    ) {
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
 
@@ -1209,8 +1316,9 @@ public class PromptBuilder {
             %s
             Return ONLY: {"fragmentIndex":<0-based int, or -1 for WRONG_SHAPE>,"text":"<wrong chip>","type":"<TYPE>"}
             Decline with {"text": ""} if nothing instructive applies.""".formatted(
-                language, taskStatement, tierLevel,
-                prefix == null ? "" : prefix, suffix == null ? "" : suffix, fragList.toString());
+            language, taskStatement, tierLevel,
+            prefix == null ? "" : prefix, suffix == null ? "" : suffix, fragList.toString()
+        );
 
         messages.add(mapper.createObjectNode().put("role", "user").put("content", userPrompt));
 
@@ -1343,32 +1451,35 @@ public class PromptBuilder {
     /**
      * Builds a curriculum-based sequence generation request with seed code examples.
      *
-     * @param topic         the curriculum topic (with grade, track, learning area)
-     * @param examples      curated code examples for this topic
-     * @param concepts      programming concepts to exercise
-     * @param language       programming language
-     * @param targetLanguage "de" or "en"
-     * @param tierCount      3 or 5
+     * @param topic              the curriculum topic (with grade, track, learning area)
+     * @param examples           curated code examples for this topic
+     * @param concepts           programming concepts to exercise
+     * @param language           programming language
+     * @param targetLanguage     "de" or "en"
+     * @param tierCount          3 or 5
      * @param distractorsEnabled whether to include distractor plans
-     * @param constraints   optional AP20 constraints
+     * @param constraints        optional AP20 constraints
      */
     public ObjectNode buildCurriculumSequenceRequest(
-            final CurriculumTopicDTO topic,
-            final List<CurriculumCodeExampleDTO> examples,
-            final List<String> concepts,
-            final String language,
-            final String targetLanguage,
-            final int tierCount,
-            final boolean distractorsEnabled,
-            final GenerationConstraints constraints) {
+        final CurriculumTopicDTO topic,
+        final List<CurriculumCodeExampleDTO> examples,
+        final List<String> concepts,
+        final String language,
+        final String targetLanguage,
+        final int tierCount,
+        final boolean distractorsEnabled,
+        final GenerationConstraints constraints
+    ) {
 
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
 
         // System prompt: dedicated curriculum identity
-        messages.add(mapper.createObjectNode()
-                         .put("role", "system")
-                         .put("content", identityLoader.load("SequenceCurriculum")));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "system")
+                .put("content", identityLoader.load("SequenceCurriculum"))
+        );
 
         // Build seed examples block (AP32: few-shot). A topic without curated examples is
         // rejected upstream (CurriculumGenerationService throws), so the list is non-empty here.
@@ -1399,10 +1510,13 @@ public class PromptBuilder {
         // the topic actually has that field.
         StringBuilder context = new StringBuilder();
         context.append("Topic: %s\n".formatted(topic.getName()));
-        context.append("Educational level: %s\n".formatted(
+        context.append(
+            "Educational level: %s\n".formatted(
                 "UNIVERSITY".equalsIgnoreCase(topic.getEducationLevel())
-                        ? "University course — students are adults in higher education"
-                        : "Secondary school (Gymnasium, Bayern LehrplanPLUS)"));
+                    ? "University course — students are adults in higher education"
+                    : "Secondary school (Gymnasium, Bayern LehrplanPLUS)"
+            )
+        );
         if (topic.getGradeLevel() != null) {
             context.append("Grade: Jahrgangsstufe %d\n".formatted(topic.getGradeLevel()));
         }
@@ -1414,8 +1528,8 @@ public class PromptBuilder {
         }
 
         String distractorLine = distractorsEnabled
-                ? "Include distractor plans."
-                : "Do NOT include distractor plans.";
+            ? "Include distractor plans."
+            : "Do NOT include distractor plans.";
 
         String prompt = """
             Generate a %d-tier Parsons puzzle task sequence for the following curriculum context.
@@ -1435,7 +1549,8 @@ public class PromptBuilder {
             Output (STRICT): For each task, the top-level "statement" MUST equal contract.taskStatement exactly (byte-for-byte identical) — write the student-facing statement, then copy it verbatim into taskStatement.
 
             Generate %d tasks (tiers 1–%d) as specified. %s
-            """.formatted(
+            """
+            .formatted(
                 tierCount,
                 context.toString().stripTrailing(),
                 language,
@@ -1444,16 +1559,21 @@ public class PromptBuilder {
                 seedBlock.toString(),
                 buildConstraintSection(constraints, tierCount),
                 tierCount, tierCount,
-                distractorLine);
+                distractorLine
+            );
 
-        messages.add(mapper.createObjectNode()
-                         .put("role", "user")
-                         .put("content", prompt));
+        messages.add(
+            mapper.createObjectNode()
+                .put("role", "user")
+                .put("content", prompt)
+        );
 
         json.set("messages", messages);
-        json.set("response_format", distractorsEnabled
+        json.set(
+            "response_format", distractorsEnabled
                 ? responseFormatTieredContractsWithDistractors(tierCount)
-                : responseFormatTieredContracts(tierCount));
+                : responseFormatTieredContracts(tierCount)
+        );
         return json;
     }
 }

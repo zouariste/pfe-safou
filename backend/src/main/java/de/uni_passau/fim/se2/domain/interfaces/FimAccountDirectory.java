@@ -18,10 +18,10 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
+import java.util.Optional;
+
 import de.uni_passau.fim.se2.domain.exceptions.DirectoryUnavailableException;
 import de.uni_passau.fim.se2.domain.model.FimAccount;
-
-import java.util.Optional;
 
 /**
  * Checks FIM-Account credentials against the FIM directory.

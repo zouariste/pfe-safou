@@ -18,19 +18,20 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.entities.TaskChangeAnalysisDTO;
-import de.uni_passau.fim.se2.domain.interfaces.TaskChangeAnalysisRepository;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.postgresql.util.PGobject;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import de.uni_passau.fim.se2.domain.entities.TaskChangeAnalysisDTO;
+import de.uni_passau.fim.se2.domain.interfaces.TaskChangeAnalysisRepository;
 
 @Repository
 public class PostgreTaskChangeAnalysisDao implements TaskChangeAnalysisRepository {
@@ -46,8 +47,11 @@ public class PostgreTaskChangeAnalysisDao implements TaskChangeAnalysisRepositor
         dto.setId(rs.getObject("id", UUID.class));
         dto.setTaskId(rs.getObject("task_id", UUID.class));
         dto.setTaskOriginalId(rs.getObject("task_original_id", UUID.class));
-        dto.setAnalyzedAt(rs.getTimestamp("analyzed_at") != null
-                ? rs.getTimestamp("analyzed_at").toLocalDateTime() : null);
+        dto.setAnalyzedAt(
+            rs.getTimestamp("analyzed_at") != null
+                ? rs.getTimestamp("analyzed_at").toLocalDateTime()
+                : null
+        );
 
         // Text-level metrics
         double textLev = rs.getDouble("text_levenshtein_ratio");
@@ -109,72 +113,73 @@ public class PostgreTaskChangeAnalysisDao implements TaskChangeAnalysisRepositor
         a.setId(id);
 
         String sql = """
-            INSERT INTO task_change_analyses (
-                id, task_id, task_original_id,
-                text_levenshtein_ratio, text_jaccard_similarity,
-                text_words_added, text_words_removed, text_words_modified, text_length_delta,
-                code_levenshtein_ratio,
-                code_lines_added, code_lines_removed, code_lines_modified, code_lines_reordered,
-                code_loc_delta, code_complexity_delta, code_token_change_ratio,
-                ast_nodes_added, ast_nodes_removed, ast_nodes_modified,
-                ast_structural_score, ast_change_types, ast_distractor_changes,
-                overall_change_score, change_category, teacher_rating
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (task_id) DO UPDATE SET
-                task_original_id        = EXCLUDED.task_original_id,
-                analyzed_at             = CURRENT_TIMESTAMP,
-                text_levenshtein_ratio  = EXCLUDED.text_levenshtein_ratio,
-                text_jaccard_similarity = EXCLUDED.text_jaccard_similarity,
-                text_words_added        = EXCLUDED.text_words_added,
-                text_words_removed      = EXCLUDED.text_words_removed,
-                text_words_modified     = EXCLUDED.text_words_modified,
-                text_length_delta       = EXCLUDED.text_length_delta,
-                code_levenshtein_ratio  = EXCLUDED.code_levenshtein_ratio,
-                code_lines_added        = EXCLUDED.code_lines_added,
-                code_lines_removed      = EXCLUDED.code_lines_removed,
-                code_lines_modified     = EXCLUDED.code_lines_modified,
-                code_lines_reordered    = EXCLUDED.code_lines_reordered,
-                code_loc_delta          = EXCLUDED.code_loc_delta,
-                code_complexity_delta   = EXCLUDED.code_complexity_delta,
-                code_token_change_ratio = EXCLUDED.code_token_change_ratio,
-                ast_nodes_added         = EXCLUDED.ast_nodes_added,
-                ast_nodes_removed       = EXCLUDED.ast_nodes_removed,
-                ast_nodes_modified      = EXCLUDED.ast_nodes_modified,
-                ast_structural_score    = EXCLUDED.ast_structural_score,
-                ast_change_types        = EXCLUDED.ast_change_types,
-                ast_distractor_changes  = EXCLUDED.ast_distractor_changes,
-                overall_change_score    = EXCLUDED.overall_change_score,
-                change_category         = EXCLUDED.change_category,
-                teacher_rating          = EXCLUDED.teacher_rating
-        """;
+                INSERT INTO task_change_analyses (
+                    id, task_id, task_original_id,
+                    text_levenshtein_ratio, text_jaccard_similarity,
+                    text_words_added, text_words_removed, text_words_modified, text_length_delta,
+                    code_levenshtein_ratio,
+                    code_lines_added, code_lines_removed, code_lines_modified, code_lines_reordered,
+                    code_loc_delta, code_complexity_delta, code_token_change_ratio,
+                    ast_nodes_added, ast_nodes_removed, ast_nodes_modified,
+                    ast_structural_score, ast_change_types, ast_distractor_changes,
+                    overall_change_score, change_category, teacher_rating
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (task_id) DO UPDATE SET
+                    task_original_id        = EXCLUDED.task_original_id,
+                    analyzed_at             = CURRENT_TIMESTAMP,
+                    text_levenshtein_ratio  = EXCLUDED.text_levenshtein_ratio,
+                    text_jaccard_similarity = EXCLUDED.text_jaccard_similarity,
+                    text_words_added        = EXCLUDED.text_words_added,
+                    text_words_removed      = EXCLUDED.text_words_removed,
+                    text_words_modified     = EXCLUDED.text_words_modified,
+                    text_length_delta       = EXCLUDED.text_length_delta,
+                    code_levenshtein_ratio  = EXCLUDED.code_levenshtein_ratio,
+                    code_lines_added        = EXCLUDED.code_lines_added,
+                    code_lines_removed      = EXCLUDED.code_lines_removed,
+                    code_lines_modified     = EXCLUDED.code_lines_modified,
+                    code_lines_reordered    = EXCLUDED.code_lines_reordered,
+                    code_loc_delta          = EXCLUDED.code_loc_delta,
+                    code_complexity_delta   = EXCLUDED.code_complexity_delta,
+                    code_token_change_ratio = EXCLUDED.code_token_change_ratio,
+                    ast_nodes_added         = EXCLUDED.ast_nodes_added,
+                    ast_nodes_removed       = EXCLUDED.ast_nodes_removed,
+                    ast_nodes_modified      = EXCLUDED.ast_nodes_modified,
+                    ast_structural_score    = EXCLUDED.ast_structural_score,
+                    ast_change_types        = EXCLUDED.ast_change_types,
+                    ast_distractor_changes  = EXCLUDED.ast_distractor_changes,
+                    overall_change_score    = EXCLUDED.overall_change_score,
+                    change_category         = EXCLUDED.change_category,
+                    teacher_rating          = EXCLUDED.teacher_rating
+            """;
 
-        jdbc.update(sql,
-                id,
-                a.getTaskId(),
-                a.getTaskOriginalId(),
-                a.getTextLevenshteinRatio(),
-                a.getTextJaccardSimilarity(),
-                a.getTextWordsAdded(),
-                a.getTextWordsRemoved(),
-                a.getTextWordsModified(),
-                a.getTextLengthDelta(),
-                a.getCodeLevenshteinRatio(),
-                a.getCodeLinesAdded(),
-                a.getCodeLinesRemoved(),
-                a.getCodeLinesModified(),
-                a.getCodeLinesReordered(),
-                a.getCodeLocDelta(),
-                a.getCodeComplexityDelta(),
-                a.getCodeTokenChangeRatio(),
-                a.getAstNodesAdded(),
-                a.getAstNodesRemoved(),
-                a.getAstNodesModified(),
-                a.getAstStructuralScore(),
-                toJsonb(a.getAstChangeTypes()),
-                toJsonb(a.getAstDistractorChanges()),
-                a.getOverallChangeScore(),
-                a.getChangeCategory(),
-                a.getTeacherRating()
+        jdbc.update(
+            sql,
+            id,
+            a.getTaskId(),
+            a.getTaskOriginalId(),
+            a.getTextLevenshteinRatio(),
+            a.getTextJaccardSimilarity(),
+            a.getTextWordsAdded(),
+            a.getTextWordsRemoved(),
+            a.getTextWordsModified(),
+            a.getTextLengthDelta(),
+            a.getCodeLevenshteinRatio(),
+            a.getCodeLinesAdded(),
+            a.getCodeLinesRemoved(),
+            a.getCodeLinesModified(),
+            a.getCodeLinesReordered(),
+            a.getCodeLocDelta(),
+            a.getCodeComplexityDelta(),
+            a.getCodeTokenChangeRatio(),
+            a.getAstNodesAdded(),
+            a.getAstNodesRemoved(),
+            a.getAstNodesModified(),
+            a.getAstStructuralScore(),
+            toJsonb(a.getAstChangeTypes()),
+            toJsonb(a.getAstDistractorChanges()),
+            a.getOverallChangeScore(),
+            a.getChangeCategory(),
+            a.getTeacherRating()
         );
     }
 
@@ -184,7 +189,8 @@ public class PostgreTaskChangeAnalysisDao implements TaskChangeAnalysisRepositor
         try {
             TaskChangeAnalysisDTO result = jdbc.queryForObject(sql, ROW_MAPPER, taskId);
             return Optional.ofNullable(result);
-        } catch (EmptyResultDataAccessException e) {
+        }
+        catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
     }
@@ -210,13 +216,15 @@ public class PostgreTaskChangeAnalysisDao implements TaskChangeAnalysisRepositor
     // ── Helper ──
 
     private static PGobject toJsonb(String value) {
-        if (value == null) return null;
+        if (value == null)
+            return null;
         try {
             PGobject jsonb = new PGobject();
             jsonb.setType("jsonb");
             jsonb.setValue(value);
             return jsonb;
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new RuntimeException("Failed to create JSONB PGobject", e);
         }
     }

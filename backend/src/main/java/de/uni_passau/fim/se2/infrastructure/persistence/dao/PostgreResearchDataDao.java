@@ -18,13 +18,14 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.interfaces.ResearchDataReader;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Map;
+import de.uni_passau.fim.se2.domain.interfaces.ResearchDataReader;
+import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
@@ -36,7 +37,7 @@ public class PostgreResearchDataDao implements ResearchDataReader {
     public List<Map<String, Object>> readUsersPseudonymized() {
         // Whitelist columns explicitly — NEVER SELECT * from users.
         return jdbc.queryForList(
-                "SELECT user_id, role, is_verified, created_at FROM users ORDER BY created_at"
+            "SELECT user_id, role, is_verified, created_at FROM users ORDER BY created_at"
         );
     }
 
@@ -113,7 +114,8 @@ public class PostgreResearchDataDao implements ResearchDataReader {
     @Override
     public List<Map<String, Object>> readClassStudents(java.util.UUID classId) {
         return jdbc.queryForList(
-                "SELECT * FROM class_students WHERE class_id = ? ORDER BY joined_at", classId);
+            "SELECT * FROM class_students WHERE class_id = ? ORDER BY joined_at", classId
+        );
     }
 
     @Override

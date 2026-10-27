@@ -22,8 +22,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * AP26 — Domain interface for language-agnostic code analysis.
- * Implementations live in the infrastructure layer (e.g. tree-sitter).
+ * AP26 — Domain interface for language-agnostic code analysis. Implementations live in the infrastructure layer (e.g.
+ * tree-sitter).
  */
 public interface CodeAnalyzer {
 
@@ -45,23 +45,25 @@ public interface CodeAnalyzer {
     // ── Result records ──
 
     record ComplexityResult(
-            int linesOfCode,
-            int cyclomaticComplexity,
-            int maxNestingDepth,
-            int methodCallCount,
-            int distinctIdentifierCount
+        int linesOfCode,
+        int cyclomaticComplexity,
+        int maxNestingDepth,
+        int methodCallCount,
+        int distinctIdentifierCount
     ) {
+
         public static ComplexityResult zero() {
             return new ComplexityResult(0, 0, 0, 0, 0);
         }
     }
 
     record AstAnalysisResult(
-            int nodesAdded,
-            int nodesRemoved,
-            int nodesModified,
-            double structuralScore,
-            List<String> changeTypes,
-            Map<String, Object> distractorChanges
-    ) {}
+        int nodesAdded,
+        int nodesRemoved,
+        int nodesModified,
+        double structuralScore,
+        List<String> changeTypes,
+        Map<String, Object> distractorChanges
+    ) {
+    }
 }

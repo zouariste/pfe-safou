@@ -18,22 +18,24 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.interfaces.DatabaseDumpExecutor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import de.uni_passau.fim.se2.domain.interfaces.DatabaseDumpExecutor;
+import lombok.extern.slf4j.Slf4j;
+
 /**
- * Invokes {@code pg_dump} via ProcessBuilder and pipes its stdout to the given stream.
- * Requires {@code postgresql-client} to be installed in the backend container.
+ * Invokes {@code pg_dump} via ProcessBuilder and pipes its stdout to the given stream. Requires
+ * {@code postgresql-client} to be installed in the backend container.
  *
- * <p>Connection parameters are derived from the Spring datasource URL at startup,
- * so there is a single source of truth for DB credentials.
+ * <p>
+ * Connection parameters are derived from the Spring datasource URL at startup, so there is a single source of truth for
+ * DB credentials.
  */
 @Component
 @Slf4j
@@ -46,9 +48,10 @@ public class PgDumpExecutor implements DatabaseDumpExecutor {
     private final String dbPassword;
 
     public PgDumpExecutor(
-            @Value("${spring.datasource.url}") String jdbcUrl,
-            @Value("${spring.datasource.username}") String dbUser,
-            @Value("${spring.datasource.password}") String dbPassword) {
+        @Value("${spring.datasource.url}") String jdbcUrl,
+        @Value("${spring.datasource.username}") String dbUser,
+        @Value("${spring.datasource.password}") String dbPassword
+    ) {
         // Parse jdbc:postgresql://host:port/dbname
         String stripped = jdbcUrl.replaceFirst("^jdbc:", "");
         URI uri = URI.create(stripped);
@@ -58,22 +61,24 @@ public class PgDumpExecutor implements DatabaseDumpExecutor {
         this.dbName = (path != null && path.startsWith("/")) ? path.substring(1) : path;
         this.dbUser = dbUser;
         this.dbPassword = dbPassword;
-        log.info("PgDumpExecutor initialized: host={} port={} db={} user={}",
-                this.dbHost, this.dbPort, this.dbName, this.dbUser);
+        log.info(
+            "PgDumpExecutor initialized: host={} port={} db={} user={}",
+            this.dbHost, this.dbPort, this.dbName, this.dbUser
+        );
     }
 
     @Override
     public long dump(OutputStream output) throws DumpException {
         ProcessBuilder pb = new ProcessBuilder(
-                "pg_dump",
-                "-h", dbHost,
-                "-p", dbPort,
-                "-U", dbUser,
-                "-d", dbName,
-                "-Fc",             // custom format (binary, compressed) — use pg_restore to restore
-                "--no-owner",
-                "--no-privileges",
-                "--no-acl"
+            "pg_dump",
+            "-h", dbHost,
+            "-p", dbPort,
+            "-U", dbUser,
+            "-d", dbName,
+            "-Fc",             // custom format (binary, compressed) — use pg_restore to restore
+            "--no-owner",
+            "--no-privileges",
+            "--no-acl"
         );
         pb.environment().put("PGPASSWORD", dbPassword);
         pb.redirectErrorStream(false); // keep stderr separate so we can log it
@@ -81,7 +86,8 @@ public class PgDumpExecutor implements DatabaseDumpExecutor {
         Process process;
         try {
             process = pb.start();
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             throw new DumpException("Failed to start pg_dump (is postgresql-client installed?)", e);
         }
 
@@ -91,10 +97,14 @@ public class PgDumpExecutor implements DatabaseDumpExecutor {
                 byte[] buf = new byte[4096];
                 StringBuilder sb = new StringBuilder();
                 int n;
-                while ((n = err.read(buf)) != -1) sb.append(new String(buf, 0, n));
+                while ((n = err.read(buf)) != -1)
+                    sb.append(new String(buf, 0, n));
                 String stderr = sb.toString().trim();
-                if (!stderr.isEmpty()) log.warn("pg_dump stderr: {}", stderr);
-            } catch (IOException ignored) {}
+                if (!stderr.isEmpty())
+                    log.warn("pg_dump stderr: {}", stderr);
+            }
+            catch (IOException ignored) {
+            }
         });
         stderrLogger.setDaemon(true);
         stderrLogger.start();
@@ -108,7 +118,8 @@ public class PgDumpExecutor implements DatabaseDumpExecutor {
                 bytesWritten += n;
             }
             output.flush();
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             process.destroy();
             throw new DumpException("Error streaming pg_dump output", e);
         }
@@ -116,7 +127,8 @@ public class PgDumpExecutor implements DatabaseDumpExecutor {
         int exitCode;
         try {
             exitCode = process.waitFor();
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new DumpException("pg_dump interrupted", e);
         }

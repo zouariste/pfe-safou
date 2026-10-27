@@ -27,14 +27,14 @@ import java.util.List;
 /**
  * Minimal RFC 4180 CSV writer.
  * <ul>
- *   <li>UTF-8 encoded (no BOM)</li>
- *   <li>Field separator: comma</li>
- *   <li>Quoting: double-quotes when field contains comma, quote, or newline</li>
- *   <li>Quote escaping: doubled quote ("")</li>
+ * <li>UTF-8 encoded (no BOM)</li>
+ * <li>Field separator: comma</li>
+ * <li>Quoting: double-quotes when field contains comma, quote, or newline</li>
+ * <li>Quote escaping: doubled quote ("")</li>
  * </ul>
  *
- * <strong>Important:</strong> {@link #close()} does NOT close the underlying stream.
- * The caller (typically a ZipOutputStream) controls its own lifecycle.
+ * <strong>Important:</strong> {@link #close()} does NOT close the underlying stream. The caller (typically a
+ * ZipOutputStream) controls its own lifecycle.
  */
 public class CsvWriter implements AutoCloseable {
 
@@ -46,21 +46,27 @@ public class CsvWriter implements AutoCloseable {
     }
 
     public void writeRow(List<?> fields) {
-        for (Object f : fields) writeField(f);
+        for (Object f : fields)
+            writeField(f);
         endRow();
     }
 
     public void writeField(Object value) {
-        if (!firstFieldOnLine) out.print(',');
+        if (!firstFieldOnLine)
+            out.print(',');
         firstFieldOnLine = false;
-        if (value == null) return; // empty field
+        if (value == null)
+            return; // empty field
         String s = value.toString();
-        if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0
-                || s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0) {
+        if (
+            s.indexOf(',') >= 0 || s.indexOf('"') >= 0
+                || s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0
+        ) {
             out.print('"');
             out.print(s.replace("\"", "\"\""));
             out.print('"');
-        } else {
+        }
+        else {
             out.print(s);
         }
     }

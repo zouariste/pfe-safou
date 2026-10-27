@@ -18,16 +18,17 @@
  */
 package de.uni_passau.fim.se2.api;
 
-import de.uni_passau.fim.se2.application.service.OwnershipService;
-import de.uni_passau.fim.se2.application.service.hints.HintLocale;
-import de.uni_passau.fim.se2.application.service.hints.HintService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import de.uni_passau.fim.se2.application.service.OwnershipService;
+import de.uni_passau.fim.se2.application.service.hints.HintLocale;
+import de.uni_passau.fim.se2.application.service.hints.HintService;
 
 @RestController
 @RequestMapping("/api/hints")
@@ -43,8 +44,9 @@ public class HintController {
 
     @PostMapping("/{taskId}")
     public ResponseEntity<HintService.HintResponse> getHint(
-            @PathVariable UUID taskId,
-            @RequestBody HintRequest request) {
+        @PathVariable UUID taskId,
+        @RequestBody HintRequest request
+    ) {
         UUID userId = ownershipService.getCurrentUserId();
         HintService.HintResponse response = hintService.getHint(
             taskId, request.blockOrder(), request.indentLevels(), request.hintLevel(), userId,
@@ -54,11 +56,11 @@ public class HintController {
     }
 
     /**
-     * Hint availability for the current user on this task: whether the teacher
-     * enabled hints, the credit budget, and what is left of it.
+     * Hint availability for the current user on this task: whether the teacher enabled hints, the credit budget, and
+     * what is left of it.
      *
-     * This drives the buttons in the UI. It is not the enforcement point —
-     * HintService re-checks both on every actual hint request.
+     * This drives the buttons in the UI. It is not the enforcement point — HintService re-checks both on every actual
+     * hint request.
      */
     @GetMapping("/{taskId}/config")
     public ResponseEntity<Map<String, Object>> getHintConfig(@PathVariable UUID taskId) {
@@ -76,8 +78,9 @@ public class HintController {
     }
 
     /**
-     * @param locale the student's current UI language ("de"/"en"); optional, and
-     *               absent means German, which is what hints were before.
+     * @param locale the student's current UI language ("de"/"en"); optional, and absent means German, which is what
+     *               hints were before.
      */
-    public record HintRequest(List<String> blockOrder, List<Integer> indentLevels, int hintLevel, String locale) {}
+    public record HintRequest(List<String> blockOrder, List<Integer> indentLevels, int hintLevel, String locale) {
+    }
 }

@@ -18,23 +18,24 @@
  */
 package de.uni_passau.fim.se2.infrastructure.analysis.treesitter;
 
-import io.github.treesitter.jtreesitter.Language;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.github.treesitter.jtreesitter.Language;
+
 /**
- * AP26 — Maps user-facing language names to tree-sitter grammars ({@link Language})
- * and provides node-type mappings for each language so that a single traversal
- * algorithm can compute metrics across all supported languages.
+ * AP26 — Maps user-facing language names to tree-sitter grammars ({@link Language}) and provides node-type mappings for
+ * each language so that a single traversal algorithm can compute metrics across all supported languages.
  */
 public final class LanguageRegistry {
 
     private static final Logger logger = LoggerFactory.getLogger(LanguageRegistry.class);
 
-    private LanguageRegistry() {}
+    private LanguageRegistry() {
+    }
 
     // ── Language resolution ──
 
@@ -64,22 +65,27 @@ public final class LanguageRegistry {
 
     public static Optional<Language> resolve(String language) {
         String grammarId = grammarId(language);
-        if (grammarId == null) return Optional.empty();
+        if (grammarId == null)
+            return Optional.empty();
         return LOADED.computeIfAbsent(grammarId, LanguageRegistry::load);
     }
 
     private static Optional<Language> load(String grammarId) {
         try {
             return Optional.of(TreeSitterNatives.loadLanguage(grammarId));
-        } catch (Throwable e) {
-            logger.warn("Could not load tree-sitter grammar '{}' from {}: {}",
-                    grammarId, TreeSitterNatives.nativeDir(), e.toString());
+        }
+        catch (Throwable e) {
+            logger.warn(
+                "Could not load tree-sitter grammar '{}' from {}: {}",
+                grammarId, TreeSitterNatives.nativeDir(), e.toString()
+            );
             return Optional.empty();
         }
     }
 
     private static String grammarId(String language) {
-        if (language == null) return null;
+        if (language == null)
+            return null;
         return LANGUAGE_MAP.get(language.toLowerCase().trim());
     }
 
@@ -91,76 +97,100 @@ public final class LanguageRegistry {
     // Each set tells the traversal which AST node types count towards a metric.
 
     public record LanguageConfig(
-            Set<String> functionTypes,
-            Set<String> loopTypes,
-            Set<String> conditionalTypes,
-            Set<String> branchingTypes,   // CC: adds +1 per occurrence
-            Set<String> nestingTypes,     // MND: tracked for nesting depth
-            Set<String> callTypes,        // MCC: method/function call expressions
-            Set<String> identifierTypes,  // DIC: distinct identifier names
-            Set<String> catchTypes        // CC: catch clauses
-    ) {}
+        Set<String> functionTypes,
+        Set<String> loopTypes,
+        Set<String> conditionalTypes,
+        Set<String> branchingTypes,   // CC: adds +1 per occurrence
+        Set<String> nestingTypes,     // MND: tracked for nesting depth
+        Set<String> callTypes,        // MCC: method/function call expressions
+        Set<String> identifierTypes,  // DIC: distinct identifier names
+        Set<String> catchTypes        // CC: catch clauses
+    ) {
+    }
 
     private static final Map<String, LanguageConfig> CONFIGS = new HashMap<>();
 
     static {
         // ── Java ──
-        CONFIGS.put("java", new LanguageConfig(
+        CONFIGS.put(
+            "java", new LanguageConfig(
                 Set.of("method_declaration", "constructor_declaration"),
                 Set.of("for_statement", "enhanced_for_statement", "while_statement", "do_statement"),
                 Set.of("if_statement", "switch_expression"),
-                Set.of("if_statement", "for_statement", "enhanced_for_statement", "while_statement",
-                        "do_statement", "switch_expression", "case_clause"),
-                Set.of("if_statement", "for_statement", "enhanced_for_statement", "while_statement",
-                        "do_statement", "switch_expression", "try_statement", "synchronized_statement"),
+                Set.of(
+                    "if_statement", "for_statement", "enhanced_for_statement", "while_statement",
+                    "do_statement", "switch_expression", "case_clause"
+                ),
+                Set.of(
+                    "if_statement", "for_statement", "enhanced_for_statement", "while_statement",
+                    "do_statement", "switch_expression", "try_statement", "synchronized_statement"
+                ),
                 Set.of("method_invocation"),
                 Set.of("identifier"),
                 Set.of("catch_clause")
-        ));
+            )
+        );
 
         // ── Python ──
-        CONFIGS.put("python", new LanguageConfig(
+        CONFIGS.put(
+            "python", new LanguageConfig(
                 Set.of("function_definition"),
                 Set.of("for_statement", "while_statement"),
                 Set.of("if_statement", "elif_clause"),
-                Set.of("if_statement", "elif_clause", "for_statement", "while_statement",
-                        "conditional_expression"),
+                Set.of(
+                    "if_statement", "elif_clause", "for_statement", "while_statement",
+                    "conditional_expression"
+                ),
                 Set.of("if_statement", "for_statement", "while_statement", "try_statement", "with_statement"),
                 Set.of("call"),
                 Set.of("identifier"),
                 Set.of("except_clause")
-        ));
+            )
+        );
 
         // ── JavaScript ──
-        CONFIGS.put("javascript", new LanguageConfig(
+        CONFIGS.put(
+            "javascript", new LanguageConfig(
                 Set.of("function_declaration", "method_definition", "arrow_function"),
                 Set.of("for_statement", "for_in_statement", "while_statement", "do_statement"),
                 Set.of("if_statement", "switch_statement"),
-                Set.of("if_statement", "for_statement", "for_in_statement", "while_statement",
-                        "do_statement", "switch_case", "ternary_expression"),
-                Set.of("if_statement", "for_statement", "for_in_statement", "while_statement",
-                        "do_statement", "switch_statement", "try_statement"),
+                Set.of(
+                    "if_statement", "for_statement", "for_in_statement", "while_statement",
+                    "do_statement", "switch_case", "ternary_expression"
+                ),
+                Set.of(
+                    "if_statement", "for_statement", "for_in_statement", "while_statement",
+                    "do_statement", "switch_statement", "try_statement"
+                ),
                 Set.of("call_expression"),
                 Set.of("identifier"),
                 Set.of("catch_clause")
-        ));
+            )
+        );
 
         // ── TypeScript (extends JS) ──
-        CONFIGS.put("typescript", new LanguageConfig(
+        CONFIGS.put(
+            "typescript", new LanguageConfig(
                 Set.of("function_declaration", "method_definition", "arrow_function"),
                 Set.of("for_statement", "for_in_statement", "while_statement", "do_statement"),
                 Set.of("if_statement", "switch_statement"),
-                Set.of("if_statement", "for_statement", "for_in_statement", "while_statement",
-                        "do_statement", "switch_case", "ternary_expression"),
-                Set.of("if_statement", "for_statement", "for_in_statement", "while_statement",
-                        "do_statement", "switch_statement", "try_statement"),
+                Set.of(
+                    "if_statement", "for_statement", "for_in_statement", "while_statement",
+                    "do_statement", "switch_case", "ternary_expression"
+                ),
+                Set.of(
+                    "if_statement", "for_statement", "for_in_statement", "while_statement",
+                    "do_statement", "switch_statement", "try_statement"
+                ),
                 Set.of("call_expression"),
                 Set.of("identifier", "type_identifier"),
                 Set.of("catch_clause")
-        ));
+            )
+        );
 
         // ── C ──
-        CONFIGS.put("c", new LanguageConfig(
+        CONFIGS.put(
+            "c", new LanguageConfig(
                 Set.of("function_definition"),
                 Set.of("for_statement", "while_statement", "do_statement"),
                 Set.of("if_statement", "switch_statement"),
@@ -169,62 +199,85 @@ public final class LanguageRegistry {
                 Set.of("call_expression"),
                 Set.of("identifier"),
                 Set.of()
-        ));
+            )
+        );
 
         // ── C++ ──
-        CONFIGS.put("cpp", new LanguageConfig(
+        CONFIGS.put(
+            "cpp", new LanguageConfig(
                 Set.of("function_definition"),
                 Set.of("for_statement", "for_range_loop", "while_statement", "do_statement"),
                 Set.of("if_statement", "switch_statement"),
-                Set.of("if_statement", "for_statement", "for_range_loop", "while_statement",
-                        "do_statement", "case_statement"),
-                Set.of("if_statement", "for_statement", "for_range_loop", "while_statement",
-                        "do_statement", "switch_statement", "try_statement"),
+                Set.of(
+                    "if_statement", "for_statement", "for_range_loop", "while_statement",
+                    "do_statement", "case_statement"
+                ),
+                Set.of(
+                    "if_statement", "for_statement", "for_range_loop", "while_statement",
+                    "do_statement", "switch_statement", "try_statement"
+                ),
                 Set.of("call_expression"),
                 Set.of("identifier"),
                 Set.of("catch_clause")
-        ));
+            )
+        );
 
         // ── C# ──
-        CONFIGS.put("csharp", new LanguageConfig(
+        CONFIGS.put(
+            "csharp", new LanguageConfig(
                 Set.of("method_declaration", "constructor_declaration", "local_function_statement"),
                 Set.of("for_statement", "foreach_statement", "while_statement", "do_statement"),
                 Set.of("if_statement", "switch_statement"),
-                Set.of("if_statement", "for_statement", "foreach_statement", "while_statement",
-                        "do_statement", "switch_section"),
-                Set.of("if_statement", "for_statement", "foreach_statement", "while_statement",
-                        "do_statement", "switch_statement", "try_statement"),
+                Set.of(
+                    "if_statement", "for_statement", "foreach_statement", "while_statement",
+                    "do_statement", "switch_section"
+                ),
+                Set.of(
+                    "if_statement", "for_statement", "foreach_statement", "while_statement",
+                    "do_statement", "switch_statement", "try_statement"
+                ),
                 Set.of("invocation_expression"),
                 Set.of("identifier"),
                 Set.of("catch_clause")
-        ));
+            )
+        );
 
         // ── Rust ──
-        CONFIGS.put("rust", new LanguageConfig(
+        CONFIGS.put(
+            "rust", new LanguageConfig(
                 Set.of("function_item"),
                 Set.of("for_expression", "while_expression", "loop_expression"),
                 Set.of("if_expression", "match_expression"),
-                Set.of("if_expression", "for_expression", "while_expression", "loop_expression",
-                        "match_arm"),
-                Set.of("if_expression", "for_expression", "while_expression", "loop_expression",
-                        "match_expression", "unsafe_block"),
+                Set.of(
+                    "if_expression", "for_expression", "while_expression", "loop_expression",
+                    "match_arm"
+                ),
+                Set.of(
+                    "if_expression", "for_expression", "while_expression", "loop_expression",
+                    "match_expression", "unsafe_block"
+                ),
                 Set.of("call_expression"),
                 Set.of("identifier"),
                 Set.of()
-        ));
+            )
+        );
 
         // ── Go ──
-        CONFIGS.put("go", new LanguageConfig(
+        CONFIGS.put(
+            "go", new LanguageConfig(
                 Set.of("function_declaration", "method_declaration"),
                 Set.of("for_statement"),
                 Set.of("if_statement", "expression_switch_statement", "type_switch_statement"),
                 Set.of("if_statement", "for_statement", "expression_case"),
-                Set.of("if_statement", "for_statement", "expression_switch_statement",
-                        "type_switch_statement", "select_statement"),
+                Set.of(
+                    "if_statement", "for_statement", "expression_switch_statement",
+                    "type_switch_statement", "select_statement"
+                ),
                 Set.of("call_expression"),
                 Set.of("identifier"),
                 Set.of()
-        ));
+            )
+        );
 
         // aliases
         CONFIGS.put("js", CONFIGS.get("javascript"));
@@ -236,7 +289,8 @@ public final class LanguageRegistry {
     }
 
     public static LanguageConfig getConfig(String language) {
-        if (language == null) return null;
+        if (language == null)
+            return null;
         return CONFIGS.get(language.toLowerCase().trim());
     }
 }

@@ -18,10 +18,10 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.*;
-
 import java.sql.Timestamp;
 import java.util.UUID;
+
+import lombok.*;
 
 /**
  * Represents a learning analytics event (AP10).

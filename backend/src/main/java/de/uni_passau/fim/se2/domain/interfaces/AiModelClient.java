@@ -18,30 +18,32 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import de.uni_passau.fim.se2.domain.entities.*;
-import com.fasterxml.jackson.databind.*;
-
 import java.io.*;
 import java.util.*;
+
+import com.fasterxml.jackson.databind.*;
+
+import de.uni_passau.fim.se2.domain.entities.*;
 
 public interface AiModelClient {
 
     /**
      * Sends a single problem statement to the provider and returns a code-only solution.
      *
-     * <p>The prompt strictly instructs the provider to return only properly formatted
-     * code, without any explanation, comments, or extra output.
+     * <p>
+     * The prompt strictly instructs the provider to return only properly formatted code, without any explanation,
+     * comments, or extra output.
      *
      * @param problem  the problem description to solve
      * @param language TODO
      * @return a {@link JsonNode} containing one field "code" with the solution
      * @throws IOException          if API communication fails
-     * @throws InterruptedException if the thread is interrupted during the
-     *                              request
+     * @throws InterruptedException if the thread is interrupted during the request
      */
     JsonNode solveProblem(final SolveContract contract) throws IOException, InterruptedException;
 
-    JsonNode solveProblemSimple(final String taskDescription, final String language) throws IOException, InterruptedException;
+    JsonNode solveProblemSimple(final String taskDescription, final String language)
+        throws IOException, InterruptedException;
 
     /**
      * Generates a TieredTaskSequence.
@@ -54,46 +56,51 @@ public interface AiModelClient {
      * @throws IOException          throws IOException.
      * @throws InterruptedException throws InterruptedException.
      */
-    JsonNode generateTieredTaskSequence(final String taskDescription,
-                                        final List<String> concepts,
-                                        final String codeSnippet,
-                                        final String language) throws IOException, InterruptedException;
+    JsonNode generateTieredTaskSequence(
+        final String taskDescription,
+        final List<String> concepts,
+        final String codeSnippet,
+        final String language
+    ) throws IOException, InterruptedException;
 
     /**
      * Generates a TieredTaskSequence with a specified target language for problem statements.
      *
      * @param targetLanguage Human language code for statements (e.g. "de", "en").
      */
-    default JsonNode generateTieredTaskSequence(final String taskDescription,
-                                                final List<String> concepts,
-                                                final String codeSnippet,
-                                                final String language,
-                                                final String targetLanguage) throws IOException, InterruptedException {
+    default JsonNode generateTieredTaskSequence(
+        final String taskDescription,
+        final List<String> concepts,
+        final String codeSnippet,
+        final String language,
+        final String targetLanguage
+    ) throws IOException, InterruptedException {
         return generateTieredTaskSequence(taskDescription, concepts, codeSnippet, language);
     }
 
     /**
-     * Generates a problem statement for a given code snippet using a provided prompt body.
-     * Default implementation falls back to the single-argument variant,
-     * so existing clients keep working until they implement the override.
+     * Generates a problem statement for a given code snippet using a provided prompt body. Default implementation falls
+     * back to the single-argument variant, so existing clients keep working until they implement the override.
      */
     default String generateTaskDescription(final String codeSnippet, final String userPromptBody)
-            throws IOException, InterruptedException {
+        throws IOException, InterruptedException {
         return generateTaskDescription(codeSnippet);
     }
 
     /**
-     * Generate using explicit system prompt + user prompt/body.
-     * Providers that support roles should use both; others may concatenate.
+     * Generate using explicit system prompt + user prompt/body. Providers that support roles should use both; others
+     * may concatenate.
      */
-    default String generateTaskDescription(final String codeSnippet,
-                                           final String systemPrompt,
-                                           final String userPromptBody)
-            throws IOException, InterruptedException {
+    default String generateTaskDescription(
+        final String codeSnippet,
+        final String systemPrompt,
+        final String userPromptBody
+    )
+        throws IOException, InterruptedException {
         // Fallback: concatenate if provider lacks role support
         String merged = (systemPrompt == null || systemPrompt.isBlank())
-                ? userPromptBody
-                : ("SYSTEM:\n" + systemPrompt + "\n\nUSER:\n" + userPromptBody);
+            ? userPromptBody
+            : ("SYSTEM:\n" + systemPrompt + "\n\nUSER:\n" + userPromptBody);
         return generateTaskDescription(codeSnippet, merged);
     }
 
@@ -106,7 +113,7 @@ public interface AiModelClient {
      * @throws InterruptedException throws InterruptedException.
      */
     String getProgrammingLanguage(final String codeSnippet)
-            throws IOException, InterruptedException;
+        throws IOException, InterruptedException;
 
     /**
      * Generates a problem statement fitting to the {@param concepts}.
@@ -117,9 +124,11 @@ public interface AiModelClient {
      * @throws IOException          throws IOException.
      * @throws InterruptedException throws InterruptedException.
      */
-    String generateTaskDescription(final List<String> concepts,
-                                   final String language)
-            throws IOException, InterruptedException;
+    String generateTaskDescription(
+        final List<String> concepts,
+        final String language
+    )
+        throws IOException, InterruptedException;
 
     /**
      * Generates a problem statement fitting to the {@param codeSnippet}.
@@ -130,11 +139,11 @@ public interface AiModelClient {
      * @throws InterruptedException throws InterruptedException
      */
     String generateTaskDescription(final String codeSnippet)
-            throws IOException, InterruptedException;
+        throws IOException, InterruptedException;
 
     /**
-     * Generates a List of programming concepts contained in
-     * {@param codeSnippet}, constrained to the fixed concept catalog (AP25).
+     * Generates a List of programming concepts contained in {@param codeSnippet}, constrained to the fixed concept
+     * catalog (AP25).
      *
      * @param codeSnippet String representing the codeSnippet to be analyzed.
      * @param language    Programming language of the snippet (e.g. "java", "python").
@@ -143,103 +152,119 @@ public interface AiModelClient {
      * @throws InterruptedException throws InterruptedException.
      */
     List<String> generateConcepts(final String codeSnippet, final String language)
-            throws IOException, InterruptedException;
+        throws IOException, InterruptedException;
 
     /**
      * Generates distractor lines for a given solution code (AP15 Antagonist-Call).
      *
      * @param solutionCode   the correct solution
-     * @param language        programming language
-     * @param taskStatement   the task description
-     * @param tierLevel       difficulty tier (1-3)
-     * @param distractorPlan  JSON string with type and rationale, or null
-     * @param count           number of distractors to generate
+     * @param language       programming language
+     * @param taskStatement  the task description
+     * @param tierLevel      difficulty tier (1-3)
+     * @param distractorPlan JSON string with type and rationale, or null
+     * @param count          number of distractors to generate
      * @return list of distractor line strings (each ending with #distractor)
      */
-    default List<String> generateDistractors(String solutionCode, String language,
-                                              String taskStatement, int tierLevel,
-                                              String distractorPlan, int count)
-            throws IOException, InterruptedException {
+    default List<String> generateDistractors(
+        String solutionCode, String language,
+        String taskStatement, int tierLevel,
+        String distractorPlan, int count
+    )
+        throws IOException, InterruptedException {
         return List.of();
     }
 
     /**
-     * AP19 Teil A: Generates semantic topic tags for a sequence. The response is the tagger's
-     * JSON object ({@code primary_tags}, {@code aliases} — each a list of {@code {"de","en"}}
-     * slug pairs — and {@code short_description}), as a string.
+     * AP19 Teil A: Generates semantic topic tags for a sequence. The response is the tagger's JSON object
+     * ({@code primary_tags}, {@code aliases} — each a list of {@code {"de","en"}} slug pairs — and
+     * {@code short_description}), as a string.
      *
      * @param systemPrompt the tagger identity ({@code SequenceSemanticTagger})
      * @param userPrompt   the sequence's combined statements and code
      * @return the JSON object as a string, or {@code null} if the provider does not support it
      */
     default String generateSemanticTags(String systemPrompt, String userPrompt)
-            throws IOException, InterruptedException {
+        throws IOException, InterruptedException {
         return null;
     }
 
     /**
-     * AP31: Generates an inline-split plan for a (solved) task — one complex line decomposed
-     * into 2–4 fragments with optional display prefix/suffix and fragment distractors.
+     * AP31: Generates an inline-split plan for a (solved) task — one complex line decomposed into 2–4 fragments with
+     * optional display prefix/suffix and fragment distractors.
      *
      * @return split_plan JSON string (object with a "splits" array), or {@code null}.
      */
-    default String generateSplitPlan(String solutionCode, String language,
-                                     String taskStatement, int tierLevel)
-            throws IOException, InterruptedException {
+    default String generateSplitPlan(
+        String solutionCode, String language,
+        String taskStatement, int tierLevel
+    )
+        throws IOException, InterruptedException {
         return null;
     }
 
     /**
-     * AP31: Second pass — generates ONE fragment-level distractor for an already-decided split so the
-     * wrong fragment is a drop-in for a single slot (shape-matched to one of {@code fragments}).
+     * AP31: Second pass — generates ONE fragment-level distractor for an already-decided split so the wrong fragment is
+     * a drop-in for a single slot (shape-matched to one of {@code fragments}).
      *
      * @return JSON {@code {"fragmentIndex":int,"text":"...","type":"..."}}, or {@code null} if none fits.
      */
-    default String generateSplitDistractor(List<String> fragments, String prefix, String suffix,
-                                           String language, String taskStatement, int tierLevel)
-            throws IOException, InterruptedException {
+    default String generateSplitDistractor(
+        List<String> fragments, String prefix, String suffix,
+        String language, String taskStatement, int tierLevel
+    )
+        throws IOException, InterruptedException {
         return null;
     }
 
     /**
      * Generates a TieredTaskSequence with optional distractor planning (AP15).
      */
-    default JsonNode generateTieredTaskSequence(final String taskDescription,
-                                                final List<String> concepts,
-                                                final String codeSnippet,
-                                                final String language,
-                                                final String targetLanguage,
-                                                boolean distractorsEnabled)
-            throws IOException, InterruptedException {
+    default JsonNode generateTieredTaskSequence(
+        final String taskDescription,
+        final List<String> concepts,
+        final String codeSnippet,
+        final String language,
+        final String targetLanguage,
+        boolean distractorsEnabled
+    )
+        throws IOException, InterruptedException {
         return generateTieredTaskSequence(taskDescription, concepts, codeSnippet, language, targetLanguage);
     }
 
     /**
      * AP20: Generates a TieredTaskSequence with constraints + distractors.
      */
-    default JsonNode generateTieredTaskSequence(final String taskDescription,
-                                                final List<String> concepts,
-                                                final String codeSnippet,
-                                                final String language,
-                                                final String targetLanguage,
-                                                boolean distractorsEnabled,
-                                                GenerationConstraints constraints)
-            throws IOException, InterruptedException {
-        return generateTieredTaskSequence(taskDescription, concepts, codeSnippet, language, targetLanguage, distractorsEnabled);
+    default JsonNode generateTieredTaskSequence(
+        final String taskDescription,
+        final List<String> concepts,
+        final String codeSnippet,
+        final String language,
+        final String targetLanguage,
+        boolean distractorsEnabled,
+        GenerationConstraints constraints
+    )
+        throws IOException, InterruptedException {
+        return generateTieredTaskSequence(
+            taskDescription, concepts, codeSnippet, language, targetLanguage, distractorsEnabled
+        );
     }
 
     /**
      * AP21: Generates a TieredTaskSequence with constraints + distractors + tierCount.
      */
-    default JsonNode generateTieredTaskSequence(final String taskDescription,
-                                                final List<String> concepts,
-                                                final String codeSnippet,
-                                                final String language,
-                                                final String targetLanguage,
-                                                boolean distractorsEnabled,
-                                                GenerationConstraints constraints,
-                                                int tierCount)
-            throws IOException, InterruptedException {
-        return generateTieredTaskSequence(taskDescription, concepts, codeSnippet, language, targetLanguage, distractorsEnabled, constraints);
+    default JsonNode generateTieredTaskSequence(
+        final String taskDescription,
+        final List<String> concepts,
+        final String codeSnippet,
+        final String language,
+        final String targetLanguage,
+        boolean distractorsEnabled,
+        GenerationConstraints constraints,
+        int tierCount
+    )
+        throws IOException, InterruptedException {
+        return generateTieredTaskSequence(
+            taskDescription, concepts, codeSnippet, language, targetLanguage, distractorsEnabled, constraints
+        );
     }
 }

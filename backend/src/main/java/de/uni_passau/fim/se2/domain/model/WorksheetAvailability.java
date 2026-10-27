@@ -50,21 +50,21 @@ public enum WorksheetAvailability {
     /**
      * Resolves the state of one assignment.
      *
-     * An assignment is hidden until it is released, which happens either because
-     * the teacher published it or because its release date has arrived. A newly
-     * assigned worksheet is neither, so it starts hidden — students should not
+     * An assignment is hidden until it is released, which happens either because the teacher published it or because
+     * its release date has arrived. A newly assigned worksheet is neither, so it starts hidden — students should not
      * meet one that is still being put together.
      *
-     * After that, the deadline and its grace decide whether it is still
-     * workable. Each date is optional and absent means unconstrained: no
-     * deadline stays open indefinitely, no grace makes the deadline sharp.
+     * After that, the deadline and its grace decide whether it is still workable. Each date is optional and absent
+     * means unconstrained: no deadline stays open indefinitely, no grace makes the deadline sharp.
      *
      * @param published    set by the teacher's publish button
      * @param releaseAt    when it opens by itself; null means only publishing opens it
      * @param graceMinutes minutes allowed after the deadline; null or 0 is sharp
      */
-    public static WorksheetAvailability of(boolean published, Instant releaseAt, Instant deadlineAt,
-                                           Integer graceMinutes, Instant now) {
+    public static WorksheetAvailability of(
+        boolean published, Instant releaseAt, Instant deadlineAt,
+        Integer graceMinutes, Instant now
+    ) {
         Instant moment = now != null ? now : Instant.now();
 
         boolean releasedByDate = releaseAt != null && !moment.isBefore(releaseAt);

@@ -25,10 +25,16 @@ import lombok.Data;
 
 @Data
 public class StudentOnboardingRequest {
+
     @NotBlank
     private String token;
-    @NotBlank @Email
+    @NotBlank
+    @Email
     private String email;
-    @NotBlank @Size(min = 8, message = "Passwort muss mindestens 8 Zeichen lang sein.")
+    @NotBlank
+    @Size(
+        min = 8,
+        message = "Passwort muss mindestens 8 Zeichen lang sein."
+    )
     private String password;
 }

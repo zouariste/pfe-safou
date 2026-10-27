@@ -18,11 +18,11 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import de.uni_passau.fim.se2.domain.entities.TaskChangeAnalysisDTO;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import de.uni_passau.fim.se2.domain.entities.TaskChangeAnalysisDTO;
 
 /**
  * Repository for task change analyses (AP12 — Change-Analysis-Engine).

@@ -18,19 +18,19 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import de.uni_passau.fim.se2.domain.entities.ResearchDataset;
-import de.uni_passau.fim.se2.domain.entities.ResearchLog;
-
 import java.util.List;
 import java.util.Map;
+
+import de.uni_passau.fim.se2.domain.entities.ResearchDataset;
+import de.uni_passau.fim.se2.domain.entities.ResearchLog;
 
 /**
  * Filtered, paginated reads over the research tables for the admin research page.
  *
- * <p>Separate from {@link ResearchDataReader}, which exists to dump whole tables into the
- * research ZIP. This one never returns an unbounded result: the page shows a slice and the
- * CSV download streams, so nothing here loads a table into memory the way
- * {@code LearningEventService.getAllEvents()} does.
+ * <p>
+ * Separate from {@link ResearchDataReader}, which exists to dump whole tables into the research ZIP. This one never
+ * returns an unbounded result: the page shows a slice and the CSV download streams, so nothing here loads a table into
+ * memory the way {@code LearningEventService.getAllEvents()} does.
  */
 public interface ResearchLogRepository {
 
@@ -46,9 +46,12 @@ public interface ResearchLogRepository {
     /**
      * Streams every matching row to the consumer, ignoring {@code page}/{@code size}.
      *
-     * <p>For the CSV and ZIP downloads, which must not be capped at a page and must not
-     * materialise the whole result either.
+     * <p>
+     * For the CSV and ZIP downloads, which must not be capped at a page and must not materialise the whole result
+     * either.
      */
-    void forEachMatching(ResearchDataset dataset, ResearchLog.Filter filter,
-                         java.util.function.Consumer<Map<String, Object>> consumer);
+    void forEachMatching(
+        ResearchDataset dataset, ResearchLog.Filter filter,
+        java.util.function.Consumer<Map<String, Object>> consumer
+    );
 }

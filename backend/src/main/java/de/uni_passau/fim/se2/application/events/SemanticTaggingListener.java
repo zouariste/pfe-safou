@@ -18,10 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.events;
 
-import de.uni_passau.fim.se2.application.service.SequenceTagService;
-import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
-import de.uni_passau.fim.se2.infrastructure.ai.tagging.LlmSemanticTagger;
-import de.uni_passau.fim.se2.infrastructure.ai.tagging.LlmSemanticTagger.SemanticTagResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -29,20 +25,27 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import de.uni_passau.fim.se2.application.service.SequenceTagService;
+import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
+import de.uni_passau.fim.se2.infrastructure.ai.tagging.LlmSemanticTagger;
+import de.uni_passau.fim.se2.infrastructure.ai.tagging.LlmSemanticTagger.SemanticTagResult;
+
 /**
  * Runs the semantic LLM-tagging pass asynchronously after a sequence is generated.
  *
- * <p>Pattern:
+ * <p>
+ * Pattern:
  * <ol>
- *   <li>{@link de.uni_passau.fim.se2.application.service.TaskEnricher} (or the persistence service) publishes a
- *       {@link SequenceGeneratedEvent} right after the sequence is committed.</li>
- *   <li>This listener picks it up on the {@code taggingExecutor} virtual-thread pool.</li>
- *   <li>LLM call → {@link SequenceTagService#writeLlmTags(java.util.UUID, java.util.List, java.util.List, java.util.Map)}
- *       + semantic summary update.</li>
+ * <li>{@link de.uni_passau.fim.se2.application.service.TaskEnricher} (or the persistence service) publishes a
+ * {@link SequenceGeneratedEvent} right after the sequence is committed.</li>
+ * <li>This listener picks it up on the {@code taggingExecutor} virtual-thread pool.</li>
+ * <li>LLM call → {@link SequenceTagService#writeLlmTags(java.util.UUID, java.util.List, java.util.List, java.util.Map)}
+ * + semantic summary update.</li>
  * </ol>
  *
- * <p>Any exception is logged and swallowed: the sequence stays untagged and can be
- * recovered later via the admin bulk-retag endpoint.
+ * <p>
+ * Any exception is logged and swallowed: the sequence stays untagged and can be recovered later via the admin
+ * bulk-retag endpoint.
  */
 @Component
 public class SemanticTaggingListener {
@@ -53,9 +56,11 @@ public class SemanticTaggingListener {
     private final SequenceTagService tagService;
     private final TieredTaskSequenceRepository sequenceRepo;
 
-    public SemanticTaggingListener(LlmSemanticTagger tagger,
-                                   SequenceTagService tagService,
-                                   TieredTaskSequenceRepository sequenceRepo) {
+    public SemanticTaggingListener(
+        LlmSemanticTagger tagger,
+        SequenceTagService tagService,
+        TieredTaskSequenceRepository sequenceRepo
+    ) {
         this.tagger = tagger;
         this.tagService = tagService;
         this.sequenceRepo = sequenceRepo;
@@ -68,36 +73,46 @@ public class SemanticTaggingListener {
         long t0 = System.nanoTime();
         try {
             SemanticTagResult result = tagger.tag(
-                    event.programmingLanguage(),
-                    event.combinedStatement(),
-                    event.combinedCode());
+                event.programmingLanguage(),
+                event.combinedStatement(),
+                event.combinedCode()
+            );
 
             if (result == null) {
                 logger.debug("Semantic tagging returned no result for sequence {}", event.sequenceId());
                 return;
             }
 
-            tagService.writeLlmTags(event.sequenceId(), result.primaryTags(), result.aliases(),
-                    result.translations());
+            tagService.writeLlmTags(
+                event.sequenceId(), result.primaryTags(), result.aliases(),
+                result.translations()
+            );
 
             if (result.shortDescription() != null && !result.shortDescription().isBlank()) {
                 try {
                     sequenceRepo.updateSemanticSummary(event.sequenceId(), result.shortDescription());
-                } catch (Exception e) {
-                    logger.warn("Could not update semantic_summary for sequence {}: {}",
-                            event.sequenceId(), e.getMessage());
+                }
+                catch (Exception e) {
+                    logger.warn(
+                        "Could not update semantic_summary for sequence {}: {}",
+                        event.sequenceId(), e.getMessage()
+                    );
                 }
             }
 
             long elapsedMs = (System.nanoTime() - t0) / 1_000_000L;
-            logger.debug("Semantic tagging for sequence {} finished in {}ms ({} primary, {} alias)",
-                    event.sequenceId(), elapsedMs,
-                    result.primaryTags() == null ? 0 : result.primaryTags().size(),
-                    result.aliases() == null ? 0 : result.aliases().size());
+            logger.debug(
+                "Semantic tagging for sequence {} finished in {}ms ({} primary, {} alias)",
+                event.sequenceId(), elapsedMs,
+                result.primaryTags() == null ? 0 : result.primaryTags().size(),
+                result.aliases() == null ? 0 : result.aliases().size()
+            );
 
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.warn("Semantic tagging failed for sequence {}: {}", event.sequenceId(), e.getMessage());
-        } finally {
+        }
+        finally {
             MDC.remove("sequenceId");
         }
     }

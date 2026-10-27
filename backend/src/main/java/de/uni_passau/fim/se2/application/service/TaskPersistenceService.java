@@ -18,9 +18,19 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import de.uni_passau.fim.se2.application.events.SequenceGeneratedEvent;
 import de.uni_passau.fim.se2.domain.entities.*;
-
 import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
@@ -29,16 +39,6 @@ import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class TaskPersistenceService {
@@ -54,9 +54,11 @@ public class TaskPersistenceService {
     /** AP19 Teil A: for async semantic LLM tagging via {@link SequenceGeneratedEvent}. */
     private final ApplicationEventPublisher eventPublisher;
 
-    public TaskPersistenceService(TaskRepository taskRepository, TieredTaskSequenceRepository sequenceRepo,
-                                  ConceptRepository conceptRepository,
-                                  ApplicationEventPublisher eventPublisher) {
+    public TaskPersistenceService(
+        TaskRepository taskRepository, TieredTaskSequenceRepository sequenceRepo,
+        ConceptRepository conceptRepository,
+        ApplicationEventPublisher eventPublisher
+    ) {
         this.taskRepo = taskRepository;
         this.sequenceRepo = sequenceRepo;
         this.conceptRepo = conceptRepository;
@@ -75,7 +77,8 @@ public class TaskPersistenceService {
             validateTask(task);
             taskRepo.save(task);
             logger.debug("Successfully saved task with ID: {}", task.getId());
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Error saving generated task: {}", task, e);
             throw e;
         }
@@ -104,7 +107,8 @@ public class TaskPersistenceService {
 
             taskRepo.saveAll(sequence);
             logger.debug("Successfully saved {} tasks", tasks.size());
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Error saving tasks for sequence: {}", sequence.getId(), e);
             throw e;
         }
@@ -133,7 +137,8 @@ public class TaskPersistenceService {
             task.setProgrammingLanguage(sequenceDTO.getProgrammingLanguage());
             logger.debug("Successfully loaded task: {}", task);
             return task;
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Error loading task with ID: {}", id, e);
             throw e;
         }
@@ -156,7 +161,8 @@ public class TaskPersistenceService {
             task.setId(id);
             taskRepo.deleteById(task);
             logger.debug("Successfully deleted task with ID: {}", id);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Error deleting task with ID: {}", id, e);
             throw e;
         }
@@ -177,16 +183,15 @@ public class TaskPersistenceService {
     }
 
     /**
-     * Replaces a sequence's concepts with the given names, and returns them as
-     * stored. Names are resolved against the catalogue and created when absent,
-     * the same rule the curriculum learning-area form follows;
-     * {@code PostgreConceptDAO} lowercases them on the way in, so what comes
-     * back may differ in case from what was sent.
+     * Replaces a sequence's concepts with the given names, and returns them as stored. Names are resolved against the
+     * catalogue and created when absent, the same rule the curriculum learning-area form follows;
+     * {@code PostgreConceptDAO} lowercases them on the way in, so what comes back may differ in case from what was
+     * sent.
      *
-     * <p>An empty set is refused rather than accepted: the persistence path
-     * has always required a sequence to carry at least one concept, and letting
-     * an edit strip the last one would leave a sequence that could never have
-     * been created that way.
+     * <p>
+     * An empty set is refused rather than accepted: the persistence path has always required a sequence to carry at
+     * least one concept, and letting an edit strip the last one would leave a sequence that could never have been
+     * created that way.
      *
      * @param sequenceId the sequence to edit
      * @param names      the concept names that should remain
@@ -197,7 +202,8 @@ public class TaskPersistenceService {
         if (sequenceId == null) {
             throw new DomainValidationException("Sequence ID must not be null.");
         }
-        List<String> cleaned = names == null ? List.of() : names.stream()
+        List<String> cleaned = names == null ? List.of()
+            : names.stream()
                 .filter(Objects::nonNull)
                 .map(String::trim)
                 .filter(name -> !name.isEmpty())
@@ -208,12 +214,12 @@ public class TaskPersistenceService {
         }
 
         List<ConceptDTO> dtos = cleaned.stream()
-                .map(name -> {
-                    ConceptDTO dto = new ConceptDTO();
-                    dto.setName(name);
-                    return dto;
-                })
-                .toList();
+            .map(name -> {
+                ConceptDTO dto = new ConceptDTO();
+                dto.setName(name);
+                return dto;
+            })
+            .toList();
 
         sequenceRepo.replaceConcepts(sequenceId, conceptRepo.saveAll(dtos));
         sequenceRepo.markDiverged(sequenceId);
@@ -240,7 +246,8 @@ public class TaskPersistenceService {
         String normalized = (taskDescription == null || taskDescription.isBlank()) ? null : taskDescription.strip();
         if (normalized != null && normalized.length() > MAX_TASK_DESCRIPTION_LENGTH) {
             throw new DomainValidationException(
-                    "Task description must be at most " + MAX_TASK_DESCRIPTION_LENGTH + " characters.");
+                "Task description must be at most " + MAX_TASK_DESCRIPTION_LENGTH + " characters."
+            );
         }
         sequenceRepo.updateTaskDescription(sequenceId, normalized);
         sequenceRepo.markDiverged(sequenceId);
@@ -251,8 +258,7 @@ public class TaskPersistenceService {
     public static final int MAX_SEQUENCE_TITLE_LENGTH = 120;
 
     /**
-     * Renames a sequence. A blank name clears it, so the sequence shows its default heading
-     * again.
+     * Renames a sequence. A blank name clears it, so the sequence shows its default heading again.
      *
      * @return the stored name, trimmed, or {@code null} when cleared
      */
@@ -264,7 +270,8 @@ public class TaskPersistenceService {
         String normalized = (title == null || title.isBlank()) ? null : title.strip();
         if (normalized != null && normalized.length() > MAX_SEQUENCE_TITLE_LENGTH) {
             throw new DomainValidationException(
-                    "Sequence name must be at most " + MAX_SEQUENCE_TITLE_LENGTH + " characters.");
+                "Sequence name must be at most " + MAX_SEQUENCE_TITLE_LENGTH + " characters."
+            );
         }
         sequenceRepo.updateTitle(sequenceId, normalized);
         sequenceRepo.markDiverged(sequenceId);
@@ -293,7 +300,8 @@ public class TaskPersistenceService {
             }
             logger.debug("Loaded {} tasks for sequence {}", tasks.size(), sequence.getId());
             sequence.setTasks(tasks);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Error loading tasks for sequence: {}", sequence.getId(), e);
             throw e;
         }
@@ -322,7 +330,8 @@ public class TaskPersistenceService {
                 throw new DomainValidationException("Cyclomatic complexity must not be negative.");
             }
             logger.trace("Task validation successful");
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Error validating task: {}", task, e);
             throw e;
         }
@@ -344,43 +353,47 @@ public class TaskPersistenceService {
             // AP19 Teil A: fire event for async LLM semantic tagging (3–10s background work).
             try {
                 eventPublisher.publishEvent(buildGeneratedEvent(sequence));
-            } catch (Exception evtEx) {
-                // Event publish should never fail the caller, but defend just in case.
-                logger.warn("Failed to publish SequenceGeneratedEvent for {}: {}",
-                        sequence.getId(), evtEx.getMessage());
             }
-        } catch (Exception e) {
+            catch (Exception evtEx) {
+                // Event publish should never fail the caller, but defend just in case.
+                logger.warn(
+                    "Failed to publish SequenceGeneratedEvent for {}: {}",
+                    sequence.getId(), evtEx.getMessage()
+                );
+            }
+        }
+        catch (Exception e) {
             logger.error("Error persisting sequence: {}", sequence.getId(), e);
             throw e;
         }
     }
 
     /**
-     * AP19 Teil A: assembles the payload for {@link SequenceGeneratedEvent}.
-     * Concatenates statements and code across all tiers so the LLM tagger sees the full picture.
+     * AP19 Teil A: assembles the payload for {@link SequenceGeneratedEvent}. Concatenates statements and code across
+     * all tiers so the LLM tagger sees the full picture.
      */
     private SequenceGeneratedEvent buildGeneratedEvent(TieredTaskSequenceDTO sequence) {
         List<TaskDTO> tasks = sequence.getTasks() == null ? List.of() : sequence.getTasks();
 
         String combinedStatement = tasks.stream()
-                .map(t -> t.getStatement() == null ? "" : t.getStatement())
-                .collect(Collectors.joining("\n---\n"));
+            .map(t -> t.getStatement() == null ? "" : t.getStatement())
+            .collect(Collectors.joining("\n---\n"));
 
         String combinedCode = tasks.stream()
-                .map(t -> t.getSolution() == null ? "" : t.getSolution())
-                .collect(Collectors.joining("\n\n// ─── next tier ───\n\n"));
+            .map(t -> t.getSolution() == null ? "" : t.getSolution())
+            .collect(Collectors.joining("\n\n// ─── next tier ───\n\n"));
 
         return new SequenceGeneratedEvent(
-                sequence.getId(),
-                sequence.getProgrammingLanguage(),
-                combinedStatement,
-                combinedCode);
+            sequence.getId(),
+            sequence.getProgrammingLanguage(),
+            combinedStatement,
+            combinedCode
+        );
     }
 
     /**
-     * OPT-6: Batched concept linking.
-     * Was: 2 round-trips per concept (INSERT + SELECT) + 1 round-trip per link = 3N round-trips.
-     * Now: 1 batch INSERT + 1 WHERE-IN SELECT + 1 batch link INSERT = 3 round-trips regardless of N.
+     * OPT-6: Batched concept linking. Was: 2 round-trips per concept (INSERT + SELECT) + 1 round-trip per link = 3N
+     * round-trips. Now: 1 batch INSERT + 1 WHERE-IN SELECT + 1 batch link INSERT = 3 round-trips regardless of N.
      */
     private void linkConcepts(TieredTaskSequenceDTO sequence) {
         try {
@@ -391,19 +404,20 @@ public class TaskPersistenceService {
             }
 
             List<ConceptDTO> dtos = conceptNames.stream()
-                    .filter(n -> n != null && !n.isBlank())
-                    .map(n -> {
-                        ConceptDTO d = new ConceptDTO();
-                        d.setName(n);
-                        return d;
-                    })
-                    .toList();
+                .filter(n -> n != null && !n.isBlank())
+                .map(n -> {
+                    ConceptDTO d = new ConceptDTO();
+                    d.setName(n);
+                    return d;
+                })
+                .toList();
 
             List<UUID> conceptIds = conceptRepo.saveAll(dtos);
             sequenceRepo.linkConceptsBatch(sequence.getId(), conceptIds);
 
             logger.debug("Successfully linked {} concepts (batched)", conceptIds.size());
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Error linking concepts for sequence: {}", sequence.getId(), e);
             throw e;
         }
@@ -415,7 +429,8 @@ public class TaskPersistenceService {
             validateSequence(sequence);
             sequenceRepo.save(sequence);
             logger.debug("Successfully saved sequence with ID: {}", sequence.getId());
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Error saving sequence: {}", sequence.getId(), e);
             throw e;
         }
@@ -443,7 +458,8 @@ public class TaskPersistenceService {
                 throw new DomainValidationException("Sequence version must not be null.");
             }
             logger.trace("Sequence validation successful");
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("Error validating sequence: {}", sequence, e);
             throw e;
         }
@@ -454,7 +470,8 @@ public class TaskPersistenceService {
      */
     @Transactional
     public void updateDistractors(UUID taskId, String distractors) {
-        if (taskId == null) throw new DomainValidationException("Task ID must not be null.");
+        if (taskId == null)
+            throw new DomainValidationException("Task ID must not be null.");
         taskRepo.updateDistractors(taskId, distractors);
         sequenceRepo.markDivergedByTaskId(taskId);
     }
@@ -469,11 +486,13 @@ public class TaskPersistenceService {
      */
     @Transactional
     public String updateTitle(UUID taskId, String title) {
-        if (taskId == null) throw new DomainValidationException("Task ID must not be null.");
+        if (taskId == null)
+            throw new DomainValidationException("Task ID must not be null.");
         String normalized = (title == null || title.isBlank()) ? null : title.strip();
         if (normalized != null && normalized.length() > MAX_TITLE_LENGTH) {
             throw new DomainValidationException(
-                    "Task name must be at most " + MAX_TITLE_LENGTH + " characters.");
+                "Task name must be at most " + MAX_TITLE_LENGTH + " characters."
+            );
         }
         taskRepo.updateTitle(taskId, normalized);
         sequenceRepo.markDivergedByTaskId(taskId);
@@ -485,7 +504,8 @@ public class TaskPersistenceService {
      */
     @Transactional
     public void updateDistractorsEnabled(UUID taskId, boolean enabled) {
-        if (taskId == null) throw new DomainValidationException("Task ID must not be null.");
+        if (taskId == null)
+            throw new DomainValidationException("Task ID must not be null.");
         taskRepo.updateDistractorsEnabled(taskId, enabled);
         sequenceRepo.markDivergedByTaskId(taskId);
     }

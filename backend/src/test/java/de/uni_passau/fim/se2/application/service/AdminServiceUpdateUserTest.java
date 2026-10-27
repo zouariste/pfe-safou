@@ -18,16 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.UserDTO;
-import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
-import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -38,9 +28,20 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import de.uni_passau.fim.se2.domain.entities.UserDTO;
+import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
+import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
+
 /**
- * An admin editing a user, in particular promoting a FIM-Account, which starts out
- * as a student and may have no email at all.
+ * An admin editing a user, in particular promoting a FIM-Account, which starts out as a student and may have no email
+ * at all.
  */
 class AdminServiceUpdateUserTest {
 
@@ -63,9 +64,9 @@ class AdminServiceUpdateUserTest {
         service.updateUser(student.getUserId(), "Max", "Mustermann", "max.mustermann@uni-passau.de", "TEACHER");
 
         assertAll(
-                () -> assertEquals(UserDTO.UserRole.TEACHER, student.getRole()),
-                () -> assertEquals("mustermann", student.getFimUid()),
-                () -> assertEquals("max.mustermann@uni-passau.de", student.getEmail())
+            () -> assertEquals(UserDTO.UserRole.TEACHER, student.getRole()),
+            () -> assertEquals("mustermann", student.getFimUid()),
+            () -> assertEquals("max.mustermann@uni-passau.de", student.getEmail())
         );
         verify(userRepository).update(student);
     }
@@ -92,21 +93,23 @@ class AdminServiceUpdateUserTest {
         when(userRepository.findById(student.getUserId())).thenReturn(Optional.of(student));
         when(userRepository.findByEmail("taken@uni-passau.de")).thenReturn(Optional.of(other));
 
-        assertThrows(AuthenticationException.class, () ->
-                service.updateUser(student.getUserId(), "Max", "Mustermann", "taken@uni-passau.de", "TEACHER"));
+        assertThrows(
+            AuthenticationException.class,
+            () -> service.updateUser(student.getUserId(), "Max", "Mustermann", "taken@uni-passau.de", "TEACHER")
+        );
         verify(userRepository, never()).update(any());
     }
 
     private static UserDTO fimStudent(String email) {
         return UserDTO.builder()
-                .userId(UUID.randomUUID())
-                .email(email)
-                .firstName("Max")
-                .lastName("Mustermann")
-                .role(UserDTO.UserRole.STUDENT)
-                .verified(true)
-                .active(true)
-                .fimUid("mustermann")
-                .build();
+            .userId(UUID.randomUUID())
+            .email(email)
+            .firstName("Max")
+            .lastName("Mustermann")
+            .role(UserDTO.UserRole.STUDENT)
+            .verified(true)
+            .active(true)
+            .fimUid("mustermann")
+            .build();
     }
 }

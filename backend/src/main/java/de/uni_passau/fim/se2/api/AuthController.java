@@ -18,11 +18,13 @@
  */
 package de.uni_passau.fim.se2.api;
 
+import java.util.*;
+
+import org.springframework.http.*;
+import org.springframework.security.core.annotation.*;
+import org.springframework.web.bind.annotation.*;
+
 import de.uni_passau.fim.se2.api.dto.*;
-import de.uni_passau.fim.se2.application.service.*;
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.exceptions.*;
-import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.api.dto.AuthResponse;
 import de.uni_passau.fim.se2.api.dto.LoginRequest;
 import de.uni_passau.fim.se2.api.dto.PasswordResetConfirmRequest;
@@ -32,18 +34,17 @@ import de.uni_passau.fim.se2.api.dto.StudentOnboardingRequest;
 import de.uni_passau.fim.se2.api.dto.UpdateEmailRequest;
 import de.uni_passau.fim.se2.api.dto.UpdatePasswordRequest;
 import de.uni_passau.fim.se2.api.dto.UpdateProfileRequest;
+import de.uni_passau.fim.se2.application.service.*;
 import de.uni_passau.fim.se2.application.service.AuthService;
+import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.UserDTO;
+import de.uni_passau.fim.se2.domain.exceptions.*;
 import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
+import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
 import jakarta.validation.*;
 import lombok.*;
 import lombok.extern.slf4j.*;
-import org.springframework.http.*;
-import org.springframework.security.core.annotation.*;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.*;
 
 @Slf4j
 @RestController
@@ -60,14 +61,16 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         authService.registerTeacher(
-                request.getEmail(),
-                request.getPassword(),
-                request.getFirstName(),
-                request.getLastName()
+            request.getEmail(),
+            request.getPassword(),
+            request.getFirstName(),
+            request.getLastName()
         );
-        return ResponseEntity.ok(Map.of(
+        return ResponseEntity.ok(
+            Map.of(
                 "message", "Registrierung erfolgreich. Bitte bestätige deine Email-Adresse."
-        ));
+            )
+        );
     }
 
     /**
@@ -93,20 +96,20 @@ public class AuthController {
         List<String> classIds = null;
         if (user.getRole() == UserDTO.UserRole.STUDENT) {
             classIds = classRepository.findByStudentId(user.getUserId()).stream()
-                    .map(c -> c.getId().toString())
-                    .toList();
+                .map(c -> c.getId().toString())
+                .toList();
         }
         return AuthResponse.builder()
-                .token(token)
-                .role(user.getRole().name())
-                .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .userId(user.getUserId().toString())
-                .classIds(classIds)
-                .mustChangePassword(user.isMustChangePassword() ? true : null)
-                .fimAccount(user.getFimUid() != null ? true : null)
-                .build();
+            .token(token)
+            .role(user.getRole().name())
+            .email(user.getEmail())
+            .firstName(user.getFirstName())
+            .lastName(user.getLastName())
+            .userId(user.getUserId().toString())
+            .classIds(classIds)
+            .mustChangePassword(user.isMustChangePassword() ? true : null)
+            .fimAccount(user.getFimUid() != null ? true : null)
+            .build();
     }
 
     /**
@@ -124,9 +127,11 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody PasswordResetRequest request) {
         authService.requestPasswordReset(request.getEmail());
-        return ResponseEntity.ok(Map.of(
+        return ResponseEntity.ok(
+            Map.of(
                 "message", "Falls ein Account mit dieser Email existiert, wurde eine Reset-Mail gesendet."
-        ));
+            )
+        );
     }
 
     /**
@@ -144,11 +149,13 @@ public class AuthController {
     @PostMapping("/validate-token")
     public ResponseEntity<?> validateStudentToken(@RequestBody Map<String, String> body) {
         UserDTO student = authService.validateStudentToken(body.get("token"));
-        return ResponseEntity.ok(Map.of(
+        return ResponseEntity.ok(
+            Map.of(
                 "firstName", student.getFirstName(),
                 "lastName", student.getLastName(),
                 "userId", student.getUserId().toString()
-        ));
+            )
+        );
     }
 
     /**
@@ -157,13 +164,15 @@ public class AuthController {
     @PostMapping("/student-onboarding")
     public ResponseEntity<?> completeStudentOnboarding(@Valid @RequestBody StudentOnboardingRequest request) {
         authService.completeStudentOnboarding(
-                request.getToken(),
-                request.getEmail(),
-                request.getPassword()
+            request.getToken(),
+            request.getEmail(),
+            request.getPassword()
         );
-        return ResponseEntity.ok(Map.of(
+        return ResponseEntity.ok(
+            Map.of(
                 "message", "Account eingerichtet. Bitte bestätige deine Email-Adresse."
-        ));
+            )
+        );
     }
 
     /**
@@ -175,55 +184,67 @@ public class AuthController {
             throw new AuthenticationException("Nicht eingeloggt.");
         }
         UserDTO user = authService.getUserById(userId);
-        return ResponseEntity.ok(AuthResponse.builder()
-                                         .token(null)
-                                         .role(user.getRole().name())
-                                         .email(user.getEmail())
-                                         .firstName(user.getFirstName())
-                                         .lastName(user.getLastName())
-                                         .userId(user.getUserId().toString())
-                                         .fimAccount(user.getFimUid() != null ? true : null)
-                                         .build());
+        return ResponseEntity.ok(
+            AuthResponse.builder()
+                .token(null)
+                .role(user.getRole().name())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .userId(user.getUserId().toString())
+                .fimAccount(user.getFimUid() != null ? true : null)
+                .build()
+        );
     }
 
     /**
      * Updates the user's profile information.
      */
     @PutMapping("/profile")
-    public ResponseEntity<?> updateProfile(@AuthenticationPrincipal UUID userId,
-                                           @Valid @RequestBody UpdateProfileRequest request) {
+    public ResponseEntity<?> updateProfile(
+        @AuthenticationPrincipal UUID userId,
+        @Valid @RequestBody UpdateProfileRequest request
+    ) {
         if (userId == null) {
             throw new AuthenticationException("Nicht eingeloggt.");
         }
         UserDTO updated = authService.updateProfile(userId, request.getFirstName(), request.getLastName());
-        return ResponseEntity.ok(Map.of(
+        return ResponseEntity.ok(
+            Map.of(
                 "message", "Profil aktualisiert.",
                 "firstName", updated.getFirstName(),
                 "lastName", updated.getLastName()
-        ));
+            )
+        );
     }
 
     /**
      * Updates the user's email address.
      */
     @PutMapping("/profile/email")
-    public ResponseEntity<?> updateEmail(@AuthenticationPrincipal UUID userId,
-                                         @Valid @RequestBody UpdateEmailRequest request) {
+    public ResponseEntity<?> updateEmail(
+        @AuthenticationPrincipal UUID userId,
+        @Valid @RequestBody UpdateEmailRequest request
+    ) {
         if (userId == null) {
             throw new AuthenticationException("Nicht eingeloggt.");
         }
         authService.updateEmail(userId, request.getNewEmail());
-        return ResponseEntity.ok(Map.of(
+        return ResponseEntity.ok(
+            Map.of(
                 "message", "Email geändert. Bitte bestätige die neue Email-Adresse."
-        ));
+            )
+        );
     }
 
     /**
      * Updates the user's password.
      */
     @PutMapping("/profile/password")
-    public ResponseEntity<?> updatePassword(@AuthenticationPrincipal UUID userId,
-                                            @Valid @RequestBody UpdatePasswordRequest request) {
+    public ResponseEntity<?> updatePassword(
+        @AuthenticationPrincipal UUID userId,
+        @Valid @RequestBody UpdatePasswordRequest request
+    ) {
         if (userId == null) {
             throw new AuthenticationException("Nicht eingeloggt.");
         }
@@ -232,12 +253,14 @@ public class AuthController {
     }
 
     /**
-     * Changes a temporary password set by a teacher.
-     * Does not require the old password. Only works when mustChangePassword = true.
+     * Changes a temporary password set by a teacher. Does not require the old password. Only works when
+     * mustChangePassword = true.
      */
     @PostMapping("/change-temp-password")
-    public ResponseEntity<?> changeTempPassword(@AuthenticationPrincipal UUID userId,
-                                                @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> changeTempPassword(
+        @AuthenticationPrincipal UUID userId,
+        @RequestBody Map<String, String> body
+    ) {
         if (userId == null) {
             throw new AuthenticationException("Nicht eingeloggt.");
         }
@@ -262,8 +285,10 @@ public class AuthController {
      */
     @ExceptionHandler(DirectoryUnavailableException.class)
     public ResponseEntity<?> handleDirectoryUnavailable(DirectoryUnavailableException e) {
-        return ResponseEntity.status(503).body(Map.of(
+        return ResponseEntity.status(503).body(
+            Map.of(
                 "error", "Die FIM-Anmeldung ist gerade nicht erreichbar. Bitte versuche es später erneut."
-        ));
+            )
+        );
     }
 }

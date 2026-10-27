@@ -24,6 +24,8 @@ import lombok.Data;
 
 @Data
 public class UpdateEmailRequest {
-    @NotBlank @Email(message = "Ungültige Email-Adresse.")
+
+    @NotBlank
+    @Email(message = "Ungültige Email-Adresse.")
     private String newEmail;
 }

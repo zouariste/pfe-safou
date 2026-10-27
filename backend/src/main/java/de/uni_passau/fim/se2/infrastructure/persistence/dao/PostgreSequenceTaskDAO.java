@@ -18,24 +18,26 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
+import java.util.*;
+
+import org.springframework.stereotype.*;
+
 import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceTaskDTO;
+import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceTaskRepository;
-import org.springframework.stereotype.*;
-
-import java.util.*;
 
 @Repository
 public class PostgreSequenceTaskDAO implements TieredTaskSequenceTaskRepository {
+
     /**
-     * Persists the provided TieredTaskSequenceTaskDTO instance.
-     * Typically used to associate a task with a specific tiered task sequence.
+     * Persists the provided TieredTaskSequenceTaskDTO instance. Typically used to associate a task with a specific
+     * tiered task sequence.
      *
-     * @param dto the TieredTaskSequenceTaskDTO object containing the mapping of a task
-     *            to a tiered task sequence, including taskId and sequenceId
+     * @param dto the TieredTaskSequenceTaskDTO object containing the mapping of a task to a tiered task sequence,
+     *            including taskId and sequenceId
      */
     @Override
     public void save(TieredTaskSequenceTaskDTO dto) {
@@ -56,8 +58,7 @@ public class PostgreSequenceTaskDAO implements TieredTaskSequenceTaskRepository 
     /**
      * Deletes the specified mapping between a tiered task sequence and a task.
      *
-     * @param dto the data transfer object containing the task ID and sequence ID
-     *            of the mapping to be deleted
+     * @param dto the data transfer object containing the task ID and sequence ID of the mapping to be deleted
      */
     @Override
     public void delete(TieredTaskSequenceTaskDTO dto) {

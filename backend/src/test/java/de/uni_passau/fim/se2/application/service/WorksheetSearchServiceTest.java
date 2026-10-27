@@ -18,27 +18,28 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.application.query.WorksheetSearchQuery;
-import de.uni_passau.fim.se2.application.service.WorksheetSearchService.WhereClause;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.UUID;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import de.uni_passau.fim.se2.application.query.WorksheetSearchQuery;
+import de.uni_passau.fim.se2.application.service.WorksheetSearchService.WhereClause;
+
 /**
  * The filter the marketplace applies, checked without a database.
  *
- * <p>Whether the SQL matches the right rows is {@code WorksheetSearchIT}'s job — that needs a
- * real Postgres and cannot be faked. What this class covers is the part a database would not
- * tell you anyway: that the clause is <em>built</em> correctly. In particular that the
- * visibility filter is unconditional, that no caller-supplied text ever reaches the SQL string,
- * and that "only mine" without a user narrows rather than widens.
+ * <p>
+ * Whether the SQL matches the right rows is {@code WorksheetSearchIT}'s job — that needs a real Postgres and cannot be
+ * faked. What this class covers is the part a database would not tell you anyway: that the clause is <em>built</em>
+ * correctly. In particular that the visibility filter is unconditional, that no caller-supplied text ever reaches the
+ * SQL string, and that "only mine" without a user narrows rather than widens.
  */
 class WorksheetSearchServiceTest {
 
@@ -46,7 +47,8 @@ class WorksheetSearchServiceTest {
 
     private static WhereClause where(String q, String lang, boolean onlyMine, UUID user) {
         return WorksheetSearchService.buildWhere(
-                WorksheetSearchQuery.of(q, lang, onlyMine, null, 0, 0), user);
+            WorksheetSearchQuery.of(q, lang, onlyMine, null, 0, 0), user
+        );
     }
 
     @Nested
@@ -59,9 +61,10 @@ class WorksheetSearchServiceTest {
             // The endpoint is safe to serve anonymously only because of this clause, so it must
             // survive every combination of the optional ones.
             assertAll(
-                    () -> assertTrue(where(null, null, false, null).sql().contains("w.visibility = ?")),
-                    () -> assertTrue(where("rekursion", "java", true, USER).sql().contains("w.visibility = ?")),
-                    () -> assertTrue(where(null, null, false, null).params().contains("PUBLIC")));
+                () -> assertTrue(where(null, null, false, null).sql().contains("w.visibility = ?")),
+                () -> assertTrue(where("rekursion", "java", true, USER).sql().contains("w.visibility = ?")),
+                () -> assertTrue(where(null, null, false, null).params().contains("PUBLIC"))
+            );
         }
 
         @Test
@@ -69,9 +72,13 @@ class WorksheetSearchServiceTest {
         void inboxIsAlwaysExcluded() {
             WhereClause clause = where(null, null, false, USER);
             assertAll(
-                    () -> assertTrue(clause.sql().contains("NOT LIKE ?")),
-                    () -> assertTrue(clause.params().stream().anyMatch(
-                            p -> String.valueOf(p).contains(WorksheetService.LIBRARY_INBOX_SENTINEL))));
+                () -> assertTrue(clause.sql().contains("NOT LIKE ?")),
+                () -> assertTrue(
+                    clause.params().stream().anyMatch(
+                        p -> String.valueOf(p).contains(WorksheetService.LIBRARY_INBOX_SENTINEL)
+                    )
+                )
+            );
         }
     }
 
@@ -86,11 +93,16 @@ class WorksheetSearchServiceTest {
             WhereClause clause = where(nasty, nasty, true, USER);
 
             assertAll(
-                    () -> assertFalse(clause.sql().contains("DROP TABLE"),
-                            "the query text must reach the database as a parameter, never as SQL"),
-                    () -> assertFalse(clause.sql().contains(nasty)),
-                    () -> assertTrue(clause.params().contains(nasty),
-                            "and it must actually be bound, or the filter silently does nothing"));
+                () -> assertFalse(
+                    clause.sql().contains("DROP TABLE"),
+                    "the query text must reach the database as a parameter, never as SQL"
+                ),
+                () -> assertFalse(clause.sql().contains(nasty)),
+                () -> assertTrue(
+                    clause.params().contains(nasty),
+                    "and it must actually be bound, or the filter silently does nothing"
+                )
+            );
         }
 
         @Test
@@ -98,14 +110,18 @@ class WorksheetSearchServiceTest {
         void placeholdersAndParametersAgree() {
             // A mismatch here is the classic way a dynamic query breaks: the SQL is valid, the
             // parameters are valid, and they line up one position out.
-            for (WhereClause clause : new WhereClause[]{
+            for (
+                WhereClause clause : new WhereClause[] {
                     where(null, null, false, null),
                     where("prüfung", null, false, USER),
                     where(null, "java", false, USER),
-                    where("prüfung", "java", true, USER)}) {
+                    where("prüfung", "java", true, USER) }
+            ) {
                 long placeholders = clause.sql().chars().filter(c -> c == '?').count();
-                assertEquals(placeholders, clause.params().size(),
-                        "placeholder/parameter mismatch for: " + clause.sql());
+                assertEquals(
+                    placeholders, clause.params().size(),
+                    "placeholder/parameter mismatch for: " + clause.sql()
+                );
             }
         }
 
@@ -116,15 +132,19 @@ class WorksheetSearchServiceTest {
             // "syntax error at end of input", which the database tests caught and every mock
             // test in the world would have missed — the clause is assembled from four nested
             // fragments, and counting them by eye is exactly the kind of thing to automate.
-            for (WhereClause clause : new WhereClause[]{
+            for (
+                WhereClause clause : new WhereClause[] {
                     where(null, null, false, null),
                     where("prüfung", null, false, USER),
                     where(null, "java", false, USER),
-                    where("prüfung", "java", true, USER)}) {
+                    where("prüfung", "java", true, USER) }
+            ) {
                 int depth = 0;
                 for (char c : clause.sql().toCharArray()) {
-                    if (c == '(') depth++;
-                    if (c == ')') depth--;
+                    if (c == '(')
+                        depth++;
+                    if (c == ')')
+                        depth--;
                     assertTrue(depth >= 0, "closed a parenthesis that was never opened: " + clause.sql());
                 }
                 assertEquals(0, depth, "unbalanced parentheses in: " + clause.sql());
@@ -153,9 +173,10 @@ class WorksheetSearchServiceTest {
         void emptyQueryStaysMinimal() {
             WhereClause clause = where(null, null, false, USER);
             assertAll(
-                    () -> assertFalse(clause.sql().contains("programming_language")),
-                    () -> assertFalse(clause.sql().contains("search_vector")),
-                    () -> assertFalse(clause.sql().contains("owner_id")));
+                () -> assertFalse(clause.sql().contains("programming_language")),
+                () -> assertFalse(clause.sql().contains("search_vector")),
+                () -> assertFalse(clause.sql().contains("owner_id"))
+            );
         }
 
         @Test
@@ -163,18 +184,22 @@ class WorksheetSearchServiceTest {
         void languageFilterJoinsSequences() {
             WhereClause clause = where(null, "java", false, USER);
             assertAll(
-                    () -> assertTrue(clause.sql().contains("programming_language = ?")),
-                    () -> assertTrue(clause.params().contains("java")));
+                () -> assertTrue(clause.sql().contains("programming_language = ?")),
+                () -> assertTrue(clause.params().contains("java"))
+            );
         }
 
         @Test
         @DisplayName("the language facet query drops the language filter, so the sidebar shows alternatives")
         void facetQueryIgnoresItsOwnFilter() {
             WhereClause facet = WorksheetSearchService.buildWhere(
-                    WorksheetSearchQuery.of(null, "java", false, null, 0, 0), USER, false);
+                WorksheetSearchQuery.of(null, "java", false, null, 0, 0), USER, false
+            );
 
-            assertFalse(facet.sql().contains("programming_language = ?"),
-                    "counting only the language already picked would make the sidebar useless");
+            assertFalse(
+                facet.sql().contains("programming_language = ?"),
+                "counting only the language already picked would make the sidebar useless"
+            );
         }
 
         @Test
@@ -182,9 +207,10 @@ class WorksheetSearchServiceTest {
         void freeTextReachesSequencesAndTasks() {
             String sql = where("rekursion", null, false, USER).sql();
             assertAll(
-                    () -> assertTrue(sql.contains("w.search_vector"), "the worksheet's own words"),
-                    () -> assertTrue(sql.contains("s.search_vector"), "its sequences"),
-                    () -> assertTrue(sql.contains("t.search_vector"), "and their tasks"));
+                () -> assertTrue(sql.contains("w.search_vector"), "the worksheet's own words"),
+                () -> assertTrue(sql.contains("s.search_vector"), "its sequences"),
+                () -> assertTrue(sql.contains("t.search_vector"), "and their tasks")
+            );
         }
     }
 
@@ -197,8 +223,9 @@ class WorksheetSearchServiceTest {
         void narrowsToTheCaller() {
             WhereClause clause = where(null, null, true, USER);
             assertAll(
-                    () -> assertTrue(clause.sql().contains("w.owner_id = ?")),
-                    () -> assertTrue(clause.params().contains(USER)));
+                () -> assertTrue(clause.sql().contains("w.owner_id = ?")),
+                () -> assertTrue(clause.params().contains(USER))
+            );
         }
 
         @Test
@@ -206,9 +233,12 @@ class WorksheetSearchServiceTest {
         void anonymousGetsNothing() {
             WhereClause clause = where(null, null, true, null);
             assertAll(
-                    () -> assertTrue(clause.sql().contains("1=0"),
-                            "\"only mine\" with no known user must not quietly mean \"everyone\""),
-                    () -> assertFalse(clause.sql().contains("w.owner_id = ?")));
+                () -> assertTrue(
+                    clause.sql().contains("1=0"),
+                    "\"only mine\" with no known user must not quietly mean \"everyone\""
+                ),
+                () -> assertFalse(clause.sql().contains("w.owner_id = ?"))
+            );
         }
     }
 }

@@ -18,21 +18,21 @@
  */
 package de.uni_passau.fim.se2.api;
 
-import de.uni_passau.fim.se2.application.service.ConceptQueryService;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import de.uni_passau.fim.se2.application.service.ConceptQueryService;
+import lombok.RequiredArgsConstructor;
 
 /**
- * The concept catalogue, for every screen that lets someone pick concepts:
- * curriculum learning areas, the generator on the home page, and the manual
- * task creator. It is not curriculum-specific, hence its own controller rather
- * than a corner of {@link CurriculumController}.
+ * The concept catalogue, for every screen that lets someone pick concepts: curriculum learning areas, the generator on
+ * the home page, and the manual task creator. It is not curriculum-specific, hence its own controller rather than a
+ * corner of {@link CurriculumController}.
  */
 @CrossOrigin(origins = "http://localhost:5175")
 @RestController

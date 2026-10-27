@@ -40,8 +40,7 @@ public class SpotBugsAnalyzer {
     }
 
     /**
-     * Runs SpotBugs on compiled .class files.
-     * Only call this when javac succeeded (compiled = true).
+     * Runs SpotBugs on compiled .class files. Only call this when javac succeeded (compiled = true).
      */
     public List<AnalysisFinding> analyze(Path classOutputDir) {
         // Check if SpotBugs JAR exists
@@ -78,7 +77,8 @@ public class SpotBugsAnalyzer {
             String sarifJson = Files.readString(sarifOutput);
             return sarifParser.parse(sarifJson, "spotbugs");
 
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             logger.error("SpotBugs analysis failed", e);
             return List.of();
         }

@@ -18,24 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.ResearchDataset;
-import de.uni_passau.fim.se2.domain.entities.ResearchLog;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.ResearchLogRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.function.Consumer;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -49,13 +31,32 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Consumer;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import de.uni_passau.fim.se2.domain.entities.ResearchDataset;
+import de.uni_passau.fim.se2.domain.entities.ResearchLog;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.ResearchLogRepository;
+
 /**
  * What the admin research page is allowed to ask for, and what comes back.
  *
- * <p>The filter is the one thing the table, the stats strip and both downloads share. If it
- * normalises differently for any of them, a CSV quietly stops matching the rows that were on
- * screen when it was clicked — which is the kind of wrong nobody notices until the numbers are
- * already in a paper.
+ * <p>
+ * The filter is the one thing the table, the stats strip and both downloads share. If it normalises differently for any
+ * of them, a CSV quietly stops matching the rows that were on screen when it was clicked — which is the kind of wrong
+ * nobody notices until the numbers are already in a paper.
  */
 @DisplayName("research log service")
 class ResearchLogServiceTest {
@@ -69,8 +70,10 @@ class ResearchLogServiceTest {
         service = new ResearchLogService(repository);
     }
 
-    private ResearchLog.Filter filter(ResearchDataset dataset, String eventType,
-                                      LocalDate from, LocalDate to, Integer page, Integer size) {
+    private ResearchLog.Filter filter(
+        ResearchDataset dataset, String eventType,
+        LocalDate from, LocalDate to, Integer page, Integer size
+    ) {
         return service.buildFilter(dataset, null, eventType, from, to, page, size);
     }
 
@@ -85,17 +88,19 @@ class ResearchLogServiceTest {
             ResearchLog.Filter f = filter(ResearchDataset.EVENTS, null, day, day, 0, 50);
 
             assertAll(
-                    () -> assertEquals(day.atStartOfDay(), f.from()),
-                    // exclusive upper bound at the next midnight
-                    () -> assertEquals(day.plusDays(1).atStartOfDay(), f.to())
+                () -> assertEquals(day.atStartOfDay(), f.from()),
+                // exclusive upper bound at the next midnight
+                () -> assertEquals(day.plusDays(1).atStartOfDay(), f.to())
             );
         }
 
         @Test
         @DisplayName("an oversized page is clamped rather than refused")
         void sizeIsClamped() {
-            assertEquals(ResearchLogService.MAX_PAGE_SIZE,
-                    filter(ResearchDataset.EVENTS, null, null, null, 0, 100_000).size());
+            assertEquals(
+                ResearchLogService.MAX_PAGE_SIZE,
+                filter(ResearchDataset.EVENTS, null, null, null, 0, 100_000).size()
+            );
         }
 
         @Test
@@ -103,8 +108,8 @@ class ResearchLogServiceTest {
         void pagingIsNormalized() {
             ResearchLog.Filter f = filter(ResearchDataset.EVENTS, null, null, null, -3, 0);
             assertAll(
-                    () -> assertEquals(0, f.page()),
-                    () -> assertEquals(ResearchLogService.DEFAULT_PAGE_SIZE, f.size())
+                () -> assertEquals(0, f.page()),
+                () -> assertEquals(ResearchLogService.DEFAULT_PAGE_SIZE, f.size())
             );
         }
 
@@ -117,30 +122,41 @@ class ResearchLogServiceTest {
         @Test
         @DisplayName("a mistyped event type is refused, so it cannot look like missing data")
         void unknownEventTypeIsRejected() {
-            assertThrows(DomainValidationException.class,
-                    () -> filter(ResearchDataset.EVENTS, "arrangement_nudged", null, null, 0, 50));
+            assertThrows(
+                DomainValidationException.class,
+                () -> filter(ResearchDataset.EVENTS, "arrangement_nudged", null, null, 0, 50)
+            );
         }
 
         @Test
         @DisplayName("an event type on a dataset that has none is refused")
         void eventTypeOnWrongDatasetIsRejected() {
-            assertThrows(DomainValidationException.class,
-                    () -> filter(ResearchDataset.HINTS, "task_opened", null, null, 0, 50));
+            assertThrows(
+                DomainValidationException.class,
+                () -> filter(ResearchDataset.HINTS, "task_opened", null, null, 0, 50)
+            );
         }
 
         @Test
         @DisplayName("a backwards date range is refused")
         void backwardsRangeIsRejected() {
-            assertThrows(DomainValidationException.class,
-                    () -> filter(ResearchDataset.EVENTS, null,
-                            LocalDate.of(2026, 9, 17), LocalDate.of(2026, 9, 10), 0, 50));
+            assertThrows(
+                DomainValidationException.class,
+                () -> filter(
+                    ResearchDataset.EVENTS, null,
+                    LocalDate.of(2026, 9, 17), LocalDate.of(2026, 9, 10), 0, 50
+                )
+            );
         }
 
         @Test
         @DisplayName("no class means everything, including the rows that belong to no class")
         void noClassIsNoRestriction() {
-            assertNull(service.buildFilter(
-                    ResearchDataset.EVENTS, null, null, null, null, 0, 50).classId());
+            assertNull(
+                service.buildFilter(
+                    ResearchDataset.EVENTS, null, null, null, null, 0, 50
+                ).classId()
+            );
         }
     }
 
@@ -158,11 +174,11 @@ class ResearchLogServiceTest {
             ResearchLog.Page page = service.page(ResearchDataset.EVENTS, f);
 
             assertAll(
-                    () -> assertEquals(123L, page.totalElements()),
-                    () -> assertEquals(3, page.totalPages()),
-                    () -> assertEquals(1, page.content().size()),
-                    // columns come from the dataset, so an empty result still has a header
-                    () -> assertEquals(ResearchDataset.EVENTS.columns(), page.columns())
+                () -> assertEquals(123L, page.totalElements()),
+                () -> assertEquals(3, page.totalPages()),
+                () -> assertEquals(1, page.content().size()),
+                // columns come from the dataset, so an empty result still has a header
+                () -> assertEquals(ResearchDataset.EVENTS.columns(), page.columns())
             );
         }
 
@@ -176,9 +192,9 @@ class ResearchLogServiceTest {
             ResearchLog.Page page = service.page(ResearchDataset.SUBMISSIONS, f);
 
             assertAll(
-                    () -> assertEquals(0, page.totalPages()),
-                    () -> assertTrue(page.content().isEmpty()),
-                    () -> assertTrue(page.columns().contains("block_order"))
+                () -> assertEquals(0, page.totalPages()),
+                () -> assertTrue(page.content().isEmpty()),
+                () -> assertTrue(page.columns().contains("block_order"))
             );
         }
     }
@@ -245,8 +261,11 @@ class ResearchLogServiceTest {
         void rowCountIsReported() {
             respondWith(List.of(eventRow("task_opened", null), eventRow("task_correct", null)));
             ResearchLog.Filter f = filter(ResearchDataset.EVENTS, null, null, null, 0, 50);
-            assertEquals(2L, service.streamCsv(
-                    ResearchDataset.EVENTS, f, new ByteArrayOutputStream()));
+            assertEquals(
+                2L, service.streamCsv(
+                    ResearchDataset.EVENTS, f, new ByteArrayOutputStream()
+                )
+            );
         }
 
         @Test

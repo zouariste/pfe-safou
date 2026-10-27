@@ -18,18 +18,19 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.entities.LearningEventDTO;
-import de.uni_passau.fim.se2.domain.interfaces.LearningEventRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.UUID;
+
 import org.postgresql.util.PGobject;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-import java.sql.SQLException;
-import java.util.List;
-import java.util.UUID;
+import de.uni_passau.fim.se2.domain.entities.LearningEventDTO;
+import de.uni_passau.fim.se2.domain.interfaces.LearningEventRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Repository
@@ -39,16 +40,16 @@ public class PostgreLearningEventDao implements LearningEventRepository {
     private final JdbcTemplate jdbc;
 
     private static final RowMapper<LearningEventDTO> ROW_MAPPER = (rs, rowNum) -> LearningEventDTO.builder()
-            .id(rs.getObject("id", UUID.class))
-            .userId(rs.getObject("user_id", UUID.class))
-            .classId(rs.getObject("class_id", UUID.class))
-            .taskId(rs.getObject("task_id", UUID.class))
-            .sequenceId(rs.getObject("sequence_id", UUID.class))
-            .tierLevel(rs.getObject("tier_level") != null ? rs.getInt("tier_level") : null)
-            .eventType(rs.getString("event_type"))
-            .eventData(rs.getString("event_data"))
-            .createdAt(rs.getTimestamp("created_at"))
-            .build();
+        .id(rs.getObject("id", UUID.class))
+        .userId(rs.getObject("user_id", UUID.class))
+        .classId(rs.getObject("class_id", UUID.class))
+        .taskId(rs.getObject("task_id", UUID.class))
+        .sequenceId(rs.getObject("sequence_id", UUID.class))
+        .tierLevel(rs.getObject("tier_level") != null ? rs.getInt("tier_level") : null)
+        .eventType(rs.getString("event_type"))
+        .eventData(rs.getString("event_data"))
+        .createdAt(rs.getTimestamp("created_at"))
+        .build();
 
     @Override
     public void save(LearningEventDTO event) {
@@ -60,22 +61,24 @@ public class PostgreLearningEventDao implements LearningEventRepository {
         jsonObj.setType("jsonb");
         try {
             jsonObj.setValue(event.getEventData() != null ? event.getEventData() : "{}");
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw new RuntimeException("Failed to set JSONB value", e);
         }
 
-        jdbc.update("""
-            INSERT INTO learning_events (id, user_id, class_id, task_id, sequence_id, tier_level, event_type, event_data)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-                event.getId(),
-                event.getUserId(),
-                event.getClassId(),
-                event.getTaskId(),
-                event.getSequenceId(),
-                event.getTierLevel(),
-                event.getEventType(),
-                jsonObj
+        jdbc.update(
+            """
+                INSERT INTO learning_events (id, user_id, class_id, task_id, sequence_id, tier_level, event_type, event_data)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+            event.getId(),
+            event.getUserId(),
+            event.getClassId(),
+            event.getTaskId(),
+            event.getSequenceId(),
+            event.getTierLevel(),
+            event.getEventType(),
+            jsonObj
         );
 
         log.debug("Saved learning event: type={}, taskId={}", event.getEventType(), event.getTaskId());
@@ -84,32 +87,32 @@ public class PostgreLearningEventDao implements LearningEventRepository {
     @Override
     public List<LearningEventDTO> findByTaskId(UUID taskId) {
         return jdbc.query(
-                "SELECT * FROM learning_events WHERE task_id = ? ORDER BY created_at",
-                ROW_MAPPER, taskId
+            "SELECT * FROM learning_events WHERE task_id = ? ORDER BY created_at",
+            ROW_MAPPER, taskId
         );
     }
 
     @Override
     public List<LearningEventDTO> findByUserId(UUID userId) {
         return jdbc.query(
-                "SELECT * FROM learning_events WHERE user_id = ? ORDER BY created_at",
-                ROW_MAPPER, userId
+            "SELECT * FROM learning_events WHERE user_id = ? ORDER BY created_at",
+            ROW_MAPPER, userId
         );
     }
 
     @Override
     public List<LearningEventDTO> findBySequenceId(UUID sequenceId) {
         return jdbc.query(
-                "SELECT * FROM learning_events WHERE sequence_id = ? ORDER BY created_at",
-                ROW_MAPPER, sequenceId
+            "SELECT * FROM learning_events WHERE sequence_id = ? ORDER BY created_at",
+            ROW_MAPPER, sequenceId
         );
     }
 
     @Override
     public List<LearningEventDTO> findAll() {
         return jdbc.query(
-                "SELECT * FROM learning_events ORDER BY created_at",
-                ROW_MAPPER
+            "SELECT * FROM learning_events ORDER BY created_at",
+            ROW_MAPPER
         );
     }
 
@@ -117,15 +120,16 @@ public class PostgreLearningEventDao implements LearningEventRepository {
      * Checks whether any class this student belongs to has tracking_enabled = true.
      */
     public boolean isTrackingEnabledForStudent(UUID userId) {
-        List<Boolean> results = jdbc.query("""
-            SELECT EXISTS(
-                SELECT 1 FROM class_students cs
-                JOIN classes c ON c.id = cs.class_id
-                WHERE cs.student_id = ? AND c.tracking_enabled = true
-            ) AS enabled
-            """,
-                (rs, rowNum) -> rs.getBoolean("enabled"),
-                userId
+        List<Boolean> results = jdbc.query(
+            """
+                SELECT EXISTS(
+                    SELECT 1 FROM class_students cs
+                    JOIN classes c ON c.id = cs.class_id
+                    WHERE cs.student_id = ? AND c.tracking_enabled = true
+                ) AS enabled
+                """,
+            (rs, rowNum) -> rs.getBoolean("enabled"),
+            userId
         );
         return results.stream().findFirst().orElse(false);
     }
@@ -133,41 +137,44 @@ public class PostgreLearningEventDao implements LearningEventRepository {
     /**
      * Finds the class a student's work on a task belongs to, for {@code learning_events.class_id}.
      *
-     * <p>Resolved from the intersection of the two things that are actually known: the classes
-     * the student is enrolled in, and the classes this task's worksheet is assigned to. A
-     * student in several classes and a worksheet handed to several classes both produce
-     * candidates on their own; only together do they pin down one class.
+     * <p>
+     * Resolved from the intersection of the two things that are actually known: the classes the student is enrolled in,
+     * and the classes this task's worksheet is assigned to. A student in several classes and a worksheet handed to
+     * several classes both produce candidates on their own; only together do they pin down one class.
      *
-     * <p>Falls back to the student's first class when the intersection is empty, which happens
-     * when a task is reached outside any worksheet — {@code /api/tasks/**} is {@code permitAll},
-     * so a task can be solved from a direct link. Returns null when even that finds nothing, and
-     * for a visitor who is not logged in at all.
+     * <p>
+     * Falls back to the student's first class when the intersection is empty, which happens when a task is reached
+     * outside any worksheet — {@code /api/tasks/**} is {@code permitAll}, so a task can be solved from a direct link.
+     * Returns null when even that finds nothing, and for a visitor who is not logged in at all.
      */
     public UUID resolveClassId(UUID userId, UUID taskId) {
-        if (userId == null || taskId == null) return null;
+        if (userId == null || taskId == null)
+            return null;
 
         // Oldest assignment first, so the answer is stable rather than whatever the planner
         // happened to return first, in the rare case a student is in two classes sharing a
         // worksheet.
-        List<UUID> matched = jdbc.query("""
-            SELECT cw.class_id
-            FROM class_students cs
-            JOIN class_worksheets cw    ON cw.class_id     = cs.class_id
-            JOIN worksheets_sequence ws ON ws.worksheet_id = cw.worksheet_id
-            JOIN tasks t                ON t.sequence_id   = ws.sequence_id
-            WHERE cs.student_id = ? AND t.id = ?
-            ORDER BY cw.assigned_at
-            LIMIT 1
-            """,
-                (rs, rowNum) -> rs.getObject("class_id", UUID.class),
-                userId, taskId
+        List<UUID> matched = jdbc.query(
+            """
+                SELECT cw.class_id
+                FROM class_students cs
+                JOIN class_worksheets cw    ON cw.class_id     = cs.class_id
+                JOIN worksheets_sequence ws ON ws.worksheet_id = cw.worksheet_id
+                JOIN tasks t                ON t.sequence_id   = ws.sequence_id
+                WHERE cs.student_id = ? AND t.id = ?
+                ORDER BY cw.assigned_at
+                LIMIT 1
+                """,
+            (rs, rowNum) -> rs.getObject("class_id", UUID.class),
+            userId, taskId
         );
-        if (!matched.isEmpty()) return matched.get(0);
+        if (!matched.isEmpty())
+            return matched.get(0);
 
         List<UUID> fallback = jdbc.query(
-                "SELECT class_id FROM class_students WHERE student_id = ? ORDER BY joined_at LIMIT 1",
-                (rs, rowNum) -> rs.getObject("class_id", UUID.class),
-                userId
+            "SELECT class_id FROM class_students WHERE student_id = ? ORDER BY joined_at LIMIT 1",
+            (rs, rowNum) -> rs.getObject("class_id", UUID.class),
+            userId
         );
         return fallback.stream().findFirst().orElse(null);
     }

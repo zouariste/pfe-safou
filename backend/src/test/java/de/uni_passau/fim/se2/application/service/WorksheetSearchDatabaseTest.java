@@ -18,9 +18,15 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.application.query.WorksheetSearchQuery;
-import de.uni_passau.fim.se2.application.query.WorksheetSearchResult;
-import de.uni_passau.fim.se2.testsupport.TestDatabase;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import java.util.UUID;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -29,41 +35,40 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import de.uni_passau.fim.se2.application.query.WorksheetSearchQuery;
+import de.uni_passau.fim.se2.application.query.WorksheetSearchResult;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreSequenceDAO;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreWorksheetDao;
 import de.uni_passau.fim.se2.infrastructure.persistence.dao.SequenceTagDAO;
-
-import java.util.List;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import de.uni_passau.fim.se2.testsupport.TestDatabase;
 
 /**
  * The marketplace search against a real Postgres.
  *
- * <p>The one part of this feature that no mock can speak for. Full-text vectors, {@code
- * websearch_to_tsquery}, prefix matching, {@code ts_headline} and the GIN index are database
- * behaviour; a unit test asserting on the SQL string can only confirm we wrote what we wrote.
- * Everything here would have passed a mock and still been wrong in production.
+ * <p>
+ * The one part of this feature that no mock can speak for. Full-text vectors, {@code
+ * websearch_to_tsquery}, prefix matching, {@code ts_headline} and the GIN index are database behaviour; a unit test
+ * asserting on the SQL string can only confirm we wrote what we wrote. Everything here would have passed a mock and
+ * still been wrong in production.
  *
- * <p>The database starts bare and {@link TestDatabase} runs the real Flyway migrations against
- * it (see {@code backend/src/main/resources/db/migration}), so the schema under test is the
- * schema that ships — including the migrations added by this feature.
+ * <p>
+ * The database starts bare and {@link TestDatabase} runs the real Flyway migrations against it (see
+ * {@code backend/src/main/resources/db/migration}), so the schema under test is the schema that ships — including the
+ * migrations added by this feature.
  *
- * <p>This class used to skip in CI: the shared runner is unprivileged, a {@code docker:dind}
- * service dies on {@code mount: permission denied} before it ever listens, and Testcontainers
- * then has no daemon to build a database with. It now runs there against the throwaway {@code
- * services: postgres} container the {@code backend-test} job starts beside itself, injected
- * through {@code SPRING_DATASOURCE_URL}; Testcontainers is still what supplies one locally.
+ * <p>
+ * This class used to skip in CI: the shared runner is unprivileged, a {@code docker:dind} service dies on
+ * {@code mount: permission denied} before it ever listens, and Testcontainers then has no daemon to build a database
+ * with. It now runs there against the throwaway {@code
+ * services: postgres} container the {@code backend-test} job starts beside itself, injected through
+ * {@code SPRING_DATASOURCE_URL}; Testcontainers is still what supplies one locally.
  *
- * <p>What remains skipped is a developer machine with Docker down and no database injected. That
- * is an abort with a stated reason rather than a silent pass, and it no longer hides anything
- * from the pipeline.
+ * <p>
+ * What remains skipped is a developer machine with Docker down and no database injected. That is an abort with a stated
+ * reason rather than a silent pass, and it no longer hides anything from the pipeline.
  */
 @DisplayName("marketplace search against real Postgres")
 class WorksheetSearchDatabaseTest {
@@ -77,23 +82,28 @@ class WorksheetSearchDatabaseTest {
 
     @BeforeAll
     static void connect() {
-        Assumptions.assumeTrue(TestDatabase.isAvailable(),
-                "no test database: set SPRING_DATASOURCE_URL or start Docker");
+        Assumptions.assumeTrue(
+            TestDatabase.isAvailable(),
+            "no test database: set SPRING_DATASOURCE_URL or start Docker"
+        );
         jdbc = TestDatabase.jdbc();
         service = new WorksheetSearchService(jdbc);
 
         // Fixtures this class needs, not data the migrated schema happens to already carry --
         // the schema is what V1...latest guarantees, not the pg_dump's row contents.
         versionId = UUID.randomUUID();
-        jdbc.update("INSERT INTO versions (id, version_name) VALUES (?, ?)",
-                versionId, "database-test-version");
+        jdbc.update(
+            "INSERT INTO versions (id, version_name) VALUES (?, ?)",
+            versionId, "database-test-version"
+        );
         teacher = newTeacher("teacher@example.invalid");
         otherTeacher = newTeacher("other@example.invalid");
     }
 
     @AfterAll
     static void cleanup() {
-        if (jdbc == null) return; // connect() aborted: there was no test database
+        if (jdbc == null)
+            return; // connect() aborted: there was no test database
         clearFixtures();
         jdbc.update("DELETE FROM users WHERE user_id IN (?, ?)", teacher, otherTeacher);
         jdbc.update("DELETE FROM versions WHERE id = ?", versionId);
@@ -101,9 +111,11 @@ class WorksheetSearchDatabaseTest {
 
     private static UUID newTeacher(String email) {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO users (user_id, email, first_name, last_name, password_hash,"
-                        + " role, is_verified, is_active) VALUES (?,?,?,?,?,CAST(? AS user_role),?,?)",
-                id, email, "T", "T", "unused", "TEACHER", true, true);
+        jdbc.update(
+            "INSERT INTO users (user_id, email, first_name, last_name, password_hash,"
+                + " role, is_verified, is_active) VALUES (?,?,?,?,?,CAST(? AS user_role),?,?)",
+            id, email, "T", "T", "unused", "TEACHER", true, true
+        );
         return id;
     }
 
@@ -135,22 +147,26 @@ class WorksheetSearchDatabaseTest {
             worksheet("Private one", "", teacher, "PRIVATE");
 
             List<String> names = search(query(null)).items().stream()
-                    .map(WorksheetSearchResult.Item::name).toList();
+                .map(WorksheetSearchResult.Item::name).toList();
 
-            assertEquals(List.of("Public one"), names,
-                    "a worksheet readable by link is not thereby findable");
+            assertEquals(
+                List.of("Public one"), names,
+                "a worksheet readable by link is not thereby findable"
+            );
         }
 
         @Test
         @DisplayName("the Library Inbox never shows up, even if it somehow got published")
         void libraryInboxIsExcluded() {
-            worksheet("Library Inbox",
-                    "Quick-copied sequences. " + WorksheetService.LIBRARY_INBOX_SENTINEL,
-                    teacher, "PUBLIC");
+            worksheet(
+                "Library Inbox",
+                "Quick-copied sequences. " + WorksheetService.LIBRARY_INBOX_SENTINEL,
+                teacher, "PUBLIC"
+            );
             worksheet("Real worksheet", "", teacher, "PUBLIC");
 
             List<String> names = search(query(null)).items().stream()
-                    .map(WorksheetSearchResult.Item::name).toList();
+                .map(WorksheetSearchResult.Item::name).toList();
 
             assertEquals(List.of("Real worksheet"), names);
         }
@@ -185,8 +201,9 @@ class WorksheetSearchDatabaseTest {
 
             List<WorksheetSearchResult.Item> items = search(query("suche")).items();
             assertAll(
-                    () -> assertEquals(1, items.size()),
-                    () -> assertEquals("Blatt 3", items.get(0).name()));
+                () -> assertEquals(1, items.size()),
+                () -> assertEquals("Blatt 3", items.get(0).name())
+            );
         }
 
         @Test
@@ -208,10 +225,15 @@ class WorksheetSearchDatabaseTest {
             worksheet("Pruefungsvorbereitung", "", teacher, "PUBLIC");
 
             assertAll(
-                    () -> assertEquals(1, search(query("Prüfungsvorbereitung")).total(),
-                            "typed with umlauts, stored with digraphs"),
-                    () -> assertEquals(1, search(query("Pruefungsvorbereitung")).total(),
-                            "and the plain spelling still works"));
+                () -> assertEquals(
+                    1, search(query("Prüfungsvorbereitung")).total(),
+                    "typed with umlauts, stored with digraphs"
+                ),
+                () -> assertEquals(
+                    1, search(query("Pruefungsvorbereitung")).total(),
+                    "and the plain spelling still works"
+                )
+            );
         }
 
         @Test
@@ -225,11 +247,16 @@ class WorksheetSearchDatabaseTest {
 
             String highlight = search(query("Pruefungsvorbereitung")).items().get(0).highlight();
             assertAll(
-                    () -> assertEquals(1, search(query("Pruefungsvorbereitung")).total()),
-                    () -> assertNotNull(highlight),
-                    () -> assertTrue(highlight.contains(SequenceSearchService.HIGHLIGHT_START_MARKER
-                                    + "Prüfungsvorbereitung" + SequenceSearchService.HIGHLIGHT_STOP_MARKER),
-                            "the umlaut spelling itself must be marked, not merely present: " + highlight));
+                () -> assertEquals(1, search(query("Pruefungsvorbereitung")).total()),
+                () -> assertNotNull(highlight),
+                () -> assertTrue(
+                    highlight.contains(
+                        SequenceSearchService.HIGHLIGHT_START_MARKER
+                            + "Prüfungsvorbereitung" + SequenceSearchService.HIGHLIGHT_STOP_MARKER
+                    ),
+                    "the umlaut spelling itself must be marked, not merely present: " + highlight
+                )
+            );
         }
 
         @Test
@@ -238,9 +265,10 @@ class WorksheetSearchDatabaseTest {
             worksheet("Rekursion", "", teacher, "PUBLIC");
 
             assertAll(
-                    () -> assertEquals(1, search(query("rek")).total()),
-                    () -> assertEquals(1, search(query("rekur")).total()),
-                    () -> assertEquals(0, search(query("zzz")).total()));
+                () -> assertEquals(1, search(query("rek")).total()),
+                () -> assertEquals(1, search(query("rekur")).total()),
+                () -> assertEquals(0, search(query("zzz")).total())
+            );
         }
 
         @Test
@@ -250,10 +278,13 @@ class WorksheetSearchDatabaseTest {
 
             String highlight = search(query("rekursion")).items().get(0).highlight();
             assertAll(
-                    () -> assertNotNull(highlight),
-                    () -> assertTrue(highlight.contains(SequenceSearchService.HIGHLIGHT_START_MARKER),
-                            "one frontend helper renders both searches; the markers must agree"),
-                    () -> assertTrue(highlight.contains(SequenceSearchService.HIGHLIGHT_STOP_MARKER)));
+                () -> assertNotNull(highlight),
+                () -> assertTrue(
+                    highlight.contains(SequenceSearchService.HIGHLIGHT_START_MARKER),
+                    "one frontend helper renders both searches; the markers must agree"
+                ),
+                () -> assertTrue(highlight.contains(SequenceSearchService.HIGHLIGHT_STOP_MARKER))
+            );
         }
 
         @Test
@@ -282,10 +313,13 @@ class WorksheetSearchDatabaseTest {
 
             WorksheetSearchResult.Item item = search(query(null)).items().get(0);
             assertAll(
-                    () -> assertEquals(3, item.sequenceCount()),
-                    () -> assertEquals(List.of("java", "python"), item.languages(),
-                            "distinct and sorted, so the card reads the same every time"),
-                    () -> assertNotNull(item.createdAt()));
+                () -> assertEquals(3, item.sequenceCount()),
+                () -> assertEquals(
+                    List.of("java", "python"), item.languages(),
+                    "distinct and sorted, so the card reads the same every time"
+                ),
+                () -> assertNotNull(item.createdAt())
+            );
         }
 
         @Test
@@ -299,10 +333,13 @@ class WorksheetSearchDatabaseTest {
             WorksheetSearchResult.Item asStranger = search(query(null), UUID.randomUUID()).items().get(0);
 
             assertAll(
-                    () -> assertEquals(2, asTeacher.copyCount()),
-                    () -> assertTrue(asTeacher.alreadyCopied(),
-                            "so nobody makes a second copy of something they already took"),
-                    () -> assertFalse(asStranger.alreadyCopied()));
+                () -> assertEquals(2, asTeacher.copyCount()),
+                () -> assertTrue(
+                    asTeacher.alreadyCopied(),
+                    "so nobody makes a second copy of something they already took"
+                ),
+                () -> assertFalse(asStranger.alreadyCopied())
+            );
         }
     }
 
@@ -334,9 +371,12 @@ class WorksheetSearchDatabaseTest {
             copyOf(quiet, "c3", otherTeacher);
 
             var result = service.search(
-                    WorksheetSearchQuery.of(null, null, false, "popularity", 0, 20), teacher);
-            assertEquals(List.of("Popular", "Quiet"),
-                    result.items().stream().map(WorksheetSearchResult.Item::name).toList());
+                WorksheetSearchQuery.of(null, null, false, "popularity", 0, 20), teacher
+            );
+            assertEquals(
+                List.of("Popular", "Quiet"),
+                result.items().stream().map(WorksheetSearchResult.Item::name).toList()
+            );
         }
 
         @Test
@@ -345,10 +385,12 @@ class WorksheetSearchDatabaseTest {
             worksheet("Only one", "", teacher, "PUBLIC");
 
             var result = service.search(
-                    WorksheetSearchQuery.of(null, null, false, null, 47, 20), teacher);
+                WorksheetSearchQuery.of(null, null, false, null, 47, 20), teacher
+            );
             assertAll(
-                    () -> assertTrue(result.items().isEmpty()),
-                    () -> assertEquals(1, result.total(), "the total still describes the whole set"));
+                () -> assertTrue(result.items().isEmpty()),
+                () -> assertEquals(1, result.total(), "the total still describes the whole set")
+            );
         }
 
         @Test
@@ -361,12 +403,16 @@ class WorksheetSearchDatabaseTest {
             var second = service.search(WorksheetSearchQuery.of(null, null, false, null, 1, 2), teacher);
 
             assertAll(
-                    () -> assertEquals(2, first.items().size()),
-                    () -> assertEquals(2, second.items().size()),
-                    () -> assertEquals(5, first.total()),
-                    () -> assertTrue(first.items().stream().noneMatch(
-                            a -> second.items().stream().anyMatch(b -> b.worksheetId().equals(a.worksheetId()))),
-                            "a stable total order is what keeps a row from being shown twice or never"));
+                () -> assertEquals(2, first.items().size()),
+                () -> assertEquals(2, second.items().size()),
+                () -> assertEquals(5, first.total()),
+                () -> assertTrue(
+                    first.items().stream().noneMatch(
+                        a -> second.items().stream().anyMatch(b -> b.worksheetId().equals(a.worksheetId()))
+                    ),
+                    "a stable total order is what keeps a row from being shown twice or never"
+                )
+            );
         }
     }
 
@@ -383,10 +429,12 @@ class WorksheetSearchDatabaseTest {
             link(pythonSheet, sequence("python", "b"));
 
             var result = service.search(
-                    WorksheetSearchQuery.of(null, "java", false, null, 0, 20), teacher);
+                WorksheetSearchQuery.of(null, "java", false, null, 0, 20), teacher
+            );
             assertAll(
-                    () -> assertEquals(1, result.total()),
-                    () -> assertEquals("Java sheet", result.items().get(0).name()));
+                () -> assertEquals(1, result.total()),
+                () -> assertEquals("Java sheet", result.items().get(0).name())
+            );
         }
 
         @Test
@@ -398,12 +446,15 @@ class WorksheetSearchDatabaseTest {
             link(pythonSheet, sequence("python", "b"));
 
             var result = service.search(
-                    WorksheetSearchQuery.of(null, "java", false, null, 0, 20), teacher);
+                WorksheetSearchQuery.of(null, "java", false, null, 0, 20), teacher
+            );
             List<String> offered = result.facets().languages().stream()
-                    .map(WorksheetSearchResult.Bucket::name).sorted().toList();
+                .map(WorksheetSearchResult.Bucket::name).sorted().toList();
 
-            assertEquals(List.of("java", "python"), offered,
-                    "counting only the language already chosen makes the sidebar a dead end");
+            assertEquals(
+                List.of("java", "python"), offered,
+                "counting only the language already chosen makes the sidebar a dead end"
+            );
         }
 
         @Test
@@ -418,16 +469,20 @@ class WorksheetSearchDatabaseTest {
             worksheet("Arrays", "", teacher, "PUBLIC");
 
             var result = service.search(
-                    WorksheetSearchQuery.of("rekursion", null, false, null, 0, 20), teacher);
+                WorksheetSearchQuery.of("rekursion", null, false, null, 0, 20), teacher
+            );
             List<String> offered = result.facets().languages().stream()
-                    .map(WorksheetSearchResult.Bucket::name).sorted().toList();
+                .map(WorksheetSearchResult.Bucket::name).sorted().toList();
 
             assertAll(
-                    () -> assertEquals(2, result.total(), "only the two matching worksheets"),
-                    () -> assertEquals(List.of("java", "python"), offered,
-                            "and the facets describe those two, not everything published"),
-                    () -> assertEquals(1, result.facets().mine()),
-                    () -> assertEquals(1, result.facets().others()));
+                () -> assertEquals(2, result.total(), "only the two matching worksheets"),
+                () -> assertEquals(
+                    List.of("java", "python"), offered,
+                    "and the facets describe those two, not everything published"
+                ),
+                () -> assertEquals(1, result.facets().mine()),
+                () -> assertEquals(1, result.facets().others())
+            );
         }
 
         @Test
@@ -439,8 +494,9 @@ class WorksheetSearchDatabaseTest {
 
             var facets = search(query(null), teacher).facets();
             assertAll(
-                    () -> assertEquals(2, facets.mine()),
-                    () -> assertEquals(1, facets.others()));
+                () -> assertEquals(2, facets.mine()),
+                () -> assertEquals(1, facets.others())
+            );
         }
 
         @Test
@@ -450,14 +506,17 @@ class WorksheetSearchDatabaseTest {
             worksheet("Theirs", "", otherTeacher, "PUBLIC");
 
             var asTeacher = service.search(
-                    WorksheetSearchQuery.of(null, null, true, null, 0, 20), teacher);
+                WorksheetSearchQuery.of(null, null, true, null, 0, 20), teacher
+            );
             var anonymous = service.search(
-                    WorksheetSearchQuery.of(null, null, true, null, 0, 20), null);
+                WorksheetSearchQuery.of(null, null, true, null, 0, 20), null
+            );
 
             assertAll(
-                    () -> assertEquals(1, asTeacher.total()),
-                    () -> assertEquals("Mine", asTeacher.items().get(0).name()),
-                    () -> assertEquals(0, anonymous.total()));
+                () -> assertEquals(1, asTeacher.total()),
+                () -> assertEquals("Mine", asTeacher.items().get(0).name()),
+                () -> assertEquals(0, anonymous.total())
+            );
         }
     }
 
@@ -488,10 +547,13 @@ class WorksheetSearchDatabaseTest {
 
             var found = new PostgreWorksheetDao(jdbc).findById(sheet);
             assertAll(
-                    () -> assertTrue(found.isPresent()),
-                    () -> assertEquals("Findable", found.get().getName()),
-                    () -> assertEquals(1, found.get().getSequenceDTOS().size(),
-                            "the same query the throwing variant uses, so it loads the same thing"));
+                () -> assertTrue(found.isPresent()),
+                () -> assertEquals("Findable", found.get().getName()),
+                () -> assertEquals(
+                    1, found.get().getSequenceDTOS().size(),
+                    "the same query the throwing variant uses, so it loads the same thing"
+                )
+            );
         }
     }
 
@@ -506,14 +568,17 @@ class WorksheetSearchDatabaseTest {
         UUID clone = sequence("java", "Rekursive Fakultaet");
         jdbc.update("UPDATE tiered_task_sequences SET copied_from = ? WHERE id = ?", original, clone);
 
-        SequenceSearchService library = new SequenceSearchService(jdbc, new SequenceTagDAO(jdbc), new PostgreSequenceDAO(jdbc, new ObjectMapper()));
+        SequenceSearchService library = new SequenceSearchService(
+            jdbc, new SequenceTagDAO(jdbc), new PostgreSequenceDAO(jdbc, new ObjectMapper())
+        );
         var found = library.search(new SequenceSearchService.SearchQuery().q("fakultaet"), teacher);
 
         // Both rows carry the same text, so without the filter the teacher sees the same
         // sequence twice with no way to tell which is the one worth using.
         assertAll(
-                () -> assertEquals(1, found.total()),
-                () -> assertEquals(original, found.items().get(0).sequenceId()));
+            () -> assertEquals(1, found.total()),
+            () -> assertEquals(original, found.items().get(0).sequenceId())
+        );
     }
 
     @Test
@@ -526,15 +591,22 @@ class WorksheetSearchDatabaseTest {
         // exists specifically to keep that from happening.
         sequence("java", "Rekursive Berechnung der Fakultät.");
 
-        SequenceSearchService library = new SequenceSearchService(jdbc, new SequenceTagDAO(jdbc), new PostgreSequenceDAO(jdbc, new ObjectMapper()));
+        SequenceSearchService library = new SequenceSearchService(
+            jdbc, new SequenceTagDAO(jdbc), new PostgreSequenceDAO(jdbc, new ObjectMapper())
+        );
         String highlight = library.search(new SequenceSearchService.SearchQuery().q("fakultaet"), teacher)
-                .items().get(0).highlight();
+            .items().get(0).highlight();
 
         assertAll(
-                () -> assertNotNull(highlight),
-                () -> assertTrue(highlight.contains(SequenceSearchService.HIGHLIGHT_START_MARKER
-                                + "Fakultät" + SequenceSearchService.HIGHLIGHT_STOP_MARKER),
-                        "the umlaut spelling itself must be marked, not merely present: " + highlight));
+            () -> assertNotNull(highlight),
+            () -> assertTrue(
+                highlight.contains(
+                    SequenceSearchService.HIGHLIGHT_START_MARKER
+                        + "Fakultät" + SequenceSearchService.HIGHLIGHT_STOP_MARKER
+                ),
+                "the umlaut spelling itself must be marked, not merely present: " + highlight
+            )
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -555,40 +627,52 @@ class WorksheetSearchDatabaseTest {
 
     private static UUID worksheet(String name, String description, UUID owner, String visibility) {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO worksheets (id, name, description, owner_id, visibility)"
-                + " VALUES (?, ?, ?, ?, ?)", id, name, description, owner, visibility);
+        jdbc.update(
+            "INSERT INTO worksheets (id, name, description, owner_id, visibility)"
+                + " VALUES (?, ?, ?, ?, ?)",
+            id, name, description, owner, visibility
+        );
         return id;
     }
 
     private static UUID copyOf(UUID source, String name, UUID owner) {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO worksheets (id, name, description, owner_id, visibility, copied_from)"
-                + " VALUES (?, ?, '', ?, 'PRIVATE', ?)", id, name, owner, source);
+        jdbc.update(
+            "INSERT INTO worksheets (id, name, description, owner_id, visibility, copied_from)"
+                + " VALUES (?, ?, '', ?, 'PRIVATE', ?)",
+            id, name, owner, source
+        );
         return id;
     }
 
     private static UUID sequence(String language, String description) {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO tiered_task_sequences (id, programming_language, task_description,"
-                        + " version_id, owner_id) VALUES (?, ?, ?, ?, ?)",
-                id, language, description, versionId, teacher);
+        jdbc.update(
+            "INSERT INTO tiered_task_sequences (id, programming_language, task_description,"
+                + " version_id, owner_id) VALUES (?, ?, ?, ?, ?)",
+            id, language, description, versionId, teacher
+        );
         return id;
     }
 
     private static void task(UUID sequenceId, String statement, String solution) {
-        jdbc.update("INSERT INTO tasks (id, statement, solution, tier_level, cyclomatic_complexity,"
-                        + " sequence_id) VALUES (?, ?, ?, 1, 1, ?)",
-                UUID.randomUUID(), statement, solution, sequenceId);
+        jdbc.update(
+            "INSERT INTO tasks (id, statement, solution, tier_level, cyclomatic_complexity,"
+                + " sequence_id) VALUES (?, ?, ?, 1, 1, ?)",
+            UUID.randomUUID(), statement, solution, sequenceId
+        );
     }
 
     private static void link(UUID worksheetId, UUID sequenceId) {
         // position is NOT NULL; mirror PostgreWorksheetDao's append-at-the-end computation
         // rather than hand-picking a value that would drift from it.
-        jdbc.update("""
+        jdbc.update(
+            """
                 INSERT INTO worksheets_sequence (worksheet_id, sequence_id, position)
                 SELECT ?, ?, COALESCE(MAX(position) + 1, 0)
                 FROM worksheets_sequence WHERE worksheet_id = ?
                 """,
-                worksheetId, sequenceId, worksheetId);
+            worksheetId, sequenceId, worksheetId
+        );
     }
 }

@@ -18,26 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.api.dto.TierCreateRequest;
-import de.uni_passau.fim.se2.domain.entities.TaskDTO;
-import de.uni_passau.fim.se2.domain.entities.TaskOriginalDTO;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.TaskOriginalRepository;
-import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
-import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
-import org.springframework.security.access.AccessDeniedException;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -55,11 +35,33 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
+import org.springframework.security.access.AccessDeniedException;
+
+import de.uni_passau.fim.se2.api.dto.TierCreateRequest;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.entities.TaskOriginalDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.TaskOriginalRepository;
+import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
+import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
+
 /**
  * Adding and deleting tiers.
  *
- * <p>What can go wrong here is mostly arithmetic and order: tiers that end up sharing a level or
- * leaving a hole, a tier count that no longer matches, and writes that happen before a refusal.
+ * <p>
+ * What can go wrong here is mostly arithmetic and order: tiers that end up sharing a level or leaving a hole, a tier
+ * count that no longer matches, and writes that happen before a refusal.
  */
 class SequenceTierServiceTest {
 
@@ -98,12 +100,14 @@ class SequenceTierServiceTest {
         when(taskRepo.loadTasksBySequenceId(any())).thenAnswer(invocation -> tiers);
 
         when(manualTaskService.buildTask(anyString(), anyString(), anyInt(), any(), anyString(), any()))
-                .thenAnswer(invocation -> TaskDTO.builder()
-                        .statement(invocation.getArgument(0))
-                        .solution(invocation.getArgument(1))
-                        .tierLevel(invocation.getArgument(2))
-                        .sequenceId(invocation.getArgument(5))
-                        .build());
+            .thenAnswer(
+                invocation -> TaskDTO.builder()
+                    .statement(invocation.getArgument(0))
+                    .solution(invocation.getArgument(1))
+                    .tierLevel(invocation.getArgument(2))
+                    .sequenceId(invocation.getArgument(5))
+                    .build()
+            );
         // save assigns the id, as PostgreTaskDao does.
         doAnswer(invocation -> {
             ((TaskDTO) invocation.getArgument(0)).setId(NEW_TASK);
@@ -137,8 +141,9 @@ class SequenceTierServiceTest {
             order.verify(taskRepo).shiftTierLevels(SEQUENCE, 2, +1);
             order.verify(taskRepo).save(saved.capture());
             assertAll(
-                    () -> assertEquals(2, saved.getValue().getTierLevel()),
-                    () -> verify(sequenceRepo).updateTierCount(SEQUENCE, 4));
+                () -> assertEquals(2, saved.getValue().getTierLevel()),
+                () -> verify(sequenceRepo).updateTierCount(SEQUENCE, 4)
+            );
         }
 
         @Test
@@ -158,10 +163,13 @@ class SequenceTierServiceTest {
             ArgumentCaptor<TaskOriginalDTO> original = ArgumentCaptor.forClass(TaskOriginalDTO.class);
             verify(originalRepo).save(original.capture());
             assertAll(
-                    () -> assertEquals(NEW_TASK, original.getValue().getTaskId()),
-                    () -> assertEquals("Sum an array", original.getValue().getOriginalProblemStatement()),
-                    () -> assertNull(original.getValue().getAdjustmentRating(),
-                            "nobody generated this tier, so there is nothing to rate"));
+                () -> assertEquals(NEW_TASK, original.getValue().getTaskId()),
+                () -> assertEquals("Sum an array", original.getValue().getOriginalProblemStatement()),
+                () -> assertNull(
+                    original.getValue().getAdjustmentRating(),
+                    "nobody generated this tier, so there is nothing to rate"
+                )
+            );
         }
 
         @Test
@@ -178,8 +186,9 @@ class SequenceTierServiceTest {
         @DisplayName("is refused at a level that would leave a hole or is below 1")
         void refusesOutOfRangeLevel() {
             assertAll(
-                    () -> assertThrows(DomainValidationException.class, () -> service.addTier(SEQUENCE, request(5))),
-                    () -> assertThrows(DomainValidationException.class, () -> service.addTier(SEQUENCE, request(0))));
+                () -> assertThrows(DomainValidationException.class, () -> service.addTier(SEQUENCE, request(5))),
+                () -> assertThrows(DomainValidationException.class, () -> service.addTier(SEQUENCE, request(0)))
+            );
             verify(taskRepo, never()).shiftTierLevels(any(), anyInt(), anyInt());
         }
 
@@ -187,7 +196,7 @@ class SequenceTierServiceTest {
         @DisplayName("is refused for someone who does not own the sequence, before anything is written")
         void refusesNonOwner() {
             doThrow(new AccessDeniedException("not yours"))
-                    .when(ownershipService).checkOwnership(OWNER, "sequence");
+                .when(ownershipService).checkOwnership(OWNER, "sequence");
 
             assertThrows(AccessDeniedException.class, () -> service.addTier(SEQUENCE, request(1)));
             verify(taskRepo, never()).shiftTierLevels(any(), anyInt(), anyInt());
@@ -260,7 +269,7 @@ class SequenceTierServiceTest {
             TaskDTO second = tiers.get(1);
             stubLoad(second);
             doThrow(new AccessDeniedException("not yours"))
-                    .when(ownershipService).checkOwnership(OWNER, "sequence");
+                .when(ownershipService).checkOwnership(OWNER, "sequence");
 
             assertThrows(AccessDeniedException.class, () -> service.deleteTier(second.getId()));
             verify(taskRepo, never()).softDelete(any());

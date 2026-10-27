@@ -18,26 +18,26 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.exceptions.*;
-import de.uni_passau.fim.se2.domain.interfaces.*;
-import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.FeedbackLogRepository;
-import lombok.extern.slf4j.*;
+import java.sql.*;
+import java.util.*;
+
 import org.springframework.dao.*;
 import org.springframework.jdbc.core.*;
 import org.springframework.stereotype.*;
 
-import java.sql.*;
-import java.util.*;
+import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
+import de.uni_passau.fim.se2.domain.exceptions.*;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.*;
+import de.uni_passau.fim.se2.domain.interfaces.FeedbackLogRepository;
+import lombok.extern.slf4j.*;
 
 /**
  * PostgreSQL-based implementation of the {@link FeedbackLogRepository}.
  * <p>
- * Handles persistence of feedback click events from learners interacting with
- * Parsons problems in the solver interface. Each record represents a single
- * click on the “Feedback” button and whether the task was correct at that time.
+ * Handles persistence of feedback click events from learners interacting with Parsons problems in the solver interface.
+ * Each record represents a single click on the “Feedback” button and whether the task was correct at that time.
  */
 @Slf4j
 @Repository
@@ -64,14 +64,19 @@ public class PostgreFeedbackLogDao implements FeedbackLogRepository {
             """;
 
         try {
-            jdbc.update(sql,
-                        feedbackLogDTO.getTaskId(),
-                        feedbackLogDTO.isCorrect(),
-                        feedbackLogDTO.getUserId(),
-                        feedbackLogDTO.getClassId());
+            jdbc.update(
+                sql,
+                feedbackLogDTO.getTaskId(),
+                feedbackLogDTO.isCorrect(),
+                feedbackLogDTO.getUserId(),
+                feedbackLogDTO.getClassId()
+            );
 
-            log.info("Saved feedback log for task_id={}, correct={}", feedbackLogDTO.getTaskId(), feedbackLogDTO.isCorrect());
-        } catch (DataAccessException e) {
+            log.info(
+                "Saved feedback log for task_id={}, correct={}", feedbackLogDTO.getTaskId(), feedbackLogDTO.isCorrect()
+            );
+        }
+        catch (DataAccessException e) {
             log.error("Error saving feedback log for task_id={}", feedbackLogDTO.getTaskId(), e);
             throw new DomainValidationException("Failed to save feedback log: " + e.getMessage());
         }
@@ -95,18 +100,24 @@ public class PostgreFeedbackLogDao implements FeedbackLogRepository {
             """;
 
         try {
-            return jdbc.query(sql,
-                              (ResultSet rs, int rowNum) -> FeedbackLogDTO.builder()
-                                      .id(rs.getObject("id", UUID.class))
-                                      .taskId(rs.getObject("task_id", UUID.class))
-                                      .correct(rs.getBoolean("correct"))
-                                      .userId(rs.getObject("user_id", UUID.class))
-                                      .classId(rs.getObject("class_id", UUID.class))
-                                      .clickedAt(rs.getTimestamp("clicked_at") != null
-                                              ? rs.getTimestamp("clicked_at").toLocalDateTime() : null)
-                                      .build(),
-                              taskId);
-        } catch (DataAccessException e) {
+            return jdbc.query(
+                sql,
+                (ResultSet rs, int rowNum) -> FeedbackLogDTO.builder()
+                    .id(rs.getObject("id", UUID.class))
+                    .taskId(rs.getObject("task_id", UUID.class))
+                    .correct(rs.getBoolean("correct"))
+                    .userId(rs.getObject("user_id", UUID.class))
+                    .classId(rs.getObject("class_id", UUID.class))
+                    .clickedAt(
+                        rs.getTimestamp("clicked_at") != null
+                            ? rs.getTimestamp("clicked_at").toLocalDateTime()
+                            : null
+                    )
+                    .build(),
+                taskId
+            );
+        }
+        catch (DataAccessException e) {
             log.error("Error loading feedback logs for task_id={}", taskId, e);
             throw new DomainValidationException("Failed to retrieve feedback logs: " + e.getMessage());
         }
@@ -124,7 +135,8 @@ public class PostgreFeedbackLogDao implements FeedbackLogRepository {
         try {
             int rows = jdbc.update("DELETE FROM feedback_logs WHERE task_id = ?", taskId);
             log.info("Deleted {} feedback logs for task_id={}", rows, taskId);
-        } catch (DataAccessException e) {
+        }
+        catch (DataAccessException e) {
             log.error("Error deleting feedback logs for task_id={}", taskId, e);
             throw new DomainValidationException("Failed to delete feedback logs: " + e.getMessage());
         }
@@ -147,18 +159,24 @@ public class PostgreFeedbackLogDao implements FeedbackLogRepository {
             """;
 
         try {
-            return jdbc.query(sql,
-                              (ResultSet rs, int rowNum) -> FeedbackLogDTO.builder()
-                                      .id(rs.getObject("id", UUID.class))
-                                      .taskId(rs.getObject("task_id", UUID.class))
-                                      .correct(rs.getBoolean("correct"))
-                                      .userId(rs.getObject("user_id", UUID.class))
-                                      .classId(rs.getObject("class_id", UUID.class))
-                                      .clickedAt(rs.getTimestamp("clicked_at") != null
-                                              ? rs.getTimestamp("clicked_at").toLocalDateTime() : null)
-                                      .build(),
-                              classId);
-        } catch (DataAccessException e) {
+            return jdbc.query(
+                sql,
+                (ResultSet rs, int rowNum) -> FeedbackLogDTO.builder()
+                    .id(rs.getObject("id", UUID.class))
+                    .taskId(rs.getObject("task_id", UUID.class))
+                    .correct(rs.getBoolean("correct"))
+                    .userId(rs.getObject("user_id", UUID.class))
+                    .classId(rs.getObject("class_id", UUID.class))
+                    .clickedAt(
+                        rs.getTimestamp("clicked_at") != null
+                            ? rs.getTimestamp("clicked_at").toLocalDateTime()
+                            : null
+                    )
+                    .build(),
+                classId
+            );
+        }
+        catch (DataAccessException e) {
             log.error("Error loading feedback logs for class_id={}", classId, e);
             throw new DomainValidationException("Failed to retrieve feedback logs: " + e.getMessage());
         }

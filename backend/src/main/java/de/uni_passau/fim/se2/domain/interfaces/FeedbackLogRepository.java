@@ -18,9 +18,10 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
 import java.util.List;
 import java.util.UUID;
+
+import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
 
 public interface FeedbackLogRepository {
 

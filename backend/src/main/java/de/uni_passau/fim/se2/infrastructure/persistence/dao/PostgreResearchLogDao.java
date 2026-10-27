@@ -18,16 +18,6 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.entities.ResearchDataset;
-import de.uni_passau.fim.se2.domain.entities.ResearchLog;
-import de.uni_passau.fim.se2.domain.interfaces.ResearchLogRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.postgresql.util.PGobject;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowCallbackHandler;
-import org.springframework.stereotype.Repository;
-
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -38,12 +28,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import org.postgresql.util.PGobject;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowCallbackHandler;
+import org.springframework.stereotype.Repository;
+
+import de.uni_passau.fim.se2.domain.entities.ResearchDataset;
+import de.uni_passau.fim.se2.domain.entities.ResearchLog;
+import de.uni_passau.fim.se2.domain.interfaces.ResearchLogRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Filtered reads over the research tables.
  *
- * <p>Table and column names are never taken from the request — they come from
- * {@link ResearchDataset}, which whitelists them — so the string building below concatenates
- * only names this code controls. Everything the caller supplies is a bound parameter.
+ * <p>
+ * Table and column names are never taken from the request — they come from {@link ResearchDataset}, which whitelists
+ * them — so the string building below concatenates only names this code controls. Everything the caller supplies is a
+ * bound parameter.
  */
 @Slf4j
 @Repository
@@ -58,23 +60,25 @@ public class PostgreResearchLogDao implements ResearchLogRepository {
     /**
      * Class scoping for the two tables that have no class_id of their own.
      *
-     * <p>A row belongs to a class when that class both enrols the student and has the task
-     * assigned through one of its worksheets. Membership alone is not enough: a student in two
-     * classes would have all their work counted twice, once under each.
+     * <p>
+     * A row belongs to a class when that class both enrols the student and has the task assigned through one of its
+     * worksheets. Membership alone is not enough: a student in two classes would have all their work counted twice,
+     * once under each.
      */
     private static final String CLASS_VIA_MEMBERSHIP = """
-            EXISTS (
-                SELECT 1
-                FROM class_students cs
-                JOIN class_worksheets cw    ON cw.class_id     = cs.class_id
-                JOIN worksheets_sequence ws ON ws.worksheet_id = cw.worksheet_id
-                JOIN tasks tk               ON tk.sequence_id  = ws.sequence_id
-                WHERE cs.student_id = t.user_id
-                  AND tk.id         = t.task_id
-                  AND cs.class_id   = ?
-            )""";
+        EXISTS (
+            SELECT 1
+            FROM class_students cs
+            JOIN class_worksheets cw    ON cw.class_id     = cs.class_id
+            JOIN worksheets_sequence ws ON ws.worksheet_id = cw.worksheet_id
+            JOIN tasks tk               ON tk.sequence_id  = ws.sequence_id
+            WHERE cs.student_id = t.user_id
+              AND tk.id         = t.task_id
+              AND cs.class_id   = ?
+        )""";
 
-    private record Where(String sql, List<Object> args) {}
+    private record Where(String sql, List<Object> args) {
+    }
 
     private Where buildWhere(ResearchDataset dataset, ResearchLog.Filter filter) {
         List<String> clauses = new ArrayList<>();
@@ -138,8 +142,8 @@ public class PostgreResearchLogDao implements ResearchLogRepository {
     public long countMatching(ResearchDataset dataset, ResearchLog.Filter filter) {
         Where where = buildWhere(dataset, filter);
         Long count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM " + dataset.table() + " t" + where.sql(),
-                Long.class, where.args().toArray()
+            "SELECT COUNT(*) FROM " + dataset.table() + " t" + where.sql(),
+            Long.class, where.args().toArray()
         );
         return count != null ? count : 0L;
     }
@@ -151,17 +155,19 @@ public class PostgreResearchLogDao implements ResearchLogRepository {
         // One pass for all three counts. COUNT(DISTINCT ...) already ignores NULLs, which is
         // exactly right here: an anonymised row is not a student anything can count.
         String totalsSql = "SELECT COUNT(*) AS total_rows,"
-                + " COUNT(DISTINCT t.user_id) AS identified_users,"
-                + " COUNT(*) FILTER (WHERE t.user_id IS NULL) AS anonymous_rows"
-                + " FROM " + dataset.table() + " t" + where.sql();
+            + " COUNT(DISTINCT t.user_id) AS identified_users,"
+            + " COUNT(*) FILTER (WHERE t.user_id IS NULL) AS anonymous_rows"
+            + " FROM " + dataset.table() + " t" + where.sql();
 
-        ResearchLog.Summary totals = jdbc.queryForObject(totalsSql,
-                (rs, rowNum) -> new ResearchLog.Summary(
-                        rs.getLong("total_rows"),
-                        rs.getLong("identified_users"),
-                        rs.getLong("anonymous_rows"),
-                        Map.of()),
-                where.args().toArray()
+        ResearchLog.Summary totals = jdbc.queryForObject(
+            totalsSql,
+            (rs, rowNum) -> new ResearchLog.Summary(
+                rs.getLong("total_rows"),
+                rs.getLong("identified_users"),
+                rs.getLong("anonymous_rows"),
+                Map.of()
+            ),
+            where.args().toArray()
         );
         if (totals == null) {
             totals = new ResearchLog.Summary(0L, 0L, 0L, Map.of());
@@ -173,20 +179,23 @@ public class PostgreResearchLogDao implements ResearchLogRepository {
         // Drives the event-type dropdown as well as the strip, so it lists the types actually
         // present under the current filter rather than all 28 the allowlist permits.
         Map<String, Long> counts = new LinkedHashMap<>();
-        RowCallbackHandler collectCounts =
-                rs -> counts.put(rs.getString("event_type"), rs.getLong("n"));
-        jdbc.query("SELECT t.event_type, COUNT(*) AS n FROM " + dataset.table() + " t" + where.sql()
-                        + " GROUP BY t.event_type ORDER BY n DESC, t.event_type",
-                collectCounts,
-                where.args().toArray()
+        RowCallbackHandler collectCounts = rs -> counts.put(rs.getString("event_type"), rs.getLong("n"));
+        jdbc.query(
+            "SELECT t.event_type, COUNT(*) AS n FROM " + dataset.table() + " t" + where.sql()
+                + " GROUP BY t.event_type ORDER BY n DESC, t.event_type",
+            collectCounts,
+            where.args().toArray()
         );
         return new ResearchLog.Summary(
-                totals.totalRows(), totals.identifiedUsers(), totals.anonymousRows(), counts);
+            totals.totalRows(), totals.identifiedUsers(), totals.anonymousRows(), counts
+        );
     }
 
     @Override
-    public void forEachMatching(ResearchDataset dataset, ResearchLog.Filter filter,
-                                Consumer<Map<String, Object>> consumer) {
+    public void forEachMatching(
+        ResearchDataset dataset, ResearchLog.Filter filter,
+        Consumer<Map<String, Object>> consumer
+    ) {
         Where where = buildWhere(dataset, filter);
         String sql = selectFrom(dataset) + where.sql() + orderBy(dataset);
 
@@ -208,9 +217,10 @@ public class PostgreResearchLogDao implements ResearchLogRepository {
     /**
      * One row as a column map, in the dataset's declared column order.
      *
-     * <p>Values are converted the way the research ZIP already converts them, so a row reads
-     * the same whether it arrives as JSON on the page or as a field in a CSV: jsonb as its raw
-     * JSON text, timestamps as ISO-8601. Anything else is left to Jackson.
+     * <p>
+     * Values are converted the way the research ZIP already converts them, so a row reads the same whether it arrives
+     * as JSON on the page or as a field in a CSV: jsonb as its raw JSON text, timestamps as ISO-8601. Anything else is
+     * left to Jackson.
      */
     private Map<String, Object> toRow(ResearchDataset dataset, ResultSet rs) throws SQLException {
         Map<String, Object> row = new LinkedHashMap<>();
@@ -221,10 +231,14 @@ public class PostgreResearchLogDao implements ResearchLogRepository {
     }
 
     private Object toWireValue(Object value) {
-        if (value == null) return null;
-        if (value instanceof Timestamp ts) return ts.toLocalDateTime().toString();
-        if (value instanceof java.sql.Date d) return d.toLocalDate().toString();
-        if (value instanceof PGobject pg) return pg.getValue();
+        if (value == null)
+            return null;
+        if (value instanceof Timestamp ts)
+            return ts.toLocalDateTime().toString();
+        if (value instanceof java.sql.Date d)
+            return d.toLocalDate().toString();
+        if (value instanceof PGobject pg)
+            return pg.getValue();
         return value;
     }
 }

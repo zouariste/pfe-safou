@@ -18,9 +18,10 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import lombok.*;
 
 @Getter
 @Setter

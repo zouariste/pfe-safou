@@ -18,38 +18,51 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-
 import java.util.List;
+
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 
 /**
  * The four tables the admin research page can read.
  *
- * <p>Each one carries its own explicit column list rather than relying on {@code SELECT *}.
- * That is a whitelist, not a convenience: these tables sit next to student identities, and a
- * column added to one of them later must not start appearing on an admin screen, or in a CSV
- * download, because nobody thought to look. Adding it here is the deliberate act.
+ * <p>
+ * Each one carries its own explicit column list rather than relying on {@code SELECT *}. That is a whitelist, not a
+ * convenience: these tables sit next to student identities, and a column added to one of them later must not start
+ * appearing on an admin screen, or in a CSV download, because nobody thought to look. Adding it here is the deliberate
+ * act.
  *
- * <p>{@code timeColumn} is the column a date filter and the default ordering apply to. The
- * four tables disagree on what it is called, and two of them ({@code feedback_logs},
- * {@code task_submissions}) have no {@code created_at} at all.
+ * <p>
+ * {@code timeColumn} is the column a date filter and the default ordering apply to. The four tables disagree on what it
+ * is called, and two of them ({@code feedback_logs}, {@code task_submissions}) have no {@code created_at} at all.
  */
 public enum ResearchDataset {
 
-    EVENTS("events", "learning_events", "created_at", true, List.of(
+    EVENTS(
+        "events", "learning_events", "created_at", true, List.of(
             "id", "created_at", "class_id", "user_id", "task_id", "sequence_id",
-            "tier_level", "event_type", "event_data")),
+            "tier_level", "event_type", "event_data"
+        )
+    ),
 
-    FEEDBACK("feedback", "feedback_logs", "clicked_at", false, List.of(
-            "id", "clicked_at", "class_id", "user_id", "task_id", "correct")),
+    FEEDBACK(
+        "feedback", "feedback_logs", "clicked_at", false, List.of(
+            "id", "clicked_at", "class_id", "user_id", "task_id", "correct"
+        )
+    ),
 
-    HINTS("hints", "hint_usage", "created_at", false, List.of(
+    HINTS(
+        "hints", "hint_usage", "created_at", false, List.of(
             "id", "created_at", "user_id", "task_id", "hint_level", "hint_text",
-            "llm_explanation", "findings", "block_order_at_request", "affected_block_ids")),
+            "llm_explanation", "findings", "block_order_at_request", "affected_block_ids"
+        )
+    ),
 
-    SUBMISSIONS("submissions", "task_submissions", "updated_at", false, List.of(
+    SUBMISSIONS(
+        "submissions", "task_submissions", "updated_at", false, List.of(
             "user_id", "task_id", "solved", "solved_at", "updated_at",
-            "block_order", "indent_levels"));
+            "block_order", "indent_levels"
+        )
+    );
 
     private final String wireName;
     private final String table;
@@ -57,8 +70,10 @@ public enum ResearchDataset {
     private final boolean eventTyped;
     private final List<String> columns;
 
-    ResearchDataset(String wireName, String table, String timeColumn, boolean eventTyped,
-                    List<String> columns) {
+    ResearchDataset(
+        String wireName, String table, String timeColumn, boolean eventTyped,
+        List<String> columns
+    ) {
         this.wireName = wireName;
         this.table = table;
         this.timeColumn = timeColumn;
@@ -66,24 +81,40 @@ public enum ResearchDataset {
         this.columns = columns;
     }
 
-    public String wireName()        { return wireName; }
-    public String table()           { return table; }
-    public String timeColumn()      { return timeColumn; }
+    public String wireName() {
+        return wireName;
+    }
+
+    public String table() {
+        return table;
+    }
+
+    public String timeColumn() {
+        return timeColumn;
+    }
+
     /** Only learning_events has an event_type, so only it accepts that filter. */
-    public boolean isEventTyped()   { return eventTyped; }
-    public List<String> columns()   { return columns; }
+    public boolean isEventTyped() {
+        return eventTyped;
+    }
+
+    public List<String> columns() {
+        return columns;
+    }
 
     /**
      * Maps the path segment the frontend uses onto a dataset.
      *
-     * @throws DomainValidationException on anything else, so an unknown dataset is a 400 and
-     *         never reaches a query — the same way logEvent refuses an unknown event type.
+     * @throws DomainValidationException on anything else, so an unknown dataset is a 400 and never reaches a query —
+     *                                   the same way logEvent refuses an unknown event type.
      */
     public static ResearchDataset fromWireName(String name) {
         for (ResearchDataset d : values()) {
-            if (d.wireName.equals(name)) return d;
+            if (d.wireName.equals(name))
+                return d;
         }
         throw new DomainValidationException(
-                "Unknown dataset: " + name + ". Allowed: events, feedback, hints, submissions");
+            "Unknown dataset: " + name + ". Allowed: events, feedback, hints, submissions"
+        );
     }
 }
