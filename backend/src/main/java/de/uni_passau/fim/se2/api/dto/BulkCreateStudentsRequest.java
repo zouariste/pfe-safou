@@ -18,21 +18,19 @@
  */
 package de.uni_passau.fim.se2.api.dto;
 
-import lombok.Data;
-
 import java.util.List;
+
+import lombok.Data;
 
 /**
  * A whole class list at once, as read from a teacher's CSV.
  *
- * The rows are the same shape as a single addition, so the two paths cannot
- * drift apart in what they accept.
+ * The rows are the same shape as a single addition, so the two paths cannot drift apart in what they accept.
  *
- * Deliberately carries no bean-validation constraints. There is no handler for
- * {@code MethodArgumentNotValidException}, so a constraint here would be caught
- * by the catch-all and answered with a generic 500; the checks in
- * {@code ClassService.createStudents} come back as a 400 that names the
- * offending row, which is the message a teacher can act on.
+ * Deliberately carries no bean-validation constraints. There is no handler for {@code MethodArgumentNotValidException},
+ * so a constraint here would be caught by the catch-all and answered with a generic 500; the checks in
+ * {@code ClassService.createStudents} come back as a 400 that names the offending row, which is the message a teacher
+ * can act on.
  */
 @Data
 public class BulkCreateStudentsRequest {

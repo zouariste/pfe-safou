@@ -18,17 +18,17 @@
  */
 package de.uni_passau.fim.se2.domain.model;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
 class WorksheetAvailabilityTest {
 
@@ -47,8 +47,10 @@ class WorksheetAvailabilityTest {
         void openWhenPublished() {
             // Every assignment that existed before publishing was introduced was
             // migrated to published, so it has to keep working exactly as before.
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(true, null, null, null, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(true, null, null, null, NOW)
+            );
         }
 
         @Test
@@ -58,25 +60,32 @@ class WorksheetAvailabilityTest {
             // is still being put together.
             WorksheetAvailability a = WorksheetAvailability.of(false, null, null, null, NOW);
             assertAll(
-                    () -> assertEquals(WorksheetAvailability.SCHEDULED, a),
-                    () -> assertFalse(a.visibleToStudents()));
+                () -> assertEquals(WorksheetAvailability.SCHEDULED, a),
+                () -> assertFalse(a.visibleToStudents())
+            );
         }
 
         @Test
         @DisplayName("publishing opens it without needing a release date")
         void publishingIsEnough() {
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(true, null, null, null, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(true, null, null, null, NOW)
+            );
         }
 
         @Test
         @DisplayName("a release date opens it without publishing by hand")
         void releaseDateIsEnough() {
             // Either route releases it; a teacher need not do both.
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(false, minutes(-1), null, null, NOW));
-            assertEquals(WorksheetAvailability.SCHEDULED,
-                    WorksheetAvailability.of(false, minutes(1), null, null, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(false, minutes(-1), null, null, NOW)
+            );
+            assertEquals(
+                WorksheetAvailability.SCHEDULED,
+                WorksheetAvailability.of(false, minutes(1), null, null, NOW)
+            );
         }
 
         @Test
@@ -87,9 +96,10 @@ class WorksheetAvailabilityTest {
             // teacher's buttons key on this, not on `published`.
             WorksheetAvailability a = WorksheetAvailability.of(false, minutes(-1), null, null, NOW);
             assertAll(
-                    () -> assertEquals(WorksheetAvailability.OPEN, a),
-                    () -> assertTrue(a.visibleToStudents()),
-                    () -> assertTrue(a.allowsSolving()));
+                () -> assertEquals(WorksheetAvailability.OPEN, a),
+                () -> assertTrue(a.visibleToStudents()),
+                () -> assertTrue(a.allowsSolving())
+            );
         }
 
         @Test
@@ -97,18 +107,24 @@ class WorksheetAvailabilityTest {
         void unpublishNeedsBothCleared() {
             // Unpublishing clears release_at as well; leaving a passed date would
             // keep releasing it and the button would appear to do nothing.
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(false, minutes(-1), null, null, NOW));
-            assertEquals(WorksheetAvailability.SCHEDULED,
-                    WorksheetAvailability.of(false, null, null, null, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(false, minutes(-1), null, null, NOW)
+            );
+            assertEquals(
+                WorksheetAvailability.SCHEDULED,
+                WorksheetAvailability.of(false, null, null, null, NOW)
+            );
         }
 
         @Test
         @DisplayName("publishing wins over a release date still in the future")
         void publishingOverridesFutureRelease() {
             // "Publish now" has to mean now, whatever the schedule said.
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(true, minutes(60), null, null, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(true, minutes(60), null, null, NOW)
+            );
         }
 
         @Test
@@ -117,8 +133,10 @@ class WorksheetAvailabilityTest {
             // Publishing writes release_at = now, so that same instant has to
             // read as open. An exclusive comparison here would leave a
             // just-published worksheet hidden until the next second.
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(true, NOW, null, null, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(true, NOW, null, null, NOW)
+            );
         }
 
         @Test
@@ -127,8 +145,10 @@ class WorksheetAvailabilityTest {
             // Such an assignment gets no release stamp -- a release after the
             // deadline is rejected by the database -- so it is published with
             // release_at still null and reads as closed, which is the truth.
-            assertEquals(WorksheetAvailability.CLOSED,
-                    WorksheetAvailability.of(true, null, minutes(-10), null, NOW));
+            assertEquals(
+                WorksheetAvailability.CLOSED,
+                WorksheetAvailability.of(true, null, minutes(-10), null, NOW)
+            );
         }
     }
 
@@ -142,23 +162,28 @@ class WorksheetAvailabilityTest {
             // Not published by hand: the release date is what gates it.
             WorksheetAvailability a = WorksheetAvailability.of(false, minutes(10), null, null, NOW);
             assertAll(
-                    () -> assertEquals(WorksheetAvailability.SCHEDULED, a),
-                    () -> assertFalse(a.visibleToStudents()),
-                    () -> assertFalse(a.allowsSolving()));
+                () -> assertEquals(WorksheetAvailability.SCHEDULED, a),
+                () -> assertFalse(a.visibleToStudents()),
+                () -> assertFalse(a.allowsSolving())
+            );
         }
 
         @Test
         @DisplayName("on the release instant it is already open")
         void atRelease() {
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(false, NOW, null, null, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(false, NOW, null, null, NOW)
+            );
         }
 
         @Test
         @DisplayName("a published assignment needs no release date")
         void noRelease() {
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(true, null, minutes(60), null, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(true, null, minutes(60), null, NOW)
+            );
         }
     }
 
@@ -169,23 +194,29 @@ class WorksheetAvailabilityTest {
         @Test
         @DisplayName("no deadline stays open indefinitely")
         void noDeadline() {
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(true, minutes(-1000), null, null, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(true, minutes(-1000), null, null, NOW)
+            );
         }
 
         @Test
         @DisplayName("before the deadline it is open")
         void beforeDeadline() {
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(true, null, minutes(1), null, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(true, null, minutes(1), null, NOW)
+            );
         }
 
         @Test
         @DisplayName("on the deadline instant it is still open")
         void atDeadline() {
             // Work landing on the exact second of the deadline should count.
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(true, null, NOW, null, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(true, null, NOW, null, NOW)
+            );
         }
 
         @Test
@@ -193,10 +224,11 @@ class WorksheetAvailabilityTest {
         void afterSharpDeadline() {
             WorksheetAvailability a = WorksheetAvailability.of(true, null, minutes(-1), null, NOW);
             assertAll(
-                    () -> assertEquals(WorksheetAvailability.CLOSED, a),
-                    // Closed still means readable — students may look, not work.
-                    () -> assertTrue(a.visibleToStudents()),
-                    () -> assertFalse(a.allowsSolving()));
+                () -> assertEquals(WorksheetAvailability.CLOSED, a),
+                // Closed still means readable — students may look, not work.
+                () -> assertTrue(a.visibleToStudents()),
+                () -> assertFalse(a.allowsSolving())
+            );
         }
     }
 
@@ -208,32 +240,43 @@ class WorksheetAvailabilityTest {
         @DisplayName("extends the deadline by its minutes")
         void extendsDeadline() {
             // Deadline was 10 minutes ago, but a 30 minute grace still covers it.
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(true, null, minutes(-10), 30, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(true, null, minutes(-10), 30, NOW)
+            );
         }
 
         @Test
         @DisplayName("closes once the grace has run out too")
         void closesAfterGrace() {
-            assertEquals(WorksheetAvailability.CLOSED,
-                    WorksheetAvailability.of(true, null, minutes(-40), 30, NOW));
+            assertEquals(
+                WorksheetAvailability.CLOSED,
+                WorksheetAvailability.of(true, null, minutes(-40), 30, NOW)
+            );
         }
 
         @Test
         @DisplayName("on the last instant of the grace it is still open")
         void atGraceBoundary() {
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(true, null, minutes(-30), 30, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(true, null, minutes(-30), 30, NOW)
+            );
         }
 
         @Test
         @DisplayName("no grace, or zero, leaves the deadline sharp")
         void noGraceIsSharp() {
             assertAll(
-                    () -> assertEquals(WorksheetAvailability.CLOSED,
-                            WorksheetAvailability.of(true, null, minutes(-1), null, NOW)),
-                    () -> assertEquals(WorksheetAvailability.CLOSED,
-                            WorksheetAvailability.of(true, null, minutes(-1), 0, NOW)));
+                () -> assertEquals(
+                    WorksheetAvailability.CLOSED,
+                    WorksheetAvailability.of(true, null, minutes(-1), null, NOW)
+                ),
+                () -> assertEquals(
+                    WorksheetAvailability.CLOSED,
+                    WorksheetAvailability.of(true, null, minutes(-1), 0, NOW)
+                )
+            );
         }
 
         @Test
@@ -241,15 +284,19 @@ class WorksheetAvailabilityTest {
         void negativeGraceIsClamped() {
             // The database rejects these, but a stray value must not make a
             // worksheet close before its stated deadline.
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(true, null, minutes(5), -60, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(true, null, minutes(5), -60, NOW)
+            );
         }
 
         @Test
         @DisplayName("grace without a deadline changes nothing")
         void graceWithoutDeadline() {
-            assertEquals(WorksheetAvailability.OPEN,
-                    WorksheetAvailability.of(true, null, null, 30, NOW));
+            assertEquals(
+                WorksheetAvailability.OPEN,
+                WorksheetAvailability.of(true, null, null, 30, NOW)
+            );
         }
     }
 
@@ -263,16 +310,25 @@ class WorksheetAvailabilityTest {
             Instant release = minutes(10);
             Instant deadline = minutes(60);
             assertAll(
-                    // Scheduled rather than published by hand, so the release
-                    // date is what opens it.
-                    () -> assertEquals(WorksheetAvailability.SCHEDULED,
-                            WorksheetAvailability.of(false, release, deadline, 15, NOW)),
-                    () -> assertEquals(WorksheetAvailability.OPEN,
-                            WorksheetAvailability.of(false, release, deadline, 15, minutes(30))),
-                    () -> assertEquals(WorksheetAvailability.OPEN,
-                            WorksheetAvailability.of(false, release, deadline, 15, minutes(70))),
-                    () -> assertEquals(WorksheetAvailability.CLOSED,
-                            WorksheetAvailability.of(false, release, deadline, 15, minutes(80))));
+                // Scheduled rather than published by hand, so the release
+                // date is what opens it.
+                () -> assertEquals(
+                    WorksheetAvailability.SCHEDULED,
+                    WorksheetAvailability.of(false, release, deadline, 15, NOW)
+                ),
+                () -> assertEquals(
+                    WorksheetAvailability.OPEN,
+                    WorksheetAvailability.of(false, release, deadline, 15, minutes(30))
+                ),
+                () -> assertEquals(
+                    WorksheetAvailability.OPEN,
+                    WorksheetAvailability.of(false, release, deadline, 15, minutes(70))
+                ),
+                () -> assertEquals(
+                    WorksheetAvailability.CLOSED,
+                    WorksheetAvailability.of(false, release, deadline, 15, minutes(80))
+                )
+            );
         }
 
         @Test
@@ -280,8 +336,10 @@ class WorksheetAvailabilityTest {
         void releaseTakesPrecedence() {
             // Not reachable through the UI — the database forbids a deadline
             // before the release — but the order of the checks should be stated.
-            assertEquals(WorksheetAvailability.SCHEDULED,
-                    WorksheetAvailability.of(false, minutes(10), minutes(-10), null, NOW));
+            assertEquals(
+                WorksheetAvailability.SCHEDULED,
+                WorksheetAvailability.of(false, minutes(10), minutes(-10), null, NOW)
+            );
         }
     }
 }

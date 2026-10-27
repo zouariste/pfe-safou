@@ -18,6 +18,14 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
@@ -30,46 +38,40 @@ import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
 import de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 /**
  * Deep-copies a worksheet, with everything the original had.
  *
- * <p>Split out of {@link WorksheetService} because the copy is not a CRUD operation: it spans
- * four repositories, and every field it forgets is data a teacher loses without being told. The
- * previous version lived inline and rebuilt sequences and tasks by naming fields one at a time,
- * which meant every column added after it was written silently stopped being copied — the
- * distractors, the AP22 context blocks, the AP31 split plans, the tier count, the target
- * language and the generation constraints had all fallen out by the time anyone noticed.
+ * <p>
+ * Split out of {@link WorksheetService} because the copy is not a CRUD operation: it spans four repositories, and every
+ * field it forgets is data a teacher loses without being told. The previous version lived inline and rebuilt sequences
+ * and tasks by naming fields one at a time, which meant every column added after it was written silently stopped being
+ * copied — the distractors, the AP22 context blocks, the AP31 split plans, the tier count, the target language and the
+ * generation constraints had all fallen out by the time anyone noticed.
  *
- * <p>Two things keep that from happening again:
+ * <p>
+ * Two things keep that from happening again:
  *
  * <ol>
- *   <li>The per-entity copies are {@code toBuilder()}-based factories that live next to the
- *       field declarations — {@link TieredTaskSequenceDTO#copyFor(UUID)} and
- *       {@link TaskDTO#copyFor(UUID)}. A new field travels with the copy by default; you have
- *       to go out of your way to exclude one.</li>
- *   <li>{@code CloneCompletenessTest} reflects over both DTOs and fails the build when a field
- *       is neither asserted to survive a copy nor listed as deliberately reset. Java cannot
- *       make a hand-written copy complete, but a test can make an incomplete one loud.</li>
+ * <li>The per-entity copies are {@code toBuilder()}-based factories that live next to the field declarations —
+ * {@link TieredTaskSequenceDTO#copyFor(UUID)} and {@link TaskDTO#copyFor(UUID)}. A new field travels with the copy by
+ * default; you have to go out of your way to exclude one.</li>
+ * <li>{@code CloneCompletenessTest} reflects over both DTOs and fails the build when a field is neither asserted to
+ * survive a copy nor listed as deliberately reset. Java cannot make a hand-written copy complete, but a test can make
+ * an incomplete one loud.</li>
  * </ol>
  *
  * <h2>Why tags are copied rather than regenerated</h2>
  *
- * <p>Sequences are normally tagged via {@link TaskPersistenceService#persistSequence}, which
- * publishes a {@code SequenceGeneratedEvent} for the asynchronous LLM
- * pass. Routing clones through that path would look tidy and be wrong twice over: it bills an
- * LLM call per copied sequence, and the fresh tags would drift from the ones on the original,
- * so a copy would answer to different search terms than the thing it was copied from. Copying
- * the rows across is free, instant and exact.
+ * <p>
+ * Sequences are normally tagged via {@link TaskPersistenceService#persistSequence}, which publishes a
+ * {@code SequenceGeneratedEvent} for the asynchronous LLM pass. Routing clones through that path would look tidy and be
+ * wrong twice over: it bills an LLM call per copied sequence, and the fresh tags would drift from the ones on the
+ * original, so a copy would answer to different search terms than the thing it was copied from. Copying the rows across
+ * is free, instant and exact.
  *
- * <p>The same reasoning applies to {@code semantic_summary}, which is copied verbatim.
+ * <p>
+ * The same reasoning applies to {@code semantic_summary}, which is copied verbatim.
  */
 @Service
 @RequiredArgsConstructor
@@ -84,17 +86,16 @@ public class WorksheetCloneService {
     /**
      * Copies a worksheet, its sequences and their tasks to a new owner.
      *
-     * <p>Everything gets fresh identifiers; the source is left untouched. Ownership of the copied
-     * sequences transfers to {@code newOwnerId} as well, so the copier can edit them without
-     * reaching into someone else's material.
+     * <p>
+     * Everything gets fresh identifiers; the source is left untouched. Ownership of the copied sequences transfers to
+     * {@code newOwnerId} as well, so the copier can edit them without reaching into someone else's material.
      *
      * @param sourceWorksheetId the worksheet to copy
      * @param newOwnerId        the user the copy belongs to
      * @return the freshly loaded copy
-     * @throws DomainValidationException if either argument is null, or if the source does not
-     *                                   exist — {@link WorksheetRepository#getWorksheetById}
-     *                                   raises that itself, so there is no null check here to
-     *                                   go stale
+     * @throws DomainValidationException if either argument is null, or if the source does not exist —
+     *                                   {@link WorksheetRepository#getWorksheetById} raises that itself, so there is no
+     *                                   null check here to go stale
      */
     @Transactional
     public WorksheetDTO copy(UUID sourceWorksheetId, UUID newOwnerId) {
@@ -110,27 +111,29 @@ public class WorksheetCloneService {
         WorksheetDTO copy = copyWorksheetShell(source, newOwnerId);
         worksheetRepo.createWorksheet(copy);
 
-        List<TieredTaskSequenceDTO> sourceSequences =
-                source.getSequenceDTOS() == null ? List.of() : source.getSequenceDTOS();
+        List<TieredTaskSequenceDTO> sourceSequences = source.getSequenceDTOS() == null ? List.of()
+            : source.getSequenceDTOS();
         for (TieredTaskSequenceDTO reference : sourceSequences) {
             copySequenceInto(copy, reference.getId(), newOwnerId);
         }
 
-        log.info("Copied worksheet {} -> {} for owner {} ({} sequences)",
-                sourceWorksheetId, copy.getId(), newOwnerId, sourceSequences.size());
+        log.info(
+            "Copied worksheet {} -> {} for owner {} ({} sequences)",
+            sourceWorksheetId, copy.getId(), newOwnerId, sourceSequences.size()
+        );
 
         return loadWorksheet(copy.getId());
     }
 
     /**
-     * Copies a worksheet to a new owner without copying its sequences: the copy links the same
-     * sequences, in the same order.
+     * Copies a worksheet to a new owner without copying its sequences: the copy links the same sequences, in the same
+     * order.
      *
-     * <p>How a teacher takes over a worksheet their class is already working on. Keeping the
-     * sequences — and with them the task ids — is the point: student progress is keyed by task,
-     * so a deep copy would make the work a class has already done vanish from the progress view.
-     * Editing one of the linked sequences still goes through {@link SequenceForkService}, exactly
-     * as for any other foreign sequence in a worksheet of theirs.
+     * <p>
+     * How a teacher takes over a worksheet their class is already working on. Keeping the sequences — and with them the
+     * task ids — is the point: student progress is keyed by task, so a deep copy would make the work a class has
+     * already done vanish from the progress view. Editing one of the linked sequences still goes through
+     * {@link SequenceForkService}, exactly as for any other foreign sequence in a worksheet of theirs.
      *
      * @param sourceWorksheetId the worksheet to copy
      * @param newOwnerId        the user the copy belongs to
@@ -153,16 +156,20 @@ public class WorksheetCloneService {
 
         // The batch appends in list order, and the source lists its sequences in display order,
         // so the copy keeps the order the teacher saw. The batch refuses an empty list.
-        List<TieredTaskSequenceDTO> sourceSequences =
-                source.getSequenceDTOS() == null ? List.of() : source.getSequenceDTOS();
+        List<TieredTaskSequenceDTO> sourceSequences = source.getSequenceDTOS() == null ? List.of()
+            : source.getSequenceDTOS();
         if (!sourceSequences.isEmpty()) {
-            worksheetRepo.addSequencesToWorksheet(copy, sourceSequences.stream()
+            worksheetRepo.addSequencesToWorksheet(
+                copy, sourceSequences.stream()
                     .map(reference -> TieredTaskSequenceDTO.builder().id(reference.getId()).build())
-                    .toList());
+                    .toList()
+            );
         }
 
-        log.info("Shallow-copied worksheet {} -> {} for owner {} ({} sequences linked)",
-                sourceWorksheetId, copy.getId(), newOwnerId, sourceSequences.size());
+        log.info(
+            "Shallow-copied worksheet {} -> {} for owner {} ({} sequences linked)",
+            sourceWorksheetId, copy.getId(), newOwnerId, sourceSequences.size()
+        );
 
         return loadWorksheet(copy.getId());
     }
@@ -172,40 +179,44 @@ public class WorksheetCloneService {
     /**
      * The worksheet row itself.
      *
-     * <p>Named explicitly rather than via {@code toBuilder()}, unlike the sequences and tasks:
-     * a worksheet has few fields and two of them — the sequence list and the owner — must not
-     * be carried over, so an explicit builder reads more honestly here than a copy-then-reset.
-     * The completeness test covers this class too, so an added field still surfaces.
+     * <p>
+     * Named explicitly rather than via {@code toBuilder()}, unlike the sequences and tasks: a worksheet has few fields
+     * and two of them — the sequence list and the owner — must not be carried over, so an explicit builder reads more
+     * honestly here than a copy-then-reset. The completeness test covers this class too, so an added field still
+     * surfaces.
      */
     private WorksheetDTO copyWorksheetShell(WorksheetDTO source, UUID newOwnerId) {
         return WorksheetDTO.builder()
-                .name(source.getName())
-                .description(source.getDescription())
-                .ownerId(newOwnerId)
-                .hintsEnabled(source.isHintsEnabled())
-                .hintCreditsPerTask(source.getHintCreditsPerTask())
-                // Never the source's visibility. Copying is how you take someone else's material
-                // to adapt it, and a half-adapted worksheet appearing in the marketplace under
-                // your name is not what pressing "copy" meant. Publishing it is a separate act.
-                .visibility(WorksheetAccessPolicy.visibilityForCopy())
-                .copiedFrom(source.getId())
-                .copiedAt(Instant.now())
-                .build();
+            .name(source.getName())
+            .description(source.getDescription())
+            .ownerId(newOwnerId)
+            .hintsEnabled(source.isHintsEnabled())
+            .hintCreditsPerTask(source.getHintCreditsPerTask())
+            // Never the source's visibility. Copying is how you take someone else's material
+            // to adapt it, and a half-adapted worksheet appearing in the marketplace under
+            // your name is not what pressing "copy" meant. Publishing it is a separate act.
+            .visibility(WorksheetAccessPolicy.visibilityForCopy())
+            .copiedFrom(source.getId())
+            .copiedAt(Instant.now())
+            .build();
     }
 
     /**
-     * Copies one sequence, with its tasks, tags, concepts and summary, and links it to the
-     * target worksheet.
+     * Copies one sequence, with its tasks, tags, concepts and summary, and links it to the target worksheet.
      *
-     * <p>The reference passed in from the worksheet carries only an id, so the sequence is
-     * re-read in full first — otherwise the copy would be made from a shell and lose everything
-     * the worksheet listing does not itself select.
+     * <p>
+     * The reference passed in from the worksheet carries only an id, so the sequence is re-read in full first —
+     * otherwise the copy would be made from a shell and lose everything the worksheet listing does not itself select.
      *
-     * <p>Public because {@link SequenceForkService} needs exactly this when a curator takes a
-     * private copy of someone else's sequence in order to edit it. Sharing the implementation
-     * is the point: a fork that copied fewer fields than a worksheet copy would be the same
-     * silent data loss this class was written to end, arriving through a second door.
+     * <p>
+     * Public because {@link SequenceForkService} needs exactly this when a curator takes a private copy of someone
+     * else's sequence in order to edit it. Sharing the implementation is the point: a fork that copied fewer fields
+     * than a worksheet copy would be the same silent data loss this class was written to end, arriving through a second
+     * door.
      *
+     * @param targetWorksheet  the worksheet to link the copy to
+     * @param sourceSequenceId the sequence to copy
+     * @param newOwnerId       the owner of the copy
      * @return the id of the new sequence
      */
     @Transactional
@@ -228,16 +239,17 @@ public class WorksheetCloneService {
         copySemanticSummary(sourceSequenceId, newSequenceId);
 
         worksheetRepo.addSequenceToWorksheet(
-                targetWorksheet,
-                TieredTaskSequenceDTO.builder().id(newSequenceId).build());
+            targetWorksheet,
+            TieredTaskSequenceDTO.builder().id(newSequenceId).build()
+        );
 
         log.debug("Copied sequence {} -> {} ({} tasks)", sourceSequenceId, newSequenceId, sourceTasks.size());
         return newSequenceId;
     }
 
     /**
-     * Concept links drive the concept display and filter, and live in their own
-     * junction table rather than on the sequence row, so they need copying separately.
+     * Concept links drive the concept display and filter, and live in their own junction table rather than on the
+     * sequence row, so they need copying separately.
      */
     private void copyConcepts(UUID sourceSequenceId, UUID newSequenceId) {
         List<UUID> conceptIds = sequenceRepo.findConceptIdsBySequenceId(sourceSequenceId);
@@ -247,9 +259,8 @@ public class WorksheetCloneService {
     }
 
     /**
-     * Re-points each of the source's tags at the copy, preserving source and confidence so a
-     * hand-corrected tag stays hand-corrected and the admin retag view still tells auto,
-     * LLM and manual tags apart.
+     * Re-points each of the source's tags at the copy, preserving source and confidence so a hand-corrected tag stays
+     * hand-corrected and the admin retag view still tells auto, LLM and manual tags apart.
      */
     private void copyTags(UUID sourceSequenceId, UUID newSequenceId) {
         List<SequenceTagDTO> sourceTags = tagRepo.findBySequenceId(sourceSequenceId);

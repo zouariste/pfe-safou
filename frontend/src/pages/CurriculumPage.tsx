@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, apiErrorMessage } from "../lib/api";
+import { api, apiErrorMessage, type ApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import type { CurriculumTopic, CurriculumCodeExample } from "../types/models";
@@ -358,8 +358,8 @@ export default function CurriculumPage() {
             }
             setExampleForm(null);
             await refreshExamples();
-        } catch (e: any) {
-            setExampleError(e.response?.data?.message || t("curriculum.exampleSaveError"));
+        } catch (e) {
+            setExampleError((e as ApiError).response?.data?.message || t("curriculum.exampleSaveError"));
         } finally {
             setSavingExample(false);
         }
@@ -397,7 +397,8 @@ export default function CurriculumPage() {
 
             const res = await api.post(`/curriculum/topics/${selectedTopic.id}/generate`, payload);
             navigate(`/sequence/${res.data.id}`);
-        } catch (e: any) {
+        } catch (caught) {
+            const e = caught as ApiError;
             // AP32: a topic without curated seed examples returns 422 { error: "no_examples" }.
             // Show the internationalized message rather than the raw backend text.
             if (e.response?.data?.error === "no_examples") {

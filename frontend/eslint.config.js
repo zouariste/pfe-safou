@@ -6,7 +6,8 @@ import tseslint from 'typescript-eslint'
 import { globalIgnores } from 'eslint/config'
 
 export default tseslint.config([
-  globalIgnores(['dist']),
+  // public/jsparsons is the vendored js-parsons library and its dependencies, not our code.
+  globalIgnores(['dist', 'public/jsparsons']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -18,6 +19,10 @@ export default tseslint.config([
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+    },
+    rules: {
+      // AuthContext exports its useAuth hook beside the provider, the usual context pattern.
+      'react-refresh/only-export-components': ['error', { allowConstantExport: true, allowExportNames: ['useAuth'] }],
     },
   },
 ])

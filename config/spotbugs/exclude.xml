@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SpotBugs findings that are deliberate. Each <Match> says why it is not a bug. -->
+<FindBugsFilter>
+    <!-- Spring injects its beans (JdbcTemplate, repositories, services, the shared ObjectMapper and configuration
+         properties) through constructors; holding the injected instance is the point, and copying a bean would
+         break it. SpotBugs matches field types exactly, so a newly injected type that it flags is added here. -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2" />
+        <Or>
+            <Field type="org.springframework.jdbc.core.JdbcTemplate" />
+            <Field type="com.fasterxml.jackson.databind.ObjectMapper" />
+            <Field type="de.uni_passau.fim.se2.infrastructure.ai.AiProps" />
+            <Field type="de.uni_passau.fim.se2.application.service.CodeSanitizerService" />
+            <Field type="de.uni_passau.fim.se2.application.service.SequenceTagService" />
+            <Field type="de.uni_passau.fim.se2.application.service.TaskPersistenceService" />
+            <Field type="de.uni_passau.fim.se2.domain.interfaces.ClassRepository" />
+            <Field type="de.uni_passau.fim.se2.domain.interfaces.ConceptCurriculumTopicRepository" />
+            <Field type="de.uni_passau.fim.se2.domain.interfaces.ConceptRepository" />
+            <Field type="de.uni_passau.fim.se2.domain.interfaces.CurriculumCodeExampleRepository" />
+            <Field type="de.uni_passau.fim.se2.domain.interfaces.CurriculumTopicRepository" />
+            <Field type="de.uni_passau.fim.se2.domain.interfaces.FeedbackLogRepository" />
+            <Field type="de.uni_passau.fim.se2.domain.interfaces.SequenceTagRepository" />
+            <Field type="de.uni_passau.fim.se2.domain.interfaces.TaskChangeAnalysisRepository" />
+            <Field type="de.uni_passau.fim.se2.domain.interfaces.TaskRepository" />
+            <Field type="de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository" />
+            <Field type="de.uni_passau.fim.se2.domain.interfaces.UserRepository" />
+        </Or>
+    </Match>
+    <!-- DTOs, records and request/response bodies are data carriers handed between layers by reference. Their lists,
+         sets and maps are either immutable (List.of, Set.of, toList) or owned by the code that built the carrier;
+         defensive copies would add allocations on every request without protecting anything. -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2" />
+        <Or>
+            <Field type="java.util.List" />
+            <Field type="java.util.Set" />
+            <Field type="java.util.Map" />
+        </Or>
+    </Match>
+    <!-- The formatted text is an LLM prompt or an email body. It must contain \n on every platform; %n would turn
+         into \r\n on Windows and change what the model or the recipient sees. -->
+    <Match>
+        <Bug pattern="VA_FORMAT_STRING_USES_NEWLINE" />
+    </Match>
+    <!-- Rethrows the RuntimeException a parallel enrichment task failed with, unwrapped from its
+         CompletionException, so callers see the original exception rather than a wrapper. -->
+    <Match>
+        <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION" />
+        <Class name="de.uni_passau.fim.se2.application.service.TaskEnricher" />
+        <Method name="enrichWithSolutions" />
+    </Match>
+    <!-- The backend image installs SpotBugs at this path; the analyzer skips itself when the file is absent, as on
+         a developer machine. -->
+    <Match>
+        <Bug pattern="DMI_HARDCODED_ABSOLUTE_FILENAME" />
+        <Class name="de.uni_passau.fim.se2.application.service.hints.SpotBugsAnalyzer" />
+    </Match>
+    <!-- loadTaskById never returns null today, but LearningEventAccessTest pins a null task to a refusal, so the
+         check stays as the documented contract. -->
+    <Match>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE" />
+        <Class name="de.uni_passau.fim.se2.api.LearningEventController" />
+        <Method name="getEventsByTask" />
+    </Match>
+</FindBugsFilter>

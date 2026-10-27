@@ -18,23 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.AuthTokenDTO;
-import de.uni_passau.fim.se2.domain.entities.ClassDTO;
-import de.uni_passau.fim.se2.domain.entities.UserDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
-import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.security.access.AccessDeniedException;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.IntStream;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -47,13 +30,30 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.IntStream;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.access.AccessDeniedException;
+
+import de.uni_passau.fim.se2.domain.entities.AuthTokenDTO;
+import de.uni_passau.fim.se2.domain.entities.ClassDTO;
+import de.uni_passau.fim.se2.domain.entities.UserDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
+import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
+
 /**
  * Importing a class list at once.
  *
- * Each row is a real account that no single action undoes, so what this accepts
- * and what it refuses is worth pinning: a file with one bad line must create
- * nothing at all, and a file that is simply the wrong file must not create
- * hundreds of students before anyone reads the screen.
+ * Each row is a real account that no single action undoes, so what this accepts and what it refuses is worth pinning: a
+ * file with one bad line must create nothing at all, and a file that is simply the wrong file must not create hundreds
+ * of students before anyone reads the screen.
  */
 class ClassServiceBulkStudentsTest {
 
@@ -73,24 +73,29 @@ class ClassServiceBulkStudentsTest {
         ownershipService = mock(OwnershipService.class);
         tokenService = mock(TokenService.class);
         service = new ClassService(
-                classRepository,
-                userRepository,
-                ownershipService,
-                tokenService,
-                mock(FeedbackLogService.class),
-                mock(TempPasswordGenerator.class),
-                mock(PasswordHasherService.class),
-                mock(WorksheetService.class),
-                mock(WorksheetCloneService.class),
-                mock(TaskPersistenceService.class),
-                mock(TaskSubmissionService.class));
+            classRepository,
+            userRepository,
+            ownershipService,
+            tokenService,
+            mock(FeedbackLogService.class),
+            mock(TempPasswordGenerator.class),
+            mock(PasswordHasherService.class),
+            mock(WorksheetService.class),
+            mock(WorksheetCloneService.class),
+            mock(TaskPersistenceService.class),
+            mock(TaskSubmissionService.class)
+        );
 
-        when(classRepository.findById(CLASS_ID)).thenReturn(Optional.of(ClassDTO.builder()
-                .id(CLASS_ID)
-                .name("7a")
-                .description("")
-                .ownerId(OWNER)
-                .build()));
+        when(classRepository.findById(CLASS_ID)).thenReturn(
+            Optional.of(
+                ClassDTO.builder()
+                    .id(CLASS_ID)
+                    .name("7a")
+                    .description("")
+                    .ownerId(OWNER)
+                    .build()
+            )
+        );
 
         // Saving is what hands the new user its id, the way the DAO does.
         when(userRepository.save(any(UserDTO.class))).thenAnswer(invocation -> {
@@ -99,11 +104,12 @@ class ClassServiceBulkStudentsTest {
             return user;
         });
 
-        when(tokenService.createStudentInviteToken(any(UUID.class))).thenAnswer(invocation ->
-                AuthTokenDTO.builder()
-                        .userId(invocation.getArgument(0))
-                        .tokenValue("invite-" + invocation.getArgument(0))
-                        .build());
+        when(tokenService.createStudentInviteToken(any(UUID.class))).thenAnswer(
+            invocation -> AuthTokenDTO.builder()
+                .userId(invocation.getArgument(0))
+                .tokenValue("invite-" + invocation.getArgument(0))
+                .build()
+        );
     }
 
     private static List<ClassService.NewStudent> roster(String... names) {
@@ -117,18 +123,21 @@ class ClassServiceBulkStudentsTest {
     @Test
     @DisplayName("creates one student per row, each with an invite token")
     void createsEveryRow() {
-        List<ClassDTO.StudentInfo> created = service.createStudents(CLASS_ID,
-                roster("Anna", "Müller", "Ben", "Weber"));
+        List<ClassDTO.StudentInfo> created = service.createStudents(
+            CLASS_ID,
+            roster("Anna", "Müller", "Ben", "Weber")
+        );
 
         assertAll(
-                () -> assertEquals(2, created.size()),
-                () -> assertEquals("Anna", created.get(0).getFirstName()),
-                () -> assertEquals("Müller", created.get(0).getLastName()),
-                () -> assertEquals("Weber", created.get(1).getLastName()),
-                // The token is the whole point: without it the teacher has an
-                // account nobody can claim.
-                () -> assertTrue(created.stream().allMatch(s -> s.getInviteToken() != null)),
-                () -> assertTrue(created.stream().allMatch(s -> s.getEmail() == null)));
+            () -> assertEquals(2, created.size()),
+            () -> assertEquals("Anna", created.get(0).getFirstName()),
+            () -> assertEquals("Müller", created.get(0).getLastName()),
+            () -> assertEquals("Weber", created.get(1).getLastName()),
+            // The token is the whole point: without it the teacher has an
+            // account nobody can claim.
+            () -> assertTrue(created.stream().allMatch(s -> s.getInviteToken() != null)),
+            () -> assertTrue(created.stream().allMatch(s -> s.getEmail() == null))
+        );
 
         verify(classRepository, org.mockito.Mockito.times(2)).addStudent(eq(CLASS_ID), any(UUID.class));
     }
@@ -138,8 +147,9 @@ class ClassServiceBulkStudentsTest {
     void trimsNames() {
         List<ClassDTO.StudentInfo> created = service.createStudents(CLASS_ID, roster("  Anna ", " Müller"));
         assertAll(
-                () -> assertEquals("Anna", created.get(0).getFirstName()),
-                () -> assertEquals("Müller", created.get(0).getLastName()));
+            () -> assertEquals("Anna", created.get(0).getFirstName()),
+            () -> assertEquals("Müller", created.get(0).getLastName())
+        );
     }
 
     @Test
@@ -153,14 +163,17 @@ class ClassServiceBulkStudentsTest {
     @Test
     @DisplayName("rejects the whole import when one row has no name, naming the row")
     void rejectsBlankName() {
-        DomainValidationException e = assertThrows(DomainValidationException.class,
-                () -> service.createStudents(CLASS_ID, roster("Anna", "Müller", "Ben", "  ")));
+        DomainValidationException e = assertThrows(
+            DomainValidationException.class,
+            () -> service.createStudents(CLASS_ID, roster("Anna", "Müller", "Ben", "  "))
+        );
 
         assertAll(
-                () -> assertTrue(e.getMessage().contains("Zeile 2"), e.getMessage()),
-                // Nothing at all: a half-imported class is harder to repair
-                // than one that never arrived.
-                () -> verify(userRepository, never()).save(any(UserDTO.class)));
+            () -> assertTrue(e.getMessage().contains("Zeile 2"), e.getMessage()),
+            // Nothing at all: a half-imported class is harder to repair
+            // than one that never arrived.
+            () -> verify(userRepository, never()).save(any(UserDTO.class))
+        );
     }
 
     @Test
@@ -168,12 +181,15 @@ class ClassServiceBulkStudentsTest {
     void rejectsOverlongName() {
         // varchar(100) — letting it through surfaces as a 500 from Postgres
         // after some of the class has already been created.
-        DomainValidationException e = assertThrows(DomainValidationException.class,
-                () -> service.createStudents(CLASS_ID, roster("Anna", "M".repeat(101))));
+        DomainValidationException e = assertThrows(
+            DomainValidationException.class,
+            () -> service.createStudents(CLASS_ID, roster("Anna", "M".repeat(101)))
+        );
 
         assertAll(
-                () -> assertTrue(e.getMessage().contains("Zeile 1"), e.getMessage()),
-                () -> verify(userRepository, never()).save(any(UserDTO.class)));
+            () -> assertTrue(e.getMessage().contains("Zeile 1"), e.getMessage()),
+            () -> verify(userRepository, never()).save(any(UserDTO.class))
+        );
     }
 
     @Test
@@ -186,8 +202,8 @@ class ClassServiceBulkStudentsTest {
     @DisplayName("refuses a file too large to be a class")
     void refusesOversizedImport() {
         List<ClassService.NewStudent> tooMany = IntStream.range(0, 201)
-                .mapToObj(i -> new ClassService.NewStudent("Anna" + i, "Müller"))
-                .toList();
+            .mapToObj(i -> new ClassService.NewStudent("Anna" + i, "Müller"))
+            .toList();
 
         assertThrows(DomainValidationException.class, () -> service.createStudents(CLASS_ID, tooMany));
         verify(userRepository, never()).save(any(UserDTO.class));
@@ -197,8 +213,8 @@ class ClassServiceBulkStudentsTest {
     @DisplayName("accepts an import of exactly the maximum size")
     void acceptsImportAtLimit() {
         List<ClassService.NewStudent> full = IntStream.range(0, 200)
-                .mapToObj(i -> new ClassService.NewStudent("Anna" + i, "Müller"))
-                .toList();
+            .mapToObj(i -> new ClassService.NewStudent("Anna" + i, "Müller"))
+            .toList();
 
         assertEquals(200, service.createStudents(CLASS_ID, full).size());
     }
@@ -207,10 +223,15 @@ class ClassServiceBulkStudentsTest {
     @DisplayName("rejects an empty list rather than reporting a successful import of nothing")
     void rejectsEmptyList() {
         assertAll(
-                () -> assertThrows(DomainValidationException.class,
-                        () -> service.createStudents(CLASS_ID, List.of())),
-                () -> assertThrows(DomainValidationException.class,
-                        () -> service.createStudents(CLASS_ID, null)));
+            () -> assertThrows(
+                DomainValidationException.class,
+                () -> service.createStudents(CLASS_ID, List.of())
+            ),
+            () -> assertThrows(
+                DomainValidationException.class,
+                () -> service.createStudents(CLASS_ID, null)
+            )
+        );
     }
 
     @Test
@@ -219,10 +240,12 @@ class ClassServiceBulkStudentsTest {
         // The bulk path is a new way into the same class, so it has to be
         // guarded like the single one; admins are let through by the same check.
         doThrow(new AccessDeniedException("not yours"))
-                .when(ownershipService).checkOwnership(OWNER, "class");
+            .when(ownershipService).checkOwnership(OWNER, "class");
 
-        assertThrows(AccessDeniedException.class,
-                () -> service.createStudents(CLASS_ID, roster("Anna", "Müller")));
+        assertThrows(
+            AccessDeniedException.class,
+            () -> service.createStudents(CLASS_ID, roster("Anna", "Müller"))
+        );
         verify(userRepository, never()).save(any(UserDTO.class));
     }
 
@@ -232,8 +255,10 @@ class ClassServiceBulkStudentsTest {
         UUID unknown = UUID.randomUUID();
         when(classRepository.findById(unknown)).thenReturn(Optional.empty());
 
-        assertThrows(DomainValidationException.class,
-                () -> service.createStudents(unknown, roster("Anna", "Müller")));
+        assertThrows(
+            DomainValidationException.class,
+            () -> service.createStudents(unknown, roster("Anna", "Müller"))
+        );
     }
 
     @Test
@@ -242,12 +267,19 @@ class ClassServiceBulkStudentsTest {
         // Both paths run through one checker, so neither can quietly accept
         // what the other refuses.
         assertAll(
-                () -> assertThrows(DomainValidationException.class,
-                        () -> service.createStudent(CLASS_ID, "Anna", "  ")),
-                () -> assertThrows(DomainValidationException.class,
-                        () -> service.createStudent(CLASS_ID, null, "Müller")),
-                () -> assertThrows(DomainValidationException.class,
-                        () -> service.createStudent(CLASS_ID, "Anna", "M".repeat(101))),
-                () -> assertEquals("Anna", service.createStudent(CLASS_ID, " Anna ", "Müller").getFirstName()));
+            () -> assertThrows(
+                DomainValidationException.class,
+                () -> service.createStudent(CLASS_ID, "Anna", "  ")
+            ),
+            () -> assertThrows(
+                DomainValidationException.class,
+                () -> service.createStudent(CLASS_ID, null, "Müller")
+            ),
+            () -> assertThrows(
+                DomainValidationException.class,
+                () -> service.createStudent(CLASS_ID, "Anna", "M".repeat(101))
+            ),
+            () -> assertEquals("Anna", service.createStudent(CLASS_ID, " Anna ", "Müller").getFirstName())
+        );
     }
 }

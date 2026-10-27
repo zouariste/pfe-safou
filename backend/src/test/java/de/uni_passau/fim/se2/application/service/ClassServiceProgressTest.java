@@ -18,20 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.ClassDTO;
-import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
-import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -39,12 +25,26 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import de.uni_passau.fim.se2.domain.entities.ClassDTO;
+import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
+import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
+
 /**
  * The class progress table, and which of its rows lead to a student's detail page.
  *
- * feedback_logs.user_id has no foreign key, so a student's clicks stay in the
- * class after the student is deleted or removed from it. Every row the table
- * returns with a userId is a link, and the detail page only answers for current
+ * feedback_logs.user_id has no foreign key, so a student's clicks stay in the class after the student is deleted or
+ * removed from it. Every row the table returns with a userId is a link, and the detail page only answers for current
  * members — so a former student must come back without one.
  */
 class ClassServiceProgressTest {
@@ -63,39 +63,51 @@ class ClassServiceProgressTest {
         OwnershipService ownershipService = mock(OwnershipService.class);
         feedbackLogService = mock(FeedbackLogService.class);
         service = new ClassService(
-                classRepository,
-                mock(UserRepository.class),
-                ownershipService,
-                mock(TokenService.class),
-                feedbackLogService,
-                mock(TempPasswordGenerator.class),
-                mock(PasswordHasherService.class),
-                mock(WorksheetService.class),
-                mock(WorksheetCloneService.class),
-                mock(TaskPersistenceService.class),
-                mock(TaskSubmissionService.class));
+            classRepository,
+            mock(UserRepository.class),
+            ownershipService,
+            mock(TokenService.class),
+            feedbackLogService,
+            mock(TempPasswordGenerator.class),
+            mock(PasswordHasherService.class),
+            mock(WorksheetService.class),
+            mock(WorksheetCloneService.class),
+            mock(TaskPersistenceService.class),
+            mock(TaskSubmissionService.class)
+        );
 
-        when(classRepository.findByIdWithDetails(CLASS_ID)).thenReturn(Optional.of(ClassDTO.builder()
-                .id(CLASS_ID)
-                .ownerId(OWNER)
-                .students(List.of(ClassDTO.StudentInfo.builder()
-                        .userId(MEMBER).firstName("Anna").lastName("Müller").build()))
-                .worksheets(List.of())
-                .build()));
+        when(classRepository.findByIdWithDetails(CLASS_ID)).thenReturn(
+            Optional.of(
+                ClassDTO.builder()
+                    .id(CLASS_ID)
+                    .ownerId(OWNER)
+                    .students(
+                        List.of(
+                            ClassDTO.StudentInfo.builder()
+                                .userId(MEMBER).firstName("Anna").lastName("Müller").build()
+                        )
+                    )
+                    .worksheets(List.of())
+                    .build()
+            )
+        );
         when(ownershipService.getCurrentUserId()).thenReturn(OWNER);
         when(ownershipService.isOwnerOrAdmin(OWNER)).thenReturn(true);
 
         UUID task = UUID.randomUUID();
-        when(feedbackLogService.getFeedbackLogsForClass(CLASS_ID)).thenReturn(List.of(
+        when(feedbackLogService.getFeedbackLogsForClass(CLASS_ID)).thenReturn(
+            List.of(
                 click(MEMBER, task, true),
                 click(FORMER, task, false),
                 click(FORMER, task, true),
-                click(null, task, false)));
+                click(null, task, false)
+            )
+        );
     }
 
     private static FeedbackLogDTO click(UUID userId, UUID taskId, boolean correct) {
         return FeedbackLogDTO.builder()
-                .id(UUID.randomUUID()).userId(userId).taskId(taskId).classId(CLASS_ID).correct(correct).build();
+            .id(UUID.randomUUID()).userId(userId).taskId(taskId).classId(CLASS_ID).correct(correct).build();
     }
 
     private Map<String, Object> rowNamed(List<Map<String, Object>> rows, String name) {
@@ -117,10 +129,11 @@ class ClassServiceProgressTest {
         Map<String, Object> row = rowNamed(rows, "Ehemaliger Schüler");
 
         assertAll(
-                () -> assertNull(row.get("userId")),
-                () -> assertEquals(2, row.get("totalAttempts")),
-                () -> assertEquals(1L, row.get("correctAttempts")),
-                () -> assertEquals(3, rows.size()));
+            () -> assertNull(row.get("userId")),
+            () -> assertEquals(2, row.get("totalAttempts")),
+            () -> assertEquals(1L, row.get("correctAttempts")),
+            () -> assertEquals(3, rows.size())
+        );
     }
 
     @Test

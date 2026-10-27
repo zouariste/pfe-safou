@@ -18,21 +18,22 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.interfaces.TaskSubmissionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 /**
- * Keeps the arrangement a student had when they solved a task, so reopening it
- * shows their work instead of a reshuffled puzzle.
+ * Keeps the arrangement a student had when they solved a task, so reopening it shows their work instead of a reshuffled
+ * puzzle.
  */
 @Service
 @RequiredArgsConstructor
@@ -45,9 +46,13 @@ public class TaskSubmissionService {
     /**
      * Stores a solved arrangement.
      *
-     * Anonymous solvers are skipped rather than rejected: a task can be opened
-     * through a shared link without an account, and there is nobody to store the
-     * work against. They keep the behaviour they have always had.
+     * Anonymous solvers are skipped rather than rejected: a task can be opened through a shared link without an
+     * account, and there is nobody to store the work against. They keep the behaviour they have always had.
+     *
+     * @param userId       the student, or null if anonymous
+     * @param taskId       the solved task
+     * @param blockOrder   the text of each block in the solution, in order
+     * @param indentLevels the indent level of each block
      */
     @Transactional
     public void saveSolved(UUID userId, UUID taskId, List<String> blockOrder, List<Integer> indentLevels) {
@@ -72,15 +77,19 @@ public class TaskSubmissionService {
     }
 
     /**
-     * Stores work in progress, so closing the tab or stepping away from the page does not
-     * cost the student their arrangement.
+     * Stores work in progress, so closing the tab or stepping away from the page does not cost the student their
+     * arrangement.
      *
-     * Unlike {@link #saveSolved}, an empty arrangement is accepted: a student who has pulled
-     * every block back out of the solution area is in a real state, and refusing to record it
-     * would leave the previous one to be restored over the top of their actual work.
+     * Unlike {@link #saveSolved}, an empty arrangement is accepted: a student who has pulled every block back out of
+     * the solution area is in a real state, and refusing to record it would leave the previous one to be restored over
+     * the top of their actual work.
      *
-     * Anonymous solvers are skipped for the same reason as above -- no account, nothing to
-     * store the work against.
+     * Anonymous solvers are skipped for the same reason as above -- no account, nothing to store the work against.
+     *
+     * @param userId       the student, or null if anonymous
+     * @param taskId       the task being worked on
+     * @param blockOrder   the text of each block in the solution area, in order
+     * @param indentLevels the indent level of each block
      */
     @Transactional
     public void saveProgress(UUID userId, UUID taskId, List<String> blockOrder, List<Integer> indentLevels) {
@@ -98,35 +107,46 @@ public class TaskSubmissionService {
         store(userId, taskId, blockOrder, indentLevels, false);
     }
 
-    private void store(UUID userId, UUID taskId, List<String> blockOrder,
-                       List<Integer> indentLevels, boolean solved) {
-        repository.save(TaskSubmissionDTO.builder()
+    private void store(
+        UUID userId, UUID taskId, List<String> blockOrder,
+        List<Integer> indentLevels, boolean solved
+    ) {
+        repository.save(
+            TaskSubmissionDTO.builder()
                 .userId(userId)
                 .taskId(taskId)
                 .blockOrder(blockOrder != null ? blockOrder : List.of())
                 .indentLevels(indentLevels != null ? indentLevels : List.of())
                 .solved(solved)
-                .build());
+                .build()
+        );
     }
 
     /**
      * Throws away a student's stored arrangement, so the task deals a fresh puzzle next time.
      *
-     * This is the student discarding their own work on purpose, which is why it is allowed on
-     * a closed worksheet: there is nothing to gain by forcing them to keep it.
+     * This is the student discarding their own work on purpose, which is why it is allowed on a closed worksheet: there
+     * is nothing to gain by forcing them to keep it.
+     *
+     * @param userId the student
+     * @param taskId the task whose arrangement to discard
      */
     @Transactional
     public void discard(UUID userId, UUID taskId) {
         if (taskId == null) {
             throw new DomainValidationException("taskId is required");
         }
-        if (userId == null) return;
+        if (userId == null) {
+            return;
+        }
         repository.delete(userId, taskId);
     }
 
     @Transactional(readOnly = true)
     public Optional<TaskSubmissionDTO> find(UUID userId, UUID taskId) {
-        if (userId == null || taskId == null) return Optional.empty();
+        if (userId == null || taskId == null) {
+            return Optional.empty();
+        }
         return repository.find(userId, taskId);
     }
 }

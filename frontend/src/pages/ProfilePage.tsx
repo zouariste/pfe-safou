@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api } from "../lib/api";
+import { api, type ApiError } from "../lib/api";
 
 interface WorksheetSummary {
     id: string;
@@ -118,7 +118,8 @@ export default function ProfilePage() {
             setEditingName(false);
             // Force reload to update AuthContext
             window.location.reload();
-        } catch (e: any) {
+        } catch (caught) {
+            const e = caught as ApiError;
             setNameErr(e.response?.data?.error || e.response?.data?.message || t("profile.errorSaving"));
         } finally {
             setNameSaving(false);
@@ -138,7 +139,8 @@ export default function ProfilePage() {
             setEmailMsg(res.data.message || t("profile.emailChanged"));
             setEditingEmail(false);
             setNewEmail("");
-        } catch (e: any) {
+        } catch (caught) {
+            const e = caught as ApiError;
             setEmailErr(e.response?.data?.error || e.response?.data?.message || t("profile.errorSaving"));
         } finally {
             setEmailSaving(false);
@@ -164,7 +166,8 @@ export default function ProfilePage() {
             setCurrentPassword("");
             setNewPassword("");
             setConfirmPassword("");
-        } catch (e: any) {
+        } catch (caught) {
+            const e = caught as ApiError;
             setPwErr(e.response?.data?.error || e.response?.data?.message || t("profile.errorSaving"));
         } finally {
             setPwSaving(false);

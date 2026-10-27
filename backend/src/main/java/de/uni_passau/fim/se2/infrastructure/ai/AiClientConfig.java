@@ -18,29 +18,37 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai;
 
-import de.uni_passau.fim.se2.domain.interfaces.*;
-import de.uni_passau.fim.se2.infrastructure.ai.claude.*;
-import de.uni_passau.fim.se2.infrastructure.ai.gemini.*;
-import de.uni_passau.fim.se2.infrastructure.ai.openai.*;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+
 import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
 import de.uni_passau.fim.se2.infrastructure.ai.claude.ClaudeClient;
 import de.uni_passau.fim.se2.infrastructure.ai.gemini.GeminiClient;
 import de.uni_passau.fim.se2.infrastructure.ai.openai.OpenAiClient;
-import org.springframework.boot.context.properties.*;
-import org.springframework.context.annotation.*;
 
 // infrastructure/ai/AiClientConfig.java
 @Configuration
 @EnableConfigurationProperties(AiProps.class)
 public class AiClientConfig {
 
+    /**
+     * Selects the AI client for {@code ai.defaultProvider}.
+     *
+     * @param props  the AI configuration
+     * @param openai the OpenAI client
+     * @param claude the Claude client
+     * @param gemini the Gemini client
+     * @return the client for the configured provider
+     */
     @Bean
     @Primary
     public AiModelClient aiModelClient(
-            AiProps props,
-            OpenAiClient openai,
-            ClaudeClient claude,
-            GeminiClient gemini
+        AiProps props,
+        OpenAiClient openai,
+        ClaudeClient claude,
+        GeminiClient gemini
     ) {
         return switch (props.getDefaultProvider()) {
             case OPENAI -> openai;

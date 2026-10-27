@@ -18,79 +18,119 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
+
 /**
- * Repository for sequence tags (AP19 Teil A).
- * Tags are keyed by (sequence_id, tag_name) and carry a source (llm / manual).
+ * Repository for sequence tags (AP19 Teil A). Tags are keyed by (sequence_id, tag_name) and carry a source (llm /
+ * manual).
  *
- * <p>The canonical {@code tag_name} is the German slug; {@code topic_translations} maps it to an
- * English slug for display when the UI runs in English.
+ * <p>
+ * The canonical {@code tag_name} is the German slug; {@code topic_translations} maps it to an English slug for display
+ * when the UI runs in English.
  */
 public interface SequenceTagRepository {
 
-    /** All tags for a single sequence, ordered by source (manual first) then tag_name. */
+    /**
+     * All tags for a single sequence, ordered by source (manual first) then tag_name.
+     *
+     * @param sequenceId the sequence
+     * @return the sequence's tags
+     */
     List<SequenceTagDTO> findBySequenceId(UUID sequenceId);
 
-    /** All tags for a batch of sequences, grouped by sequenceId. Empty lists omitted. */
+    /**
+     * All tags for a batch of sequences, grouped by sequenceId. Empty lists omitted.
+     *
+     * @param sequenceIds the sequences
+     * @return the tags of each sequence that has any, keyed by sequence ID
+     */
     Map<UUID, List<SequenceTagDTO>> findBySequenceIds(List<UUID> sequenceIds);
 
     /**
-     * Upsert a batch of tags for a single sequence.
-     * {@code ON CONFLICT DO NOTHING} — existing tags (esp. manual) are not overwritten.
+     * Upsert a batch of tags for a single sequence. {@code ON CONFLICT DO NOTHING} — existing tags (esp. manual) are
+     * not overwritten.
+     *
+     * @param tags the tags to insert
      */
     void upsertAll(List<SequenceTagDTO> tags);
 
     /**
-     * Replace all tags of a given source for a sequence (e.g. re-running the LLM tagger
-     * after a code change). Never touches tags with a different source.
+     * Replace all tags of a given source for a sequence (e.g. re-running the LLM tagger after a code change). Never
+     * touches tags with a different source.
+     *
+     * @param sequenceId the sequence
+     * @param source     the source whose tags to replace
+     * @param newTags    the new tags for that source
      */
     void replaceForSource(UUID sequenceId, String source, List<SequenceTagDTO> newTags);
 
-    /** Delete a single tag. */
+    /**
+     * Delete a single tag.
+     *
+     * @param sequenceId the sequence
+     * @param tagName    the tag to delete
+     */
     void delete(UUID sequenceId, String tagName);
 
-    /** Distinct tag names across the system, with usage counts (for autocomplete / tag cloud). */
+    /**
+     * Distinct tag names across the system, with usage counts (for autocomplete / tag cloud).
+     *
+     * @return each distinct tag with its usage count
+     */
     List<TagCount> findAllTagsWithCounts();
 
-    /** Distinct tag names that match the given prefix, limited for autocomplete. */
+    /**
+     * Distinct tag names that match the given prefix, limited for autocomplete.
+     *
+     * @param prefix the prefix to match
+     * @param limit  the maximum number of names
+     * @return the matching tag names
+     */
     List<String> findTagsByPrefix(String prefix, int limit);
 
     /**
-     * AP19 A16: tags that first appeared after {@code cutoff}. Used by the admin "new topics"
-     * weekly report so admins can spot emerging concepts and decide whether to merge / canonicalise.
+     * AP19 A16: tags that first appeared after {@code cutoff}. Used by the admin "new topics" weekly report so admins
+     * can spot emerging concepts and decide whether to merge / canonicalise.
      *
      * @param cutoff earliest first-seen timestamp to include (inclusive)
      * @param limit  max rows (1..200)
-     * @return       list ordered by usage count DESC, then first_seen DESC
+     * @return list ordered by usage count DESC, then first_seen DESC
      */
     List<NewTopic> findNewTopicsSince(Instant cutoff, int limit);
 
     /**
-     * AP19 A16: rename a tag across all sequences (e.g. "rekursion" → "recursion").
-     * If {@code toTagName} already exists on a sequence that also has {@code fromTagName},
-     * the row is dropped rather than duplicated, so the unique key is preserved. Source of the
-     * merged row is kept from the earlier insertion.
+     * AP19 A16: rename a tag across all sequences (e.g. "rekursion" → "recursion"). If {@code toTagName} already exists
+     * on a sequence that also has {@code fromTagName}, the row is dropped rather than duplicated, so the unique key is
+     * preserved. Source of the merged row is kept from the earlier insertion.
      *
+     * @param fromTagName the tag to merge away
+     * @param toTagName   the tag to merge it into
      * @return number of sequence_tags rows affected (renamed + deleted)
      */
     int mergeTags(String fromTagName, String toTagName);
 
     /**
-     * Stores English display slugs for canonical tag names (key → value). Existing translations
-     * are overwritten, so a re-tag can correct a bad one.
+     * Stores English display slugs for canonical tag names (key → value). Existing translations are overwritten, so a
+     * re-tag can correct a bad one.
+     *
+     * @param translations the English slug for each canonical tag name
      */
     void upsertTranslations(Map<String, String> translations);
 
-    /** Every known canonical tag name → English slug mapping. */
+    /**
+     * Every known canonical tag name → English slug mapping.
+     *
+     * @return the English slug for each canonical tag name
+     */
     Map<String, String> findAllTranslations();
 
-    record TagCount(String tagName, long count) {}
+    record TagCount(String tagName, long count) {
+    }
 
     /**
      * A row in the admin "new topics" report.
@@ -99,5 +139,6 @@ public interface SequenceTagRepository {
      * @param firstSeen  when the tag was first attached to any sequence
      * @param usageCount how many sequences currently carry it
      */
-    record NewTopic(String tagName, Instant firstSeen, long usageCount) {}
+    record NewTopic(String tagName, Instant firstSeen, long usageCount) {
+    }
 }

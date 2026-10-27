@@ -78,10 +78,9 @@ For local development outside Docker you additionally need:
 - Optionally a **C compiler**, `curl` and `tar`, to build the tree-sitter native
   libraries for code analysis — see the note in [Local development](#local-development).
 
-> Running the backend's **tests** under WSL2 additionally needs Docker Desktop's
-> **WSL Integration** enabled for that distro. Without it the Testcontainers-backed
-> database tests skip and the build still reports success — see
-> [`backend/src/main/resources/db/README.md`](backend/src/main/resources/db/README.md#on-windows-enable-docker-desktops-wsl-integration-first).
+> Running the backend's **tests** needs Docker running. Without it the
+> Testcontainers-backed database tests skip and the build still reports success — see
+> [`backend/src/main/resources/db/README.md`](backend/src/main/resources/db/README.md#the-database-tests-run-flyway-too).
 
 ---
 

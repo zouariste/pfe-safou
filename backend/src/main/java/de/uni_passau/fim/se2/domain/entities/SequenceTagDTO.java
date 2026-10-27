@@ -18,25 +18,27 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Represents a single tag on a TieredTaskSequence (AP19 Teil A).
  *
- * <p>Tags are the sequence's <em>topics</em> (what it is about) and are disjoint from its concepts
- * (which syntax constructs it uses). They have two sources, stored in the {@code source} column:
+ * <p>
+ * Tags are the sequence's <em>topics</em> (what it is about) and are disjoint from its concepts (which syntax
+ * constructs it uses). They have two sources, stored in the {@code source} column:
  * <ul>
- *   <li>{@code "llm"} &mdash; semantic, derived from an LLM analysis (fibonacci, binary-search, …)</li>
- *   <li>{@code "manual"} &mdash; teacher-set, must never be overwritten by auto-retag</li>
+ * <li>{@code "llm"} &mdash; semantic, derived from an LLM analysis (fibonacci, binary-search, …)</li>
+ * <li>{@code "manual"} &mdash; teacher-set, must never be overwritten by auto-retag</li>
  * </ul>
  */
 @Data
 @NoArgsConstructor
 public class SequenceTagDTO {
+
     private UUID sequenceId;
     private String tagName;
     /** One of "llm", "manual". */

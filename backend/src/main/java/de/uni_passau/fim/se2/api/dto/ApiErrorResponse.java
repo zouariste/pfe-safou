@@ -18,18 +18,19 @@
  */
 package de.uni_passau.fim.se2.api.dto;
 
-import lombok.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter
 public class ApiErrorResponse {
+
     private String error;
     private String message;
 
     /**
-     * Stable, machine-readable identifier for errors the frontend is expected to handle
-     * specially -- currently only so it can translate them. Null for everything else, in
-     * which case the client falls back to {@link #message}.
+     * Stable, machine-readable identifier for errors the frontend is expected to handle specially -- currently only so
+     * it can translate them. Null for everything else, in which case the client falls back to {@link #message}.
      */
     private String code;
 

@@ -18,27 +18,28 @@
  */
 package de.uni_passau.fim.se2.infrastructure.analysis;
 
-import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
+import java.util.List;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Map;
+import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
 
 /**
- * No-op fallback when tree-sitter is disabled ({@code app.treesitter.enabled=false}).
- * Returns zero/empty metrics so the application can still start.
+ * No-op fallback when tree-sitter is disabled ({@code app.treesitter.enabled=false}). Returns zero/empty metrics so the
+ * application can still start.
  */
 @Component
 @ConditionalOnMissingBean(name = "treeSitterCodeAnalyzer")
 public class NoOpCodeAnalyzer implements CodeAnalyzer {
 
-    private static final Logger logger = LoggerFactory.getLogger(NoOpCodeAnalyzer.class);
+    private static final Logger log = LoggerFactory.getLogger(NoOpCodeAnalyzer.class);
 
     public NoOpCodeAnalyzer() {
-        logger.warn("Tree-sitter disabled — using NoOpCodeAnalyzer (all metrics will be zero)");
+        log.warn("Tree-sitter disabled — using NoOpCodeAnalyzer (all metrics will be zero)");
     }
 
     @Override

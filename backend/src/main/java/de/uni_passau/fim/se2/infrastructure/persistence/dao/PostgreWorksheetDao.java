@@ -18,33 +18,36 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.exceptions.*;
-import de.uni_passau.fim.se2.domain.interfaces.*;
+import java.sql.Array;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
-import lombok.extern.slf4j.*;
-import org.springframework.dao.*;
 import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
-import java.sql.Timestamp;
-import java.time.Instant;
-import org.springframework.jdbc.core.*;
-import org.springframework.stereotype.*;
-
-import java.sql.Array;
-import java.sql.SQLException;
-import java.util.*;
-import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * PostgreSQL-based implementation of the {@link WorksheetRepository}.
- * Provides CRUD operations for worksheet persistence using {@link JdbcTemplate}.
+ * PostgreSQL-based implementation of the {@link WorksheetRepository}. Provides CRUD operations for worksheet
+ * persistence using {@link JdbcTemplate}.
  * <p>
- * Each worksheet acts as a container for one or more {@link TieredTaskSequenceDTO} entities.
- * This DAO handles the worksheet metadata itself and the linkage to sequences via
- * the worksheet_sequence join table, but does not eagerly load tasks.
+ * Each worksheet acts as a container for one or more {@link TieredTaskSequenceDTO} entities. This DAO handles the
+ * worksheet metadata itself and the linkage to sequences via the worksheet_sequence join table, but does not eagerly
+ * load tasks.
  */
 @Slf4j
 @Repository
@@ -63,23 +66,24 @@ public class PostgreWorksheetDao implements WorksheetRepository {
         // created_at is left to the column default: the database is the authority on when a row
         // came into existence, and a client clock has no business deciding marketplace ordering.
         String sql = """
-                INSERT INTO worksheets (id, name, description, owner_id, hints_enabled,
-                                        hint_credits_per_task, visibility, copied_from, copied_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
+            INSERT INTO worksheets (id, name, description, owner_id, hints_enabled,
+                                    hint_credits_per_task, visibility, copied_from, copied_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
 
         UUID id = UUID.randomUUID();
 
-        jdbc.update(sql,
-                    id,
-                    worksheet.getName(),
-                    worksheet.getDescription(),
-                    worksheet.getOwnerId(),
-                    worksheet.isHintsEnabled(),
-                    worksheet.getHintCreditsPerTask(),
-                    visibilityOf(worksheet).name(),
-                    worksheet.getCopiedFrom(),
-                    toTimestamp(worksheet.getCopiedAt())
+        jdbc.update(
+            sql,
+            id,
+            worksheet.getName(),
+            worksheet.getDescription(),
+            worksheet.getOwnerId(),
+            worksheet.isHintsEnabled(),
+            worksheet.getHintCreditsPerTask(),
+            visibilityOf(worksheet).name(),
+            worksheet.getCopiedFrom(),
+            toTimestamp(worksheet.getCopiedAt())
         );
 
         worksheet.setId(id);
@@ -91,18 +95,19 @@ public class PostgreWorksheetDao implements WorksheetRepository {
         validateId(worksheet);
 
         String sql = """
-                UPDATE worksheets
-                SET name = ?, description = ?, hints_enabled = ?,
-                    hint_credits_per_task = ?
-                WHERE id = ?
-                """;
+            UPDATE worksheets
+            SET name = ?, description = ?, hints_enabled = ?,
+                hint_credits_per_task = ?
+            WHERE id = ?
+            """;
 
-        int rows = jdbc.update(sql,
-                               worksheet.getName(),
-                               worksheet.getDescription(),
-                               worksheet.isHintsEnabled(),
-                               worksheet.getHintCreditsPerTask(),
-                               worksheet.getId()
+        int rows = jdbc.update(
+            sql,
+            worksheet.getName(),
+            worksheet.getDescription(),
+            worksheet.isHintsEnabled(),
+            worksheet.getHintCreditsPerTask(),
+            worksheet.getId()
         );
 
         if (rows == 0) {
@@ -129,8 +134,9 @@ public class PostgreWorksheetDao implements WorksheetRepository {
     /**
      * One worksheet with the ids of the sequences on it.
      *
-     * <p>Shared by both read paths below so there is one query and one mapper rather than two
-     * that have to be kept in step — the columns here have already been widened twice.
+     * <p>
+     * Shared by both read paths below so there is one query and one mapper rather than two that have to be kept in step
+     * — the columns here have already been widened twice.
      */
     private static final String SELECT_ONE = """
         SELECT
@@ -162,7 +168,9 @@ public class PostgreWorksheetDao implements WorksheetRepository {
                  w.hint_credits_per_task, w.visibility, w.created_at, w.copied_from, w.copied_at
         """;
 
-    private static final RowMapper<WorksheetDTO> WORKSHEET_MAPPER = (rs, rowNum) -> {
+    private static final RowMapper<WorksheetDTO> WORKSHEET_MAPPER = PostgreWorksheetDao::mapWorksheet;
+
+    private static WorksheetDTO mapWorksheet(ResultSet rs, int rowNum) throws SQLException {
         List<TieredTaskSequenceDTO> sequences = new ArrayList<>();
         UUID[] seqArray = (UUID[]) rs.getArray("sequence_ids").getArray();
         UUID[] ownerArray = (UUID[]) rs.getArray("sequence_owner_ids").getArray();
@@ -180,19 +188,19 @@ public class PostgreWorksheetDao implements WorksheetRepository {
         }
 
         return WorksheetDTO.builder()
-                .id(UUID.fromString(rs.getString("id")))
-                .name(rs.getString("name"))
-                .description(rs.getString("description"))
-                .ownerId(rs.getObject("owner_id", UUID.class))
-                .hintsEnabled(rs.getBoolean("hints_enabled"))
-                .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
-                .visibility(WorksheetVisibility.parse(rs.getString("visibility")))
-                .createdAt(toInstant(rs.getTimestamp("created_at")))
-                .copiedFrom(rs.getObject("copied_from", UUID.class))
-                .copiedAt(toInstant(rs.getTimestamp("copied_at")))
-                .sequenceDTOS(sequences)
-                .build();
-    };
+            .id(UUID.fromString(rs.getString("id")))
+            .name(rs.getString("name"))
+            .description(rs.getString("description"))
+            .ownerId(rs.getObject("owner_id", UUID.class))
+            .hintsEnabled(rs.getBoolean("hints_enabled"))
+            .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
+            .visibility(WorksheetVisibility.parse(rs.getString("visibility")))
+            .createdAt(toInstant(rs.getTimestamp("created_at")))
+            .copiedFrom(rs.getObject("copied_from", UUID.class))
+            .copiedAt(toInstant(rs.getTimestamp("copied_at")))
+            .sequenceDTOS(sequences)
+            .build();
+    }
 
     @Override
     public Optional<WorksheetDTO> findById(UUID worksheetId) {
@@ -204,21 +212,20 @@ public class PostgreWorksheetDao implements WorksheetRepository {
     }
 
     /**
-     * Loads a worksheet including the identifiers of all associated tiered task sequences,
-     * into the DTO it is handed.
+     * Loads a worksheet including the identifiers of all associated tiered task sequences, into the DTO it is handed.
      *
-     * <p>Kept for the callers that rely on it throwing when the worksheet does not exist. New
-     * code should prefer {@link #findById(UUID)}, which says so without an exception.
+     * <p>
+     * Kept for the callers that rely on it throwing when the worksheet does not exist. New code should prefer
+     * {@link #findById(UUID)}, which says so without an exception.
      *
-     * @param worksheet the {@link WorksheetDTO} instance to populate with data
-     *                  corresponding to its unique identifier.
+     * @param worksheet the {@link WorksheetDTO} instance to populate with data corresponding to its unique identifier.
      */
     @Override
     public void getWorksheetById(WorksheetDTO worksheet) {
         validateId(worksheet);
 
-        WorksheetDTO result = findById(worksheet.getId()).orElseThrow(() ->
-                new DomainValidationException("Worksheet not found for id=" + worksheet.getId()));
+        WorksheetDTO result = findById(worksheet.getId())
+            .orElseThrow(() -> new DomainValidationException("Worksheet not found for id=" + worksheet.getId()));
 
         worksheet.setName(result.getName());
         worksheet.setDescription(result.getDescription());
@@ -231,22 +238,23 @@ public class PostgreWorksheetDao implements WorksheetRepository {
         worksheet.setCopiedAt(result.getCopiedAt());
         worksheet.setSequenceDTOS(result.getSequenceDTOS());
 
-        log.debug("Loaded worksheet id={} with {} sequence references",
-                  worksheet.getId(), result.getSequenceDTOS().size());
+        log.debug(
+            "Loaded worksheet id={} with {} sequence references",
+            worksheet.getId(), result.getSequenceDTOS().size()
+        );
     }
 
     /**
      * Associates a single {@link TieredTaskSequenceDTO} with the specified {@link WorksheetDTO}.
      * <p>
-     * This operation creates a new entry in the {@code worksheets_sequence} join table,
-     * effectively linking the given worksheet and sequence.
-     * If the association already exists, implementations should ensure idempotency
-     * (i.e., not duplicate the relationship).
+     * This operation creates a new entry in the {@code worksheets_sequence} join table, effectively linking the given
+     * worksheet and sequence. If the association already exists, implementations should ensure idempotency (i.e., not
+     * duplicate the relationship).
      *
      * @param worksheet the worksheet to which the sequence should be added; must not be {@code null}
      * @param sequence  the sequence to associate with the given worksheet; must not be {@code null}
-     * @throws DomainValidationException if either the worksheet or sequence does not exist,
-     *                                   or if validation of identifiers fails
+     * @throws DomainValidationException if either the worksheet or sequence does not exist, or if validation of
+     *                                   identifiers fails
      */
     @Override
     public void addSequenceToWorksheet(WorksheetDTO worksheet, TieredTaskSequenceDTO sequence) {
@@ -272,12 +280,16 @@ public class PostgreWorksheetDao implements WorksheetRepository {
 
             if (rows > 0) {
                 log.info("Linked sequence id={} to worksheet id={}", sequence.getId(), worksheet.getId());
-            } else {
-                log.debug("Sequence id={} already linked to worksheet id={} (no-op)",
-                          sequence.getId(), worksheet.getId());
+            }
+            else {
+                log.debug(
+                    "Sequence id={} already linked to worksheet id={} (no-op)",
+                    sequence.getId(), worksheet.getId()
+                );
             }
 
-        } catch (DataAccessException e) {
+        }
+        catch (DataAccessException e) {
             log.error("Error linking sequence id={} to worksheet id={}", sequence.getId(), worksheet.getId(), e);
             throw new DomainValidationException("Failed to add sequence to worksheet: " + e.getMessage());
         }
@@ -286,15 +298,14 @@ public class PostgreWorksheetDao implements WorksheetRepository {
     /**
      * Associates multiple {@link TieredTaskSequenceDTO} objects with the specified {@link WorksheetDTO}.
      * <p>
-     * This method performs a batch operation to add multiple sequence references to the worksheet
-     * in the {@code worksheets_sequence} join table.
-     * Implementations should aim for transactional integrity — all associations are added
-     * successfully or none at all.
+     * This method performs a batch operation to add multiple sequence references to the worksheet in the
+     * {@code worksheets_sequence} join table. Implementations should aim for transactional integrity — all associations
+     * are added successfully or none at all.
      *
      * @param worksheet the worksheet to which the sequences should be added; must not be {@code null}
      * @param sequences a list of sequences to associate with the given worksheet; must not be {@code null} or empty
-     * @throws DomainValidationException if the worksheet does not exist, any sequence is invalid,
-     *                                   or a data integrity violation occurs
+     * @throws DomainValidationException if the worksheet does not exist, any sequence is invalid, or a data integrity
+     *                                   violation occurs
      */
     @Override
     public void addSequencesToWorksheet(WorksheetDTO worksheet, List<TieredTaskSequenceDTO> sequences) {
@@ -324,16 +335,18 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             """;
 
         try {
-            jdbc.batchUpdate(sql, sequences, sequences.size(),
-                             (ps, seq) -> {
-                                 ps.setObject(1, worksheet.getId());
-                                 ps.setObject(2, seq.getId());
-                                 ps.setObject(3, worksheet.getId());
-                             });
+            jdbc.batchUpdate(
+                sql, sequences, sequences.size(),
+                (ps, seq) -> {
+                    ps.setObject(1, worksheet.getId());
+                    ps.setObject(2, seq.getId());
+                    ps.setObject(3, worksheet.getId());
+                }
+            );
 
             log.info("Linked {} sequences to worksheet id={}", sequences.size(), worksheet.getId());
-
-        } catch (DataAccessException e) {
+        }
+        catch (DataAccessException e) {
             log.error("Error batch-linking sequences to worksheet id={}", worksheet.getId(), e);
             throw new DomainValidationException("Failed to add sequences to worksheet: " + e.getMessage());
         }
@@ -349,21 +362,25 @@ public class PostgreWorksheetDao implements WorksheetRepository {
         }
 
         String sql = """
-        DELETE FROM worksheets_sequence
-        WHERE worksheet_id = ? AND sequence_id = ?
-        """;
+            DELETE FROM worksheets_sequence
+            WHERE worksheet_id = ? AND sequence_id = ?
+            """;
 
         try {
             int rows = jdbc.update(sql, worksheet.getId(), sequence.getId());
 
             if (rows > 0) {
                 log.info("Unlinked sequence id={} from worksheet id={}", sequence.getId(), worksheet.getId());
-            } else {
-                log.debug("No link found for sequence id={} and worksheet id={} (no-op)",
-                          sequence.getId(), worksheet.getId());
+            }
+            else {
+                log.debug(
+                    "No link found for sequence id={} and worksheet id={} (no-op)",
+                    sequence.getId(), worksheet.getId()
+                );
             }
 
-        } catch (DataAccessException e) {
+        }
+        catch (DataAccessException e) {
             log.error("Error unlinking sequence id={} from worksheet id={}", sequence.getId(), worksheet.getId(), e);
             throw new DomainValidationException("Failed to remove sequence from worksheet: " + e.getMessage());
         }
@@ -372,14 +389,13 @@ public class PostgreWorksheetDao implements WorksheetRepository {
     /**
      * Rewrites the position of every sequence on a worksheet to match {@code orderedSequenceIds}.
      *
-     * <p>The caller must name exactly the sequences already on the worksheet — no more, no fewer
-     * — so a stale client (a tab that missed an add or remove elsewhere) cannot silently drop a
-     * sequence's position or invent one for a sequence that was never linked. Checked up front so
-     * a bad request fails before any row is touched, rather than leaving the worksheet half
-     * reordered.
+     * <p>
+     * The caller must name exactly the sequences already on the worksheet — no more, no fewer — so a stale client (a
+     * tab that missed an add or remove elsewhere) cannot silently drop a sequence's position or invent one for a
+     * sequence that was never linked. Checked up front so a bad request fails before any row is touched, rather than
+     * leaving the worksheet half reordered.
      *
-     * @throws DomainValidationException if the id set does not exactly match the worksheet's
-     *                                   current sequences
+     * @throws DomainValidationException if the id set does not exactly match the worksheet's current sequences
      */
     @Override
     public void reorderSequences(UUID worksheetId, List<UUID> orderedSequenceIds) {
@@ -391,25 +407,30 @@ public class PostgreWorksheetDao implements WorksheetRepository {
         }
 
         List<UUID> current = jdbc.queryForList(
-                "SELECT sequence_id FROM worksheets_sequence WHERE worksheet_id = ?",
-                UUID.class, worksheetId);
+            "SELECT sequence_id FROM worksheets_sequence WHERE worksheet_id = ?",
+            UUID.class, worksheetId
+        );
 
-        if (current.size() != orderedSequenceIds.size()
-                || !new HashSet<>(current).equals(new HashSet<>(orderedSequenceIds))) {
+        if (
+            current.size() != orderedSequenceIds.size()
+                || !new HashSet<>(current).equals(new HashSet<>(orderedSequenceIds))
+        ) {
             throw new DomainValidationException(
-                    "Reordering must include exactly the sequences already on the worksheet");
+                "Reordering must include exactly the sequences already on the worksheet"
+            );
         }
 
         String sql = "UPDATE worksheets_sequence SET position = ? WHERE worksheet_id = ? AND sequence_id = ?";
         List<Object[]> batchArgs = new ArrayList<>(orderedSequenceIds.size());
         for (int i = 0; i < orderedSequenceIds.size(); i++) {
-            batchArgs.add(new Object[]{i, worksheetId, orderedSequenceIds.get(i)});
+            batchArgs.add(new Object[] { i, worksheetId, orderedSequenceIds.get(i) });
         }
 
         try {
             jdbc.batchUpdate(sql, batchArgs);
             log.info("Reordered {} sequences on worksheet id={}", orderedSequenceIds.size(), worksheetId);
-        } catch (DataAccessException e) {
+        }
+        catch (DataAccessException e) {
             log.error("Error reordering sequences on worksheet id={}", worksheetId, e);
             throw new DomainValidationException("Failed to reorder sequences: " + e.getMessage());
         }
@@ -418,8 +439,9 @@ public class PostgreWorksheetDao implements WorksheetRepository {
     /**
      * The curator relation: does this user own a worksheet that contains this sequence?
      *
-     * <p>{@code EXISTS} rather than a count — the question is boolean, and Postgres can stop at
-     * the first matching row instead of walking every worksheet a prolific teacher owns.
+     * <p>
+     * {@code EXISTS} rather than a count — the question is boolean, and Postgres can stop at the first matching row
+     * instead of walking every worksheet a prolific teacher owns.
      */
     @Override
     public boolean isCuratedBy(UUID sequenceId, UUID ownerId) {
@@ -443,9 +465,8 @@ public class PostgreWorksheetDao implements WorksheetRepository {
     /**
      * Lists a user's worksheets, each with the identifiers of its sequences.
      *
-     * Like {@link #getWorksheetById} this loads sequence references only, not the
-     * sequences themselves — enough for the overview to say how many there are
-     * and for a caller to check whether a given sequence is already filed.
+     * Like {@link #getWorksheetById} this loads sequence references only, not the sequences themselves — enough for the
+     * overview to say how many there are and for a caller to check whether a given sequence is already filed.
      */
     @Override
     public List<WorksheetDTO> findByOwnerId(UUID ownerId) {
@@ -463,19 +484,7 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             ORDER BY w.name
             """;
 
-        return jdbc.query(sql, (rs, rowNum) -> WorksheetDTO.builder()
-                .id(UUID.fromString(rs.getString("id")))
-                .name(rs.getString("name"))
-                .description(rs.getString("description"))
-                .ownerId(rs.getObject("owner_id", UUID.class))
-                .hintsEnabled(rs.getBoolean("hints_enabled"))
-                .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
-                .sequenceDTOS(sequenceReferences(rs.getArray("sequence_ids")))
-                .visibility(WorksheetVisibility.parse(rs.getString("visibility")))
-                .createdAt(toInstant(rs.getTimestamp("created_at")))
-                .copiedFrom(rs.getObject("copied_from", UUID.class))
-                .copiedAt(toInstant(rs.getTimestamp("copied_at")))
-                .build(), ownerId);
+        return jdbc.query(sql, PostgreWorksheetDao::mapOwnedWorksheet, ownerId);
     }
 
     @Override
@@ -487,8 +496,10 @@ public class PostgreWorksheetDao implements WorksheetRepository {
 
         // The enum's name() is bound as a parameter and the column carries a CHECK constraint,
         // so an unknown value cannot reach the table even if a caller invents one.
-        int rows = jdbc.update("UPDATE worksheets SET visibility = ? WHERE id = ?",
-                               target.name(), worksheetId);
+        int rows = jdbc.update(
+            "UPDATE worksheets SET visibility = ? WHERE id = ?",
+            target.name(), worksheetId
+        );
         if (rows == 0) {
             throw new DomainValidationException("Worksheet not found for id=" + worksheetId);
         }
@@ -508,16 +519,15 @@ public class PostgreWorksheetDao implements WorksheetRepository {
     /** A worksheet built before the field existed carries none; it gets today's behaviour. */
     private static WorksheetVisibility visibilityOf(WorksheetDTO worksheet) {
         return worksheet.getVisibility() == null
-                ? WorksheetVisibility.DEFAULT
-                : worksheet.getVisibility();
+            ? WorksheetVisibility.DEFAULT
+            : worksheet.getVisibility();
     }
 
     /**
      * Turns an aggregated {@code sequence_id} array into id-only sequence DTOs.
      *
-     * A worksheet with no sequences aggregates to a single NULL element rather
-     * than an empty array, so nulls are dropped instead of becoming DTOs
-     * without an id.
+     * A worksheet with no sequences aggregates to a single NULL element rather than an empty array, so nulls are
+     * dropped instead of becoming DTOs without an id.
      */
     private static List<TieredTaskSequenceDTO> sequenceReferences(Array column) throws SQLException {
         List<TieredTaskSequenceDTO> sequences = new ArrayList<>();
@@ -552,5 +562,21 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             log.warn("{} — worksheet={}", msg, worksheet);
             throw new DomainValidationException(msg);
         }
+    }
+
+    private static WorksheetDTO mapOwnedWorksheet(ResultSet rs, int rowNum) throws SQLException {
+        return WorksheetDTO.builder()
+            .id(UUID.fromString(rs.getString("id")))
+            .name(rs.getString("name"))
+            .description(rs.getString("description"))
+            .ownerId(rs.getObject("owner_id", UUID.class))
+            .hintsEnabled(rs.getBoolean("hints_enabled"))
+            .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
+            .sequenceDTOS(sequenceReferences(rs.getArray("sequence_ids")))
+            .visibility(WorksheetVisibility.parse(rs.getString("visibility")))
+            .createdAt(toInstant(rs.getTimestamp("created_at")))
+            .copiedFrom(rs.getObject("copied_from", UUID.class))
+            .copiedAt(toInstant(rs.getTimestamp("copied_at")))
+            .build();
     }
 }

@@ -18,40 +18,46 @@
  */
 package de.uni_passau.fim.se2.api;
 
-import de.uni_passau.fim.se2.api.dto.ApiErrorResponse;
-import de.uni_passau.fim.se2.application.service.BackupService;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
-import de.uni_passau.fim.se2.domain.exceptions.UnsupportedLanguageException;
-import de.uni_passau.fim.se2.domain.interfaces.DatabaseDumpExecutor;
-import com.github.javaparser.ParseProblemException;
-import com.github.javaparser.Problem;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-
 import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
+import com.github.javaparser.ParseProblemException;
+import com.github.javaparser.Problem;
+
+import de.uni_passau.fim.se2.api.dto.ApiErrorResponse;
+import de.uni_passau.fim.se2.application.service.BackupService;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
+import de.uni_passau.fim.se2.domain.exceptions.NotFoundException;
+import de.uni_passau.fim.se2.domain.exceptions.UnsupportedLanguageException;
+import de.uni_passau.fim.se2.domain.interfaces.DatabaseDumpExecutor;
+import lombok.extern.slf4j.Slf4j;
+
 @Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
     /**
-     * Handle domain validation errors with a 400 response.
-     * If the message indicates an unsupported language, the title is specialized.
+     * Handle domain validation errors with a 400 response. If the message indicates an unsupported language, the title
+     * is specialized.
+     *
+     * @param ex the validation failure
+     * @return 400 with the error details
      */
     @ExceptionHandler(DomainValidationException.class)
     public ResponseEntity<ApiErrorResponse> handleDomainValidationException(DomainValidationException ex) {
         final String title = (ex.getMessage() != null && ex.getMessage().contains("Unsupported language"))
-                ? "Ungültige Sprache"
-                : "Ungültige Eingabe";
+            ? "Ungültige Sprache"
+            : "Ungültige Eingabe";
 
         log.warn("Domain validation failed: {}", ex.getMessage(), ex);
 
@@ -60,8 +66,11 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Turn JavaParser parse problems into a concise 400 response.
-     * Collects up to 5 problem messages (with location if available).
+     * Turn JavaParser parse problems into a concise 400 response. Collects up to 5 problem messages (with location if
+     * available).
+     *
+     * @param ex the parse failure reported by JavaParser
+     * @return 400 with up to five parse problems
      */
     @ExceptionHandler(ParseProblemException.class)
     public ResponseEntity<ApiErrorResponse> handleParseProblem(ParseProblemException ex) {
@@ -73,8 +82,11 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handle task/code generation failures from upstream services/models.
-     * Defaults to 502 (Bad Gateway); uses 504 for timeouts and 503 for transient I/O-like issues.
+     * Handle task/code generation failures from upstream services/models. Defaults to 502 (Bad Gateway); uses 504 for
+     * timeouts and 503 for transient I/O-like issues.
+     *
+     * @param ex the generation failure
+     * @return 502, 503 or 504 with the error details, depending on the cause
      */
     @ExceptionHandler(GenerationException.class)
     public ResponseEntity<ApiErrorResponse> handleGenerationException(GenerationException ex) {
@@ -84,59 +96,85 @@ public class GlobalExceptionHandler {
             // is the whole story and the trace is four frames of Optional plumbing. Logged
             // without the throwable so it does not read as a server error in the console.
             log.warn("Generation rejected: {}", ex.getMessage());
-        } else {
+        }
+        else {
             log.error("Generation failed: {}", ex.getMessage(), ex);
         }
 
         ApiErrorResponse error = new ApiErrorResponse(
-                "Fehler bei der Aufgabengenerierung",
-                safeMsg(ex.getMessage()),
-                ex instanceof UnsupportedLanguageException ? UnsupportedLanguageException.CODE : null
+            "Fehler bei der Aufgabengenerierung",
+            safeMsg(ex.getMessage()),
+            ex instanceof UnsupportedLanguageException ? UnsupportedLanguageException.CODE : null
         );
         return ResponseEntity.status(status).body(error);
     }
 
     /**
+     * A task, sequence or other entity that does not exist -> 404.
+     *
+     * @param ex the lookup that found nothing
+     * @return 404 with the error details
+     */
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotFound(NotFoundException ex) {
+        log.warn("Not found: {}", ex.getMessage());
+        ApiErrorResponse error = new ApiErrorResponse("Nicht gefunden", safeMsg(ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error); // 404
+    }
+
+    /**
      * Handle access denied (ownership / role violations) -> 403.
+     *
+     * @param ex the access violation
+     * @return 403 with the error details
      */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex) {
         log.warn("Access denied: {}", ex.getMessage());
         ApiErrorResponse error = new ApiErrorResponse(
-                "Zugriff verweigert",
-                safeMsg(ex.getMessage())
+            "Zugriff verweigert",
+            safeMsg(ex.getMessage())
         );
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error); // 403
     }
 
     /**
      * Another backup is already running — 503 Service Unavailable.
+     *
+     * @param e the exception raised because a backup is already running
+     * @return 503 with an explanatory message
      */
     @ExceptionHandler(BackupService.BackupBusyException.class)
     public ResponseEntity<Map<String, String>> handleBackupBusy(BackupService.BackupBusyException e) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of("error", e.getMessage()));
+            .body(Map.of("error", e.getMessage()));
     }
 
     /**
      * pg_dump failure — 500 Internal Server Error.
+     *
+     * @param e the exception raised when pg_dump failed
+     * @return 500 with an explanatory message
      */
     @ExceptionHandler(DatabaseDumpExecutor.DumpException.class)
     public ResponseEntity<Map<String, String>> handleDumpException(DatabaseDumpExecutor.DumpException e) {
         log.error("Database dump failed: {}", e.getMessage(), e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", "Database backup failed: " + e.getMessage()));
+            .body(Map.of("error", "Database backup failed: " + e.getMessage()));
     }
 
     /**
      * Catch-all for unexpected errors -> 500.
+     *
+     * @param ex the unexpected exception
+     * @return 500 with a generic error
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleAny(Exception ex) {
         log.error("Unhandled exception", ex);
         ApiErrorResponse error = new ApiErrorResponse(
-                "Interner Serverfehler",
-                "Es ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es erneut."
+            "Interner Serverfehler",
+            "Es ist ein unerwarteter Fehler aufgetreten. Bitte versuchen Sie es erneut."
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error); // 500
     }
@@ -149,13 +187,13 @@ public class GlobalExceptionHandler {
             return safeMsg(ex.getMessage());
         }
         return problems.stream()
-                .limit(5)
-                .map(p -> {
-                    String msg = p.getMessage();
-                    var loc = p.getLocation().orElse(null);
-                    return (loc == null) ? msg : (msg + " @" + loc);
-                })
-                .collect(Collectors.joining("; "));
+            .limit(5)
+            .map(p -> {
+                String msg = p.getMessage();
+                var loc = p.getLocation().orElse(null);
+                return (loc == null) ? msg : (msg + " @" + loc);
+            })
+            .collect(Collectors.joining("; "));
     }
 
     private static HttpStatus resolveGenerationHttpStatus(GenerationException ex) {

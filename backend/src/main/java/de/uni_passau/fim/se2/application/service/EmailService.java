@@ -18,11 +18,12 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
@@ -37,12 +38,20 @@ public class EmailService {
     @Value("${auth.app.base-url}")
     private String appBaseUrl;
 
-    public EmailService(JavaMailSender mailSender,
-                        @Value("${spring.mail.host:}") String mailHost) {
+    public EmailService(
+        JavaMailSender mailSender,
+        @Value("${spring.mail.host:}") String mailHost
+    ) {
         this.mailSender = mailSender;
         this.mailConfigured = mailHost != null && !mailHost.isBlank();
     }
 
+    /**
+     * Sends the link that verifies an email address. Without a configured mail server the email is logged instead.
+     *
+     * @param toEmail the address to verify
+     * @param token   the verification token to put in the link
+     */
     public void sendVerificationEmail(String toEmail, String token) {
         String subject = "CodeOwl - Email-Adresse bestätigen";
         String postfix = "verify-email?token=" + token;
@@ -51,20 +60,26 @@ public class EmailService {
         }
         String verifyUrl = appBaseUrl + postfix;
         String body = String.format(
-                "Hallo,\n\n" +
+            "Hallo,\n\n" +
                 "bitte bestätige deine Email-Adresse, indem du auf folgenden Link klickst:\n\n" +
                 "%s\n\n" +
                 "Der Link ist 24 Stunden gültig.\n\n" +
                 "Viele Grüße,\nDas CodeOwl-Team",
-                verifyUrl
+            verifyUrl
         );
         sendMail(toEmail, subject, body);
     }
 
-    private boolean endsWithSlash(String appBaseUrl) {
-        return appBaseUrl.endsWith("/");
+    private boolean endsWithSlash(String url) {
+        return url.endsWith("/");
     }
 
+    /**
+     * Sends the link that resets a password. Without a configured mail server the email is logged instead.
+     *
+     * @param toEmail the account's email address
+     * @param token   the reset token to put in the link
+     */
     public void sendPasswordResetEmail(String toEmail, String token) {
         String subject = "CodeOwl - Passwort zurücksetzen";
         String postfix = "reset-password?token=" + token;
@@ -73,13 +88,13 @@ public class EmailService {
         }
         String resetUrl = appBaseUrl + postfix;
         String body = String.format(
-                "Hallo,\n\n" +
+            "Hallo,\n\n" +
                 "du hast ein neues Passwort angefordert. Klicke auf folgenden Link:\n\n" +
                 "%s\n\n" +
                 "Der Link ist 1 Stunde gültig. Falls du kein neues Passwort angefordert hast, " +
                 "ignoriere diese E-Mail.\n\n" +
                 "Viele Grüße,\nDas CodeOwl-Team",
-                resetUrl
+            resetUrl
         );
         sendMail(toEmail, subject, body);
     }
@@ -102,7 +117,8 @@ public class EmailService {
             message.setText(body);
             mailSender.send(message);
             log.info("Email successfully sent to {}", to);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.error("Failed to send email to {}: {}", to, e.getMessage(), e);
         }
     }

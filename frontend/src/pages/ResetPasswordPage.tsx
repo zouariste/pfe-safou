@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, type ApiError } from "../lib/api";
 import { useTranslation } from "react-i18next";
 
 export default function ResetPasswordPage() {
@@ -30,8 +30,8 @@ export default function ResetPasswordPage() {
         try {
             await api.post("/auth/reset-password", { token, newPassword: password });
             setSuccess(true);
-        } catch (err: any) {
-            setError(err.response?.data?.error || t("resetPassword.failed"));
+        } catch (err) {
+            setError((err as ApiError).response?.data?.error || t("resetPassword.failed"));
         } finally {
             setLoading(false);
         }

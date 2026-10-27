@@ -18,6 +18,20 @@
  */
 package de.uni_passau.fim.se2.api;
 
+import java.util.Map;
+import java.util.UUID;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import de.uni_passau.fim.se2.application.service.BulkRetagJobStatus;
 import de.uni_passau.fim.se2.application.service.BulkRetagService;
 import de.uni_passau.fim.se2.application.service.BulkRetagService.BulkRetagRequest;
@@ -25,30 +39,27 @@ import de.uni_passau.fim.se2.application.service.SequenceTagService;
 import de.uni_passau.fim.se2.domain.interfaces.SequenceTagRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * AP19 Teil A admin endpoints for tag management.
  *
- * <p>Separate from {@link AdminController} (user management) so the two concerns don't bleed into
- * one 400-line file. All routes live under {@code /api/admin/sequences} / {@code /api/admin/tags}.
+ * <p>
+ * Separate from {@link AdminController} (user management) so the two concerns don't bleed into one 400-line file. All
+ * routes live under {@code /api/admin/sequences} / {@code /api/admin/tags}.
  *
- * <p>Endpoints:
+ * <p>
+ * Endpoints:
  * <ul>
- *   <li>{@code POST /api/admin/sequences/retag}            &mdash; queue a bulk retag job (202 Accepted)</li>
- *   <li>{@code GET  /api/admin/sequences/retag/{jobId}}    &mdash; poll progress of a specific job</li>
- *   <li>{@code GET  /api/admin/sequences/retag}            &mdash; list recent jobs (UI dashboard)</li>
- *   <li>{@code GET  /api/admin/tags}                       &mdash; tag cloud / usage counts</li>
+ * <li>{@code POST /api/admin/sequences/retag} &mdash; queue a bulk retag job (202 Accepted)</li>
+ * <li>{@code GET  /api/admin/sequences/retag/{jobId}} &mdash; poll progress of a specific job</li>
+ * <li>{@code GET  /api/admin/sequences/retag} &mdash; list recent jobs (UI dashboard)</li>
+ * <li>{@code GET  /api/admin/tags} &mdash; tag cloud / usage counts</li>
  * </ul>
  *
- * <p>Security: mounted under {@code /api/admin} — rely on the existing admin-role filter configured
- * for {@link AdminController}. If a finer-grained permission is added later, decorate individual
- * routes with {@code @PreAuthorize("hasRole('ADMIN')")}.
+ * <p>
+ * Security: mounted under {@code /api/admin} — rely on the existing admin-role filter configured for
+ * {@link AdminController}. If a finer-grained permission is added later, decorate individual routes with
+ * {@code @PreAuthorize("hasRole('ADMIN')")}.
  */
 @Slf4j
 @RestController
@@ -60,42 +71,54 @@ public class AdminTagController {
     private final SequenceTagService sequenceTagService;
 
     /**
-     * Queues a bulk retag job. Returns {@code 202 Accepted} with the job ID and a {@code pollUrl}
-     * the SPA can hit to track progress. The actual LLM work happens on a background virtual thread.
+     * Queues a bulk retag job. Returns {@code 202 Accepted} with the job ID and a {@code pollUrl} the SPA can hit to
+     * track progress. The actual LLM work happens on a background virtual thread.
+     *
+     * @param body optional job options; null retags with the defaults
+     * @return 202 with the job ID and the URL to poll for its progress
      */
     @PostMapping("/sequences/retag")
     public ResponseEntity<Map<String, Object>> startBulkRetag(@RequestBody(required = false) BulkRetagRequest body) {
         BulkRetagJobStatus snapshot = bulkRetagService.submit(body);
 
         Map<String, Object> response = Map.of(
-                "jobId",   snapshot.jobId().toString(),
-                "status",  snapshot.status(),
-                "filter",  snapshot.filter(),
-                "total",   snapshot.total(),
-                "pollUrl", "/api/admin/sequences/retag/" + snapshot.jobId()
+            "jobId", snapshot.jobId().toString(),
+            "status", snapshot.status(),
+            "filter", snapshot.filter(),
+            "total", snapshot.total(),
+            "pollUrl", "/api/admin/sequences/retag/" + snapshot.jobId()
         );
 
-        log.info("Bulk retag requested: jobId={}, filter={}, total={}",
-                snapshot.jobId(), snapshot.filter(), snapshot.total());
+        log.info(
+            "Bulk retag requested: jobId={}, filter={}, total={}",
+            snapshot.jobId(), snapshot.filter(), snapshot.total()
+        );
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
     /**
-     * Returns the live progress of a single job. {@code 404} if the job ID is unknown
-     * (never existed, or already evicted from the in-memory ring).
+     * Returns the live progress of a single job. {@code 404} if the job ID is unknown (never existed, or already
+     * evicted from the in-memory ring).
+     *
+     * @param jobId the job to report on
+     * @return the job's progress, or 404 if the job is unknown
      */
     @GetMapping("/sequences/retag/{jobId}")
     public ResponseEntity<?> getBulkRetagStatus(@PathVariable UUID jobId) {
         BulkRetagJobStatus snapshot = bulkRetagService.status(jobId);
         if (snapshot == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Unknown or evicted jobId: " + jobId));
+                .body(Map.of("error", "Unknown or evicted jobId: " + jobId));
         }
         return ResponseEntity.ok(snapshot);
     }
 
-    /** Lists all retag jobs currently in memory, newest first. Used by the admin dashboard. */
+    /**
+     * Lists all retag jobs currently in memory, newest first. Used by the admin dashboard.
+     *
+     * @return all retag jobs still held in memory, newest first
+     */
     @GetMapping("/sequences/retag")
     public ResponseEntity<?> listBulkRetagJobs() {
         return ResponseEntity.ok(bulkRetagService.listRecent());
@@ -106,9 +129,10 @@ public class AdminTagController {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Returns the full tag cloud: every distinct tag_name with its usage count, sorted by popularity.
-     * This is the source of truth for the admin "merge tags" UI (AP19 A16) and the Library filter
-     * sidebar facet counts (AP19 A8).
+     * Returns the full tag cloud: every distinct tag_name with its usage count, sorted by popularity. This is the
+     * source of truth for the admin "merge tags" UI (AP19 A16) and the Library filter sidebar facet counts (AP19 A8).
+     *
+     * @return every distinct tag with its usage count, most used first
      */
     @GetMapping("/tags")
     public ResponseEntity<?> listAllTags() {
@@ -121,49 +145,72 @@ public class AdminTagController {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * "New topics" weekly report. Returns tags whose first appearance in the system falls within
-     * the past {@code days} days (default 7), ordered by usage count DESC. Feeds the admin
-     * dashboard's weekly-review widget — each row comes with an action to merge it into an existing
-     * canonical tag via {@link #mergeTags}.
+     * "New topics" weekly report. Returns tags whose first appearance in the system falls within the past {@code days}
+     * days (default 7), ordered by usage count DESC. Feeds the admin dashboard's weekly-review widget — each row comes
+     * with an action to merge it into an existing canonical tag via {@link #mergeTags}.
      *
      * @param days  window size in days (1..90, default 7)
      * @param limit max rows (1..200, default 50)
+     * @return the tags first seen within the period, most used first
      */
     @GetMapping("/tags/new-topics")
     public ResponseEntity<java.util.List<SequenceTagRepository.NewTopic>> listNewTopics(
-            @RequestParam(name = "days",  required = false, defaultValue = "7")  int days,
-            @RequestParam(name = "limit", required = false, defaultValue = "50") int limit) {
+        @RequestParam(
+            name = "days",
+            required = false,
+            defaultValue = "7"
+        ) int days,
+        @RequestParam(
+            name = "limit",
+            required = false,
+            defaultValue = "50"
+        ) int limit
+    ) {
         return ResponseEntity.ok(sequenceTagService.getNewTopics(days, limit));
     }
 
     /**
      * Merges one tag name into another across every sequence in the system. Body:
-     * <pre>{ "from": "rekursion", "to": "recursion" }</pre>
+     * 
+     * <pre>
+     * { "from": "rekursion", "to": "recursion" }
+     * </pre>
      *
-     * <p>Idempotent and safe:
+     * <p>
+     * Idempotent and safe:
      * <ul>
-     *   <li>Merging a tag into itself → no-op, 0 affected.</li>
-     *   <li>Merging a missing tag → 0 affected.</li>
-     *   <li>Sequences that already carry both tags lose the "from" row (preserves the unique key).</li>
+     * <li>Merging a tag into itself → no-op, 0 affected.</li>
+     * <li>Merging a missing tag → 0 affected.</li>
+     * <li>Sequences that already carry both tags lose the "from" row (preserves the unique key).</li>
      * </ul>
      *
-     * <p>Response returns the affected-row count so the UI can show "Merged — N rows updated".
+     * <p>
+     * Response returns the affected-row count so the UI can show "Merged — N rows updated".
+     *
+     * @param body the tag to merge away and the tag to merge it into
+     * @return the number of affected rows, or 400 if either name is missing
      */
     @PostMapping("/tags/merge")
     public ResponseEntity<Map<String, Object>> mergeTags(@RequestBody MergeTagsRequest body) {
-        if (body == null || body.from() == null || body.to() == null
-                || body.from().isBlank() || body.to().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Both 'from' and 'to' tag names are required."));
+        if (body == null || !StringUtils.hasText(body.from()) || !StringUtils.hasText(body.to())) {
+            return ResponseEntity.badRequest().body(
+                Map.of(
+                    "error", "Both 'from' and 'to' tag names are required."
+                )
+            );
         }
         int affected = sequenceTagService.mergeTags(body.from(), body.to());
         log.info("Admin merged tag '{}' → '{}' (rows affected: {})", body.from(), body.to(), affected);
-        return ResponseEntity.ok(Map.of(
-                "from",     body.from(),
-                "to",       body.to(),
-                "affected", affected));
+        return ResponseEntity.ok(
+            Map.of(
+                "from", body.from(),
+                "to", body.to(),
+                "affected", affected
+            )
+        );
     }
 
     /** Request body for the tag-merge endpoint. */
-    public record MergeTagsRequest(String from, String to) {}
+    public record MergeTagsRequest(String from, String to) {
+    }
 }

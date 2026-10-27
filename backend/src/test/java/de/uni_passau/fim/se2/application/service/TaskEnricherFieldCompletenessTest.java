@@ -18,15 +18,11 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
-import de.uni_passau.fim.se2.domain.entities.SolveContract;
-import de.uni_passau.fim.se2.domain.entities.TaskDTO;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
-import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
-import com.fasterxml.jackson.databind.node.TextNode;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -35,27 +31,33 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.node.TextNode;
+
+import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
+import de.uni_passau.fim.se2.domain.entities.SolveContract;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
+import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
 
 /**
- * A tripwire for the bug class that made a five-tier sequence come back looking like a three-tier
- * one: {@link TaskEnricher#enrichWithSolutions} used to build its result via a fresh
- * {@code TieredTaskSequenceDTO.builder()} that named only a handful of fields, so {@code
- * tierCount}, {@code targetLanguage}, {@code constraints} and {@code curriculumTopicId} fell back
- * to their {@code @Builder.Default} values instead of surviving enrichment — exactly the failure
- * {@link TieredTaskSequenceDTO#copyFor} and {@link TaskDTO#copyFor} already document for the
- * worksheet-copy path, reappearing on the generation path because nothing here guarded it too.
+ * A tripwire for the bug class that made a five-tier sequence come back looking like a three-tier one:
+ * {@link TaskEnricher#enrichWithSolutions} used to build its result via a fresh {@code TieredTaskSequenceDTO.builder()}
+ * that named only a handful of fields, so {@code
+ * tierCount}, {@code targetLanguage}, {@code constraints} and {@code curriculumTopicId} fell back to their
+ * {@code @Builder.Default} values instead of surviving enrichment — exactly the failure
+ * {@link TieredTaskSequenceDTO#copyFor} and {@link TaskDTO#copyFor} already document for the worksheet-copy path,
+ * reappearing on the generation path because nothing here guarded it too.
  *
- * <p>Like {@code CloneCompletenessTest}, this does not enumerate the fields it expects to survive:
- * it reflects over every declared field of {@link TieredTaskSequenceDTO} and demands each one
- * came through enrichment unchanged, except the three that legitimately must not ({@code id}
- * — a fresh row; {@code tasks} — replaced by the enriched tasks; {@code createdAt} — stamped
- * fresh). A field added later is covered automatically; the only way to exempt one is to add it
- * to {@link #RESET_BY_ENRICHMENT} with a reason, which shows up as a reviewable line in a diff.
+ * <p>
+ * Like {@code CloneCompletenessTest}, this does not enumerate the fields it expects to survive: it reflects over every
+ * declared field of {@link TieredTaskSequenceDTO} and demands each one came through enrichment unchanged, except the
+ * three that legitimately must not ({@code id} — a fresh row; {@code tasks} — replaced by the enriched tasks;
+ * {@code createdAt} — stamped fresh). A field added later is covered automatically; the only way to exempt one is to
+ * add it to {@link #RESET_BY_ENRICHMENT} with a reason, which shows up as a reviewable line in a diff.
  */
 class TaskEnricherFieldCompletenessTest {
 
@@ -67,36 +69,42 @@ class TaskEnricherFieldCompletenessTest {
         TaskEnricher enricher = newEnricherWithStubbedCollaborators();
 
         TieredTaskSequenceDTO seed = TieredTaskSequenceDTO.builder()
-                .id(UUID.randomUUID())
-                .programmingLanguage("Java")
-                .concepts(List.of("recursion"))
-                .tasks(List.of(distinguishableTask()))
-                .codeSnippet("int x = 1;")
-                .taskDescription("A regression-test sequence")
-                .createdAt(LocalDateTime.of(2020, 1, 1, 0, 0))
-                .versionId(UUID.randomUUID())
-                .strategyName("CodeOnlyStrategy")
-                .ownerId(UUID.randomUUID())
-                // Every one of these four is a @Builder.Default field whose default would
-                // silently step in if enrichWithSolutions dropped it — that is exactly the bug.
-                .targetLanguage("en")
-                .constraints(GenerationConstraints.builder().additionalContext("no lambdas").build())
-                .tierCount(5)
-                .curriculumTopicId(UUID.randomUUID())
-                .build();
+            .id(UUID.randomUUID())
+            .programmingLanguage("Java")
+            .concepts(List.of("recursion"))
+            .tasks(List.of(distinguishableTask()))
+            .codeSnippet("int x = 1;")
+            .taskDescription("A regression-test sequence")
+            .createdAt(LocalDateTime.of(2020, 1, 1, 0, 0))
+            .versionId(UUID.randomUUID())
+            .strategyName("CodeOnlyStrategy")
+            .ownerId(UUID.randomUUID())
+            // Every one of these four is a @Builder.Default field whose default would
+            // silently step in if enrichWithSolutions dropped it — that is exactly the bug.
+            .targetLanguage("en")
+            .constraints(GenerationConstraints.builder().additionalContext("no lambdas").build())
+            .tierCount(5)
+            .curriculumTopicId(UUID.randomUUID())
+            .build();
 
         TieredTaskSequenceDTO enriched = enricher.enrichWithSolutions(seed, false, false, false);
 
         for (Field field : TieredTaskSequenceDTO.class.getDeclaredFields()) {
-            if (field.isSynthetic() || Modifier.isStatic(field.getModifiers())) continue;
-            if (RESET_BY_ENRICHMENT.contains(field.getName())) continue;
+            if (field.isSynthetic() || Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+            if (RESET_BY_ENRICHMENT.contains(field.getName())) {
+                continue;
+            }
 
             field.setAccessible(true);
-            assertEquals(field.get(seed), field.get(enriched),
-                    "field '" + field.getName() + "' was lost by TaskEnricher.enrichWithSolutions()."
-                            + " Either carry it over in the result, or add it to RESET_BY_ENRICHMENT"
-                            + " in " + TaskEnricherFieldCompletenessTest.class.getSimpleName()
-                            + " with a reason.");
+            assertEquals(
+                field.get(seed), field.get(enriched),
+                "field '" + field.getName() + "' was lost by TaskEnricher.enrichWithSolutions()."
+                    + " Either carry it over in the result, or add it to RESET_BY_ENRICHMENT"
+                    + " in " + TaskEnricherFieldCompletenessTest.class.getSimpleName()
+                    + " with a reason."
+            );
         }
     }
 
@@ -107,11 +115,12 @@ class TaskEnricherFieldCompletenessTest {
         TaskDTO seedTask = distinguishableTask();
 
         TieredTaskSequenceDTO enriched = enricher.enrichWithSolutions(
-                TieredTaskSequenceDTO.builder()
-                        .programmingLanguage("Java")
-                        .tasks(List.of(seedTask))
-                        .build(),
-                false, false, false);
+            TieredTaskSequenceDTO.builder()
+                .programmingLanguage("Java")
+                .tasks(List.of(seedTask))
+                .build(),
+            false, false, false
+        );
 
         TaskDTO enrichedTask = enriched.getTasks().get(0);
 
@@ -124,8 +133,10 @@ class TaskEnricherFieldCompletenessTest {
         // The flag TaskDTO.copyFor() already had to defend against on the worksheet-copy path:
         // its @Builder.Default is true, so only seeing false back out proves it actually
         // travelled through enrichment rather than being silently re-defaulted.
-        assertFalse(enrichedTask.isDistractorsEnabled(),
-                "distractorsEnabled must survive enrichment, not fall back to its default of true");
+        assertFalse(
+            enrichedTask.isDistractorsEnabled(),
+            "distractorsEnabled must survive enrichment, not fall back to its default of true"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -142,7 +153,7 @@ class TaskEnricherFieldCompletenessTest {
 
         CodeAnalyzer analyzer = mock(CodeAnalyzer.class);
         when(analyzer.computeComplexity(any(), any()))
-                .thenReturn(new CodeAnalyzer.ComplexityResult(1, 1, 1, 1, 1));
+            .thenReturn(new CodeAnalyzer.ComplexityResult(1, 1, 1, 1, 1));
 
         // Unused here: distractorsEnabled/contextModeEnabled/splitEnabled are all false in every
         // test, so enrichSingleTask never reaches the context annotator.
@@ -153,21 +164,23 @@ class TaskEnricherFieldCompletenessTest {
 
     private static TaskDTO distinguishableTask() {
         return TaskDTO.builder()
-                .id(UUID.randomUUID())
-                .statement("Print the sum of two numbers")
-                .contract(SolveContract.builder()
-                        .language("Java")
-                        .taskStatement("Print the sum of two numbers")
-                        .functionSignature("void solve()")
-                        .purposeBehavior("Prints a sum")
-                        .prePostConditions("None")
-                        .example(new SolveContract.ExamplePair("1, 2", "3"))
-                        .build())
-                .tierLevel(1)
-                .distractorPlan("{\"type\":\"OFF_BY_ONE\"}")
-                // The @Builder.Default is true; false is what proves it survived rather than
-                // being silently re-defaulted.
-                .distractorsEnabled(false)
-                .build();
+            .id(UUID.randomUUID())
+            .statement("Print the sum of two numbers")
+            .contract(
+                SolveContract.builder()
+                    .language("Java")
+                    .taskStatement("Print the sum of two numbers")
+                    .functionSignature("void solve()")
+                    .purposeBehavior("Prints a sum")
+                    .prePostConditions("None")
+                    .example(new SolveContract.ExamplePair("1, 2", "3"))
+                    .build()
+            )
+            .tierLevel(1)
+            .distractorPlan("{\"type\":\"OFF_BY_ONE\"}")
+            // The @Builder.Default is true; false is what proves it survived rather than
+            // being silently re-defaulted.
+            .distractorsEnabled(false)
+            .build();
     }
 }

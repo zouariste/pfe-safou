@@ -32,20 +32,20 @@ import java.util.UUID;
  * @param facets counts for the filter sidebar
  */
 public record WorksheetSearchResult(
-        List<Item> items,
-        int page,
-        int size,
-        long total,
-        Facets facets
+    List<Item> items,
+    int page,
+    int size,
+    long total,
+    Facets facets
 ) {
 
     /**
      * One worksheet as the marketplace shows it.
      *
-     * <p>Everything a card needs is here, so rendering a page of results costs one query rather
-     * than one query and then a follow-up per card. {@code sequenceCount} and {@code languages}
-     * in particular are what a teacher actually scans for — a worksheet's name says what it is
-     * called, not what is in it.
+     * <p>
+     * Everything a card needs is here, so rendering a page of results costs one query rather than one query and then a
+     * follow-up per card. {@code sequenceCount} and {@code languages} in particular are what a teacher actually scans
+     * for — a worksheet's name says what it is called, not what is in it.
      *
      * @param worksheetId   identifier
      * @param name          the teacher's title for it
@@ -55,33 +55,35 @@ public record WorksheetSearchResult(
      * @param sequenceCount how many sequences it holds
      * @param languages     the distinct programming languages of those sequences, sorted
      * @param copyCount     how many times it has been copied — the popularity sort
-     * @param alreadyCopied whether the caller already has a copy, so the card can say so
-     *                      instead of letting them make a second one by accident
-     * @param highlight     a {@code ts_headline} snippet with the match marked, or {@code null}
-     *                      when there was no query
+     * @param alreadyCopied whether the caller already has a copy, so the card can say so instead of letting them make a
+     *                      second one by accident
+     * @param highlight     a {@code ts_headline} snippet with the match marked, or {@code null} when there was no query
      */
     public record Item(
-            UUID worksheetId,
-            String name,
-            String description,
-            UUID ownerId,
-            Instant createdAt,
-            int sequenceCount,
-            List<String> languages,
-            long copyCount,
-            boolean alreadyCopied,
-            String highlight
-    ) {}
+        UUID worksheetId,
+        String name,
+        String description,
+        UUID ownerId,
+        Instant createdAt,
+        int sequenceCount,
+        List<String> languages,
+        long copyCount,
+        boolean alreadyCopied,
+        String highlight
+    ) {
+    }
 
     /**
      * Counts for the sidebar.
      *
-     * @param languages  how many worksheets contain each programming language
-     * @param mine       how many of the matches the caller published
-     * @param others     how many came from everyone else
+     * @param languages how many worksheets contain each programming language
+     * @param mine      how many of the matches the caller published
+     * @param others    how many came from everyone else
      */
-    public record Facets(List<Bucket> languages, long mine, long others) {}
+    public record Facets(List<Bucket> languages, long mine, long others) {
+    }
 
     /** A facet entry: a value and how many matches carry it. */
-    public record Bucket(String name, long count) {}
+    public record Bucket(String name, long count) {
+    }
 }

@@ -18,22 +18,25 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai;
 
-import de.uni_passau.fim.se2.domain.entities.*;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
 import de.uni_passau.fim.se2.domain.entities.AiProviderKey;
 import de.uni_passau.fim.se2.domain.entities.OpenAiModel;
-import lombok.*;
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import lombok.Getter;
+import lombok.Setter;
 
 @Setter
 @Getter
 @ConfigurationProperties(prefix = "ai")
 public class AiProps {
+
     private AiProviderKey defaultProvider = AiProviderKey.OPENAI;
     private OpenAi openai = new OpenAi();
 
     @Setter
     @Getter
     public static class OpenAi {
+
         private OpenAiModel defaultModel = OpenAiModel.GPT_5;
 
     }

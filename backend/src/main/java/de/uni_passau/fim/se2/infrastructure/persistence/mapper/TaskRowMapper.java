@@ -18,12 +18,13 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.mapper;
 
-import de.uni_passau.fim.se2.domain.entities.TaskDTO;
-import org.springframework.jdbc.core.RowMapper;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
+
+import org.springframework.jdbc.core.RowMapper;
+
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 
 public class TaskRowMapper implements RowMapper<TaskDTO> {
 

@@ -18,16 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
-import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository.RetagCandidate;
-import de.uni_passau.fim.se2.infrastructure.ai.tagging.LlmSemanticTagger;
-import de.uni_passau.fim.se2.infrastructure.ai.tagging.LlmSemanticTagger.SemanticTagResult;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -37,29 +27,42 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
+import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository.RetagCandidate;
+import de.uni_passau.fim.se2.infrastructure.ai.tagging.LlmSemanticTagger;
+import de.uni_passau.fim.se2.infrastructure.ai.tagging.LlmSemanticTagger.SemanticTagResult;
+
 /**
  * AP19 Teil A: admin-triggered bulk retagger.
  *
- * <p>Two entry points:
+ * <p>
+ * Two entry points:
  * <ol>
- *   <li>{@link #submit(BulkRetagRequest)} &mdash; returns a job ID immediately and kicks off the work
- *       on the {@code taggingExecutor} virtual-thread pool.</li>
- *   <li>{@link #status(UUID)} &mdash; returns a live snapshot for polling.</li>
+ * <li>{@link #submit(BulkRetagRequest)} &mdash; returns a job ID immediately and kicks off the work on the
+ * {@code taggingExecutor} virtual-thread pool.</li>
+ * <li>{@link #status(UUID)} &mdash; returns a live snapshot for polling.</li>
  * </ol>
  *
- * <p>Processing is <b>sequential within a job</b>: the LLM is called once per candidate, and the
- * job's {@code processed} counter ticks up after each iteration. Multiple jobs can run in parallel
- * (each on its own virtual thread) &mdash; admins who want higher throughput can chunk their IDs
- * across several calls.
+ * <p>
+ * Processing is <b>sequential within a job</b>: the LLM is called once per candidate, and the job's {@code processed}
+ * counter ticks up after each iteration. Multiple jobs can run in parallel (each on its own virtual thread) &mdash;
+ * admins who want higher throughput can chunk their IDs across several calls.
  *
- * <p>Jobs are kept in an in-memory map with a small retention policy (newest {@link #MAX_JOBS} kept).
- * The SPA can show "recent jobs" by calling {@link #listRecent()}. Server restart drops history; this
- * is acceptable because the work itself is idempotent.
+ * <p>
+ * Jobs are kept in an in-memory map with a small retention policy (newest {@link #MAX_JOBS} kept). The SPA can show
+ * "recent jobs" by calling {@link #listRecent()}. Server restart drops history; this is acceptable because the work
+ * itself is idempotent.
  */
 @Service
 public class BulkRetagService {
 
-    private static final Logger logger = LoggerFactory.getLogger(BulkRetagService.class);
+    private static final Logger log = LoggerFactory.getLogger(BulkRetagService.class);
 
     /** Hard cap on candidates per job — protects LLM budget on an accidental "all sequences" call. */
     private static final int MAX_CANDIDATES_PER_JOB = 5_000;
@@ -70,17 +73,21 @@ public class BulkRetagService {
     private final TieredTaskSequenceRepository sequenceRepo;
     private final LlmSemanticTagger tagger;
     private final SequenceTagService tagService;
-    /** Same virtual-thread pool that semantic tagging uses. Injected directly instead of via
-     *  {@code @Async} because self-invocation skips the Spring AOP proxy. */
+    /**
+     * Same virtual-thread pool that semantic tagging uses. Injected directly instead of via {@code @Async} because
+     * self-invocation skips the Spring AOP proxy.
+     */
     private final Executor taggingExecutor;
 
     /** jobId → live JobState. Reads are wait-free; writes use atomic counters. */
     private final ConcurrentHashMap<UUID, JobState> jobs = new ConcurrentHashMap<>();
 
-    public BulkRetagService(TieredTaskSequenceRepository sequenceRepo,
-                            LlmSemanticTagger tagger,
-                            SequenceTagService tagService,
-                            @Qualifier("taggingExecutor") Executor taggingExecutor) {
+    public BulkRetagService(
+        TieredTaskSequenceRepository sequenceRepo,
+        LlmSemanticTagger tagger,
+        SequenceTagService tagService,
+        @Qualifier("taggingExecutor") Executor taggingExecutor
+    ) {
         this.sequenceRepo = sequenceRepo;
         this.tagger = tagger;
         this.tagService = tagService;
@@ -92,8 +99,11 @@ public class BulkRetagService {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Queue a new retag job. Returns a snapshot with {@code status = QUEUED/RUNNING} and the
-     * generated {@code jobId}; the work itself happens on a background virtual thread.
+     * Queue a new retag job. Returns a snapshot with {@code status = QUEUED/RUNNING} and the generated {@code jobId};
+     * the work itself happens on a background virtual thread.
+     *
+     * @param request the job options, or null for the defaults
+     * @return a snapshot of the new job
      */
     public BulkRetagJobStatus submit(BulkRetagRequest request) {
         BulkRetagRequest req = request == null ? new BulkRetagRequest() : request;
@@ -106,8 +116,10 @@ public class BulkRetagService {
         jobs.put(jobId, state);
         pruneJobs();
 
-        logger.info("Bulk retag job {} queued: filter='{}', total={}",
-                jobId, state.filter, state.total);
+        log.info(
+            "Bulk retag job {} queued: filter='{}', total={}",
+            jobId, state.filter, state.total
+        );
 
         if (candidates.isEmpty()) {
             state.markDone();
@@ -121,16 +133,27 @@ public class BulkRetagService {
         return state.snapshot();
     }
 
-    /** Live snapshot of a single job, or {@code null} if unknown / evicted. */
+    /**
+     * Live snapshot of a single job, or {@code null} if unknown / evicted.
+     *
+     * @param jobId the job to report on
+     * @return a snapshot of the job, or null if it is unknown
+     */
     public BulkRetagJobStatus status(UUID jobId) {
         JobState s = jobs.get(jobId);
         return s == null ? null : s.snapshot();
     }
 
-    /** All jobs currently in memory, most recently started first. */
+    /**
+     * All jobs currently in memory, most recently started first.
+     *
+     * @return snapshots of all jobs in memory, newest first
+     */
     public List<BulkRetagJobStatus> listRecent() {
         List<BulkRetagJobStatus> out = new ArrayList<>();
-        for (JobState s : jobs.values()) out.add(s.snapshot());
+        for (JobState s : jobs.values()) {
+            out.add(s.snapshot());
+        }
         out.sort(Comparator.comparing(BulkRetagJobStatus::startedAt).reversed());
         return out;
     }
@@ -144,33 +167,40 @@ public class BulkRetagService {
             List<UUID> ids = req.sequenceIds();
             boolean missingOnly = req.isMissingLlmTags();
             return sequenceRepo.findRetagCandidates(missingOnly, ids, MAX_CANDIDATES_PER_JOB);
-        } catch (Exception e) {
-            logger.warn("Failed to load retag candidates for filter '{}': {}",
-                    req.effectiveFilterLabel(), e.getMessage());
+        }
+        catch (Exception e) {
+            log.warn(
+                "Failed to load retag candidates for filter '{}': {}",
+                req.effectiveFilterLabel(), e.getMessage()
+            );
             return List.of();
         }
     }
 
     /**
-     * Worker body. Runs on a virtual thread via {@link #taggingExecutor}. Iterates candidates
-     * sequentially — one LLM call at a time so we don't pound the provider.
+     * Worker body. Runs on a virtual thread via {@link #taggingExecutor}. Iterates candidates sequentially — one LLM
+     * call at a time so we don't pound the provider.
      */
     private void runJob(JobState state, List<RetagCandidate> candidates) {
         MDC.put("bulkRetagJobId", state.jobId.toString());
         state.markRunning();
-        logger.info("Bulk retag job {} started, processing {} sequences", state.jobId, candidates.size());
+        log.info("Bulk retag job {} started, processing {} sequences", state.jobId, candidates.size());
 
         try {
             for (RetagCandidate c : candidates) {
                 processOne(c, state);
             }
             state.markDone();
-            logger.info("Bulk retag job {} finished: succeeded={}, failed={}, total={}",
-                    state.jobId, state.succeeded.get(), state.failed.get(), state.total);
-        } catch (Exception e) {
+            log.info(
+                "Bulk retag job {} finished: succeeded={}, failed={}, total={}",
+                state.jobId, state.succeeded.get(), state.failed.get(), state.total
+            );
+        }
+        catch (Exception e) {
             state.markFailed(e.getMessage());
-            logger.error("Bulk retag job {} aborted: {}", state.jobId, e.getMessage(), e);
-        } finally {
+            log.error("Bulk retag job {} aborted: {}", state.jobId, e.getMessage(), e);
+        }
+        finally {
             MDC.remove("bulkRetagJobId");
         }
     }
@@ -183,7 +213,8 @@ public class BulkRetagService {
             }
 
             SemanticTagResult result = tagger.tag(
-                    c.programmingLanguage(), c.combinedStatement(), c.combinedCode());
+                c.programmingLanguage(), c.combinedStatement(), c.combinedCode()
+            );
 
             if (result == null) {
                 state.failed.incrementAndGet();
@@ -195,18 +226,25 @@ public class BulkRetagService {
             if (result.shortDescription() != null && !result.shortDescription().isBlank()) {
                 try {
                     sequenceRepo.updateSemanticSummary(c.sequenceId(), result.shortDescription());
-                } catch (Exception e) {
-                    logger.warn("Summary update failed for sequence {} in job {}: {}",
-                            c.sequenceId(), state.jobId, e.getMessage());
+                }
+                catch (Exception e) {
+                    log.warn(
+                        "Summary update failed for sequence {} in job {}: {}",
+                        c.sequenceId(), state.jobId, e.getMessage()
+                    );
                 }
             }
 
             state.succeeded.incrementAndGet();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             state.failed.incrementAndGet();
-            logger.warn("Retag failed for sequence {} in job {}: {}",
-                    c.sequenceId(), state.jobId, e.getMessage());
-        } finally {
+            log.warn(
+                "Retag failed for sequence {} in job {}: {}",
+                c.sequenceId(), state.jobId, e.getMessage()
+            );
+        }
+        finally {
             // The one place a candidate is counted, whichever way processing ended.
             state.processed.incrementAndGet();
         }
@@ -214,11 +252,13 @@ public class BulkRetagService {
 
     /** Evict oldest finished jobs so the in-memory map doesn't grow unbounded. */
     private void pruneJobs() {
-        if (jobs.size() <= MAX_JOBS) return;
+        if (jobs.size() <= MAX_JOBS) {
+            return;
+        }
         List<JobState> finished = jobs.values().stream()
-                .filter(s -> BulkRetagJobStatus.DONE.equals(s.status) || BulkRetagJobStatus.FAILED.equals(s.status))
-                .sorted(Comparator.comparing((JobState s) -> s.startedAt))
-                .toList();
+            .filter(s -> BulkRetagJobStatus.DONE.equals(s.status) || BulkRetagJobStatus.FAILED.equals(s.status))
+            .sorted(Comparator.comparing((JobState s) -> s.startedAt))
+            .toList();
         int toRemove = jobs.size() - MAX_JOBS;
         for (int i = 0; i < toRemove && i < finished.size(); i++) {
             jobs.remove(finished.get(i).jobId);
@@ -232,56 +272,77 @@ public class BulkRetagService {
     /**
      * Body of {@code POST /api/admin/sequences/retag}.
      *
-     * <p>Three filter flavors:
+     * <p>
+     * Three filter flavors:
      * <ul>
-     *   <li>{@code filter = "missing-llm-tags"} &mdash; only sequences that currently have no
-     *       {@code source='llm'} tag row, or an LLM tag without an English translation
-     *       (<b>default</b>).</li>
-     *   <li>{@code filter = "all"} &mdash; every sequence in the system (dangerous — bounded by
-     *       {@link #MAX_CANDIDATES_PER_JOB}).</li>
-     *   <li>{@code sequenceIds = [...]} &mdash; explicit list; overrides {@code filter}.</li>
+     * <li>{@code filter = "missing-llm-tags"} &mdash; only sequences that currently have no {@code source='llm'} tag
+     * row, or an LLM tag without an English translation (<b>default</b>).</li>
+     * <li>{@code filter = "all"} &mdash; every sequence in the system (dangerous — bounded by
+     * {@link #MAX_CANDIDATES_PER_JOB}).</li>
+     * <li>{@code sequenceIds = [...]} &mdash; explicit list; overrides {@code filter}.</li>
      * </ul>
      */
     public static final class BulkRetagRequest {
+
         private String filter;
         private List<UUID> sequenceIds;
 
-        public BulkRetagRequest() {}
+        public BulkRetagRequest() {
+        }
 
         public BulkRetagRequest(String filter, List<UUID> sequenceIds) {
             this.filter = filter;
             this.sequenceIds = sequenceIds;
         }
 
-        public String getFilter() { return filter; }
-        public void setFilter(String filter) { this.filter = filter; }
+        public String getFilter() {
+            return filter;
+        }
 
-        public List<UUID> getSequenceIds() { return sequenceIds; }
-        public void setSequenceIds(List<UUID> sequenceIds) { this.sequenceIds = sequenceIds; }
+        public void setFilter(String filter) {
+            this.filter = filter;
+        }
+
+        public List<UUID> getSequenceIds() {
+            return sequenceIds;
+        }
+
+        public void setSequenceIds(List<UUID> sequenceIds) {
+            this.sequenceIds = sequenceIds;
+        }
 
         // Convenience accessors used by the service layer.
-        List<UUID> sequenceIds() { return sequenceIds; }
+        List<UUID> sequenceIds() {
+            return sequenceIds;
+        }
 
         boolean isMissingLlmTags() {
             return filter == null || filter.isBlank() || "missing-llm-tags".equalsIgnoreCase(filter);
         }
 
         String effectiveFilterLabel() {
-            if (sequenceIds != null && !sequenceIds.isEmpty()) return "specific(" + sequenceIds.size() + ")";
-            if (isMissingLlmTags()) return "missing-llm-tags";
-            if ("all".equalsIgnoreCase(filter)) return "all";
+            if (sequenceIds != null && !sequenceIds.isEmpty()) {
+                return "specific(" + sequenceIds.size() + ")";
+            }
+            if (isMissingLlmTags()) {
+                return "missing-llm-tags";
+            }
+            if ("all".equalsIgnoreCase(filter)) {
+                return "all";
+            }
             return filter == null ? "missing-llm-tags" : filter;
         }
     }
 
     /** Mutable, thread-safe live state of a running job. Hidden behind {@link BulkRetagJobStatus} snapshots. */
     static final class JobState {
+
         final UUID jobId;
         final int total;
         final String filter;
         final AtomicInteger processed = new AtomicInteger(0);
         final AtomicInteger succeeded = new AtomicInteger(0);
-        final AtomicInteger failed    = new AtomicInteger(0);
+        final AtomicInteger failed = new AtomicInteger(0);
         volatile Instant startedAt;
         volatile Instant finishedAt;
         volatile String status = BulkRetagJobStatus.QUEUED;
@@ -294,7 +355,9 @@ public class BulkRetagService {
             this.startedAt = Instant.now();
         }
 
-        void markRunning() { this.status = BulkRetagJobStatus.RUNNING; }
+        void markRunning() {
+            this.status = BulkRetagJobStatus.RUNNING;
+        }
 
         void markDone() {
             this.status = BulkRetagJobStatus.DONE;
@@ -308,9 +371,11 @@ public class BulkRetagService {
         }
 
         BulkRetagJobStatus snapshot() {
-            return new BulkRetagJobStatus(jobId, status, filter, total,
-                    processed.get(), succeeded.get(), failed.get(),
-                    startedAt, finishedAt, errorMessage);
+            return new BulkRetagJobStatus(
+                jobId, status, filter, total,
+                processed.get(), succeeded.get(), failed.get(),
+                startedAt, finishedAt, errorMessage
+            );
         }
     }
 }

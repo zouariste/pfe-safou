@@ -21,16 +21,14 @@ package de.uni_passau.fim.se2.application.service.hints;
 /**
  * How a block is named when a student is told about it.
  *
- * The solve page badges a highlighted block with a letter, so hint text has to
- * use the same letter. It used to say "Block 1" while the badge on that very
- * block read "A", leaving the student to guess what the hint meant.
+ * The solve page badges a highlighted block with a letter, so hint text has to use the same letter. It used to say
+ * "Block 1" while the badge on that very block read "A", leaving the student to guess what the hint meant.
  *
- * Letters rather than numbers on purpose: a block's position is not its line
- * number, and a bare number invites reading it as one.
+ * Letters rather than numbers on purpose: a block's position is not its line number, and a bare number invites reading
+ * it as one.
  *
- * Beyond Z it continues like spreadsheet columns — AA, AB — so it never runs
- * out however many blocks a task has. The frontend mirrors this in
- * lib/blockLabel.ts; the two have to agree.
+ * Beyond Z it continues like spreadsheet columns — AA, AB — so it never runs out however many blocks a task has. The
+ * frontend mirrors this in lib/blockLabel.ts; the two have to agree.
  */
 public final class BlockLabels {
 

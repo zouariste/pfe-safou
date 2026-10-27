@@ -18,20 +18,44 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
 import java.util.List;
 import java.util.UUID;
 
+import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
+
 public interface CurriculumCodeExampleRepository {
+
     List<CurriculumCodeExampleDTO> findByTopicId(UUID topicId);
+
     List<CurriculumCodeExampleDTO> findByTopicIdAndLanguage(UUID topicId, String language);
 
-    /** AP32 admin: load a single example by id, or {@code null} if none. */
+    /**
+     * AP32 admin: load a single example by id, or {@code null} if none.
+     *
+     * @param id the example to load
+     * @return the example, or null if none
+     */
     CurriculumCodeExampleDTO findById(UUID id);
-    /** AP32 admin: insert a new example; returns the generated id. */
+
+    /**
+     * AP32 admin: insert a new example; returns the generated id.
+     *
+     * @param example the example to insert
+     * @return the generated ID
+     */
     UUID insert(CurriculumCodeExampleDTO example);
-    /** AP32 admin: update an existing example (by {@code example.id}). */
+
+    /**
+     * AP32 admin: update an existing example (by {@code example.id}).
+     *
+     * @param example the example to update, identified by its ID
+     */
     void update(CurriculumCodeExampleDTO example);
-    /** AP32 admin: delete an example by id. */
+
+    /**
+     * AP32 admin: delete an example by id.
+     *
+     * @param id the example to delete
+     */
     void deleteById(UUID id);
 }

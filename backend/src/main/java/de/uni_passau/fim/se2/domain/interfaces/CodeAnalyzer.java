@@ -22,46 +22,60 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * AP26 — Domain interface for language-agnostic code analysis.
- * Implementations live in the infrastructure layer (e.g. tree-sitter).
+ * AP26 — Domain interface for language-agnostic code analysis. Implementations live in the infrastructure layer (e.g.
+ * tree-sitter).
  */
 public interface CodeAnalyzer {
 
     /**
      * Computes complexity metrics for a code snippet in the given language.
+     *
+     * @param code     the code to analyse
+     * @param language the programming language of the code
+     * @return the complexity metrics
      */
     ComplexityResult computeComplexity(String code, String language);
 
     /**
      * Compares two code versions and returns structural change metrics.
+     *
+     * @param originalCode the original version
+     * @param editedCode   the edited version
+     * @param language     the programming language of the code
+     * @return the structural change metrics
      */
     AstAnalysisResult analyzeChanges(String originalCode, String editedCode, String language);
 
     /**
      * Returns true if this analyzer supports the given language.
+     *
+     * @param language the programming language to check
+     * @return true if the language is supported
      */
     boolean supportsLanguage(String language);
 
     // ── Result records ──
 
     record ComplexityResult(
-            int linesOfCode,
-            int cyclomaticComplexity,
-            int maxNestingDepth,
-            int methodCallCount,
-            int distinctIdentifierCount
+        int linesOfCode,
+        int cyclomaticComplexity,
+        int maxNestingDepth,
+        int methodCallCount,
+        int distinctIdentifierCount
     ) {
+
         public static ComplexityResult zero() {
             return new ComplexityResult(0, 0, 0, 0, 0);
         }
     }
 
     record AstAnalysisResult(
-            int nodesAdded,
-            int nodesRemoved,
-            int nodesModified,
-            double structuralScore,
-            List<String> changeTypes,
-            Map<String, Object> distractorChanges
-    ) {}
+        int nodesAdded,
+        int nodesRemoved,
+        int nodesModified,
+        double structuralScore,
+        List<String> changeTypes,
+        Map<String, Object> distractorChanges
+    ) {
+    }
 }

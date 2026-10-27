@@ -99,6 +99,17 @@ export type TieredTaskSequence = {
     curriculumTopicId?: string | null;
 };
 
+/**
+ * A task as the API sends it, before a page normalises it into a {@link Task}. Any field may be
+ * missing or null, which is why the mappers default every one of them.
+ */
+export type ApiTask = { [K in keyof Task]?: Task[K] | null };
+
+/** A sequence as the API sends it; see {@link ApiTask}. */
+export type ApiSequence = { [K in keyof Omit<TieredTaskSequence, "tasks">]?: TieredTaskSequence[K] | null } & {
+    tasks?: ApiTask[] | null;
+};
+
 // ── AP19: Curriculum Types ─────────────────────────────
 
 export interface CurriculumTopic {

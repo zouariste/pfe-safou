@@ -18,7 +18,8 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.UserDTO;
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -26,19 +27,21 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
+import de.uni_passau.fim.se2.domain.entities.UserDTO;
 
 /**
- * Centralized service for ownership and role-based access checks.
- * Used by controllers and services to enforce AP2 authorization rules.
+ * Centralized service for ownership and role-based access checks. Used by controllers and services to enforce AP2
+ * authorization rules.
  */
 @Service
 public class OwnershipService {
 
-    private static final Logger logger = LoggerFactory.getLogger(OwnershipService.class);
+    private static final Logger log = LoggerFactory.getLogger(OwnershipService.class);
 
     /**
      * Returns the current authenticated user's ID, or null if anonymous.
+     *
+     * @return the current user's ID, or null if anonymous
      */
     public UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -47,13 +50,16 @@ public class OwnershipService {
         }
         try {
             return (UUID) auth.getPrincipal();
-        } catch (ClassCastException e) {
+        }
+        catch (ClassCastException e) {
             return null;
         }
     }
 
     /**
      * Returns the current authenticated user's role, or null if anonymous.
+     *
+     * @return the current user's role name, or null if anonymous
      */
     public String getCurrentRole() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -61,20 +67,22 @@ public class OwnershipService {
             return null;
         }
         return auth.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .filter(a -> a.startsWith("ROLE_"))
-                .map(a -> a.substring(5))
-                .findFirst()
-                .orElse(null);
+            .map(GrantedAuthority::getAuthority)
+            .filter(a -> a.startsWith("ROLE_"))
+            .map(a -> a.substring(5))
+            .findFirst()
+            .orElse(null);
     }
 
     /**
      * The current user's role as the enum, or {@code null} when anonymous or unrecognised.
      *
-     * <p>The string form above is what the older checks here are built on. Anything reasoning
-     * about roles rather than merely comparing them — {@link
-     * de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy}, for one — wants the enum, and
-     * translating once here beats every caller doing it slightly differently.
+     * <p>
+     * The string form above is what the older checks here are built on. Anything reasoning about roles rather than
+     * merely comparing them — {@link de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy}, for one — wants the
+     * enum, and translating once here beats every caller doing it slightly differently.
+     *
+     * @return the current user's role, or null if anonymous or unrecognised
      */
     public UserDTO.UserRole getCurrentUserRole() {
         String role = getCurrentRole();
@@ -83,7 +91,8 @@ public class OwnershipService {
         }
         try {
             return UserDTO.UserRole.valueOf(role);
-        } catch (IllegalArgumentException e) {
+        }
+        catch (IllegalArgumentException e) {
             // A token carrying a role this build does not know is not an authorisation to
             // guess. Treated as anonymous, which is the least it could possibly grant.
             return null;
@@ -92,6 +101,8 @@ public class OwnershipService {
 
     /**
      * Checks if the current user is an admin.
+     *
+     * @return true if the current user is an admin
      */
     public boolean isAdmin() {
         return "ADMIN".equals(getCurrentRole());
@@ -99,6 +110,8 @@ public class OwnershipService {
 
     /**
      * Checks if the current user is a student.
+     *
+     * @return true if the current user is a student
      */
     public boolean isStudent() {
         return "STUDENT".equals(getCurrentRole());
@@ -106,6 +119,8 @@ public class OwnershipService {
 
     /**
      * Checks if the current user is a teacher.
+     *
+     * @return true if the current user is a teacher
      */
     public boolean isTeacher() {
         return "TEACHER".equals(getCurrentRole());
@@ -113,6 +128,8 @@ public class OwnershipService {
 
     /**
      * Checks if the current user is authenticated (not anonymous).
+     *
+     * @return true if a user is logged in
      */
     public boolean isAuthenticated() {
         return getCurrentUserId() != null;
@@ -125,45 +142,53 @@ public class OwnershipService {
      * @return true if the user is the owner or an admin
      */
     public boolean isOwnerOrAdmin(UUID resourceOwnerId) {
-        if (isAdmin()) return true;
+        if (isAdmin()) {
+            return true;
+        }
         UUID currentUserId = getCurrentUserId();
         return currentUserId != null && currentUserId.equals(resourceOwnerId);
     }
 
     /**
-     * Throws AccessDeniedException if the current user cannot modify the resource.
-     * Rules:
-     * - Admin: always allowed
-     * - Owner: allowed
-     * - Everyone else: denied
+     * Throws AccessDeniedException if the current user cannot modify the resource. Rules: - Admin: always allowed -
+     * Owner: allowed - Everyone else: denied
      *
      * @param resourceOwnerId the owner_id of the resource
      * @param resourceType    human-readable name for error messages
      */
     public void checkOwnership(UUID resourceOwnerId, String resourceType) {
-        if (isAdmin()) return;
+        if (isAdmin()) {
+            return;
+        }
 
         UUID currentUserId = getCurrentUserId();
         if (currentUserId == null) {
             throw new org.springframework.security.access.AccessDeniedException(
-                    "Authentication required to modify " + resourceType);
+                "Authentication required to modify " + resourceType
+            );
         }
         if (!currentUserId.equals(resourceOwnerId)) {
-            logger.warn("User {} tried to modify {} owned by {}",
-                    currentUserId, resourceType, resourceOwnerId);
+            log.warn(
+                "User {} tried to modify {} owned by {}",
+                currentUserId, resourceType, resourceOwnerId
+            );
             throw new org.springframework.security.access.AccessDeniedException(
-                    "You do not have permission to modify this " + resourceType);
+                "You do not have permission to modify this " + resourceType
+            );
         }
     }
 
     /**
-     * Throws AccessDeniedException if the current user is a student.
-     * Students cannot generate sequences or create worksheets.
+     * Throws AccessDeniedException if the current user is a student. Students cannot generate sequences or create
+     * worksheets.
+     *
+     * @param action what the student tried to do, for the error message
      */
     public void denyStudents(String action) {
         if (isStudent()) {
             throw new org.springframework.security.access.AccessDeniedException(
-                    "Students are not allowed to " + action);
+                "Students are not allowed to " + action
+            );
         }
     }
 }

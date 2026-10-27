@@ -18,10 +18,10 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import de.uni_passau.fim.se2.domain.entities.LearningEventDTO;
-
 import java.util.List;
 import java.util.UUID;
+
+import de.uni_passau.fim.se2.domain.entities.LearningEventDTO;
 
 /**
  * Repository for learning analytics events (AP10).

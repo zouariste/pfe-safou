@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { TieredTaskSequence, Task } from "../types/models.ts";
-import { api, apiErrorMessage } from "../lib/api.ts";
+import type { TieredTaskSequence, Task, ApiSequence } from "../types/models.ts";
+import { api, apiErrorMessage, isNotFound, type ApiError } from "../lib/api.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useHomePath } from "../hooks/useHomePath.ts";
 import {PersistentLogger} from "../PersistentLogger.ts";
@@ -114,12 +114,12 @@ export default function SequencePage() {
 
     const isTemplate = id?.toLowerCase().includes("template");
 
-    function toClientSequence(raw: any): TieredTaskSequence {
+    function toClientSequence(raw: ApiSequence): TieredTaskSequence {
         const seqId = String(raw?.id);
         const seqLang = String(raw?.programmingLanguage ?? "unknown");
 
         const tasks: Task[] = Array.isArray(raw?.tasks)
-            ? raw.tasks.map((tk: any) => ({
+            ? raw.tasks.map((tk) => ({
                 id: String(tk.id),
                 statement: String(tk.statement ?? ""),
                 solution: String(tk.solution ?? ""),
@@ -213,7 +213,7 @@ export default function SequencePage() {
         setEditingTask(task);
     }
 
-    function handleEditSave(_updated: { statement: string; solution: string; distractors?: string | null }) {
+    function handleEditSave() {
         setEditingTask(null);
         setAddingTier(false);
         reloadSequence();
@@ -371,12 +371,14 @@ export default function SequencePage() {
                     );
                 }
             })
-            .catch((err: any) => {
+            .catch((err: ApiError) => {
                 if (ac.signal.aborted) {
                     PersistentLogger.logWithContext("SequencePage", "warn", "Fetch aborted for sequence:", id);
                     return;
                 }
-                const msg = err?.response?.data?.message || err?.message || "Error during API-Request";
+                const msg = isNotFound(err)
+                    ? t("sequence.notFound")
+                    : err?.response?.data?.message || err?.message || "Error during API-Request";
                 PersistentLogger.logWithContext("SequencePage", "error", "Sequence fetch failed:", msg);
                 setState("error");
                 setErrorMsg(msg);
@@ -386,7 +388,7 @@ export default function SequencePage() {
             PersistentLogger.logWithContext("SequencePage", "info", "Unmounting — aborting request for id:", id);
             ac.abort();
         };
-    }, [id, isTemplate]);
+    }, [id, isTemplate, t]);
 
 
     if (state === "loading" && !seq) return <div>{t("sequence.loading")}</div>;
@@ -751,12 +753,12 @@ export default function SequencePage() {
                         onClick={async () => {
                             setGeneratingDistractors("batch");
                             try {
-                                const { data } = await api.post(`/sequence/${seq.id}/generate-distractors`);
+                                const { data } = await api.post<ApiSequence>(`/sequence/${seq.id}/generate-distractors`);
                                 // Reload sequence with updated tasks
                                 if (data?.tasks) {
                                     setSeq({
                                         ...seq,
-                                        tasks: data.tasks.map((tk: any) => ({
+                                        tasks: data.tasks.map((tk) => ({
                                             id: String(tk.id),
                                             statement: tk.statement ?? "",
                                             solution: tk.solution ?? "",
@@ -771,8 +773,8 @@ export default function SequencePage() {
                                         })),
                                     });
                                 }
-                            } catch (err: any) {
-                                alert(err?.response?.data?.message || "Batch distractor generation failed");
+                            } catch (err) {
+                                alert((err as ApiError).response?.data?.message || "Batch distractor generation failed");
                             } finally {
                                 setGeneratingDistractors(null);
                             }
@@ -856,8 +858,8 @@ export default function SequencePage() {
                                                             ),
                                                         });
                                                     }
-                                                } catch (err: any) {
-                                                    alert(err?.response?.data?.message || "Distractor generation failed");
+                                                } catch (err) {
+                                                    alert((err as ApiError).response?.data?.message || "Distractor generation failed");
                                                 } finally {
                                                     setGeneratingDistractors(null);
                                                 }
@@ -971,8 +973,8 @@ export default function SequencePage() {
                                                                                     ),
                                                                                 });
                                                                             }
-                                                                        } catch (err: any) {
-                                                                            alert(err?.response?.data?.message || "Toggle failed");
+                                                                        } catch (err) {
+                                                                            alert((err as ApiError).response?.data?.message || "Toggle failed");
                                                                         }
                                                                     }}
                                                                 />

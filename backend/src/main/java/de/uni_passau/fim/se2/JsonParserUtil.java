@@ -18,15 +18,16 @@
  */
 package de.uni_passau.fim.se2;
 
+import java.io.IOException;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
 
 /**
  * Utility class for parsing JSON strings into {@link JsonNode} objects.
  * <p>
- * This class follows the Singleton pattern to ensure a single instance of the JSON parser
- * is used throughout the application.
+ * This class follows the Singleton pattern to ensure a single instance of the JSON parser is used throughout the
+ * application.
  * </p>
  *
  * <p>
@@ -37,10 +38,10 @@ import java.io.IOException;
  * @version 1.0
  */
 public class JsonParserUtil {
-    
+
     /**
-     * The single instance of {@code JsonParserUtil}, ensuring only one instance
-     * exists throughout the application's lifecycle.
+     * The single instance of {@code JsonParserUtil}, ensuring only one instance exists throughout the application's
+     * lifecycle.
      */
     private static final JsonParserUtil INSTANCE = new JsonParserUtil();
 
@@ -50,8 +51,7 @@ public class JsonParserUtil {
     private final ObjectMapper mapper;
 
     /**
-     * Private constructor to prevent external instantiation.
-     * Initializes the {@link ObjectMapper} instance.
+     * Private constructor to prevent external instantiation. Initializes the {@link ObjectMapper} instance.
      */
     private JsonParserUtil() {
         mapper = new ObjectMapper();

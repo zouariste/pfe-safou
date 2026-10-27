@@ -18,10 +18,13 @@
  */
 package de.uni_passau.fim.se2.api.dto;
 
-import de.uni_passau.fim.se2.domain.entities.SplitPlan;
-import lombok.*;
-
 import java.util.List;
+
+import de.uni_passau.fim.se2.domain.entities.SplitPlan;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * Request body for POST /tasks/manual — creating a task sequence without LLM.
@@ -49,6 +52,7 @@ public class ManualTaskRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ManualTierEntry {
+
         /** Tier level (1, 2, or 3). */
         private int tierLevel;
         /** Problem statement / instructions for this tier. */
@@ -56,8 +60,8 @@ public class ManualTaskRequest {
         /** The code solution (the lines that become Parsons blocks). */
         private String solution;
         /**
-         * AP31: optional inline-split entries for this tier (one per split line).
-         * Each must reconstruct its solution line (prefix + join(fragments) + suffix).
+         * AP31: optional inline-split entries for this tier (one per split line). Each must reconstruct its solution
+         * line (prefix + join(fragments) + suffix).
          */
         private List<SplitPlan.SplitEntry> splits;
     }

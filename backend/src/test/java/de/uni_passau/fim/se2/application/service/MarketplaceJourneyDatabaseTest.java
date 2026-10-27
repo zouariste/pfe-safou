@@ -18,23 +18,19 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import de.uni_passau.fim.se2.application.query.WorksheetSearchQuery;
-import de.uni_passau.fim.se2.application.query.WorksheetSearchResult;
-import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
-import de.uni_passau.fim.se2.domain.entities.TaskDTO;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.model.SequenceCuratorPolicy;
-import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
-import de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy;
-import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
-import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreSequenceDAO;
-import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreTaskDao;
-import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreWorksheetDao;
-import de.uni_passau.fim.se2.infrastructure.persistence.dao.SequenceTagDAO;
-import de.uni_passau.fim.se2.testsupport.TestDatabase;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -45,36 +41,44 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import de.uni_passau.fim.se2.application.query.WorksheetSearchQuery;
+import de.uni_passau.fim.se2.application.query.WorksheetSearchResult;
+import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
+import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.model.SequenceCuratorPolicy;
+import de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy;
+import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
+import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreSequenceDAO;
+import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreTaskDao;
+import de.uni_passau.fim.se2.infrastructure.persistence.dao.PostgreWorksheetDao;
+import de.uni_passau.fim.se2.infrastructure.persistence.dao.SequenceTagDAO;
+import de.uni_passau.fim.se2.testsupport.TestDatabase;
 
 /**
  * One teacher publishes a worksheet, another finds it and takes a copy.
  *
- * <p>Every piece of that journey has its own tests. What none of them cover is the journey
- * itself: the visibility model, the search and the deep copy were built as separate changes
- * against separate mocks, and the interesting failures in a feature assembled that way are the
- * ones that live between the parts. A copy that is complete but published by accident, a
- * worksheet that publishes but cannot be found, a clone that quietly doubles the library — each
- * would pass every unit test in the repository.
+ * <p>
+ * Every piece of that journey has its own tests. What none of them cover is the journey itself: the visibility model,
+ * the search and the deep copy were built as separate changes against separate mocks, and the interesting failures in a
+ * feature assembled that way are the ones that live between the parts. A copy that is complete but published by
+ * accident, a worksheet that publishes but cannot be found, a clone that quietly doubles the library — each would pass
+ * every unit test in the repository.
  *
- * <p>Ordered, and deliberately stateful: it is a story, and each step depends on the one before.
- * That is unusual for a test class and worth the exception here, because the thing under test is
- * a sequence of events rather than a set of independent behaviours.
+ * <p>
+ * Ordered, and deliberately stateful: it is a story, and each step depends on the one before. That is unusual for a
+ * test class and worth the exception here, because the thing under test is a sequence of events rather than a set of
+ * independent behaviours.
  *
- * <p>Runs in CI against the job's own throwaway Postgres, and locally against a Testcontainers
- * one -- see {@link de.uni_passau.fim.se2.testsupport.TestDatabase}. Skipped only where there is
- * neither: a developer machine with Docker down.
+ * <p>
+ * Runs in CI against the job's own throwaway Postgres, and locally against a Testcontainers one -- see
+ * {@link de.uni_passau.fim.se2.testsupport.TestDatabase}. Skipped only where there is neither: a developer machine with
+ * Docker down.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("publishing, finding and copying a worksheet")
@@ -102,8 +106,10 @@ class MarketplaceJourneyDatabaseTest {
 
     @BeforeAll
     static void wire() {
-        Assumptions.assumeTrue(TestDatabase.isAvailable(),
-                "no test database: set SPRING_DATASOURCE_URL or start Docker");
+        Assumptions.assumeTrue(
+            TestDatabase.isAvailable(),
+            "no test database: set SPRING_DATASOURCE_URL or start Docker"
+        );
         jdbc = TestDatabase.jdbc();
 
         // The container is bare except for what V1's pg_dump seeds -- a real snapshot, not
@@ -117,25 +123,33 @@ class MarketplaceJourneyDatabaseTest {
         taskDao = new PostgreTaskDao(jdbc);
         tagDao = new SequenceTagDAO(jdbc);
 
-        worksheetService = new WorksheetService(worksheetDao,
-                new WorksheetCloneService(worksheetDao, sequenceDao, taskDao, tagDao));
+        worksheetService = new WorksheetService(
+            worksheetDao,
+            new WorksheetCloneService(worksheetDao, sequenceDao, taskDao, tagDao)
+        );
         marketplace = new WorksheetSearchService(jdbc);
         library = new SequenceSearchService(jdbc, tagDao, sequenceDao);
-        forkService = new SequenceForkService(worksheetDao,
-                new WorksheetCloneService(worksheetDao, sequenceDao, taskDao, tagDao));
+        forkService = new SequenceForkService(
+            worksheetDao,
+            new WorksheetCloneService(worksheetDao, sequenceDao, taskDao, tagDao)
+        );
 
         // A fixture this class needs, not data the migrated schema happens to already carry --
         // the schema is what V1...latest guarantees, not the pg_dump's row contents.
         versionId = UUID.randomUUID();
-        jdbc.update("INSERT INTO versions (id, version_name) VALUES (?, ?)",
-                versionId, "database-test-version");
+        jdbc.update(
+            "INSERT INTO versions (id, version_name) VALUES (?, ?)",
+            versionId, "database-test-version"
+        );
         anna = teacher("anna@example.invalid");
         ben = teacher("ben@example.invalid");
     }
 
     @AfterAll
     static void cleanup() {
-        if (jdbc == null) return; // wire() aborted: there was no test database
+        if (jdbc == null) {
+            return; // wire() aborted: there was no test database
+        }
         // tasks, sequence_tags, tiered_task_sequence_concepts and worksheets_sequence all
         // cascade from these two, so nothing else needs an explicit delete.
         jdbc.update("DELETE FROM tiered_task_sequences");
@@ -151,28 +165,29 @@ class MarketplaceJourneyDatabaseTest {
     @DisplayName("1. Anna builds a worksheet, and it is hers alone until she says otherwise")
     void annaBuildsAWorksheet() {
         WorksheetDTO sheet = WorksheetDTO.builder()
-                .name("Rekursion, Blatt 3")
-                .description("Drei Stufen, aufsteigend")
-                .ownerId(anna)
-                .hintsEnabled(false)
-                .hintCreditsPerTask(4)
-                .build();
+            .name("Rekursion, Blatt 3")
+            .description("Drei Stufen, aufsteigend")
+            .ownerId(anna)
+            .hintsEnabled(false)
+            .hintCreditsPerTask(4)
+            .build();
         worksheetDao.createWorksheet(sheet);
         annasWorksheet = sheet.getId();
 
         TieredTaskSequenceDTO sequence = TieredTaskSequenceDTO.builder()
-                .programmingLanguage("java")
-                .taskDescription("Berechne die Fakultaet rekursiv")
-                .codeSnippet("int fak(int n) { return n <= 1 ? 1 : n * fak(n - 1); }")
-                .ownerId(anna)
-                .targetLanguage("en")
-                .tierCount(5)
-                .versionId(versionId)
-                .build();
+            .programmingLanguage("java")
+            .taskDescription("Berechne die Fakultaet rekursiv")
+            .codeSnippet("int fak(int n) { return n <= 1 ? 1 : n * fak(n - 1); }")
+            .ownerId(anna)
+            .targetLanguage("en")
+            .tierCount(5)
+            .versionId(versionId)
+            .build();
         sequenceDao.save(sequence);
         annasSequence = sequence.getId();
 
-        taskDao.save(TaskDTO.builder()
+        taskDao.save(
+            TaskDTO.builder()
                 .sequenceId(annasSequence)
                 .statement("Ordne die Zeilen").solution("return n * fak(n - 1);")
                 .tierLevel(1).cyclomaticComplexity(3)
@@ -181,7 +196,8 @@ class MarketplaceJourneyDatabaseTest {
                 .contextBefore("public class Fakultaet {")
                 .contextAfter("}")
                 .splitPlan("{\"splits\":[{\"lineIndex\":0}]}")
-                .build());
+                .build()
+        );
 
         worksheetDao.addSequenceToWorksheet(sheet, sequence);
         sequenceDao.updateSemanticSummary(annasSequence, "Rekursive Berechnung der Fakultät.");
@@ -189,12 +205,19 @@ class MarketplaceJourneyDatabaseTest {
 
         WorksheetDTO stored = load(annasWorksheet);
         assertAll(
-                () -> assertEquals(WorksheetVisibility.UNLISTED, stored.getVisibility(),
-                        "a new worksheet behaves exactly as worksheets always did"),
-                () -> assertFalse(WorksheetAccessPolicy.canList(stored.getVisibility()),
-                        "readable by link is not the same as findable"),
-                () -> assertEquals(0, marketplace.search(query(null), ben).total(),
-                        "and it is not in the marketplace"));
+            () -> assertEquals(
+                WorksheetVisibility.UNLISTED, stored.getVisibility(),
+                "a new worksheet behaves exactly as worksheets always did"
+            ),
+            () -> assertFalse(
+                WorksheetAccessPolicy.canList(stored.getVisibility()),
+                "readable by link is not the same as findable"
+            ),
+            () -> assertEquals(
+                0, marketplace.search(query(null), ben).total(),
+                "and it is not in the marketplace"
+            )
+        );
     }
 
     @Test
@@ -204,11 +227,17 @@ class MarketplaceJourneyDatabaseTest {
         WorksheetDTO sheet = load(annasWorksheet);
 
         assertAll(
-                () -> assertEquals(0, marketplace.search(query("fakultaet"), ben).total(),
-                        "searching for its contents finds nothing while it is unlisted"),
-                () -> assertTrue(WorksheetAccessPolicy.canView(
-                        sheet.getVisibility(), anna, ben, UserRole.TEACHER),
-                        "the link Anna already shared keeps working — that is the point of UNLISTED"));
+            () -> assertEquals(
+                0, marketplace.search(query("fakultaet"), ben).total(),
+                "searching for its contents finds nothing while it is unlisted"
+            ),
+            () -> assertTrue(
+                WorksheetAccessPolicy.canView(
+                    sheet.getVisibility(), anna, ben, UserRole.TEACHER
+                ),
+                "the link Anna already shared keeps working — that is the point of UNLISTED"
+            )
+        );
     }
 
     @Test
@@ -219,13 +248,23 @@ class MarketplaceJourneyDatabaseTest {
         WorksheetDTO sheet = load(annasWorksheet);
 
         assertAll(
-                () -> assertFalse(WorksheetAccessPolicy.canView(
-                        sheet.getVisibility(), anna, ben, UserRole.TEACHER), "Ben cannot open it"),
-                () -> assertFalse(WorksheetAccessPolicy.canCopy(
-                        sheet.getVisibility(), anna, ben, UserRole.TEACHER),
-                        "nor read it by copying it, which is the hole PRIVATE would otherwise open"),
-                () -> assertTrue(WorksheetAccessPolicy.canView(
-                        sheet.getVisibility(), anna, anna, UserRole.TEACHER), "Anna still can"));
+            () -> assertFalse(
+                WorksheetAccessPolicy.canView(
+                    sheet.getVisibility(), anna, ben, UserRole.TEACHER
+                ), "Ben cannot open it"
+            ),
+            () -> assertFalse(
+                WorksheetAccessPolicy.canCopy(
+                    sheet.getVisibility(), anna, ben, UserRole.TEACHER
+                ),
+                "nor read it by copying it, which is the hole PRIVATE would otherwise open"
+            ),
+            () -> assertTrue(
+                WorksheetAccessPolicy.canView(
+                    sheet.getVisibility(), anna, anna, UserRole.TEACHER
+                ), "Anna still can"
+            )
+        );
     }
 
     @Test
@@ -239,13 +278,14 @@ class MarketplaceJourneyDatabaseTest {
         WorksheetSearchResult found = marketplace.search(query("Fakultät"), ben);
 
         assertAll(
-                () -> assertEquals(1, found.total()),
-                () -> assertEquals("Rekursion, Blatt 3", found.items().get(0).name()),
-                () -> assertEquals(annasWorksheet, found.items().get(0).worksheetId()),
-                () -> assertEquals(List.of("java"), found.items().get(0).languages()),
-                () -> assertEquals(1, found.items().get(0).sequenceCount()),
-                () -> assertFalse(found.items().get(0).alreadyCopied()),
-                () -> assertNotNull(found.items().get(0).highlight(), "his search term is marked"));
+            () -> assertEquals(1, found.total()),
+            () -> assertEquals("Rekursion, Blatt 3", found.items().get(0).name()),
+            () -> assertEquals(annasWorksheet, found.items().get(0).worksheetId()),
+            () -> assertEquals(List.of("java"), found.items().get(0).languages()),
+            () -> assertEquals(1, found.items().get(0).sequenceCount()),
+            () -> assertFalse(found.items().get(0).alreadyCopied()),
+            () -> assertNotNull(found.items().get(0).highlight(), "his search term is marked")
+        );
     }
 
     @Test
@@ -253,9 +293,10 @@ class MarketplaceJourneyDatabaseTest {
     @DisplayName("5. a half-typed search still finds it, because the box is live")
     void benSearchesAsHeTypes() {
         assertAll(
-                () -> assertEquals(1, marketplace.search(query("fak"), ben).total()),
-                () -> assertEquals(1, marketplace.search(query("rekur"), ben).total()),
-                () -> assertEquals(0, marketplace.search(query("sortieren"), ben).total()));
+            () -> assertEquals(1, marketplace.search(query("fak"), ben).total()),
+            () -> assertEquals(1, marketplace.search(query("rekur"), ben).total()),
+            () -> assertEquals(0, marketplace.search(query("sortieren"), ben).total())
+        );
     }
 
     @Test
@@ -266,33 +307,41 @@ class MarketplaceJourneyDatabaseTest {
         bensCopy = copy.getId();
 
         UUID copiedSequence = jdbc.queryForObject(
-                "SELECT sequence_id FROM worksheets_sequence WHERE worksheet_id = ?", UUID.class, bensCopy);
+            "SELECT sequence_id FROM worksheets_sequence WHERE worksheet_id = ?", UUID.class, bensCopy
+        );
         var task = jdbc.queryForMap("SELECT * FROM tasks WHERE sequence_id = ?", copiedSequence);
         var sequence = jdbc.queryForMap(
-                "SELECT * FROM tiered_task_sequences WHERE id = ?", copiedSequence);
+            "SELECT * FROM tiered_task_sequences WHERE id = ?", copiedSequence
+        );
         WorksheetDTO stored = load(bensCopy);
 
         assertAll(
-                // MR1: the copy is complete
-                () -> assertEquals(5, sequence.get("tier_count"), "five tiers stay five"),
-                () -> assertEquals("en", sequence.get("target_language")),
-                () -> assertEquals("Rekursive Berechnung der Fakultät.", sequence.get("semantic_summary")),
-                () -> assertEquals("return n * fak(n);  #distractor", task.get("distractors")),
-                () -> assertEquals(false, task.get("distractors_enabled")),
-                () -> assertEquals("public class Fakultaet {", task.get("context_before")),
-                () -> assertNotNull(task.get("split_plan")),
-                () -> assertEquals(false, stored.isHintsEnabled()),
-                () -> assertEquals(4, stored.getHintCreditsPerTask()),
-                () -> assertEquals(1, jdbc.queryForObject(
-                        "SELECT COUNT(*) FROM sequence_tags WHERE sequence_id = ?", Integer.class,
-                        copiedSequence), "and its tags, so it answers to the same searches"),
+            // MR1: the copy is complete
+            () -> assertEquals(5, sequence.get("tier_count"), "five tiers stay five"),
+            () -> assertEquals("en", sequence.get("target_language")),
+            () -> assertEquals("Rekursive Berechnung der Fakultät.", sequence.get("semantic_summary")),
+            () -> assertEquals("return n * fak(n);  #distractor", task.get("distractors")),
+            () -> assertEquals(false, task.get("distractors_enabled")),
+            () -> assertEquals("public class Fakultaet {", task.get("context_before")),
+            () -> assertNotNull(task.get("split_plan")),
+            () -> assertEquals(false, stored.isHintsEnabled()),
+            () -> assertEquals(4, stored.getHintCreditsPerTask()),
+            () -> assertEquals(
+                1, jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM sequence_tags WHERE sequence_id = ?", Integer.class,
+                    copiedSequence
+                ), "and its tags, so it answers to the same searches"
+            ),
 
-                // MR2: it is his, and it is not published on his behalf
-                () -> assertEquals(ben, stored.getOwnerId()),
-                () -> assertEquals(WorksheetVisibility.PRIVATE, stored.getVisibility(),
-                        "copying is how you take material to adapt; publishing is a separate act"),
-                () -> assertEquals(annasWorksheet, stored.getCopiedFrom()),
-                () -> assertNotEquals(annasWorksheet, bensCopy));
+            // MR2: it is his, and it is not published on his behalf
+            () -> assertEquals(ben, stored.getOwnerId()),
+            () -> assertEquals(
+                WorksheetVisibility.PRIVATE, stored.getVisibility(),
+                "copying is how you take material to adapt; publishing is a separate act"
+            ),
+            () -> assertEquals(annasWorksheet, stored.getCopiedFrom()),
+            () -> assertNotEquals(annasWorksheet, bensCopy)
+        );
     }
 
     @Test
@@ -303,15 +352,20 @@ class MarketplaceJourneyDatabaseTest {
         var listed = library.search(new SequenceSearchService.SearchQuery().q("fakultaet"), ben);
 
         assertAll(
-                () -> assertEquals(1, found.total(), "only Anna's original is published"),
-                () -> assertEquals(annasWorksheet, found.items().get(0).worksheetId()),
-                () -> assertTrue(found.items().get(0).alreadyCopied(),
-                        "and Ben is told he already has it"),
-                () -> assertEquals(1, found.items().get(0).copyCount()),
-                () -> assertEquals(1, listed.total(), "only Anna's original is in the library"),
-                () -> assertEquals(annasSequence, listed.items().get(0).sequenceId(),
-                        "the clone does not appear beside it — the invariant the copied_from"
-                                + " filter exists for"));
+            () -> assertEquals(1, found.total(), "only Anna's original is published"),
+            () -> assertEquals(annasWorksheet, found.items().get(0).worksheetId()),
+            () -> assertTrue(
+                found.items().get(0).alreadyCopied(),
+                "and Ben is told he already has it"
+            ),
+            () -> assertEquals(1, found.items().get(0).copyCount()),
+            () -> assertEquals(1, listed.total(), "only Anna's original is in the library"),
+            () -> assertEquals(
+                annasSequence, listed.items().get(0).sequenceId(),
+                "the clone does not appear beside it — the invariant the copied_from"
+                    + " filter exists for"
+            )
+        );
     }
 
     @Test
@@ -319,14 +373,20 @@ class MarketplaceJourneyDatabaseTest {
     @DisplayName("8. Ben edits his copy and Anna's original is untouched")
     void bensEditsDoNotReachAnna() {
         UUID copiedSequence = jdbc.queryForObject(
-                "SELECT sequence_id FROM worksheets_sequence WHERE worksheet_id = ?", UUID.class, bensCopy);
-        jdbc.update("UPDATE tiered_task_sequences SET task_description = ? WHERE id = ?",
-                "Ben's Fassung", copiedSequence);
+            "SELECT sequence_id FROM worksheets_sequence WHERE worksheet_id = ?", UUID.class, bensCopy
+        );
+        jdbc.update(
+            "UPDATE tiered_task_sequences SET task_description = ? WHERE id = ?",
+            "Ben's Fassung", copiedSequence
+        );
 
-        assertEquals("Berechne die Fakultaet rekursiv", jdbc.queryForObject(
+        assertEquals(
+            "Berechne die Fakultaet rekursiv", jdbc.queryForObject(
                 "SELECT task_description FROM tiered_task_sequences WHERE id = ?",
-                String.class, annasSequence),
-                "a copy in your own namespace is the whole point — it must not write back");
+                String.class, annasSequence
+            ),
+            "a copy in your own namespace is the whole point — it must not write back"
+        );
     }
 
     @Test
@@ -336,12 +396,19 @@ class MarketplaceJourneyDatabaseTest {
         worksheetService.setVisibility(annasWorksheet, WorksheetVisibility.UNLISTED, anna, UserRole.TEACHER);
 
         assertAll(
-                () -> assertEquals(0, marketplace.search(query("fakultaet"), ben).total(),
-                        "it leaves the marketplace"),
-                () -> assertNotNull(load(bensCopy).getName(),
-                        "but what Ben already took is his to keep"),
-                () -> assertEquals(annasWorksheet, load(bensCopy).getCopiedFrom(),
-                        "including the record of where it came from"));
+            () -> assertEquals(
+                0, marketplace.search(query("fakultaet"), ben).total(),
+                "it leaves the marketplace"
+            ),
+            () -> assertNotNull(
+                load(bensCopy).getName(),
+                "but what Ben already took is his to keep"
+            ),
+            () -> assertEquals(
+                annasWorksheet, load(bensCopy).getCopiedFrom(),
+                "including the record of where it came from"
+            )
+        );
     }
 
     @Test
@@ -349,12 +416,21 @@ class MarketplaceJourneyDatabaseTest {
     @DisplayName("10. Ben may publish his own copy; Anna may not publish it for him")
     void benCanPublishHisCopy() {
         assertAll(
-                () -> assertEquals(WorksheetVisibility.PUBLIC, worksheetService.setVisibility(
-                        bensCopy, WorksheetVisibility.PUBLIC, ben, UserRole.TEACHER).getVisibility()),
-                () -> assertEquals(1, marketplace.search(query("Fakultät"), anna).total(),
-                        "and now Anna can find Ben's version"),
-                () -> assertThrowsAccessDenied(() -> worksheetService.setVisibility(
-                        bensCopy, WorksheetVisibility.PRIVATE, anna, UserRole.TEACHER)));
+            () -> assertEquals(
+                WorksheetVisibility.PUBLIC, worksheetService.setVisibility(
+                    bensCopy, WorksheetVisibility.PUBLIC, ben, UserRole.TEACHER
+                ).getVisibility()
+            ),
+            () -> assertEquals(
+                1, marketplace.search(query("Fakultät"), anna).total(),
+                "and now Anna can find Ben's version"
+            ),
+            () -> assertThrowsAccessDenied(
+                () -> worksheetService.setVisibility(
+                    bensCopy, WorksheetVisibility.PRIVATE, anna, UserRole.TEACHER
+                )
+            )
+        );
     }
 
     @Test
@@ -370,12 +446,18 @@ class MarketplaceJourneyDatabaseTest {
         // unaccent extension and applied to both the generated search_vector columns and the
         // query, so it no longer matters which spelling was stored and which was typed.
         assertAll(
-                () -> assertEquals(1, marketplace.search(query("Fakultät"), anna).total(),
-                        "typed with the umlaut, as stored"),
-                () -> assertEquals(1, marketplace.search(query("Fakultaet"), anna).total(),
-                        "and typed without it, too"));
+            () -> assertEquals(
+                1, marketplace.search(query("Fakultät"), anna).total(),
+                "typed with the umlaut, as stored"
+            ),
+            () -> assertEquals(
+                1, marketplace.search(query("Fakultaet"), anna).total(),
+                "and typed without it, too"
+            )
+        );
     }
 
+    @SuppressWarnings("checkstyle:MethodLength")
     @Test
     @Order(12)
     @DisplayName("12. Anna forks Ben's sequence to edit it, and Ben's own copy survives untouched")
@@ -386,47 +468,78 @@ class MarketplaceJourneyDatabaseTest {
         UUID bensSequence = copiedSequenceOf(bensCopy);
         // createWorksheet assigns the id itself, so read it back rather than dictating one.
         WorksheetDTO annasSecond = WorksheetDTO.builder()
-                .name("Annas Sammlung").description("kuratiert")
-                .ownerId(anna).visibility(WorksheetVisibility.PRIVATE).build();
+            .name("Annas Sammlung").description("kuratiert")
+            .ownerId(anna).visibility(WorksheetVisibility.PRIVATE).build();
         worksheetDao.createWorksheet(annasSecond);
         UUID annasSecondSheet = annasSecond.getId();
         worksheetDao.addSequenceToWorksheet(
-                load(annasSecondSheet), TieredTaskSequenceDTO.builder().id(bensSequence).build());
+            load(annasSecondSheet), TieredTaskSequenceDTO.builder().id(bensSequence).build()
+        );
 
-        assertAll("before the fork",
-                () -> assertTrue(worksheetDao.isCuratedBy(bensSequence, anna),
-                        "Anna put it in her worksheet, so she curates it"),
-                () -> assertTrue(worksheetDao.isCuratedBy(bensSequence, ben),
-                        "and Ben still has it in his"),
-                () -> assertTrue(SequenceCuratorPolicy.mustForkToEdit(
-                        ben, anna, UserRole.TEACHER, true),
-                        "which is exactly the case that must fork rather than edit"));
+        assertAll(
+            "before the fork",
+            () -> assertTrue(
+                worksheetDao.isCuratedBy(bensSequence, anna),
+                "Anna put it in her worksheet, so she curates it"
+            ),
+            () -> assertTrue(
+                worksheetDao.isCuratedBy(bensSequence, ben),
+                "and Ben still has it in his"
+            ),
+            () -> assertTrue(
+                SequenceCuratorPolicy.mustForkToEdit(
+                    ben, anna, UserRole.TEACHER, true
+                ),
+                "which is exactly the case that must fork rather than edit"
+            )
+        );
 
         UUID fork = forkService.forkForEditing(annasSecondSheet, bensSequence, anna);
 
         Integer tasksOnOriginal = jdbc.queryForObject(
-                "SELECT count(*) FROM tasks WHERE sequence_id = ?", Integer.class, bensSequence);
+            "SELECT count(*) FROM tasks WHERE sequence_id = ?", Integer.class, bensSequence
+        );
         Integer tasksOnFork = jdbc.queryForObject(
-                "SELECT count(*) FROM tasks WHERE sequence_id = ?", Integer.class, fork);
+            "SELECT count(*) FROM tasks WHERE sequence_id = ?", Integer.class, fork
+        );
 
-        assertAll("after the fork",
-                () -> assertEquals(anna, jdbc.queryForObject(
-                        "SELECT owner_id FROM tiered_task_sequences WHERE id = ?", UUID.class, fork),
-                        "the copy is Anna's, so her edits land on her own material"),
-                () -> assertEquals(bensSequence, jdbc.queryForObject(
-                        "SELECT copied_from FROM tiered_task_sequences WHERE id = ?", UUID.class, fork),
-                        "and says where it came from"),
-                () -> assertEquals(fork, copiedSequenceOfSheet(annasSecondSheet),
-                        "Anna's worksheet now points at the copy, and only at the copy"),
-                () -> assertEquals(ben, jdbc.queryForObject(
-                        "SELECT owner_id FROM tiered_task_sequences WHERE id = ?", UUID.class, bensSequence),
-                        "Ben still owns the original"),
-                () -> assertEquals(bensSequence, copiedSequenceOf(bensCopy),
-                        "and his worksheet still points at it -- the fork touched nobody else"),
-                () -> assertEquals(tasksOnOriginal, tasksOnFork,
-                        "the copy carries the same tasks; completeness itself is CloneCompletenessTest's job"),
-                () -> assertFalse(worksheetDao.isCuratedBy(bensSequence, anna),
-                        "and Anna no longer curates the original, having moved off it"));
+        assertAll(
+            "after the fork",
+            () -> assertEquals(
+                anna, jdbc.queryForObject(
+                    "SELECT owner_id FROM tiered_task_sequences WHERE id = ?", UUID.class, fork
+                ),
+                "the copy is Anna's, so her edits land on her own material"
+            ),
+            () -> assertEquals(
+                bensSequence, jdbc.queryForObject(
+                    "SELECT copied_from FROM tiered_task_sequences WHERE id = ?", UUID.class, fork
+                ),
+                "and says where it came from"
+            ),
+            () -> assertEquals(
+                fork, copiedSequenceOfSheet(annasSecondSheet),
+                "Anna's worksheet now points at the copy, and only at the copy"
+            ),
+            () -> assertEquals(
+                ben, jdbc.queryForObject(
+                    "SELECT owner_id FROM tiered_task_sequences WHERE id = ?", UUID.class, bensSequence
+                ),
+                "Ben still owns the original"
+            ),
+            () -> assertEquals(
+                bensSequence, copiedSequenceOf(bensCopy),
+                "and his worksheet still points at it -- the fork touched nobody else"
+            ),
+            () -> assertEquals(
+                tasksOnOriginal, tasksOnFork,
+                "the copy carries the same tasks; completeness itself is CloneCompletenessTest's job"
+            ),
+            () -> assertFalse(
+                worksheetDao.isCuratedBy(bensSequence, anna),
+                "and Anna no longer curates the original, having moved off it"
+            )
+        );
     }
 
     @Test
@@ -439,11 +552,16 @@ class MarketplaceJourneyDatabaseTest {
         WorksheetDTO bensSheet = load(bensCopy);
 
         assertAll(
-                () -> assertEquals(1, bensSheet.getSequenceDTOS().size()),
-                () -> assertEquals(ben, bensSheet.getSequenceDTOS().get(0).getOwnerId(),
-                        "Ben copied it, so the sequence in his worksheet is his"),
-                () -> assertEquals(copiedSequenceOf(bensCopy), bensSheet.getSequenceDTOS().get(0).getId(),
-                        "and the id must still line up with the owner beside it"));
+            () -> assertEquals(1, bensSheet.getSequenceDTOS().size()),
+            () -> assertEquals(
+                ben, bensSheet.getSequenceDTOS().get(0).getOwnerId(),
+                "Ben copied it, so the sequence in his worksheet is his"
+            ),
+            () -> assertEquals(
+                copiedSequenceOf(bensCopy), bensSheet.getSequenceDTOS().get(0).getId(),
+                "and the id must still line up with the owner beside it"
+            )
+        );
     }
 
     @Test
@@ -455,17 +573,23 @@ class MarketplaceJourneyDatabaseTest {
         // if a crafted request reaches it.
         UUID bensSequence = copiedSequenceOf(bensCopy);
         WorksheetDTO strangers = WorksheetDTO.builder()
-                .name("Fremdes Blatt").description("ohne die Sequenz")
-                .ownerId(anna).visibility(WorksheetVisibility.PRIVATE).build();
+            .name("Fremdes Blatt").description("ohne die Sequenz")
+            .ownerId(anna).visibility(WorksheetVisibility.PRIVATE).build();
         worksheetDao.createWorksheet(strangers);
         UUID strangersSheet = strangers.getId();
 
         assertAll(
-                () -> assertFalse(SequenceCuratorPolicy.canInspect(
-                        ben, anna, UserRole.TEACHER, false)),
-                () -> assertThrows(DomainValidationException.class,
-                        () -> forkService.forkForEditing(strangersSheet, bensSequence, anna),
-                        "forking into a worksheet that does not contain the sequence would add material to it"));
+            () -> assertFalse(
+                SequenceCuratorPolicy.canInspect(
+                    ben, anna, UserRole.TEACHER, false
+                )
+            ),
+            () -> assertThrows(
+                DomainValidationException.class,
+                () -> forkService.forkForEditing(strangersSheet, bensSequence, anna),
+                "forking into a worksheet that does not contain the sequence would add material to it"
+            )
+        );
     }
 
     @Test
@@ -477,13 +601,19 @@ class MarketplaceJourneyDatabaseTest {
         // Searched by the title step 8 gave it: the sequence vector is generated from
         // task_description, so Ben's copy stopped answering to "fakultaet" the moment he
         // retitled it. Anna's original still does, which is what separates the two here.
-        assertFalse(listedInLibrary(bensSequence, "fassung"),
-                "an untouched copy stays out of the library");
+        assertFalse(
+            listedInLibrary(bensSequence, "fassung"),
+            "an untouched copy stays out of the library"
+        );
 
-        assertTrue(sequenceDao.markDiverged(bensSequence),
-                "the first edit to a copy is what marks it");
-        assertTrue(listedInLibrary(bensSequence, "fassung"),
-                "once reworked it is Ben's own material, and he must be able to find it");
+        assertTrue(
+            sequenceDao.markDiverged(bensSequence),
+            "the first edit to a copy is what marks it"
+        );
+        assertTrue(
+            listedInLibrary(bensSequence, "fassung"),
+            "once reworked it is Ben's own material, and he must be able to find it"
+        );
 
         // Anna's original does not lose its place to the copy.
         assertTrue(listedInLibrary(annasSequence, "fakultaet"), "the original stays listed too");
@@ -497,20 +627,29 @@ class MarketplaceJourneyDatabaseTest {
         Instant first = divergedAt(bensSequence);
 
         assertAll(
-                () -> assertNotNull(first, "step 14 marked it"),
-                // "First edited" is the question diverged_at answers, so a second edit must not
-                // move it -- otherwise every save would rewrite the sequence's own history.
-                () -> assertFalse(sequenceDao.markDiverged(bensSequence),
-                        "a second edit reports that it changed nothing"),
-                () -> assertEquals(first, divergedAt(bensSequence),
-                        "and leaves the original timestamp alone"),
-                // An original has nothing to diverge from; stamping one would claim it was
-                // copied from somewhere.
-                () -> assertFalse(sequenceDao.markDiverged(annasSequence),
-                        "an original is not a copy and cannot diverge"),
-                () -> assertNull(divergedAt(annasSequence)),
-                () -> assertFalse(sequenceDao.markDiverged(UUID.randomUUID()),
-                        "an unknown id is a no-op, not a failure"));
+            () -> assertNotNull(first, "step 14 marked it"),
+            // "First edited" is the question diverged_at answers, so a second edit must not
+            // move it -- otherwise every save would rewrite the sequence's own history.
+            () -> assertFalse(
+                sequenceDao.markDiverged(bensSequence),
+                "a second edit reports that it changed nothing"
+            ),
+            () -> assertEquals(
+                first, divergedAt(bensSequence),
+                "and leaves the original timestamp alone"
+            ),
+            // An original has nothing to diverge from; stamping one would claim it was
+            // copied from somewhere.
+            () -> assertFalse(
+                sequenceDao.markDiverged(annasSequence),
+                "an original is not a copy and cannot diverge"
+            ),
+            () -> assertNull(divergedAt(annasSequence)),
+            () -> assertFalse(
+                sequenceDao.markDiverged(UUID.randomUUID()),
+                "an unknown id is a no-op, not a failure"
+            )
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -518,14 +657,15 @@ class MarketplaceJourneyDatabaseTest {
     /** Whether the library's own query returns this sequence when searched for {@code text}. */
     private static boolean listedInLibrary(UUID sequenceId, String text) {
         return library.search(new SequenceSearchService.SearchQuery().q(text), ben)
-                .items().stream()
-                .anyMatch(i -> sequenceId.equals(i.sequenceId()));
+            .items().stream()
+            .anyMatch(i -> sequenceId.equals(i.sequenceId()));
     }
 
     private static Instant divergedAt(UUID sequenceId) {
         var ts = jdbc.queryForObject(
-                "SELECT diverged_at FROM tiered_task_sequences WHERE id = ?",
-                java.sql.Timestamp.class, sequenceId);
+            "SELECT diverged_at FROM tiered_task_sequences WHERE id = ?",
+            java.sql.Timestamp.class, sequenceId
+        );
         return ts == null ? null : ts.toInstant();
     }
 
@@ -533,7 +673,8 @@ class MarketplaceJourneyDatabaseTest {
         try {
             action.run();
             throw new AssertionError("expected the other teacher to be refused");
-        } catch (org.springframework.security.access.AccessDeniedException expected) {
+        }
+        catch (org.springframework.security.access.AccessDeniedException expected) {
             // exactly what should happen
         }
     }
@@ -545,8 +686,9 @@ class MarketplaceJourneyDatabaseTest {
 
     private static UUID copiedSequenceOf(UUID worksheetId) {
         return jdbc.queryForObject(
-                "SELECT sequence_id FROM worksheets_sequence WHERE worksheet_id = ?",
-                UUID.class, worksheetId);
+            "SELECT sequence_id FROM worksheets_sequence WHERE worksheet_id = ?",
+            UUID.class, worksheetId
+        );
     }
 
     private static WorksheetSearchQuery query(String text) {
@@ -561,9 +703,11 @@ class MarketplaceJourneyDatabaseTest {
 
     private static UUID teacher(String email) {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO users (user_id, email, first_name, last_name, password_hash,"
-                        + " role, is_verified, is_active) VALUES (?,?,?,?,?,CAST(? AS user_role),?,?)",
-                id, email, "T", "T", "unused", "TEACHER", true, true);
+        jdbc.update(
+            "INSERT INTO users (user_id, email, first_name, last_name, password_hash,"
+                + " role, is_verified, is_active) VALUES (?,?,?,?,?,CAST(? AS user_role),?,?)",
+            id, email, "T", "T", "unused", "TEACHER", true, true
+        );
         return id;
     }
 }

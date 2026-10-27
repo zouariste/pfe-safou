@@ -18,26 +18,34 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.exceptions.*;
-import de.uni_passau.fim.se2.domain.interfaces.*;
-import de.uni_passau.fim.se2.infrastructure.persistence.mapper.*;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+
+import org.postgresql.util.PGobject;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+
 import de.uni_passau.fim.se2.domain.entities.SnippetDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.exceptions.NotFoundException;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
 import de.uni_passau.fim.se2.infrastructure.persistence.mapper.TaskRowMapper;
-import lombok.extern.slf4j.*;
-import org.postgresql.util.*;
-import org.springframework.jdbc.core.*;
-import org.springframework.stereotype.*;
-
-import java.util.*;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Repository
 public class PostgreTaskDao implements TaskRepository {
+
+    private static final String TASK_ID_REQUIRED = "Task ID cannot be null";
+    private static final String TASK_NOT_FOUND = "Task not found: ";
 
     private final JdbcTemplate jdbc;
 
@@ -46,12 +54,11 @@ public class PostgreTaskDao implements TaskRepository {
     }
 
     /**
-     * Loads the details of the specified task into the given TaskDTO instance.
-     * Typically retrieves task information from the repository using its unique identifier
-     * and populates the target TaskDTO object with the retrieved data.
+     * Loads the details of the specified task into the given TaskDTO instance. Typically retrieves task information
+     * from the repository using its unique identifier and populates the target TaskDTO object with the retrieved data.
      *
-     * @param target the TaskDTO instance to be populated with the details of the task
-     *               identified by its unique identifier
+     * @param target the TaskDTO instance to be populated with the details of the task identified by its unique
+     *               identifier
      */
     @Override
     public void loadById(TaskDTO target) {
@@ -62,21 +69,27 @@ public class PostgreTaskDao implements TaskRepository {
         // task.getProgrammingLanguage() would always be null and the hint system
         // would silently fall back to "python" even for Java tasks.
         String sql = """
-                         SELECT t.id, t.statement, t.solution, t.tier_level, t.title, t.cyclomatic_complexity,
-                                t.sequence_id, t.lines_of_code, t.distinct_identifier_count,
-                                t.maximal_nesting_depth, t.method_call_count, t.distractors,
-                                t.distractor_plan, t.distractors_enabled,
-                                t.context_before, t.context_after, t.split_plan,
-                                s.programming_language
-                         FROM tasks t
-                         JOIN tiered_task_sequences s ON s.id = t.sequence_id
-                         WHERE t.id = ?
-                     """;
-        TaskDTO result = jdbc.queryForObject(sql, (rs, n) -> {
-            TaskDTO dto = new TaskRowMapper().mapRow(rs, n);
-            dto.setProgrammingLanguage(rs.getString("programming_language"));
-            return dto;
-        }, target.getId());
+                SELECT t.id, t.statement, t.solution, t.tier_level, t.title, t.cyclomatic_complexity,
+                       t.sequence_id, t.lines_of_code, t.distinct_identifier_count,
+                       t.maximal_nesting_depth, t.method_call_count, t.distractors,
+                       t.distractor_plan, t.distractors_enabled,
+                       t.context_before, t.context_after, t.split_plan,
+                       s.programming_language
+                FROM tasks t
+                JOIN tiered_task_sequences s ON s.id = t.sequence_id
+                WHERE t.id = ?
+            """;
+        TaskDTO result;
+        try {
+            result = jdbc.queryForObject(sql, (rs, n) -> {
+                TaskDTO dto = Objects.requireNonNull(new TaskRowMapper().mapRow(rs, n));
+                dto.setProgrammingLanguage(rs.getString("programming_language"));
+                return dto;
+            }, target.getId());
+        }
+        catch (EmptyResultDataAccessException e) {
+            throw new NotFoundException("Task not found: " + target.getId());
+        }
         if (result != null) {
             target.setStatement(result.getStatement());
             target.setSolution(result.getSolution());
@@ -98,14 +111,13 @@ public class PostgreTaskDao implements TaskRepository {
         }
     }
 
-
     /**
      * Loads a list of tasks associated with the given tiered task sequence.
      *
-     * @param sequence the TieredTaskSequenceDTO representing the task sequence
-     *                 whose associated tasks are to be retrieved
-     * @return a list of TaskDTO objects corresponding to the tasks in the specified
-     * tiered task sequence, or an empty list if no tasks are found
+     * @param sequence the TieredTaskSequenceDTO representing the task sequence whose associated tasks are to be
+     *                 retrieved
+     * @return a list of TaskDTO objects corresponding to the tasks in the specified tiered task sequence, or an empty
+     *         list if no tasks are found
      */
     @Override
     public List<TaskDTO> loadTasksBySequenceId(TieredTaskSequenceDTO sequence) {
@@ -114,73 +126,71 @@ public class PostgreTaskDao implements TaskRepository {
         }
 
         String sql = """
-                         SELECT id, statement, solution, tier_level, title, cyclomatic_complexity,
-                                sequence_id, lines_of_code, distinct_identifier_count,
-                                maximal_nesting_depth, method_call_count, distractors,
-                                distractor_plan, distractors_enabled,
-                                context_before, context_after, split_plan
-                         FROM tasks
-                         WHERE sequence_id = ? AND deleted_at IS NULL
-                         ORDER BY tier_level, id
-                     """;
+                SELECT id, statement, solution, tier_level, title, cyclomatic_complexity,
+                       sequence_id, lines_of_code, distinct_identifier_count,
+                       maximal_nesting_depth, method_call_count, distractors,
+                       distractor_plan, distractors_enabled,
+                       context_before, context_after, split_plan
+                FROM tasks
+                WHERE sequence_id = ? AND deleted_at IS NULL
+                ORDER BY tier_level, id
+            """;
 
         return jdbc.query(sql, new TaskRowMapper(), sequence.getId());
     }
 
     /**
-     * Persists the given task data transfer object (TaskDTO) into the repository.
-     * This method ensures that the task details, such as statement, solution, and tier level,
-     * are stored for future retrieval or updates.
+     * Persists the given task data transfer object (TaskDTO) into the repository. This method ensures that the task
+     * details, such as statement, solution, and tier level, are stored for future retrieval or updates.
      *
-     * @param task the TaskDTO object representing the task to be saved.
-     *             It contains details like problem statement, solution, tier level,
-     *             cyclomatic complexity, and a unique identifier.
+     * @param task the TaskDTO object representing the task to be saved. It contains details like problem statement,
+     *             solution, tier level, cyclomatic complexity, and a unique identifier.
      */
     @Override
     public void save(TaskDTO task) {
         validateTaskCreate(task);
 
         String sql = """
-                         INSERT INTO tasks (
-                             id, statement, solution, tier_level, cyclomatic_complexity,
-                             sequence_id, lines_of_code, distinct_identifier_count,
-                             maximal_nesting_depth, method_call_count, distractors, distractor_plan,
-                             context_before, context_after, split_plan, distractors_enabled, title
-                         )
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?::jsonb, ?, ?)
-                     """;
+                INSERT INTO tasks (
+                    id, statement, solution, tier_level, cyclomatic_complexity,
+                    sequence_id, lines_of_code, distinct_identifier_count,
+                    maximal_nesting_depth, method_call_count, distractors, distractor_plan,
+                    context_before, context_after, split_plan, distractors_enabled, title
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?::jsonb, ?, ?)
+            """;
 
         UUID id = UUID.randomUUID();
 
-        jdbc.update(sql,
-                    id,
-                    task.getStatement(),
-                    task.getSolution(),
-                    task.getTierLevel(),
-                    task.getCyclomaticComplexity(),
-                    task.getSequenceId(),
-                    task.getLinesOfCode(),
-                    task.getDistinctIdentifierCount(),
-                    task.getMaximalNestingDepth(),
-                    task.getMethodCallCount(),
-                    task.getDistractors(),
-                    task.getDistractorPlan(),
-                    task.getContextBefore(),
-                    task.getContextAfter(),
-                    task.getSplitPlan(), // AP31
-                    // Without this the column falls back to its DEFAULT true, so a task with
-                    // distractors switched off came back on again the moment it was saved.
-                    task.isDistractorsEnabled(),
-                    task.getTitle()
+        jdbc.update(
+            sql,
+            id,
+            task.getStatement(),
+            task.getSolution(),
+            task.getTierLevel(),
+            task.getCyclomaticComplexity(),
+            task.getSequenceId(),
+            task.getLinesOfCode(),
+            task.getDistinctIdentifierCount(),
+            task.getMaximalNestingDepth(),
+            task.getMethodCallCount(),
+            task.getDistractors(),
+            task.getDistractorPlan(),
+            task.getContextBefore(),
+            task.getContextAfter(),
+            task.getSplitPlan(), // AP31
+            // Without this the column falls back to its DEFAULT true, so a task with
+            // distractors switched off came back on again the moment it was saved.
+            task.isDistractorsEnabled(),
+            task.getTitle()
         );
 
         task.setId(id);
     }
 
     /**
-     * Persists a list of TaskDTO objects to the repository.
-     * This method is used to save multiple tasks at once, ensuring bulk persistence
-     * and reducing the overhead of saving each task individually.
+     * Persists a list of TaskDTO objects to the repository. This method is used to save multiple tasks at once,
+     * ensuring bulk persistence and reducing the overhead of saving each task individually.
      *
      * @param sequence SequenceDTO wrapping the list of TaskDTO objects to be saved into the repository
      */
@@ -189,52 +199,20 @@ public class PostgreTaskDao implements TaskRepository {
         List<TaskDTO> tasks = sequence.getTasks();
 
         String sql = """
-                         INSERT INTO tasks (
-                             id, statement, solution, tier_level, cyclomatic_complexity,
-                             sequence_id, lines_of_code, distinct_identifier_count,
-                             maximal_nesting_depth, method_call_count, distractors, distractor_plan,
-                             context_before, context_after, split_plan, distractors_enabled, title
-                         )
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                     """;
+                INSERT INTO tasks (
+                    id, statement, solution, tier_level, cyclomatic_complexity,
+                    sequence_id, lines_of_code, distinct_identifier_count,
+                    maximal_nesting_depth, method_call_count, distractors, distractor_plan,
+                    context_before, context_after, split_plan, distractors_enabled, title
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
 
-        jdbc.batchUpdate(sql, tasks, tasks.size(), (ps, task) -> {
-            validateTaskCreate(task);
-            UUID id = UUID.randomUUID();
-            ps.setObject(1, id);
-            ps.setString(2, task.getStatement());
-            ps.setString(3, task.getSolution());
-            ps.setInt(4, task.getTierLevel());
-            ps.setInt(5, task.getCyclomaticComplexity());
-            ps.setObject(6, sequence.getId());
-            ps.setObject(7, task.getLinesOfCode());
-            ps.setObject(8, task.getDistinctIdentifierCount());
-            ps.setObject(9, task.getMaximalNestingDepth());
-            ps.setObject(10, task.getMethodCallCount());
-            ps.setString(11, task.getDistractors());
-            try {
-                ps.setObject(12, createJsonbObject(task.getDistractorPlan()));
-            } catch (Exception e) {
-                log.error("Failed to set distractor_plan as jsonb", e);
-                ps.setNull(12, java.sql.Types.OTHER);
-            }
-            ps.setString(13, task.getContextBefore());
-            ps.setString(14, task.getContextAfter());
-            try {
-                ps.setObject(15, createJsonbObject(task.getSplitPlan())); // AP31
-            } catch (Exception e) {
-                log.error("Failed to set split_plan as jsonb", e);
-                ps.setNull(15, java.sql.Types.OTHER);
-            }
-            // See save(TaskDTO): the column's DEFAULT true would otherwise re-enable
-            // distractors on any task that had them switched off.
-            ps.setBoolean(16, task.isDistractorsEnabled());
-            ps.setString(17, task.getTitle());
-            task.setId(id);
-        });
+        UUID sequenceId = sequence.getId();
+        jdbc.batchUpdate(sql, tasks, tasks.size(), (ps, task) -> setInsertParameters(ps, task, sequenceId));
     }
 
-    private PGobject createJsonbObject (String jsonValue) throws Exception {
+    private PGobject createJsonbObject(String jsonValue) throws SQLException {
         PGobject jsonObject = new PGobject();
         jsonObject.setType("jsonb");
         jsonObject.setValue(jsonValue);
@@ -242,11 +220,10 @@ public class PostgreTaskDao implements TaskRepository {
     }
 
     /**
-     * Deletes the specified task from the repository.
-     * This method removes the task identified by the provided TaskDTO object.
+     * Deletes the specified task from the repository. This method removes the task identified by the provided TaskDTO
+     * object.
      *
-     * @param target the TaskDTO object representing the task to be deleted,
-     *               which includes its unique identifier
+     * @param target the TaskDTO object representing the task to be deleted, which includes its unique identifier
      */
     @Override
     public void deleteById(TaskDTO target) {
@@ -256,16 +233,15 @@ public class PostgreTaskDao implements TaskRepository {
     }
 
     /**
-     * Deletes the specified task from the repository.
-     * This method removes the task identified by the provided TaskDTO object.
+     * Deletes the specified task from the repository. This method removes the task identified by the provided TaskDTO
+     * object.
      *
-     * @param target the TaskDTO object representing the task to be deleted,
-     *               which includes its unique identifier
+     * @param target the TaskDTO object representing the task to be deleted, which includes its unique identifier
      */
     @Override
     public void deleteBySequenceId(TaskDTO target) {
         if (target == null || target.getSequenceId() == null) {
-            //TODO Logging
+            log.warn("Delete by sequence failed: task or sequence id is null");
             throw new DomainValidationException("Task and ID cannot be null");
         }
         String sql = "DELETE FROM tasks WHERE sequence_id = ?";
@@ -275,95 +251,96 @@ public class PostgreTaskDao implements TaskRepository {
     @Override
     public List<SnippetDTO> findAllWithConcepts() {
         String sql = """
-        SELECT
-            t.id,
-            ts.id::text                AS sequence_name,
-            NULL::text                 AS language,
-            t.solution                 AS code,
-            array_remove(array_agg(DISTINCT c.name ORDER BY c.name), NULL) AS concepts
-        FROM tasks t
-        JOIN tiered_task_sequences ts ON t.sequence_id = ts.id
-        LEFT JOIN tiered_task_sequence_concepts ttsc ON ttsc.sequence_id = ts.id
-        LEFT JOIN concepts c ON c.id = ttsc.concept_id
-        WHERE t.deleted_at IS NULL
-        GROUP BY t.id, ts.id, t.solution
-        ORDER BY ts.id, t.tier_level
-        """;
+            SELECT
+                t.id,
+                ts.id::text                AS sequence_name,
+                NULL::text                 AS language,
+                t.solution                 AS code,
+                array_remove(array_agg(DISTINCT c.name ORDER BY c.name), NULL) AS concepts
+            FROM tasks t
+            JOIN tiered_task_sequences ts ON t.sequence_id = ts.id
+            LEFT JOIN tiered_task_sequence_concepts ttsc ON ttsc.sequence_id = ts.id
+            LEFT JOIN concepts c ON c.id = ttsc.concept_id
+            WHERE t.deleted_at IS NULL
+            GROUP BY t.id, ts.id, t.solution
+            ORDER BY ts.id, t.tier_level
+            """;
 
-        return jdbc.query(sql, (rs, rowNum) -> new SnippetDTO(
+        return jdbc.query(
+            sql, (rs, rowNum) -> new SnippetDTO(
                 rs.getString("sequence_name"),
                 rs.getString("language"),          // will be null unless you replace the column
                 rs.getString("code"),
                 Arrays.asList((String[]) rs.getArray("concepts").getArray())
-        ));
+            )
+        );
     }
-
 
     @Override
     public void updateStatementAndSolution(UUID taskId, String statement, String solution) {
         if (taskId == null) {
-            throw new DomainValidationException("Task ID cannot be null");
+            throw new DomainValidationException(TASK_ID_REQUIRED);
         }
         String sql = "UPDATE tasks SET statement = ?, solution = ? WHERE id = ?";
         int updated = jdbc.update(sql, statement, solution, taskId);
         if (updated != 1) {
-            throw new DomainValidationException("Task not found: " + taskId);
+            throw new DomainValidationException(TASK_NOT_FOUND + taskId);
         }
     }
 
     @Override
     public void updateDistractors(UUID taskId, String distractors) {
         if (taskId == null) {
-            throw new DomainValidationException("Task ID cannot be null");
+            throw new DomainValidationException(TASK_ID_REQUIRED);
         }
         String sql = "UPDATE tasks SET distractors = ? WHERE id = ?";
         int updated = jdbc.update(sql, distractors, taskId);
         if (updated != 1) {
-            throw new DomainValidationException("Task not found: " + taskId);
+            throw new DomainValidationException(TASK_NOT_FOUND + taskId);
         }
     }
 
     @Override
     public void updateDistractorsEnabled(UUID taskId, boolean enabled) {
         if (taskId == null) {
-            throw new DomainValidationException("Task ID cannot be null");
+            throw new DomainValidationException(TASK_ID_REQUIRED);
         }
         String sql = "UPDATE tasks SET distractors_enabled = ? WHERE id = ?";
         int updated = jdbc.update(sql, enabled, taskId);
         if (updated != 1) {
-            throw new DomainValidationException("Task not found: " + taskId);
+            throw new DomainValidationException(TASK_NOT_FOUND + taskId);
         }
     }
 
     @Override
     public void updateTitle(UUID taskId, String title) {
         if (taskId == null) {
-            throw new DomainValidationException("Task ID cannot be null");
+            throw new DomainValidationException(TASK_ID_REQUIRED);
         }
         String sql = "UPDATE tasks SET title = ? WHERE id = ?";
         int updated = jdbc.update(sql, title, taskId);
         if (updated != 1) {
-            throw new DomainValidationException("Task not found: " + taskId);
+            throw new DomainValidationException(TASK_NOT_FOUND + taskId);
         }
     }
 
     @Override
     public void updateSplitPlan(UUID taskId, String splitPlanJson) {
         if (taskId == null) {
-            throw new DomainValidationException("Task ID cannot be null");
+            throw new DomainValidationException(TASK_ID_REQUIRED);
         }
         // split_plan is JSONB — cast the text (or SQL NULL) so a null clears the plan.
         String sql = "UPDATE tasks SET split_plan = ?::jsonb WHERE id = ?";
         int updated = jdbc.update(sql, splitPlanJson, taskId);
         if (updated != 1) {
-            throw new DomainValidationException("Task not found: " + taskId);
+            throw new DomainValidationException(TASK_NOT_FOUND + taskId);
         }
     }
 
     @Override
     public void softDelete(UUID taskId) {
         if (taskId == null) {
-            throw new DomainValidationException("Task ID cannot be null");
+            throw new DomainValidationException(TASK_ID_REQUIRED);
         }
         String sql = "UPDATE tasks SET deleted_at = now() WHERE id = ? AND deleted_at IS NULL";
         int updated = jdbc.update(sql, taskId);
@@ -380,15 +357,15 @@ public class PostgreTaskDao implements TaskRepository {
         // Deleted tiers keep the level they had when they were deleted, so their research rows
         // still say which tier they were; only the tiers still offered move.
         String sql = """
-                UPDATE tasks SET tier_level = tier_level + ?
-                WHERE sequence_id = ? AND deleted_at IS NULL AND tier_level >= ?
-                """;
+            UPDATE tasks SET tier_level = tier_level + ?
+            WHERE sequence_id = ? AND deleted_at IS NULL AND tier_level >= ?
+            """;
         jdbc.update(sql, delta, sequenceId, fromLevel);
     }
 
     private void validateTask(TaskDTO task) {
         if (task == null || task.getId() == null) {
-            //TODO Logging
+            log.warn("Task validation failed: task or id is null");
             throw new DomainValidationException("Task and ID cannot be null");
         }
     }
@@ -403,13 +380,15 @@ public class PostgreTaskDao implements TaskRepository {
 
         if (task.getStatement() == null) {
             problems.add("statement=null");
-        } else if (task.getStatement().isBlank()) {
+        }
+        else if (task.getStatement().isBlank()) {
             problems.add("statement=blank");
         }
 
         if (task.getSolution() == null) {
             problems.add("solution=null");
-        } else if (task.getSolution().isBlank()) {
+        }
+        else if (task.getSolution().isBlank()) {
             problems.add("solution=blank");
         }
 
@@ -422,5 +401,42 @@ public class PostgreTaskDao implements TaskRepository {
             log.warn("{} — taskId={}", msg, task.getId());
             throw new DomainValidationException(msg);
         }
+    }
+
+    private void setInsertParameters(PreparedStatement ps, TaskDTO task, UUID sequenceId) throws SQLException {
+        validateTaskCreate(task);
+        UUID id = UUID.randomUUID();
+        ps.setObject(1, id);
+        ps.setString(2, task.getStatement());
+        ps.setString(3, task.getSolution());
+        ps.setInt(4, task.getTierLevel());
+        ps.setInt(5, task.getCyclomaticComplexity());
+        ps.setObject(6, sequenceId);
+        ps.setObject(7, task.getLinesOfCode());
+        ps.setObject(8, task.getDistinctIdentifierCount());
+        ps.setObject(9, task.getMaximalNestingDepth());
+        ps.setObject(10, task.getMethodCallCount());
+        ps.setString(11, task.getDistractors());
+        try {
+            ps.setObject(12, createJsonbObject(task.getDistractorPlan()));
+        }
+        catch (Exception e) {
+            log.error("Failed to set distractor_plan as jsonb", e);
+            ps.setNull(12, java.sql.Types.OTHER);
+        }
+        ps.setString(13, task.getContextBefore());
+        ps.setString(14, task.getContextAfter());
+        try {
+            ps.setObject(15, createJsonbObject(task.getSplitPlan())); // AP31
+        }
+        catch (Exception e) {
+            log.error("Failed to set split_plan as jsonb", e);
+            ps.setNull(15, java.sql.Types.OTHER);
+        }
+        // See save(TaskDTO): the column's DEFAULT true would otherwise re-enable
+        // distractors on any task that had them switched off.
+        ps.setBoolean(16, task.isDistractorsEnabled());
+        ps.setString(17, task.getTitle());
+        task.setId(id);
     }
 }

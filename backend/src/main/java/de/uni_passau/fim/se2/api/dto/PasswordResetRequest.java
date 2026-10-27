@@ -24,6 +24,8 @@ import lombok.Data;
 
 @Data
 public class PasswordResetRequest {
-    @NotBlank @Email
+
+    @NotBlank
+    @Email
     private String email;
 }

@@ -18,18 +18,11 @@
  */
 package de.uni_passau.fim.se2.api;
 
-import de.uni_passau.fim.se2.application.service.CurriculumExampleAdminService;
-import de.uni_passau.fim.se2.application.service.CurriculumGenerationService;
-import de.uni_passau.fim.se2.application.service.CurriculumTopicAdminService;
-import de.uni_passau.fim.se2.application.service.OwnershipService;
-import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
-import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
-import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
-import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -43,16 +36,28 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import de.uni_passau.fim.se2.application.service.CurriculumExampleAdminService;
+import de.uni_passau.fim.se2.application.service.CurriculumGenerationService;
+import de.uni_passau.fim.se2.application.service.CurriculumTopicAdminService;
+import de.uni_passau.fim.se2.application.service.OwnershipService;
+import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
+import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
+import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
+import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 @CrossOrigin(origins = "http://localhost:5175")
 @RestController
 @RequestMapping("/api/curriculum")
 @RequiredArgsConstructor
 public class CurriculumController {
+
+    private static final String ERROR_KEY = "error";
+    private static final String MESSAGE_KEY = "message";
+    private static final String NOT_FOUND_CODE = "not_found";
 
     private final CurriculumGenerationService curriculumService;
     private final TaskPersistenceService taskPersistenceService;
@@ -61,8 +66,9 @@ public class CurriculumController {
     private final CurriculumTopicAdminService topicAdminService;
 
     /**
-     * Get all top-level curriculum topics (Jahrgangsstufen).
-     * Public endpoint — anyone can browse the curriculum tree.
+     * Get all top-level curriculum topics (Jahrgangsstufen). Public endpoint — anyone can browse the curriculum tree.
+     *
+     * @return the top-level curriculum topics
      */
     @GetMapping("/topics")
     public ResponseEntity<List<CurriculumTopicDTO>> getTopLevelTopics() {
@@ -70,8 +76,10 @@ public class CurriculumController {
     }
 
     /**
-     * Get sub-topics (Lernbereiche/Themen) for a given parent topic.
-     * Public endpoint.
+     * Get sub-topics (Lernbereiche/Themen) for a given parent topic. Public endpoint.
+     *
+     * @param parentId the topic whose children to list
+     * @return the parent's direct sub-topics
      */
     @GetMapping("/topics/{parentId}/children")
     public ResponseEntity<List<CurriculumTopicDTO>> getSubTopics(@PathVariable UUID parentId) {
@@ -79,27 +87,36 @@ public class CurriculumController {
     }
 
     /**
-     * Get curated code examples for a given curriculum topic.
-     * Optional query param ?language=java to filter by language.
-     * Public endpoint.
+     * Get curated code examples for a given curriculum topic. Optional query param ?language=java to filter by
+     * language. Public endpoint.
+     *
+     * @param topicId  the topic whose examples to list
+     * @param language only examples in this programming language, or all if null
+     * @return the topic's curated code examples
      */
     @GetMapping("/topics/{topicId}/examples")
     public ResponseEntity<List<CurriculumCodeExampleDTO>> getExamples(
-            @PathVariable UUID topicId,
-            @RequestParam(required = false) String language) {
+        @PathVariable UUID topicId,
+        @RequestParam(required = false) String language
+    ) {
         return ResponseEntity.ok(curriculumService.getExamples(topicId, language));
     }
 
     /**
-     * Generate a tiered task sequence from a curriculum topic (Beta).
-     * Uses curated seed code examples and the dedicated curriculum prompt.
-     * Allowed: Teacher, Admin
-     * Denied: Students, Anonymous
+     * Generate a tiered task sequence from a curriculum topic (Beta). Uses curated seed code examples and the dedicated
+     * curriculum prompt. Allowed: Teacher, Admin Denied: Students, Anonymous
+     *
+     * @param topicId the curriculum topic to generate for
+     * @param request the programming language, target language, tier count and generation options
+     * @return 201 with the generated sequence; 401 if not logged in, 404 if the topic is unknown, 422 if it has no seed
+     *         examples
      */
+    @SuppressWarnings("checkstyle:NPathComplexity")
     @PostMapping("/topics/{topicId}/generate")
     public ResponseEntity<?> generateFromCurriculum(
-            @PathVariable UUID topicId,
-            @RequestBody CurriculumGenerateRequest request) throws IOException, InterruptedException {
+        @PathVariable UUID topicId,
+        @RequestBody CurriculumGenerateRequest request
+    ) throws IOException, InterruptedException {
 
         ownershipService.denyStudents("generate curriculum tasks");
 
@@ -109,51 +126,61 @@ public class CurriculumController {
         }
 
         String language = request.getLanguage();
-        if (language == null || language.isBlank()) language = "java";
+        if (language == null || language.isBlank()) {
+            language = "java";
+        }
 
         String targetLanguage = request.getTargetLanguage();
-        if (targetLanguage == null || targetLanguage.isBlank()) targetLanguage = "de";
+        if (targetLanguage == null || targetLanguage.isBlank()) {
+            targetLanguage = "de";
+        }
 
         int tierCount = request.getTierCount();
-        if (tierCount != 3 && tierCount != 5) tierCount = 3;
+        if (tierCount != 3 && tierCount != 5) {
+            tierCount = 3;
+        }
 
         GenerationConstraints constraints = GenerationConstraints.builder()
-                .blacklist(request.getBlacklist())
-                .whitelist(request.getWhitelist())
-                .difficultySlope(request.getDifficultySlope())
-                .additionalContext(request.getAdditionalContext())
-                .build();
+            .blacklist(request.getBlacklist())
+            .whitelist(request.getWhitelist())
+            .difficultySlope(request.getDifficultySlope())
+            .additionalContext(request.getAdditionalContext())
+            .build();
 
         try {
             TieredTaskSequenceDTO seq = curriculumService.generate(
-                    topicId, language, targetLanguage, tierCount,
-                    request.isDistractorsEnabled(),
-                    request.isContextModeEnabled(),
-                    request.isSplitEnabled(),
-                    constraints.hasAny() ? constraints : null,
-                    currentUserId);
+                topicId, language, targetLanguage, tierCount,
+                request.isDistractorsEnabled(),
+                request.isContextModeEnabled(),
+                request.isSplitEnabled(),
+                constraints.hasAny() ? constraints : null,
+                currentUserId
+            );
 
             // Persist the generated sequence
             taskPersistenceService.persistSequence(seq);
 
             var location = java.net.URI.create("/api/sequence/" + seq.getId());
             return ResponseEntity.created(location).body(seq);
-        } catch (IllegalArgumentException e) {
+        }
+        catch (IllegalArgumentException e) {
             // Topic not found
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "not_found", "message", e.getMessage()));
-        } catch (IllegalStateException e) {
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
+        }
+        catch (IllegalStateException e) {
             // No seed code examples available yet for this topic
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                    .body(Map.of("error", "no_examples", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, "no_examples", MESSAGE_KEY, e.getMessage()));
         }
     }
 
     /**
-     * Admin: add a top-level entry to the curriculum tree — a Jahrgangsstufe
-     * when the body carries a grade level, otherwise a named module such as
-     * "Programmieren 1". See CurriculumTopicAdminService.
-     * Allowed: Admin only.
+     * Admin: add a top-level entry to the curriculum tree — a Jahrgangsstufe when the body carries a grade level,
+     * otherwise a named module such as "Programmieren 1". See CurriculumTopicAdminService. Allowed: Admin only.
+     *
+     * @param body the new topic
+     * @return 201 with the created topic
      */
     @PostMapping("/topics")
     public ResponseEntity<CurriculumTopicDTO> createTopLevelTopic(@RequestBody CurriculumTopicDTO body) {
@@ -164,94 +191,123 @@ public class CurriculumController {
     }
 
     /**
-     * Admin: add a Lernbereich under an existing Jahrgangsstufe or module.
-     * Allowed: Admin only.
+     * Admin: add a Lernbereich under an existing Jahrgangsstufe or module. Allowed: Admin only.
+     *
+     * @param parentId the top-level topic to add the sub-topic under
+     * @param body     the new sub-topic
+     * @return 201 with the created sub-topic, or 404 if the parent does not exist
      */
     @PostMapping("/topics/{parentId}/children")
-    public ResponseEntity<?> createSubTopic(@PathVariable UUID parentId,
-                                            @RequestBody CurriculumTopicDTO body) {
+    public ResponseEntity<?> createSubTopic(
+        @PathVariable UUID parentId,
+        @RequestBody CurriculumTopicDTO body
+    ) {
         requireAdmin();
         try {
             CurriculumTopicDTO created = topicAdminService.createSubTopic(parentId, body);
             var location = java.net.URI.create("/api/curriculum/topics/" + created.getId() + "/examples");
             return ResponseEntity.created(location).body(created);
-        } catch (IllegalArgumentException e) {
+        }
+        catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
     }
 
     /**
-     * The concept names mapped to a topic. Feeds the admin form; the mapping is
-     * a relation, so it does not ride along on the topic itself.
+     * The concept names mapped to a topic. Feeds the admin form; the mapping is a relation, so it does not ride along
+     * on the topic itself.
+     *
+     * @param topicId the topic whose concepts to list
+     * @return the concept names mapped to the topic, or 404 if the topic does not exist
      */
     @GetMapping("/topics/{topicId}/concepts")
     public ResponseEntity<?> getTopicConcepts(@PathVariable UUID topicId) {
         try {
             return ResponseEntity.ok(topicAdminService.getConceptNames(topicId));
-        } catch (IllegalArgumentException e) {
+        }
+        catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
     }
 
     /**
-     * Admin: edit a curriculum entry, at either level — the endpoint reads the
-     * level off the stored topic. A top-level entry may also change shape
-     * between Jahrgangsstufe and module; a sub-topic keeps the grade level,
-     * track and education level it inherits. See CurriculumTopicAdminService.
-     * Allowed: Admin only.
+     * Admin: edit a curriculum entry, at either level — the endpoint reads the level off the stored topic. A top-level
+     * entry may also change shape between Jahrgangsstufe and module; a sub-topic keeps the grade level, track and
+     * education level it inherits. See CurriculumTopicAdminService. Allowed: Admin only.
+     *
+     * @param topicId the topic to update
+     * @param body    the topic's new fields
+     * @return the updated topic, or 404 if the topic does not exist
      */
     @PutMapping("/topics/{topicId}")
-    public ResponseEntity<?> updateTopic(@PathVariable UUID topicId,
-                                         @RequestBody CurriculumTopicDTO body) {
+    public ResponseEntity<?> updateTopic(
+        @PathVariable UUID topicId,
+        @RequestBody CurriculumTopicDTO body
+    ) {
         requireAdmin();
         try {
             return ResponseEntity.ok(topicAdminService.update(topicId, body));
-        } catch (IllegalArgumentException e) {
+        }
+        catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
     }
 
     /**
-     * AP32 admin: create a curated code example under a topic.
-     * Allowed: Admin only.
+     * AP32 admin: create a curated code example under a topic. Allowed: Admin only.
+     *
+     * @param topicId the topic to add the example to
+     * @param body    the new example
+     * @return 201 with the created example, or 404 if the topic does not exist
      */
     @PostMapping("/topics/{topicId}/examples")
-    public ResponseEntity<?> createExample(@PathVariable UUID topicId,
-                                           @RequestBody CurriculumCodeExampleDTO body) {
+    public ResponseEntity<?> createExample(
+        @PathVariable UUID topicId,
+        @RequestBody CurriculumCodeExampleDTO body
+    ) {
         requireAdmin();
         body.setTopicId(topicId);
         try {
             CurriculumCodeExampleDTO created = exampleAdminService.create(body);
             var location = java.net.URI.create("/api/curriculum/examples/" + created.getId());
             return ResponseEntity.created(location).body(created);
-        } catch (IllegalArgumentException e) {
+        }
+        catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
     }
 
     /**
-     * AP32 admin: update a curated code example. The topic assignment is immutable.
-     * Allowed: Admin only.
+     * AP32 admin: update a curated code example. The topic assignment is immutable. Allowed: Admin only.
+     *
+     * @param exampleId the example to update
+     * @param body      the example's new fields
+     * @return the updated example, or 404 if the example does not exist
      */
     @PutMapping("/examples/{exampleId}")
-    public ResponseEntity<?> updateExample(@PathVariable UUID exampleId,
-                                           @RequestBody CurriculumCodeExampleDTO body) {
+    public ResponseEntity<?> updateExample(
+        @PathVariable UUID exampleId,
+        @RequestBody CurriculumCodeExampleDTO body
+    ) {
         requireAdmin();
         try {
             return ResponseEntity.ok(exampleAdminService.update(exampleId, body));
-        } catch (IllegalArgumentException e) {
+        }
+        catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
     }
 
     /**
-     * AP32 admin: delete a curated code example.
-     * Allowed: Admin only.
+     * AP32 admin: delete a curated code example. Allowed: Admin only.
+     *
+     * @param exampleId the example to delete
+     * @return 204, or 404 if the example does not exist
      */
     @DeleteMapping("/examples/{exampleId}")
     public ResponseEntity<?> deleteExample(@PathVariable UUID exampleId) {
@@ -259,9 +315,10 @@ public class CurriculumController {
         try {
             exampleAdminService.delete(exampleId);
             return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
+        }
+        catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
     }
 
@@ -269,13 +326,15 @@ public class CurriculumController {
     private void requireAdmin() {
         if (!ownershipService.isAdmin()) {
             throw new org.springframework.security.access.AccessDeniedException(
-                    "Only admins may manage the curriculum.");
+                "Only admins may manage the curriculum."
+            );
         }
     }
 
     @Setter
     @Getter
     public static class CurriculumGenerateRequest {
+
         private String language = "java";
         private String targetLanguage = "de";
         private int tierCount = 3;

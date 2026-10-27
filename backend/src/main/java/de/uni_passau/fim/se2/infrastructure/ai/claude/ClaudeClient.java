@@ -18,17 +18,21 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai.claude;
 
-import de.uni_passau.fim.se2.application.service.*;
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.infrastructure.ai.*;
-import com.fasterxml.jackson.databind.*;
-import org.springframework.stereotype.*;
+import java.io.IOException;
+import java.util.List;
 
-import java.io.*;
-import java.util.*;
+import org.springframework.stereotype.Component;
+
+import com.fasterxml.jackson.databind.JsonNode;
+
+import de.uni_passau.fim.se2.application.service.CodeSanitizerService;
+import de.uni_passau.fim.se2.domain.entities.SolveContract;
+import de.uni_passau.fim.se2.infrastructure.ai.AbstractAiClient;
 
 @Component
 public class ClaudeClient extends AbstractAiClient {
+
+    private static final String NOT_IMPLEMENTED = "ClaudeClient not implemented yet";
 
     protected ClaudeClient(CodeSanitizerService sanitizer) {
         super(sanitizer);
@@ -39,23 +43,23 @@ public class ClaudeClient extends AbstractAiClient {
      */
     @Override
     public JsonNode solveProblem(final SolveContract contract) throws IOException, InterruptedException {
-        // TODO: echten Aufruf an Claude API (fixes Modell)
-        throw new UnsupportedOperationException("ClaudeClient not implemented yet");
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
     @Override
     public JsonNode solveProblemSimple(final String taskDescription, final String language) {
-        // TODO: echten Aufruf an Claude API (fixes Modell)
-        throw new UnsupportedOperationException("ClaudeClient not implemented yet");
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public JsonNode generateTieredTaskSequence(String taskDescription, List<String> concepts, String codeSnippet, String language)
-            throws IOException, InterruptedException {
-        throw new UnsupportedOperationException("ClaudeClient not implemented yet");
+    public JsonNode generateTieredTaskSequence(
+        String taskDescription, List<String> concepts, String codeSnippet, String language
+    )
+        throws IOException, InterruptedException {
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
     /**
@@ -63,15 +67,16 @@ public class ClaudeClient extends AbstractAiClient {
      */
     @Override
     public String getProgrammingLanguage(String codeSnippet) throws IOException, InterruptedException {
-        throw new UnsupportedOperationException("ClaudeClient not implemented yet");
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public String generateTaskDescription(List<String> concepts, String language) throws IOException, InterruptedException {
-        throw new UnsupportedOperationException("ClaudeClient not implemented yet");
+    public String generateTaskDescription(List<String> concepts, String language)
+        throws IOException, InterruptedException {
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
     /**
@@ -79,7 +84,7 @@ public class ClaudeClient extends AbstractAiClient {
      */
     @Override
     public String generateTaskDescription(String codeSnippet) throws IOException, InterruptedException {
-        throw new UnsupportedOperationException("ClaudeClient not implemented yet");
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
     /**
@@ -87,6 +92,6 @@ public class ClaudeClient extends AbstractAiClient {
      */
     @Override
     public List<String> generateConcepts(String codeSnippet, String language) throws IOException, InterruptedException {
-        throw new UnsupportedOperationException("ClaudeClient not implemented yet");
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 }

@@ -18,15 +18,17 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.entities.HintUsageDTO;
-import de.uni_passau.fim.se2.domain.interfaces.HintUsageRepository;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-import java.sql.ResultSet;
-import java.util.List;
-import java.util.UUID;
+import de.uni_passau.fim.se2.domain.entities.HintUsageDTO;
+import de.uni_passau.fim.se2.domain.interfaces.HintUsageRepository;
 
 @Repository
 public class PostgreHintUsageDao implements HintUsageRepository {
@@ -37,7 +39,9 @@ public class PostgreHintUsageDao implements HintUsageRepository {
         this.jdbc = jdbc;
     }
 
-    private static final RowMapper<HintUsageDTO> ROW_MAPPER = (ResultSet rs, int rowNum) -> {
+    private static final RowMapper<HintUsageDTO> ROW_MAPPER = PostgreHintUsageDao::mapRow;
+
+    private static HintUsageDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
         HintUsageDTO dto = new HintUsageDTO();
         dto.setId(rs.getObject("id", UUID.class));
         dto.setUserId(rs.getObject("user_id", UUID.class));
@@ -48,9 +52,11 @@ public class PostgreHintUsageDao implements HintUsageRepository {
         dto.setHintText(rs.getString("hint_text"));
         dto.setLlmExplanation(rs.getString("llm_explanation"));
         dto.setAffectedBlockIds(rs.getString("affected_block_ids"));
-        dto.setCreatedAt(rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null);
+        dto.setCreatedAt(
+            rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null
+        );
         return dto;
-    };
+    }
 
     @Override
     public void save(HintUsageDTO usage) {
@@ -58,14 +64,16 @@ public class PostgreHintUsageDao implements HintUsageRepository {
         usage.setId(id);
 
         String sql = """
-            INSERT INTO hint_usage (id, user_id, task_id, hint_level,
-                                    block_order_at_request, findings, hint_text, llm_explanation, affected_block_ids)
-            VALUES (?, ?, ?, ?, ?::jsonb, ?::jsonb, ?, ?, ?::jsonb)
-        """;
+                INSERT INTO hint_usage (id, user_id, task_id, hint_level,
+                                        block_order_at_request, findings, hint_text, llm_explanation, affected_block_ids)
+                VALUES (?, ?, ?, ?, ?::jsonb, ?::jsonb, ?, ?, ?::jsonb)
+            """;
 
-        jdbc.update(sql, id, usage.getUserId(), usage.getTaskId(), usage.getHintLevel(),
-                    usage.getBlockOrderAtRequest(), usage.getFindings(),
-                    usage.getHintText(), usage.getLlmExplanation(), usage.getAffectedBlockIds());
+        jdbc.update(
+            sql, id, usage.getUserId(), usage.getTaskId(), usage.getHintLevel(),
+            usage.getBlockOrderAtRequest(), usage.getFindings(),
+            usage.getHintText(), usage.getLlmExplanation(), usage.getAffectedBlockIds()
+        );
     }
 
     @Override

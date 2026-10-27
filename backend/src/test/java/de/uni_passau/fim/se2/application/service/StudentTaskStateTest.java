@@ -18,25 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.ClassDTO;
-import de.uni_passau.fim.se2.domain.entities.StudentTaskStateDTO;
-import de.uni_passau.fim.se2.domain.entities.TaskDTO;
-import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
-import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.springframework.security.access.AccessDeniedException;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -48,15 +29,34 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.access.AccessDeniedException;
+
+import de.uni_passau.fim.se2.domain.entities.ClassDTO;
+import de.uni_passau.fim.se2.domain.entities.StudentTaskStateDTO;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
+import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
+
 /**
- * Letting a teacher look at one student's saved arrangement, and the three things that have to
- * hold first.
+ * Letting a teacher look at one student's saved arrangement, and the three things that have to hold first.
  *
- * <p>Two of them the progress page already enforced and this reuses. The third is new and is the
- * one worth the test: the arrangement is stored against a student and a task with no mention of
- * a class, so without checking that the task belongs to a worksheet <em>this</em> class was
- * assigned, any class owner could read any student's work anywhere in the system by passing its
- * task id.
+ * <p>
+ * Two of them the progress page already enforced and this reuses. The third is new and is the one worth the test: the
+ * arrangement is stored against a student and a task with no mention of a class, so without checking that the task
+ * belongs to a worksheet <em>this</em> class was assigned, any class owner could read any student's work anywhere in
+ * the system by passing its task id.
  */
 class StudentTaskStateTest {
 
@@ -75,6 +75,7 @@ class StudentTaskStateTest {
     private TaskSubmissionService taskSubmissionService;
     private ClassService service;
 
+    @SuppressWarnings("checkstyle:MethodLength")
     @BeforeEach
     void setUp() {
         ClassRepository classRepository = mock(ClassRepository.class);
@@ -84,26 +85,39 @@ class StudentTaskStateTest {
         TaskPersistenceService taskPersistenceService = mock(TaskPersistenceService.class);
 
         service = new ClassService(
-                classRepository,
-                mock(UserRepository.class),
-                ownershipService,
-                mock(TokenService.class),
-                mock(FeedbackLogService.class),
-                mock(TempPasswordGenerator.class),
-                mock(PasswordHasherService.class),
-                worksheetService,
-                mock(WorksheetCloneService.class),
-                taskPersistenceService,
-                taskSubmissionService);
+            classRepository,
+            mock(UserRepository.class),
+            ownershipService,
+            mock(TokenService.class),
+            mock(FeedbackLogService.class),
+            mock(TempPasswordGenerator.class),
+            mock(PasswordHasherService.class),
+            worksheetService,
+            mock(WorksheetCloneService.class),
+            taskPersistenceService,
+            taskSubmissionService
+        );
 
-        when(classRepository.findByIdWithDetails(CLASS_ID)).thenReturn(Optional.of(ClassDTO.builder()
-                .id(CLASS_ID)
-                .ownerId(OWNER)
-                .students(List.of(ClassDTO.StudentInfo.builder()
-                        .userId(MEMBER).firstName("Anna").lastName("Müller").build()))
-                .worksheets(List.of(ClassDTO.WorksheetInfo.builder()
-                        .worksheetId(WORKSHEET).name("Blatt 1").build()))
-                .build()));
+        when(classRepository.findByIdWithDetails(CLASS_ID)).thenReturn(
+            Optional.of(
+                ClassDTO.builder()
+                    .id(CLASS_ID)
+                    .ownerId(OWNER)
+                    .students(
+                        List.of(
+                            ClassDTO.StudentInfo.builder()
+                                .userId(MEMBER).firstName("Anna").lastName("Müller").build()
+                        )
+                    )
+                    .worksheets(
+                        List.of(
+                            ClassDTO.WorksheetInfo.builder()
+                                .worksheetId(WORKSHEET).name("Blatt 1").build()
+                        )
+                    )
+                    .build()
+            )
+        );
 
         when(ownershipService.getCurrentUserId()).thenReturn(OWNER);
         when(ownershipService.isOwnerOrAdmin(OWNER)).thenReturn(true);
@@ -138,8 +152,10 @@ class StudentTaskStateTest {
             when(ownershipService.getCurrentUserId()).thenReturn(OUTSIDER);
             when(ownershipService.isOwnerOrAdmin(OWNER)).thenReturn(false);
 
-            assertThrows(AccessDeniedException.class,
-                    () -> service.getStudentTaskState(CLASS_ID, MEMBER, TASK));
+            assertThrows(
+                AccessDeniedException.class,
+                () -> service.getStudentTaskState(CLASS_ID, MEMBER, TASK)
+            );
             verify(taskSubmissionService, never()).find(any(), any());
         }
 
@@ -148,15 +164,19 @@ class StudentTaskStateTest {
         void anonymousIsRefused() {
             when(ownershipService.getCurrentUserId()).thenReturn(null);
 
-            assertThrows(AccessDeniedException.class,
-                    () -> service.getStudentTaskState(CLASS_ID, MEMBER, TASK));
+            assertThrows(
+                AccessDeniedException.class,
+                () -> service.getStudentTaskState(CLASS_ID, MEMBER, TASK)
+            );
         }
 
         @Test
         @DisplayName("a student who has left the class is refused, as on the progress page")
         void formerStudentIsRefused() {
-            assertThrows(DomainValidationException.class,
-                    () -> service.getStudentTaskState(CLASS_ID, FORMER, TASK));
+            assertThrows(
+                DomainValidationException.class,
+                () -> service.getStudentTaskState(CLASS_ID, FORMER, TASK)
+            );
             verify(taskSubmissionService, never()).find(any(), any());
         }
 
@@ -165,8 +185,10 @@ class StudentTaskStateTest {
         void foreignTaskIsRefused() {
             // The check this feature adds. The arrangement is keyed by student and task alone,
             // so without it owning any class would be a licence to read any task's work.
-            assertThrows(AccessDeniedException.class,
-                    () -> service.getStudentTaskState(CLASS_ID, MEMBER, FOREIGN_TASK));
+            assertThrows(
+                AccessDeniedException.class,
+                () -> service.getStudentTaskState(CLASS_ID, MEMBER, FOREIGN_TASK)
+            );
             verify(taskSubmissionService, never()).find(any(), any());
         }
     }
@@ -178,25 +200,29 @@ class StudentTaskStateTest {
         @Test
         @DisplayName("the student's arrangement, with the solution beside it")
         void returnsTheArrangement() {
-            when(taskSubmissionService.find(MEMBER, TASK)).thenReturn(Optional.of(
+            when(taskSubmissionService.find(MEMBER, TASK)).thenReturn(
+                Optional.of(
                     TaskSubmissionDTO.builder()
-                            .userId(MEMBER)
-                            .taskId(TASK)
-                            .blockOrder(List.of("base = 8", "return base"))
-                            .indentLevels(List.of(0, 1))
-                            .solved(true)
-                            .build()));
+                        .userId(MEMBER)
+                        .taskId(TASK)
+                        .blockOrder(List.of("base = 8", "return base"))
+                        .indentLevels(List.of(0, 1))
+                        .solved(true)
+                        .build()
+                )
+            );
 
             StudentTaskStateDTO state = service.getStudentTaskState(CLASS_ID, MEMBER, TASK);
 
             assertAll(
-                    () -> assertTrue(state.hasState()),
-                    () -> assertEquals(List.of("base = 8", "return base"), state.blockOrder()),
-                    () -> assertEquals(List.of(0, 1), state.indentLevels()),
-                    () -> assertTrue(state.solved()),
-                    () -> assertEquals("python", state.programmingLanguage()),
-                    () -> assertEquals("base = 8 #swap:init\nreturn base", state.solution()),
-                    () -> assertEquals("Berechne die Fläche", state.statement()));
+                () -> assertTrue(state.hasState()),
+                () -> assertEquals(List.of("base = 8", "return base"), state.blockOrder()),
+                () -> assertEquals(List.of(0, 1), state.indentLevels()),
+                () -> assertTrue(state.solved()),
+                () -> assertEquals("python", state.programmingLanguage()),
+                () -> assertEquals("base = 8 #swap:init\nreturn base", state.solution()),
+                () -> assertEquals("Berechne die Fläche", state.statement())
+            );
         }
 
         @Test
@@ -209,11 +235,12 @@ class StudentTaskStateTest {
             StudentTaskStateDTO state = service.getStudentTaskState(CLASS_ID, MEMBER, TASK);
 
             assertAll(
-                    () -> assertFalse(state.hasState()),
-                    () -> assertEquals(List.of(), state.blockOrder()),
-                    () -> assertEquals(List.of(), state.indentLevels()),
-                    () -> assertFalse(state.solved()),
-                    () -> assertEquals("base = 8 #swap:init\nreturn base", state.solution()));
+                () -> assertFalse(state.hasState()),
+                () -> assertEquals(List.of(), state.blockOrder()),
+                () -> assertEquals(List.of(), state.indentLevels()),
+                () -> assertFalse(state.solved()),
+                () -> assertEquals("base = 8 #swap:init\nreturn base", state.solution())
+            );
         }
     }
 }

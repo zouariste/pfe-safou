@@ -18,19 +18,20 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.entities.TaskChangeAnalysisDTO;
-import de.uni_passau.fim.se2.domain.interfaces.TaskChangeAnalysisRepository;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.postgresql.util.PGobject;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import de.uni_passau.fim.se2.domain.entities.TaskChangeAnalysisDTO;
+import de.uni_passau.fim.se2.domain.interfaces.TaskChangeAnalysisRepository;
 
 @Repository
 public class PostgreTaskChangeAnalysisDao implements TaskChangeAnalysisRepository {
@@ -41,74 +42,7 @@ public class PostgreTaskChangeAnalysisDao implements TaskChangeAnalysisRepositor
         this.jdbc = jdbc;
     }
 
-    private static final RowMapper<TaskChangeAnalysisDTO> ROW_MAPPER = (ResultSet rs, int rowNum) -> {
-        TaskChangeAnalysisDTO dto = new TaskChangeAnalysisDTO();
-        dto.setId(rs.getObject("id", UUID.class));
-        dto.setTaskId(rs.getObject("task_id", UUID.class));
-        dto.setTaskOriginalId(rs.getObject("task_original_id", UUID.class));
-        dto.setAnalyzedAt(rs.getTimestamp("analyzed_at") != null
-                ? rs.getTimestamp("analyzed_at").toLocalDateTime() : null);
-
-        // Text-level metrics
-        double textLev = rs.getDouble("text_levenshtein_ratio");
-        dto.setTextLevenshteinRatio(rs.wasNull() ? null : textLev);
-        double textJac = rs.getDouble("text_jaccard_similarity");
-        dto.setTextJaccardSimilarity(rs.wasNull() ? null : textJac);
-        int twa = rs.getInt("text_words_added");
-        dto.setTextWordsAdded(rs.wasNull() ? null : twa);
-        int twr = rs.getInt("text_words_removed");
-        dto.setTextWordsRemoved(rs.wasNull() ? null : twr);
-        int twm = rs.getInt("text_words_modified");
-        dto.setTextWordsModified(rs.wasNull() ? null : twm);
-        int tld = rs.getInt("text_length_delta");
-        dto.setTextLengthDelta(rs.wasNull() ? null : tld);
-
-        // Code-level metrics
-        double codeLev = rs.getDouble("code_levenshtein_ratio");
-        dto.setCodeLevenshteinRatio(rs.wasNull() ? null : codeLev);
-        int cla = rs.getInt("code_lines_added");
-        dto.setCodeLinesAdded(rs.wasNull() ? null : cla);
-        int clr = rs.getInt("code_lines_removed");
-        dto.setCodeLinesRemoved(rs.wasNull() ? null : clr);
-        int clm = rs.getInt("code_lines_modified");
-        dto.setCodeLinesModified(rs.wasNull() ? null : clm);
-        int clre = rs.getInt("code_lines_reordered");
-        dto.setCodeLinesReordered(rs.wasNull() ? null : clre);
-        int cld = rs.getInt("code_loc_delta");
-        dto.setCodeLocDelta(rs.wasNull() ? null : cld);
-        int ccd = rs.getInt("code_complexity_delta");
-        dto.setCodeComplexityDelta(rs.wasNull() ? null : ccd);
-        double ctcr = rs.getDouble("code_token_change_ratio");
-        dto.setCodeTokenChangeRatio(rs.wasNull() ? null : ctcr);
-
-        // AST-level metrics
-        int ana = rs.getInt("ast_nodes_added");
-        dto.setAstNodesAdded(rs.wasNull() ? null : ana);
-        int anr = rs.getInt("ast_nodes_removed");
-        dto.setAstNodesRemoved(rs.wasNull() ? null : anr);
-        int anm = rs.getInt("ast_nodes_modified");
-        dto.setAstNodesModified(rs.wasNull() ? null : anm);
-        double ass = rs.getDouble("ast_structural_score");
-        dto.setAstStructuralScore(rs.wasNull() ? null : ass);
-        dto.setAstChangeTypes(rs.getString("ast_change_types"));
-        dto.setAstDistractorChanges(rs.getString("ast_distractor_changes"));
-
-        // Overall
-        double ocs = rs.getDouble("overall_change_score");
-        dto.setOverallChangeScore(rs.wasNull() ? null : ocs);
-        dto.setChangeCategory(rs.getString("change_category"));
-        int tr = rs.getInt("teacher_rating");
-        dto.setTeacherRating(rs.wasNull() ? null : tr);
-
-        return dto;
-    };
-
-    @Override
-    public void save(TaskChangeAnalysisDTO a) {
-        UUID id = a.getId() != null ? a.getId() : UUID.randomUUID();
-        a.setId(id);
-
-        String sql = """
+    private static final String UPSERT_SQL = """
             INSERT INTO task_change_analyses (
                 id, task_id, task_original_id,
                 text_levenshtein_ratio, text_jaccard_similarity,
@@ -148,33 +82,86 @@ public class PostgreTaskChangeAnalysisDao implements TaskChangeAnalysisRepositor
                 teacher_rating          = EXCLUDED.teacher_rating
         """;
 
-        jdbc.update(sql,
-                id,
-                a.getTaskId(),
-                a.getTaskOriginalId(),
-                a.getTextLevenshteinRatio(),
-                a.getTextJaccardSimilarity(),
-                a.getTextWordsAdded(),
-                a.getTextWordsRemoved(),
-                a.getTextWordsModified(),
-                a.getTextLengthDelta(),
-                a.getCodeLevenshteinRatio(),
-                a.getCodeLinesAdded(),
-                a.getCodeLinesRemoved(),
-                a.getCodeLinesModified(),
-                a.getCodeLinesReordered(),
-                a.getCodeLocDelta(),
-                a.getCodeComplexityDelta(),
-                a.getCodeTokenChangeRatio(),
-                a.getAstNodesAdded(),
-                a.getAstNodesRemoved(),
-                a.getAstNodesModified(),
-                a.getAstStructuralScore(),
-                toJsonb(a.getAstChangeTypes()),
-                toJsonb(a.getAstDistractorChanges()),
-                a.getOverallChangeScore(),
-                a.getChangeCategory(),
-                a.getTeacherRating()
+    private static final RowMapper<TaskChangeAnalysisDTO> ROW_MAPPER = PostgreTaskChangeAnalysisDao::mapRow;
+
+    private static TaskChangeAnalysisDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
+        TaskChangeAnalysisDTO dto = new TaskChangeAnalysisDTO();
+        dto.setId(rs.getObject("id", UUID.class));
+        dto.setTaskId(rs.getObject("task_id", UUID.class));
+        dto.setTaskOriginalId(rs.getObject("task_original_id", UUID.class));
+        dto.setAnalyzedAt(
+            rs.getTimestamp("analyzed_at") != null
+                ? rs.getTimestamp("analyzed_at").toLocalDateTime()
+                : null
+        );
+
+        // Text-level metrics
+        dto.setTextLevenshteinRatio(nullableDouble(rs, "text_levenshtein_ratio"));
+        dto.setTextJaccardSimilarity(nullableDouble(rs, "text_jaccard_similarity"));
+        dto.setTextWordsAdded(nullableInt(rs, "text_words_added"));
+        dto.setTextWordsRemoved(nullableInt(rs, "text_words_removed"));
+        dto.setTextWordsModified(nullableInt(rs, "text_words_modified"));
+        dto.setTextLengthDelta(nullableInt(rs, "text_length_delta"));
+
+        // Code-level metrics
+        dto.setCodeLevenshteinRatio(nullableDouble(rs, "code_levenshtein_ratio"));
+        dto.setCodeLinesAdded(nullableInt(rs, "code_lines_added"));
+        dto.setCodeLinesRemoved(nullableInt(rs, "code_lines_removed"));
+        dto.setCodeLinesModified(nullableInt(rs, "code_lines_modified"));
+        dto.setCodeLinesReordered(nullableInt(rs, "code_lines_reordered"));
+        dto.setCodeLocDelta(nullableInt(rs, "code_loc_delta"));
+        dto.setCodeComplexityDelta(nullableInt(rs, "code_complexity_delta"));
+        dto.setCodeTokenChangeRatio(nullableDouble(rs, "code_token_change_ratio"));
+
+        // AST-level metrics
+        dto.setAstNodesAdded(nullableInt(rs, "ast_nodes_added"));
+        dto.setAstNodesRemoved(nullableInt(rs, "ast_nodes_removed"));
+        dto.setAstNodesModified(nullableInt(rs, "ast_nodes_modified"));
+        dto.setAstStructuralScore(nullableDouble(rs, "ast_structural_score"));
+        dto.setAstChangeTypes(rs.getString("ast_change_types"));
+        dto.setAstDistractorChanges(rs.getString("ast_distractor_changes"));
+
+        // Overall
+        dto.setOverallChangeScore(nullableDouble(rs, "overall_change_score"));
+        dto.setChangeCategory(rs.getString("change_category"));
+        dto.setTeacherRating(nullableInt(rs, "teacher_rating"));
+
+        return dto;
+    }
+
+    @Override
+    public void save(TaskChangeAnalysisDTO a) {
+        UUID id = a.getId() != null ? a.getId() : UUID.randomUUID();
+        a.setId(id);
+
+        jdbc.update(
+            UPSERT_SQL,
+            id,
+            a.getTaskId(),
+            a.getTaskOriginalId(),
+            a.getTextLevenshteinRatio(),
+            a.getTextJaccardSimilarity(),
+            a.getTextWordsAdded(),
+            a.getTextWordsRemoved(),
+            a.getTextWordsModified(),
+            a.getTextLengthDelta(),
+            a.getCodeLevenshteinRatio(),
+            a.getCodeLinesAdded(),
+            a.getCodeLinesRemoved(),
+            a.getCodeLinesModified(),
+            a.getCodeLinesReordered(),
+            a.getCodeLocDelta(),
+            a.getCodeComplexityDelta(),
+            a.getCodeTokenChangeRatio(),
+            a.getAstNodesAdded(),
+            a.getAstNodesRemoved(),
+            a.getAstNodesModified(),
+            a.getAstStructuralScore(),
+            toJsonb(a.getAstChangeTypes()),
+            toJsonb(a.getAstDistractorChanges()),
+            a.getOverallChangeScore(),
+            a.getChangeCategory(),
+            a.getTeacherRating()
         );
     }
 
@@ -184,7 +171,8 @@ public class PostgreTaskChangeAnalysisDao implements TaskChangeAnalysisRepositor
         try {
             TaskChangeAnalysisDTO result = jdbc.queryForObject(sql, ROW_MAPPER, taskId);
             return Optional.ofNullable(result);
-        } catch (EmptyResultDataAccessException e) {
+        }
+        catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
     }
@@ -210,14 +198,27 @@ public class PostgreTaskChangeAnalysisDao implements TaskChangeAnalysisRepositor
     // ── Helper ──
 
     private static PGobject toJsonb(String value) {
-        if (value == null) return null;
+        if (value == null) {
+            return null;
+        }
         try {
             PGobject jsonb = new PGobject();
             jsonb.setType("jsonb");
             jsonb.setValue(value);
             return jsonb;
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to create JSONB PGobject", e);
         }
+        catch (SQLException e) {
+            throw new IllegalStateException("Failed to create JSONB PGobject", e);
+        }
+    }
+
+    private static Integer nullableInt(ResultSet rs, String column) throws SQLException {
+        int value = rs.getInt(column);
+        return rs.wasNull() ? null : value;
+    }
+
+    private static Double nullableDouble(ResultSet rs, String column) throws SQLException {
+        double value = rs.getDouble(column);
+        return rs.wasNull() ? null : value;
     }
 }

@@ -261,6 +261,7 @@
     "forkToEdit": "Eigene Kopie zum Bearbeiten",
     "forking": "Wird kopiert …",
     "forkFailed": "Die Kopie konnte nicht erstellt werden.",
+    "notFound": "Diese Aufgabenfolge gibt es nicht (mehr).",
     "pageTitle": "Sequenz-Seite",
     "devTemplate": "DEV-Vorlage",
     "teacherBanner": "Lehrer-Modus",
@@ -380,6 +381,7 @@
     "loadingTask": "Aufgabe wird geladen…",
     "errorLabel": "Fehler:",
     "apiError": "Fehler bei der API-Anfrage",
+    "notFound": "Diese Aufgabe gibt es nicht (mehr).",
 
     "copyLinkTitle": "Kopiert den Link zu dieser Aufgabe",
     "copied": "Kopiert!",

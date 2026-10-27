@@ -37,12 +37,20 @@ public enum WorksheetAvailability {
     /** Past the deadline and its grace: students may read the tasks, not solve them. */
     CLOSED;
 
-    /** Whether a student may work on the tasks. */
+    /**
+     * Whether a student may work on the tasks.
+     *
+     * @return true if the tasks may be worked on
+     */
     public boolean allowsSolving() {
         return this == OPEN;
     }
 
-    /** Whether a student is shown the worksheet at all. */
+    /**
+     * Whether a student is shown the worksheet at all.
+     *
+     * @return true if students see the worksheet
+     */
     public boolean visibleToStudents() {
         return this != SCHEDULED;
     }
@@ -50,21 +58,24 @@ public enum WorksheetAvailability {
     /**
      * Resolves the state of one assignment.
      *
-     * An assignment is hidden until it is released, which happens either because
-     * the teacher published it or because its release date has arrived. A newly
-     * assigned worksheet is neither, so it starts hidden — students should not
+     * An assignment is hidden until it is released, which happens either because the teacher published it or because
+     * its release date has arrived. A newly assigned worksheet is neither, so it starts hidden — students should not
      * meet one that is still being put together.
      *
-     * After that, the deadline and its grace decide whether it is still
-     * workable. Each date is optional and absent means unconstrained: no
-     * deadline stays open indefinitely, no grace makes the deadline sharp.
+     * After that, the deadline and its grace decide whether it is still workable. Each date is optional and absent
+     * means unconstrained: no deadline stays open indefinitely, no grace makes the deadline sharp.
      *
      * @param published    set by the teacher's publish button
      * @param releaseAt    when it opens by itself; null means only publishing opens it
      * @param graceMinutes minutes allowed after the deadline; null or 0 is sharp
+     * @param deadlineAt   when the assignment closes, or null for never
+     * @param now          the moment to evaluate at
+     * @return the assignment's state at {@code now}
      */
-    public static WorksheetAvailability of(boolean published, Instant releaseAt, Instant deadlineAt,
-                                           Integer graceMinutes, Instant now) {
+    public static WorksheetAvailability of(
+        boolean published, Instant releaseAt, Instant deadlineAt,
+        Integer graceMinutes, Instant now
+    ) {
         Instant moment = now != null ? now : Instant.now();
 
         boolean releasedByDate = releaseAt != null && !moment.isBefore(releaseAt);

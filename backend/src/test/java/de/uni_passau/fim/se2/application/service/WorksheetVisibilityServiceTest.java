@@ -18,18 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
-import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
-import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.security.access.AccessDeniedException;
-
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -39,13 +27,26 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.access.AccessDeniedException;
+
+import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
+import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
+import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
+
 /**
  * Publishing a worksheet, from the service's side.
  *
- * <p>{@code WorksheetAccessPolicyTest} settles who is allowed to. What is left for the service
- * is gathering the facts the policy needs and refusing before anything is written — in
- * particular recognising the Library Inbox, which the policy cannot do for itself because that
- * means knowing about a sentinel buried in a description.
+ * <p>
+ * {@code WorksheetAccessPolicyTest} settles who is allowed to. What is left for the service is gathering the facts the
+ * policy needs and refusing before anything is written — in particular recognising the Library Inbox, which the policy
+ * cannot do for itself because that means knowing about a sentinel buried in a description.
  */
 class WorksheetVisibilityServiceTest {
 
@@ -67,12 +68,16 @@ class WorksheetVisibilityServiceTest {
     @DisplayName("the owner publishes their own worksheet")
     void ownerCanPublish() {
         WorksheetDTO result = service.setVisibility(
-                SHEET, WorksheetVisibility.PUBLIC, OWNER, UserRole.TEACHER);
+            SHEET, WorksheetVisibility.PUBLIC, OWNER, UserRole.TEACHER
+        );
 
         assertAll(
-                () -> verify(worksheetRepo).updateVisibility(SHEET, WorksheetVisibility.PUBLIC),
-                () -> assertEquals(WorksheetVisibility.PUBLIC, result.getVisibility(),
-                        "the returned worksheet must reflect the change, not the stale read"));
+            () -> verify(worksheetRepo).updateVisibility(SHEET, WorksheetVisibility.PUBLIC),
+            () -> assertEquals(
+                WorksheetVisibility.PUBLIC, result.getVisibility(),
+                "the returned worksheet must reflect the change, not the stale read"
+            )
+        );
     }
 
     @Test
@@ -92,8 +97,10 @@ class WorksheetVisibilityServiceTest {
     @Test
     @DisplayName("another teacher is refused, and nothing is written")
     void otherTeacherIsRefused() {
-        assertThrows(AccessDeniedException.class, () ->
-                service.setVisibility(SHEET, WorksheetVisibility.PUBLIC, OTHER, UserRole.TEACHER));
+        assertThrows(
+            AccessDeniedException.class,
+            () -> service.setVisibility(SHEET, WorksheetVisibility.PUBLIC, OTHER, UserRole.TEACHER)
+        );
         verify(worksheetRepo, never()).updateVisibility(any(), any());
     }
 
@@ -101,21 +108,32 @@ class WorksheetVisibilityServiceTest {
     @DisplayName("a student is refused, and so is an anonymous caller")
     void studentsAndAnonymousAreRefused() {
         assertAll(
-                () -> assertThrows(AccessDeniedException.class, () -> service.setVisibility(
-                        SHEET, WorksheetVisibility.PUBLIC, OTHER, UserRole.STUDENT)),
-                () -> assertThrows(AccessDeniedException.class, () -> service.setVisibility(
-                        SHEET, WorksheetVisibility.PUBLIC, null, null)),
-                () -> verify(worksheetRepo, never()).updateVisibility(any(), any()));
+            () -> assertThrows(
+                AccessDeniedException.class, () -> service.setVisibility(
+                    SHEET, WorksheetVisibility.PUBLIC, OTHER, UserRole.STUDENT
+                )
+            ),
+            () -> assertThrows(
+                AccessDeniedException.class, () -> service.setVisibility(
+                    SHEET, WorksheetVisibility.PUBLIC, null, null
+                )
+            ),
+            () -> verify(worksheetRepo, never()).updateVisibility(any(), any())
+        );
     }
 
     @Test
     @DisplayName("the Library Inbox cannot be published, even by its owner")
     void libraryInboxIsRefused() {
-        stubLoad("Quick-copied sequences from the Library. "
-                + WorksheetService.LIBRARY_INBOX_SENTINEL);
+        stubLoad(
+            "Quick-copied sequences from the Library. "
+                + WorksheetService.LIBRARY_INBOX_SENTINEL
+        );
 
-        assertThrows(AccessDeniedException.class, () ->
-                service.setVisibility(SHEET, WorksheetVisibility.PUBLIC, OWNER, UserRole.TEACHER));
+        assertThrows(
+            AccessDeniedException.class,
+            () -> service.setVisibility(SHEET, WorksheetVisibility.PUBLIC, OWNER, UserRole.TEACHER)
+        );
         verify(worksheetRepo, never()).updateVisibility(any(), any());
     }
 
@@ -126,19 +144,25 @@ class WorksheetVisibilityServiceTest {
         // past this check.
         stubLoad("Meine Sammlung " + WorksheetService.LIBRARY_INBOX_SENTINEL + " bitte nicht loeschen");
 
-        assertThrows(AccessDeniedException.class, () ->
-                service.setVisibility(SHEET, WorksheetVisibility.PUBLIC, OWNER, UserRole.TEACHER));
+        assertThrows(
+            AccessDeniedException.class,
+            () -> service.setVisibility(SHEET, WorksheetVisibility.PUBLIC, OWNER, UserRole.TEACHER)
+        );
     }
 
     @Test
     @DisplayName("null arguments are rejected before anything is written")
     void nullArgumentsAreRejected() {
         assertAll(
-                () -> assertThrows(DomainValidationException.class, () ->
-                        service.setVisibility(SHEET, null, OWNER, UserRole.TEACHER)),
-                () -> assertThrows(DomainValidationException.class, () ->
-                        service.setVisibility(null, WorksheetVisibility.PUBLIC, OWNER, UserRole.TEACHER)),
-                () -> verify(worksheetRepo, never()).updateVisibility(any(), any()));
+            () -> assertThrows(
+                DomainValidationException.class, () -> service.setVisibility(SHEET, null, OWNER, UserRole.TEACHER)
+            ),
+            () -> assertThrows(
+                DomainValidationException.class,
+                () -> service.setVisibility(null, WorksheetVisibility.PUBLIC, OWNER, UserRole.TEACHER)
+            ),
+            () -> verify(worksheetRepo, never()).updateVisibility(any(), any())
+        );
     }
 
     /** {@code getWorksheetById} fills the DTO it is handed rather than returning one. */

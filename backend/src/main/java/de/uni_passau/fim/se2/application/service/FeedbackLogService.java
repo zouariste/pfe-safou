@@ -18,21 +18,23 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
-import de.uni_passau.fim.se2.domain.interfaces.FeedbackLogRepository;
+import java.util.List;
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
+import de.uni_passau.fim.se2.domain.interfaces.FeedbackLogRepository;
 
 @Service
 public class FeedbackLogService {
 
-    private static final Logger logger = LoggerFactory.getLogger(FeedbackLogService.class);
+    private static final Logger log = LoggerFactory.getLogger(FeedbackLogService.class);
 
     private final FeedbackLogRepository feedbackRepo;
     private final ClassRepository classRepository;
@@ -43,9 +45,12 @@ public class FeedbackLogService {
     }
 
     /**
-     * Logs a feedback click with tracking-awareness:
-     * resolves the student's class, checks if tracking is enabled,
-     * and anonymizes the userId when tracking is off.
+     * Logs a feedback click with tracking-awareness: resolves the student's class, checks if tracking is enabled, and
+     * anonymizes the userId when tracking is off.
+     *
+     * @param taskId  the task the feedback was requested for
+     * @param correct whether the arrangement was correct
+     * @param userId  the student, or null if anonymous
      */
     @Transactional
     public void logFeedbackClickWithTracking(UUID taskId, boolean correct, UUID userId) {
@@ -73,24 +78,29 @@ public class FeedbackLogService {
     @Transactional
     public void logFeedbackClick(UUID taskId, boolean correct, UUID userId, UUID classId) {
         try {
-            logger.debug("Logging feedback click for taskId={}, correct={}, userId={}, classId={}",
-                    taskId, correct, userId, classId);
+            log.debug(
+                "Logging feedback click for taskId={}, correct={}, userId={}, classId={}",
+                taskId, correct, userId, classId
+            );
             if (taskId == null) {
                 throw new DomainValidationException("Task ID must not be null when logging feedback.");
             }
 
             FeedbackLogDTO logEntry = FeedbackLogDTO.builder()
-                    .taskId(taskId)
-                    .correct(correct)
-                    .userId(userId)
-                    .classId(classId)
-                    .build();
+                .taskId(taskId)
+                .correct(correct)
+                .userId(userId)
+                .classId(classId)
+                .build();
 
             feedbackRepo.save(logEntry);
-            logger.debug("Saved feedback log for taskId={}, correct={}, userId={}, classId={}",
-                    taskId, correct, userId, classId);
-        } catch (Exception e) {
-            logger.error("Error logging feedback click for taskId={}", taskId, e);
+            log.debug(
+                "Saved feedback log for taskId={}, correct={}, userId={}, classId={}",
+                taskId, correct, userId, classId
+            );
+        }
+        catch (Exception e) {
+            log.error("Error logging feedback click for taskId={}", taskId, e);
             throw e;
         }
     }
@@ -104,36 +114,41 @@ public class FeedbackLogService {
     @Transactional(readOnly = true)
     public List<FeedbackLogDTO> getFeedbackLogsForTask(UUID taskId) {
         try {
-            logger.debug("Loading feedback logs for taskId={}", taskId);
+            log.debug("Loading feedback logs for taskId={}", taskId);
             if (taskId == null) {
                 throw new DomainValidationException("Task ID must not be null.");
             }
 
             List<FeedbackLogDTO> logs = feedbackRepo.findByTaskId(taskId);
-            logger.debug("Loaded {} feedback logs for taskId={}", logs.size(), taskId);
+            log.debug("Loaded {} feedback logs for taskId={}", logs.size(), taskId);
             return logs;
-        } catch (Exception e) {
-            logger.error("Error loading feedback logs for taskId={}", taskId, e);
+        }
+        catch (Exception e) {
+            log.error("Error loading feedback logs for taskId={}", taskId, e);
             throw e;
         }
     }
 
     /**
      * Retrieves all feedback logs for the specified class.
+     *
+     * @param classId the class
+     * @return the class's feedback logs, oldest first
      */
     @Transactional(readOnly = true)
     public List<FeedbackLogDTO> getFeedbackLogsForClass(UUID classId) {
         try {
-            logger.debug("Loading feedback logs for classId={}", classId);
+            log.debug("Loading feedback logs for classId={}", classId);
             if (classId == null) {
                 throw new DomainValidationException("Class ID must not be null.");
             }
 
             List<FeedbackLogDTO> logs = feedbackRepo.findByClassId(classId);
-            logger.debug("Loaded {} feedback logs for classId={}", logs.size(), classId);
+            log.debug("Loaded {} feedback logs for classId={}", logs.size(), classId);
             return logs;
-        } catch (Exception e) {
-            logger.error("Error loading feedback logs for classId={}", classId, e);
+        }
+        catch (Exception e) {
+            log.error("Error loading feedback logs for classId={}", classId, e);
             throw e;
         }
     }
@@ -146,15 +161,16 @@ public class FeedbackLogService {
     @Transactional
     public void deleteFeedbackLogsForTask(UUID taskId) {
         try {
-            logger.debug("Deleting feedback logs for taskId={}", taskId);
+            log.debug("Deleting feedback logs for taskId={}", taskId);
             if (taskId == null) {
                 throw new DomainValidationException("Task ID must not be null.");
             }
 
             feedbackRepo.deleteByTaskId(taskId);
-            logger.debug("Deleted feedback logs for taskId={}", taskId);
-        } catch (Exception e) {
-            logger.error("Error deleting feedback logs for taskId={}", taskId, e);
+            log.debug("Deleted feedback logs for taskId={}", taskId);
+        }
+        catch (Exception e) {
+            log.error("Error deleting feedback logs for taskId={}", taskId, e);
             throw e;
         }
     }

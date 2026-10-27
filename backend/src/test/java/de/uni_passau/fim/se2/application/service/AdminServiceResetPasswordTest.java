@@ -18,18 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.AuthTokenDTO;
-import de.uni_passau.fim.se2.domain.entities.UserDTO;
-import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
-import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -41,9 +29,21 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import de.uni_passau.fim.se2.domain.entities.AuthTokenDTO;
+import de.uni_passau.fim.se2.domain.entities.UserDTO;
+import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
+import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
+
 /**
- * An admin triggering a password reset, which a FIM-Account does not have: its
- * password is reset at the FIM.
+ * An admin triggering a password reset, which a FIM-Account does not have: its password is reset at the FIM.
  */
 class AdminServiceResetPasswordTest {
 
@@ -80,7 +80,8 @@ class AdminServiceResetPasswordTest {
         UserDTO ordinary = user(null);
         when(userRepository.findById(ordinary.getUserId())).thenReturn(Optional.of(ordinary));
         when(tokenService.createPasswordResetToken(ordinary.getUserId())).thenReturn(
-                AuthTokenDTO.builder().userId(ordinary.getUserId()).tokenValue("reset-token").build());
+            AuthTokenDTO.builder().userId(ordinary.getUserId()).tokenValue("reset-token").build()
+        );
 
         service.resetPassword(ordinary.getUserId());
 
@@ -93,7 +94,7 @@ class AdminServiceResetPasswordTest {
         UserDTO fim = user("mustermann");
         UserDTO ordinary = user(null);
         when(userRepository.findAllPaginated(any(), anyString(), anyString(), anyInt(), anyInt()))
-                .thenReturn(List.of(fim, ordinary));
+            .thenReturn(List.of(fim, ordinary));
         when(userRepository.countAll(any())).thenReturn(2L);
 
         var page = service.getUsers("", 0, 20, "email", "asc");
@@ -104,15 +105,15 @@ class AdminServiceResetPasswordTest {
 
     private static UserDTO user(String fimUid) {
         return UserDTO.builder()
-                .userId(UUID.randomUUID())
-                .email(EMAIL)
-                .firstName("Max")
-                .lastName("Mustermann")
-                .passwordHash("hash")
-                .role(UserDTO.UserRole.TEACHER)
-                .verified(true)
-                .active(true)
-                .fimUid(fimUid)
-                .build();
+            .userId(UUID.randomUUID())
+            .email(EMAIL)
+            .firstName("Max")
+            .lastName("Mustermann")
+            .passwordHash("hash")
+            .role(UserDTO.UserRole.TEACHER)
+            .verified(true)
+            .active(true)
+            .fimUid(fimUid)
+            .build();
     }
 }

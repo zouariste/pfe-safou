@@ -18,13 +18,15 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.*;
+import java.util.List;
 
-import java.util.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Setter
 @Getter
 public class GenerateRequestDTO {
+
     private String taskDescription;
     private List<String> concepts;
     private String language;

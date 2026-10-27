@@ -18,19 +18,26 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
-import lombok.*;
-
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
- * Data transfer object representing a worksheet within the system.
- * A worksheet acts as a collection of tiered task sequences, typically used
- * to group related programming exercises or assignments under a common theme.
+ * Data transfer object representing a worksheet within the system. A worksheet acts as a collection of tiered task
+ * sequences, typically used to group related programming exercises or assignments under a common theme.
  * <p>
- * Each worksheet contains a unique identifier, a descriptive name and text,
- * and an associated list of {@link TieredTaskSequenceDTO} objects.
+ * Each worksheet contains a unique identifier, a descriptive name and text, and an associated list of
+ * {@link TieredTaskSequenceDTO} objects.
  */
 @Getter
 @Setter
@@ -42,33 +49,31 @@ import java.util.*;
 public class WorksheetDTO {
 
     /**
-     * The unique identifier of the worksheet.
-     * Used to distinguish worksheets in persistence and during repository operations.
+     * The unique identifier of the worksheet. Used to distinguish worksheets in persistence and during repository
+     * operations.
      */
     private UUID id;
 
     /**
-     * The display name of the worksheet.
-     * This value is not required to be unique and can be shared among multiple users.
+     * The display name of the worksheet. This value is not required to be unique and can be shared among multiple
+     * users.
      */
     private String name;
 
     /**
-     * A brief description providing context or details about
-     * the worksheet’s purpose or content.
+     * A brief description providing context or details about the worksheet’s purpose or content.
      */
     private String description;
 
     /**
-     * The list of tiered task sequences associated with this worksheet.
-     * Each sequence represents a grouped set of tiered programming tasks.
+     * The list of tiered task sequences associated with this worksheet. Each sequence represents a grouped set of
+     * tiered programming tasks.
      */
     @Builder.Default
     private List<TieredTaskSequenceDTO> sequenceDTOS = new ArrayList<>();
 
     /**
-     * The owner (teacher/admin) who created this worksheet.
-     * NULL for legacy/anonymous worksheets.
+     * The owner (teacher/admin) who created this worksheet. NULL for legacy/anonymous worksheets.
      */
     private UUID ownerId;
 
@@ -79,17 +84,17 @@ public class WorksheetDTO {
     private boolean hintsEnabled = true;
 
     /**
-     * How many hint credits each student gets per task in this worksheet.
-     * {@code null} means unlimited, which is the default and the behaviour
-     * every worksheet had before budgets existed.
+     * How many hint credits each student gets per task in this worksheet. {@code null} means unlimited, which is the
+     * default and the behaviour every worksheet had before budgets existed.
      */
     private Integer hintCreditsPerTask;
 
     /**
      * How far this worksheet reaches beyond its owner.
      *
-     * <p>Defaults to {@link WorksheetVisibility#UNLISTED}, which is what every worksheet was
-     * before the marketplace: readable by anyone holding the link, listed nowhere.
+     * <p>
+     * Defaults to {@link WorksheetVisibility#UNLISTED}, which is what every worksheet was before the marketplace:
+     * readable by anyone holding the link, listed nowhere.
      */
     @Builder.Default
     private WorksheetVisibility visibility = WorksheetVisibility.DEFAULT;
@@ -97,17 +102,19 @@ public class WorksheetDTO {
     /**
      * When the worksheet was created. Stamped by the database.
      *
-     * <p>An {@code Instant} because the column is {@code timestamptz} — the marketplace orders
-     * by it across users who are not necessarily in the same offset.
+     * <p>
+     * An {@code Instant} because the column is {@code timestamptz} — the marketplace orders by it across users who are
+     * not necessarily in the same offset.
      */
     private Instant createdAt;
 
     /**
      * The worksheet this one was copied from, if it was.
      *
-     * <p>Nothing displays it. It exists so a copy can be told apart from an original, which the
-     * library search needs in order not to fill up with duplicates. The foreign key is
-     * {@code ON DELETE SET NULL}: deleting an original leaves its copies alone.
+     * <p>
+     * Nothing displays it. It exists so a copy can be told apart from an original, which the library search needs in
+     * order not to fill up with duplicates. The foreign key is {@code ON DELETE SET NULL}: deleting an original leaves
+     * its copies alone.
      */
     private UUID copiedFrom;
 

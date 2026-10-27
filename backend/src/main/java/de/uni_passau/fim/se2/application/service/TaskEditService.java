@@ -18,7 +18,18 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import de.uni_passau.fim.se2.api.dto.TaskEditRequest;
+import de.uni_passau.fim.se2.application.service.analysis.ChangeAnalysisService;
 import de.uni_passau.fim.se2.domain.entities.SplitPlan;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskOriginalDTO;
@@ -26,25 +37,15 @@ import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.interfaces.TaskOriginalRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
-import de.uni_passau.fim.se2.application.service.analysis.ChangeAnalysisService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
 
 /**
- * Service for editing tasks (AP9 — Task-Bearbeitung & Versionierung).
- * On the first edit, the original version is saved to task_originals.
- * Subsequent edits update the task directly without creating another original.
+ * Service for editing tasks (AP9 — Task-Bearbeitung & Versionierung). On the first edit, the original version is saved
+ * to task_originals. Subsequent edits update the task directly without creating another original.
  */
 @Service
 public class TaskEditService {
 
-    private static final Logger logger = LoggerFactory.getLogger(TaskEditService.class);
+    private static final Logger log = LoggerFactory.getLogger(TaskEditService.class);
 
     private final TaskRepository taskRepo;
     private final TaskOriginalRepository taskOriginalRepo;
@@ -53,12 +54,14 @@ public class TaskEditService {
     private final ChangeAnalysisService changeAnalysisService;
     private final ObjectMapper objectMapper;
 
-    public TaskEditService(TaskRepository taskRepo,
-                           TaskOriginalRepository taskOriginalRepo,
-                           TieredTaskSequenceRepository sequenceRepo,
-                           OwnershipService ownershipService,
-                           ChangeAnalysisService changeAnalysisService,
-                           ObjectMapper objectMapper) {
+    public TaskEditService(
+        TaskRepository taskRepo,
+        TaskOriginalRepository taskOriginalRepo,
+        TieredTaskSequenceRepository sequenceRepo,
+        OwnershipService ownershipService,
+        ChangeAnalysisService changeAnalysisService,
+        ObjectMapper objectMapper
+    ) {
         this.taskRepo = taskRepo;
         this.taskOriginalRepo = taskOriginalRepo;
         this.sequenceRepo = sequenceRepo;
@@ -70,16 +73,17 @@ public class TaskEditService {
     /**
      * Edits a task's problem statement and/or code.
      * <ol>
-     *   <li>Loads the current task</li>
-     *   <li>Checks ownership (task -> sequence -> owner_id) or admin</li>
-     *   <li>If no task_original exists yet, saves the current version as original</li>
-     *   <li>Updates the task with new values</li>
+     * <li>Loads the current task</li>
+     * <li>Checks ownership (task -> sequence -> owner_id) or admin</li>
+     * <li>If no task_original exists yet, saves the current version as original</li>
+     * <li>Updates the task with new values</li>
      * </ol>
      *
      * @param taskId  the task to edit
      * @param request the edit payload
      * @return the updated TaskDTO
      */
+    @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     @Transactional
     public TaskDTO editTask(UUID taskId, TaskEditRequest request) {
         if (taskId == null) {
@@ -106,21 +110,23 @@ public class TaskEditService {
         if (isFirstEdit) {
             if (request.getAdjustmentRating() == null) {
                 throw new DomainValidationException(
-                        "adjustmentRating is required on the first edit (1-5).");
+                    "adjustmentRating is required on the first edit (1-5)."
+                );
             }
             if (request.getAdjustmentRating() < 1 || request.getAdjustmentRating() > 5) {
                 throw new DomainValidationException(
-                        "adjustmentRating must be between 1 and 5.");
+                    "adjustmentRating must be between 1 and 5."
+                );
             }
 
             TaskOriginalDTO original = TaskOriginalDTO.builder()
-                    .taskId(taskId)
-                    .originalProblemStatement(task.getStatement())
-                    .originalCode(task.getSolution())
-                    .adjustmentRating(request.getAdjustmentRating())
-                    .build();
+                .taskId(taskId)
+                .originalProblemStatement(task.getStatement())
+                .originalCode(task.getSolution())
+                .adjustmentRating(request.getAdjustmentRating())
+                .build();
             taskOriginalRepo.save(original);
-            logger.info("Saved original for task {} (rating={})", taskId, request.getAdjustmentRating());
+            log.info("Saved original for task {} (rating={})", taskId, request.getAdjustmentRating());
         }
 
         // 4. Update the task
@@ -143,14 +149,15 @@ public class TaskEditService {
             taskRepo.updateSplitPlan(taskId, splitPlanJson);
         }
 
-        logger.info("Updated task {} (firstEdit={})", taskId, isFirstEdit);
+        log.info("Updated task {} (firstEdit={})", taskId, isFirstEdit);
 
         // 5. Run change analysis automatically
         try {
             changeAnalysisService.analyzeTask(taskId);
-            logger.info("Change analysis completed for task {}", taskId);
-        } catch (Exception e) {
-            logger.warn("Change analysis failed for task {} (non-blocking): {}", taskId, e.getMessage());
+            log.info("Change analysis completed for task {}", taskId);
+        }
+        catch (Exception e) {
+            log.warn("Change analysis failed for task {} (non-blocking): {}", taskId, e.getMessage());
         }
 
         // Reload and return
@@ -161,10 +168,9 @@ public class TaskEditService {
     }
 
     /**
-     * AP31: Turns the edited split entries into a validated {@code split_plan} JSON string.
-     * Returns {@code null} when there are no splits (clearing the plan). Throws
-     * {@link DomainValidationException} if any split fails the reconstruction check against
-     * {@code solution}. Mirrors {@code ManualTaskService#buildSplitPlanJson}.
+     * AP31: Turns the edited split entries into a validated {@code split_plan} JSON string. Returns {@code null} when
+     * there are no splits (clearing the plan). Throws {@link DomainValidationException} if any split fails the
+     * reconstruction check against {@code solution}. Mirrors {@code ManualTaskService#buildSplitPlanJson}.
      */
     private String buildSplitPlanJson(java.util.List<SplitPlan.SplitEntry> splits, String solution) {
         if (splits == null || splits.isEmpty()) {
@@ -174,8 +180,9 @@ public class TaskEditService {
         SequenceValidator.validateSplitPlan(plan, solution);
         try {
             return objectMapper.writeValueAsString(plan);
-        } catch (JsonProcessingException e) {
-            logger.warn("Failed to serialize split_plan for task edit: {}", e.getMessage());
+        }
+        catch (JsonProcessingException e) {
+            log.warn("Failed to serialize split_plan for task edit: {}", e.getMessage());
             return null;
         }
     }

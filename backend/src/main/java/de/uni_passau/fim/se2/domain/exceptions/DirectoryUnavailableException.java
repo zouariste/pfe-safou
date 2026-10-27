@@ -19,10 +19,11 @@
 package de.uni_passau.fim.se2.domain.exceptions;
 
 /**
- * The external account directory (FIM LDAP) could not be reached or answered
- * with something other than a verdict on the credentials.
+ * The external account directory (FIM LDAP) could not be reached or answered with something other than a verdict on the
+ * credentials.
  */
 public class DirectoryUnavailableException extends RuntimeException {
+
     public DirectoryUnavailableException(String message, Throwable cause) {
         super(message, cause);
     }

@@ -18,37 +18,43 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai.tagging;
 
-import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
-import de.uni_passau.fim.se2.infrastructure.ai.IdentityLoader;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
+import de.uni_passau.fim.se2.infrastructure.ai.IdentityLoader;
+
 /**
  * AP19 Teil A: LLM-powered semantic tagger.
  *
- * <p>Emits domain / algorithm / data-structure tags (e.g. "fibonacci", "binary-search",
- * "caesar-chiffre"). Deliberately separated from the AP25 structural concept detection,
- * which covers syntax-level constructs (for-loop, recursion, if-else, …).
+ * <p>
+ * Emits domain / algorithm / data-structure tags (e.g. "fibonacci", "binary-search", "caesar-chiffre"). Deliberately
+ * separated from the AP25 structural concept detection, which covers syntax-level constructs (for-loop, recursion,
+ * if-else, …).
  *
- * <p>Each tag comes back as a {@code {"de": …, "en": …}} pair: the German slug is the canonical
- * tag name, the English one is stored as its translation for the English UI.
+ * <p>
+ * Each tag comes back as a {@code {"de": …, "en": …}} pair: the German slug is the canonical tag name, the English one
+ * is stored as its translation for the English UI.
  *
- * <p>Always invoked from a background thread via {@link de.uni_passau.fim.se2.application.events.SemanticTaggingListener}.
+ * <p>
+ * Always invoked from a background thread via {@link de.uni_passau.fim.se2.application.events.SemanticTaggingListener}.
  * LLM cost is ~0.5 cent per sequence.
  */
 @Component
 public class LlmSemanticTagger {
 
-    private static final Logger logger = LoggerFactory.getLogger(LlmSemanticTagger.class);
+    private static final Logger log = LoggerFactory.getLogger(LlmSemanticTagger.class);
 
     private static final int MAX_INPUT_CHARS = 6000;   // safety cap before sending to LLM
     private static final int MAX_SUMMARY_CHARS = 500;
@@ -65,22 +71,31 @@ public class LlmSemanticTagger {
     /**
      * Returns a semantic tag result for the given sequence content, or {@code null} on failure.
      *
-     * <p>Failure modes (all logged, all return null):
+     * <p>
+     * Failure modes (all logged, all return null):
      * <ul>
-     *   <li>Identity file missing</li>
-     *   <li>LLM call throws, or the provider does not support semantic tagging</li>
-     *   <li>LLM response not valid JSON</li>
-     *   <li>LLM returns empty {@code primary_tags}</li>
+     * <li>Identity file missing</li>
+     * <li>LLM call throws, or the provider does not support semantic tagging</li>
+     * <li>LLM response not valid JSON</li>
+     * <li>LLM returns empty {@code primary_tags}</li>
      * </ul>
+     *
+     * @param language          the programming language of the sequence
+     * @param combinedStatement the problem statements of all tasks
+     * @param combinedCode      the solutions of all tasks
+     * @return the tags, or null on failure
      */
     public SemanticTagResult tag(String language, String combinedStatement, String combinedCode) {
-        if (combinedCode == null || combinedCode.isBlank()) return null;
+        if (combinedCode == null || combinedCode.isBlank()) {
+            return null;
+        }
 
         String identity;
         try {
             identity = identityLoader.load("SequenceSemanticTagger");
-        } catch (Exception e) {
-            logger.warn("SequenceSemanticTagger identity not found: {}", e.getMessage());
+        }
+        catch (Exception e) {
+            log.warn("SequenceSemanticTagger identity not found: {}", e.getMessage());
             return null;
         }
 
@@ -90,8 +105,9 @@ public class LlmSemanticTagger {
         try {
             // A single blocking call — caller is already on a background thread.
             response = aiModelClient.generateSemanticTags(identity, userPrompt);
-        } catch (Exception e) {
-            logger.warn("LLM call for semantic tagging failed: {}", e.getMessage());
+        }
+        catch (Exception e) {
+            log.warn("LLM call for semantic tagging failed: {}", e.getMessage());
             return null;
         }
 
@@ -105,27 +121,34 @@ public class LlmSemanticTagger {
         String codePart = combinedCode.trim();
 
         // Clamp to MAX_INPUT_CHARS: prefer keeping the statement intact, then clip the code.
-        if (statementPart.length() > 1500) statementPart = statementPart.substring(0, 1500) + "…";
+        if (statementPart.length() > 1500) {
+            statementPart = statementPart.substring(0, 1500) + "…";
+        }
         int budget = MAX_INPUT_CHARS - statementPart.length();
-        if (codePart.length() > budget) codePart = codePart.substring(0, Math.max(100, budget)) + "\n…";
+        if (codePart.length() > budget) {
+            codePart = codePart.substring(0, Math.max(100, budget)) + "\n…";
+        }
 
         return """
-                Language: %s
+            Language: %s
 
-                Combined task statements across all tiers:
-                %s
+            Combined task statements across all tiers:
+            %s
 
-                Combined code solutions across all tiers:
-                ```
-                %s
-                ```
+            Combined code solutions across all tiers:
+            ```
+            %s
+            ```
 
-                Follow the output format strictly. No commentary.
-                """.formatted(language == null ? "unknown" : language, statementPart, codePart);
+            Follow the output format strictly. No commentary.
+            """.formatted(language == null ? "unknown" : language, statementPart, codePart);
     }
 
+    @SuppressWarnings("checkstyle:NPathComplexity")
     private SemanticTagResult parse(String response) {
-        if (response == null || response.isBlank()) return null;
+        if (response == null || response.isBlank()) {
+            return null;
+        }
         String json = response.trim();
         if (json.startsWith("```")) {
             json = json.replaceAll("^```(json)?\\s*", "").replaceAll("\\s*```$", "");
@@ -134,9 +157,12 @@ public class LlmSemanticTagger {
         JsonNode root;
         try {
             root = objectMapper.readTree(json);
-        } catch (Exception e) {
-            logger.warn("Semantic tagger returned non-JSON, ignoring. Raw response (trunc): {}",
-                    truncate(response, 200));
+        }
+        catch (JsonProcessingException | RuntimeException e) {
+            log.warn(
+                "Semantic tagger returned non-JSON, ignoring. Raw response (trunc): {}",
+                truncate(response, 200)
+            );
             return null;
         }
 
@@ -145,7 +171,7 @@ public class LlmSemanticTagger {
         List<String> aliases = extractTags(root.get("aliases"), translations);
 
         if (primary.isEmpty()) {
-            logger.debug("Semantic tagger returned no primary_tags");
+            log.debug("Semantic tagger returned no primary_tags");
             return null;
         }
 
@@ -162,27 +188,35 @@ public class LlmSemanticTagger {
     }
 
     /**
-     * Reads a tag array. Entries are {@code {"de": …, "en": …}} objects; plain strings are
-     * accepted too (treated as the German slug, without translation). English slugs are
-     * collected into {@code translations}, keyed by the German slug.
+     * Reads a tag array. Entries are {@code {"de": …, "en": …}} objects; plain strings are accepted too (treated as the
+     * German slug, without translation). English slugs are collected into {@code translations}, keyed by the German
+     * slug.
      */
     private List<String> extractTags(JsonNode node, Map<String, String> translations) {
-        if (node == null || !node.isArray()) return List.of();
+        if (node == null || !node.isArray()) {
+            return List.of();
+        }
         List<String> out = new ArrayList<>();
         for (JsonNode n : node) {
             String de;
             String en = null;
             if (n.isTextual()) {
                 de = slugify(n.asText());
-            } else if (n.isObject()) {
+            }
+            else if (n.isObject()) {
                 de = slugify(n.path("de").asText(""));
                 en = slugify(n.path("en").asText(""));
-            } else {
+            }
+            else {
                 continue;
             }
-            if (de.isEmpty() || out.contains(de)) continue;
+            if (de.isEmpty() || out.contains(de)) {
+                continue;
+            }
             out.add(de);
-            if (en != null && !en.isEmpty()) translations.putIfAbsent(de, en);
+            if (en != null && !en.isEmpty()) {
+                translations.putIfAbsent(de, en);
+            }
         }
         return out;
     }
@@ -194,7 +228,9 @@ public class LlmSemanticTagger {
     }
 
     private String truncate(String s, int n) {
-        if (s == null) return "";
+        if (s == null) {
+            return "";
+        }
         return s.length() <= n ? s : s.substring(0, n) + "…";
     }
 
@@ -203,6 +239,9 @@ public class LlmSemanticTagger {
      *
      * @param translations German tag slug → English tag slug, for every tag the LLM translated
      */
-    public record SemanticTagResult(List<String> primaryTags, List<String> aliases,
-                                    Map<String, String> translations, String shortDescription) {}
+    public record SemanticTagResult(
+        List<String> primaryTags, List<String> aliases,
+        Map<String, String> translations, String shortDescription
+    ) {
+    }
 }

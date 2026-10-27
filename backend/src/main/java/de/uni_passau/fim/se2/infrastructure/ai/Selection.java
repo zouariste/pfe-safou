@@ -18,9 +18,9 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.AiProviderKey;
 import de.uni_passau.fim.se2.domain.entities.OpenAiModel;
 
 // application/ai/Selection.java
-public record Selection(AiProviderKey provider, OpenAiModel openAiModelOrNull) {}
+public record Selection(AiProviderKey provider, OpenAiModel openAiModelOrNull) {
+}

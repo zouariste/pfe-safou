@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, type ApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import type { ClassInfo } from "../types/models";
@@ -33,8 +33,8 @@ export default function ClassesPage() {
             setLoading(true);
             const res = await api.get<ClassInfo[]>("/classes");
             setClasses(res.data);
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("classes.errorLoading"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("classes.errorLoading"));
         } finally {
             setLoading(false);
         }
@@ -54,8 +54,8 @@ export default function ClassesPage() {
             setNewName("");
             setNewDesc("");
             setShowCreate(false);
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("classes.errorCreating"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("classes.errorCreating"));
         } finally {
             setCreating(false);
         }
@@ -67,8 +67,8 @@ export default function ClassesPage() {
         try {
             await api.delete(`/classes/${classId}`);
             setClasses(classes.filter((c) => c.id !== classId));
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("classes.errorDeleting"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("classes.errorDeleting"));
         }
     };
 

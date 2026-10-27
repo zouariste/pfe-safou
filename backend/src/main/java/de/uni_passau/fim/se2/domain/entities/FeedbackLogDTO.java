@@ -18,18 +18,23 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.*;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * Represents a log entry for a student's feedback interaction on a task.
  * <p>
- * Each time a learner clicks the “Feedback” button in the solver interface,
- * a new log entry is created. The entry records the associated task, the
- * correctness of the current solution at that moment, and the timestamp of
- * the interaction.
+ * Each time a learner clicks the “Feedback” button in the solver interface, a new log entry is created. The entry
+ * records the associated task, the correctness of the current solution at that moment, and the timestamp of the
+ * interaction.
  * </p>
  */
 @Getter
@@ -58,14 +63,13 @@ public class FeedbackLogDTO {
     /**
      * Whether the task was solved correctly at the time of this feedback click.
      *
-     * @return {@code true} if the current solution was fully correct,
-     *         {@code false} otherwise
+     * @return {@code true} if the current solution was fully correct, {@code false} otherwise
      */
     private boolean correct;
 
     /**
-     * The user who clicked the feedback button (nullable — NULL if tracking
-     * is disabled for the class or if the user is anonymous).
+     * The user who clicked the feedback button (nullable — NULL if tracking is disabled for the class or if the user is
+     * anonymous).
      */
     private UUID userId;
 

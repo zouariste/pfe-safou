@@ -18,17 +18,17 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.entities.*;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+
 import de.uni_passau.fim.se2.domain.entities.ConceptCurriculumTopicDTO;
 import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
 import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
 import de.uni_passau.fim.se2.domain.interfaces.ConceptCurriculumTopicRepository;
 import de.uni_passau.fim.se2.infrastructure.persistence.mapper.CurriculumTopicRowMapper;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Repository;
-
-import java.util.List;
-import java.util.UUID;
 
 @Repository
 public class PostgreConceptCurriculumTopicDAO implements ConceptCurriculumTopicRepository {
@@ -43,7 +43,8 @@ public class PostgreConceptCurriculumTopicDAO implements ConceptCurriculumTopicR
     public void save(ConceptCurriculumTopicDTO dto) {
         jdbc.update(
             "INSERT INTO concept_curriculum_topic (concept_id, topic_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
-            dto.getConceptId(), dto.getTopicId());
+            dto.getConceptId(), dto.getTopicId()
+        );
     }
 
     @Override
@@ -52,24 +53,26 @@ public class PostgreConceptCurriculumTopicDAO implements ConceptCurriculumTopicR
         // curriculum_topics column only has to be added in one place.
         return jdbc.query(
             "SELECT " + PostgreCurriculumTopicDAO.columns("ct") + """
-             FROM curriculum_topics ct
-             JOIN concept_curriculum_topic cct ON ct.id = cct.topic_id
-             WHERE cct.concept_id = ?
-             ORDER BY ct.sort_order, ct.name
-             """,
+                FROM curriculum_topics ct
+                JOIN concept_curriculum_topic cct ON ct.id = cct.topic_id
+                WHERE cct.concept_id = ?
+                ORDER BY ct.sort_order, ct.name
+                """,
             new CurriculumTopicRowMapper(),
-            concept.getId());
+            concept.getId()
+        );
     }
 
     @Override
     public List<ConceptDTO> findAllByCurriculumTopic(CurriculumTopicDTO topic) {
-        return jdbc.query("""
-            SELECT c.id, c.name, c.description, c.generated
-            FROM concepts c
-            JOIN concept_curriculum_topic cct ON c.id = cct.concept_id
-            WHERE cct.topic_id = ?
-            ORDER BY c.name
-            """,
+        return jdbc.query(
+            """
+                SELECT c.id, c.name, c.description, c.generated
+                FROM concepts c
+                JOIN concept_curriculum_topic cct ON c.id = cct.concept_id
+                WHERE cct.topic_id = ?
+                ORDER BY c.name
+                """,
             (rs, rowNum) -> {
                 ConceptDTO dto = new ConceptDTO();
                 dto.setId(UUID.fromString(rs.getString("id")));
@@ -78,12 +81,15 @@ public class PostgreConceptCurriculumTopicDAO implements ConceptCurriculumTopicR
                 dto.setGenerated(rs.getBoolean("generated"));
                 return dto;
             },
-            topic.getId());
+            topic.getId()
+        );
     }
 
     @Override
     public void delete(ConceptCurriculumTopicDTO dto) {
-        jdbc.update("DELETE FROM concept_curriculum_topic WHERE concept_id = ? AND topic_id = ?",
-            dto.getConceptId(), dto.getTopicId());
+        jdbc.update(
+            "DELETE FROM concept_curriculum_topic WHERE concept_id = ? AND topic_id = ?",
+            dto.getConceptId(), dto.getTopicId()
+        );
     }
 }

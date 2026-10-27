@@ -261,6 +261,7 @@
     "forkToEdit": "Make my own copy",
     "forking": "Copying …",
     "forkFailed": "The copy could not be created.",
+    "notFound": "This task sequence does not exist (any more).",
     "pageTitle": "Sequence Page",
     "devTemplate": "DEV Template",
     "teacherBanner": "Teacher Mode",
@@ -380,6 +381,7 @@
     "loadingTask": "Loading task…",
     "errorLabel": "Error:",
     "apiError": "Error during API request",
+    "notFound": "This task does not exist (any more).",
 
     "copyLinkTitle": "Copies this task link",
     "copied": "Copied!",

@@ -18,28 +18,29 @@
  */
 package de.uni_passau.fim.se2.domain.model;
 
-import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
+
 /**
  * Every combination of visibility, role and ownership, spelled out.
  *
- * <p>An access rule is only as good as the case nobody thought of, so this walks the whole
- * table rather than sampling it: three visibilities against five kinds of viewer, for each
- * question the policy answers. The expected values are written out one by one on purpose — a
- * test that recomputes the rule it is checking proves nothing.
+ * <p>
+ * An access rule is only as good as the case nobody thought of, so this walks the whole table rather than sampling it:
+ * three visibilities against five kinds of viewer, for each question the policy answers. The expected values are
+ * written out one by one on purpose — a test that recomputes the rule it is checking proves nothing.
  */
 class WorksheetAccessPolicyTest {
 
@@ -54,8 +55,10 @@ class WorksheetAccessPolicyTest {
         @DisplayName("the owner sees their worksheet whatever its visibility")
         void ownerAlwaysSees() {
             for (WorksheetVisibility v : WorksheetVisibility.values()) {
-                assertTrue(WorksheetAccessPolicy.canView(v, OWNER, OWNER, UserRole.TEACHER),
-                        "owner denied on " + v);
+                assertTrue(
+                    WorksheetAccessPolicy.canView(v, OWNER, OWNER, UserRole.TEACHER),
+                    "owner denied on " + v
+                );
             }
         }
 
@@ -63,8 +66,10 @@ class WorksheetAccessPolicyTest {
         @DisplayName("an admin sees any worksheet whatever its visibility")
         void adminAlwaysSees() {
             for (WorksheetVisibility v : WorksheetVisibility.values()) {
-                assertTrue(WorksheetAccessPolicy.canView(v, OWNER, OTHER, UserRole.ADMIN),
-                        "admin denied on " + v);
+                assertTrue(
+                    WorksheetAccessPolicy.canView(v, OWNER, OTHER, UserRole.ADMIN),
+                    "admin denied on " + v
+                );
             }
         }
 
@@ -72,38 +77,51 @@ class WorksheetAccessPolicyTest {
         @DisplayName("PRIVATE shuts out everyone else, logged in or not")
         void privateExcludesEveryoneElse() {
             assertAll(
-                    () -> assertFalse(view(WorksheetVisibility.PRIVATE, OTHER, UserRole.TEACHER),
-                            "another teacher"),
-                    () -> assertFalse(view(WorksheetVisibility.PRIVATE, OTHER, UserRole.STUDENT),
-                            "a student"),
-                    () -> assertFalse(view(WorksheetVisibility.PRIVATE, null, null),
-                            "an anonymous link visitor"));
+                () -> assertFalse(
+                    view(WorksheetVisibility.PRIVATE, OTHER, UserRole.TEACHER),
+                    "another teacher"
+                ),
+                () -> assertFalse(
+                    view(WorksheetVisibility.PRIVATE, OTHER, UserRole.STUDENT),
+                    "a student"
+                ),
+                () -> assertFalse(
+                    view(WorksheetVisibility.PRIVATE, null, null),
+                    "an anonymous link visitor"
+                )
+            );
         }
 
         @Test
         @DisplayName("UNLISTED stays open to anyone with the link — the behaviour that existed before")
         void unlistedIsReadableByLink() {
             assertAll(
-                    () -> assertTrue(view(WorksheetVisibility.UNLISTED, OTHER, UserRole.TEACHER)),
-                    () -> assertTrue(view(WorksheetVisibility.UNLISTED, OTHER, UserRole.STUDENT)),
-                    () -> assertTrue(view(WorksheetVisibility.UNLISTED, null, null),
-                            "students open worksheets by link without an account"));
+                () -> assertTrue(view(WorksheetVisibility.UNLISTED, OTHER, UserRole.TEACHER)),
+                () -> assertTrue(view(WorksheetVisibility.UNLISTED, OTHER, UserRole.STUDENT)),
+                () -> assertTrue(
+                    view(WorksheetVisibility.UNLISTED, null, null),
+                    "students open worksheets by link without an account"
+                )
+            );
         }
 
         @Test
         @DisplayName("PUBLIC is readable by everyone too")
         void publicIsReadable() {
             assertAll(
-                    () -> assertTrue(view(WorksheetVisibility.PUBLIC, OTHER, UserRole.TEACHER)),
-                    () -> assertTrue(view(WorksheetVisibility.PUBLIC, OTHER, UserRole.STUDENT)),
-                    () -> assertTrue(view(WorksheetVisibility.PUBLIC, null, null)));
+                () -> assertTrue(view(WorksheetVisibility.PUBLIC, OTHER, UserRole.TEACHER)),
+                () -> assertTrue(view(WorksheetVisibility.PUBLIC, OTHER, UserRole.STUDENT)),
+                () -> assertTrue(view(WorksheetVisibility.PUBLIC, null, null))
+            );
         }
 
         @Test
         @DisplayName("a worksheet with no visibility set behaves as it always did")
         void nullVisibilityFallsBackToUnlisted() {
-            assertTrue(WorksheetAccessPolicy.canView(null, OWNER, OTHER, UserRole.TEACHER),
-                    "rows predating the column must not become unreachable");
+            assertTrue(
+                WorksheetAccessPolicy.canView(null, OWNER, OTHER, UserRole.TEACHER),
+                "rows predating the column must not become unreachable"
+            );
         }
     }
 
@@ -115,8 +133,10 @@ class WorksheetAccessPolicyTest {
         @DisplayName("students may never copy, however visible the worksheet is")
         void studentsNeverCopy() {
             for (WorksheetVisibility v : WorksheetVisibility.values()) {
-                assertFalse(WorksheetAccessPolicy.canCopy(v, OWNER, OTHER, UserRole.STUDENT),
-                        "a student was allowed to copy a " + v + " worksheet");
+                assertFalse(
+                    WorksheetAccessPolicy.canCopy(v, OWNER, OTHER, UserRole.STUDENT),
+                    "a student was allowed to copy a " + v + " worksheet"
+                );
             }
         }
 
@@ -124,8 +144,10 @@ class WorksheetAccessPolicyTest {
         @DisplayName("anonymous visitors may never copy")
         void anonymousNeverCopies() {
             for (WorksheetVisibility v : WorksheetVisibility.values()) {
-                assertFalse(WorksheetAccessPolicy.canCopy(v, OWNER, null, null),
-                        "an anonymous visitor was allowed to copy a " + v + " worksheet");
+                assertFalse(
+                    WorksheetAccessPolicy.canCopy(v, OWNER, null, null),
+                    "an anonymous visitor was allowed to copy a " + v + " worksheet"
+                );
             }
         }
 
@@ -133,20 +155,27 @@ class WorksheetAccessPolicyTest {
         @DisplayName("a teacher may copy what they may read, and nothing else")
         void teacherCopiesWhatTheyCanRead() {
             assertAll(
-                    () -> assertFalse(copy(WorksheetVisibility.PRIVATE, OTHER, UserRole.TEACHER),
-                            "PRIVATE must close the copy endpoint, not just hide the button"),
-                    () -> assertTrue(copy(WorksheetVisibility.UNLISTED, OTHER, UserRole.TEACHER)),
-                    () -> assertTrue(copy(WorksheetVisibility.PUBLIC, OTHER, UserRole.TEACHER)));
+                () -> assertFalse(
+                    copy(WorksheetVisibility.PRIVATE, OTHER, UserRole.TEACHER),
+                    "PRIVATE must close the copy endpoint, not just hide the button"
+                ),
+                () -> assertTrue(copy(WorksheetVisibility.UNLISTED, OTHER, UserRole.TEACHER)),
+                () -> assertTrue(copy(WorksheetVisibility.PUBLIC, OTHER, UserRole.TEACHER))
+            );
         }
 
         @Test
         @DisplayName("an admin may copy anything, a teacher may duplicate their own")
         void adminAndOwnerCopy() {
             assertAll(
-                    () -> assertTrue(copy(WorksheetVisibility.PRIVATE, OTHER, UserRole.ADMIN)),
-                    () -> assertTrue(WorksheetAccessPolicy.canCopy(
-                            WorksheetVisibility.PRIVATE, OWNER, OWNER, UserRole.TEACHER),
-                            "duplicating your own worksheet is harmless and useful"));
+                () -> assertTrue(copy(WorksheetVisibility.PRIVATE, OTHER, UserRole.ADMIN)),
+                () -> assertTrue(
+                    WorksheetAccessPolicy.canCopy(
+                        WorksheetVisibility.PRIVATE, OWNER, OWNER, UserRole.TEACHER
+                    ),
+                    "duplicating your own worksheet is harmless and useful"
+                )
+            );
         }
     }
 
@@ -158,12 +187,17 @@ class WorksheetAccessPolicyTest {
         @DisplayName("only PUBLIC reaches the marketplace")
         void onlyPublicIsListed() {
             assertAll(
-                    () -> assertFalse(WorksheetAccessPolicy.canList(WorksheetVisibility.PRIVATE)),
-                    () -> assertFalse(WorksheetAccessPolicy.canList(WorksheetVisibility.UNLISTED),
-                            "readable by link is not the same as findable"),
-                    () -> assertTrue(WorksheetAccessPolicy.canList(WorksheetVisibility.PUBLIC)),
-                    () -> assertFalse(WorksheetAccessPolicy.canList(null),
-                            "an unset visibility must not leak into the listing"));
+                () -> assertFalse(WorksheetAccessPolicy.canList(WorksheetVisibility.PRIVATE)),
+                () -> assertFalse(
+                    WorksheetAccessPolicy.canList(WorksheetVisibility.UNLISTED),
+                    "readable by link is not the same as findable"
+                ),
+                () -> assertTrue(WorksheetAccessPolicy.canList(WorksheetVisibility.PUBLIC)),
+                () -> assertFalse(
+                    WorksheetAccessPolicy.canList(null),
+                    "an unset visibility must not leak into the listing"
+                )
+            );
         }
     }
 
@@ -175,26 +209,49 @@ class WorksheetAccessPolicyTest {
         @DisplayName("owner and admin may publish; nobody else may")
         void onlyOwnerAndAdmin() {
             assertAll(
-                    () -> assertTrue(WorksheetAccessPolicy.canChangeVisibility(
-                            OWNER, OWNER, UserRole.TEACHER, false), "owner"),
-                    () -> assertTrue(WorksheetAccessPolicy.canChangeVisibility(
-                            OWNER, OTHER, UserRole.ADMIN, false), "admin"),
-                    () -> assertFalse(WorksheetAccessPolicy.canChangeVisibility(
-                            OWNER, OTHER, UserRole.TEACHER, false), "another teacher"),
-                    () -> assertFalse(WorksheetAccessPolicy.canChangeVisibility(
-                            OWNER, OTHER, UserRole.STUDENT, false), "a student"),
-                    () -> assertFalse(WorksheetAccessPolicy.canChangeVisibility(
-                            OWNER, null, null, false), "an anonymous visitor"));
+                () -> assertTrue(
+                    WorksheetAccessPolicy.canChangeVisibility(
+                        OWNER, OWNER, UserRole.TEACHER, false
+                    ), "owner"
+                ),
+                () -> assertTrue(
+                    WorksheetAccessPolicy.canChangeVisibility(
+                        OWNER, OTHER, UserRole.ADMIN, false
+                    ), "admin"
+                ),
+                () -> assertFalse(
+                    WorksheetAccessPolicy.canChangeVisibility(
+                        OWNER, OTHER, UserRole.TEACHER, false
+                    ), "another teacher"
+                ),
+                () -> assertFalse(
+                    WorksheetAccessPolicy.canChangeVisibility(
+                        OWNER, OTHER, UserRole.STUDENT, false
+                    ), "a student"
+                ),
+                () -> assertFalse(
+                    WorksheetAccessPolicy.canChangeVisibility(
+                        OWNER, null, null, false
+                    ), "an anonymous visitor"
+                )
+            );
         }
 
         @Test
         @DisplayName("the Library Inbox cannot be published, not even by its owner or an admin")
         void libraryInboxIsNeverPublishable() {
             assertAll(
-                    () -> assertFalse(WorksheetAccessPolicy.canChangeVisibility(
-                            OWNER, OWNER, UserRole.TEACHER, true), "owner"),
-                    () -> assertFalse(WorksheetAccessPolicy.canChangeVisibility(
-                            OWNER, OTHER, UserRole.ADMIN, true), "admin"));
+                () -> assertFalse(
+                    WorksheetAccessPolicy.canChangeVisibility(
+                        OWNER, OWNER, UserRole.TEACHER, true
+                    ), "owner"
+                ),
+                () -> assertFalse(
+                    WorksheetAccessPolicy.canChangeVisibility(
+                        OWNER, OTHER, UserRole.ADMIN, true
+                    ), "admin"
+                )
+            );
         }
     }
 
@@ -206,28 +263,35 @@ class WorksheetAccessPolicyTest {
         @DisplayName("the default is what every worksheet already was")
         void defaultIsUnlisted() {
             assertAll(
-                    () -> assertEquals(WorksheetVisibility.UNLISTED, WorksheetVisibility.DEFAULT),
-                    () -> assertEquals(WorksheetVisibility.UNLISTED, WorksheetVisibility.parse(null)),
-                    () -> assertEquals(WorksheetVisibility.UNLISTED, WorksheetVisibility.parse("  ")));
+                () -> assertEquals(WorksheetVisibility.UNLISTED, WorksheetVisibility.DEFAULT),
+                () -> assertEquals(WorksheetVisibility.UNLISTED, WorksheetVisibility.parse(null)),
+                () -> assertEquals(WorksheetVisibility.UNLISTED, WorksheetVisibility.parse("  "))
+            );
         }
 
         @Test
         @DisplayName("parsing accepts stored and submitted spellings")
         void parseIsLenientAboutFormatting() {
             assertAll(
-                    () -> assertEquals(WorksheetVisibility.PUBLIC, WorksheetVisibility.parse("public")),
-                    () -> assertEquals(WorksheetVisibility.PUBLIC, WorksheetVisibility.parse(" PUBLIC ")),
-                    () -> assertEquals(WorksheetVisibility.PRIVATE, WorksheetVisibility.parse("Private")));
+                () -> assertEquals(WorksheetVisibility.PUBLIC, WorksheetVisibility.parse("public")),
+                () -> assertEquals(WorksheetVisibility.PUBLIC, WorksheetVisibility.parse(" PUBLIC ")),
+                () -> assertEquals(WorksheetVisibility.PRIVATE, WorksheetVisibility.parse("Private"))
+            );
         }
 
         @Test
         @DisplayName("an unknown value is rejected rather than quietly widened")
         void parseRejectsUnknownValues() {
             assertAll(
-                    () -> assertThrows(IllegalArgumentException.class,
-                            () -> WorksheetVisibility.parse("EVERYONE")),
-                    () -> assertThrows(IllegalArgumentException.class,
-                            () -> WorksheetVisibility.parse("published")));
+                () -> assertThrows(
+                    IllegalArgumentException.class,
+                    () -> WorksheetVisibility.parse("EVERYONE")
+                ),
+                () -> assertThrows(
+                    IllegalArgumentException.class,
+                    () -> WorksheetVisibility.parse("published")
+                )
+            );
         }
 
         @Test
@@ -241,13 +305,17 @@ class WorksheetAccessPolicyTest {
         void behaviourFlagsAgreeWithTheTable() {
             List<String> wrong = new ArrayList<>();
             for (WorksheetVisibility v : WorksheetVisibility.values()) {
-                if (v.listed() != (v == WorksheetVisibility.PUBLIC)) wrong.add(v + ".listed()");
+                if (v.listed() != (v == WorksheetVisibility.PUBLIC)) {
+                    wrong.add(v + ".listed()");
+                }
                 if (v.readableByLink() == (v == WorksheetVisibility.PRIVATE)) {
                     wrong.add(v + ".readableByLink()");
                 }
             }
-            assertEquals(List.of(), wrong,
-                    "a value was added or changed without revisiting the policy table");
+            assertEquals(
+                List.of(), wrong,
+                "a value was added or changed without revisiting the policy table"
+            );
         }
     }
 

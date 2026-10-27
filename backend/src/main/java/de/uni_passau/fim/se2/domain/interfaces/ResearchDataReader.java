@@ -22,35 +22,71 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Read-only access to research-relevant tables.
- * Each method returns a list of column-name → value maps.
- * Implementations MUST exclude PII columns from the users table.
+ * Read-only access to research-relevant tables. Each method returns a list of column-name → value maps. Implementations
+ * MUST exclude PII columns from the users table.
  */
 public interface ResearchDataReader {
-    /** users: only user_id, role, is_verified, created_at — NO email/name/hash. */
+
+    /**
+     * users: only user_id, role, is_verified, created_at — NO email/name/hash.
+     *
+     * @return one row per user
+     */
     List<Map<String, Object>> readUsersPseudonymized();
 
     List<Map<String, Object>> readLearningEvents();
+
     List<Map<String, Object>> readFeedbackLogs();
+
     List<Map<String, Object>> readHintUsage();
-    /** The students' saved block arrangements — UI state, but the only record of what they built. */
+
+    /**
+     * The students' saved block arrangements — UI state, but the only record of what they built.
+     *
+     * @return one row per stored arrangement
+     */
     List<Map<String, Object>> readTaskSubmissions();
+
     List<Map<String, Object>> readTaskChangeAnalyses();
+
     List<Map<String, Object>> readProblemStatementRatings();
+
     List<Map<String, Object>> readTasks();
+
     List<Map<String, Object>> readTieredTaskSequences();
-    /** worksheets_sequence junction table (worksheet_id, sequence_id, last_used_at). */
+
+    /**
+     * worksheets_sequence junction table (worksheet_id, sequence_id, last_used_at).
+     *
+     * @return one row per worksheet-sequence link
+     */
     List<Map<String, Object>> readWorksheetsSequence();
+
     List<Map<String, Object>> readConcepts();
+
     List<Map<String, Object>> readSequenceConceptJunction();
+
     List<Map<String, Object>> readWorksheets();
+
     List<Map<String, Object>> readClasses();
+
     List<Map<String, Object>> readClassStudents();
-    /** Roster of one class, for the per-class export bundle. */
+
+    /**
+     * Roster of one class, for the per-class export bundle.
+     *
+     * @param classId the class
+     * @return one row per student in the class
+     */
     List<Map<String, Object>> readClassStudents(java.util.UUID classId);
+
     List<Map<String, Object>> readClassWorksheets();
+
     List<Map<String, Object>> readSequenceTags();
+
     List<Map<String, Object>> readCurriculumTopics();
+
     List<Map<String, Object>> readCurriculumCodeExamples();
+
     List<Map<String, Object>> readConceptCurriculumTopicJunction();
 }

@@ -18,10 +18,11 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.config;
 
-import org.springframework.context.annotation.*;
-import org.springframework.jdbc.core.*;
+import javax.sql.DataSource;
 
-import javax.sql.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @Configuration
 public class JdbcConfig {

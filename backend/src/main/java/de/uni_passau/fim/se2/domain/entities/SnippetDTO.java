@@ -18,12 +18,15 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.*;
+import java.util.List;
 
-import java.util.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
-@Data @AllArgsConstructor
+@Data
+@AllArgsConstructor
 public class SnippetDTO {
+
     private String name;
     private String language;
     private String code;

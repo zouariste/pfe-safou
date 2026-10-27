@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api } from "../lib/api";
+import { api, type ApiError } from "../lib/api";
 import { downloadFile, downloadTimestamp } from "../lib/download";
 import { useAuth } from "../context/AuthContext";
 import { homePathFor } from "../lib/homePath.ts";
@@ -68,7 +68,8 @@ export default function AdminDatabasePage() {
 
             // Refresh audit log to show the new entry
             loadAudit();
-        } catch (e: any) {
+        } catch (caught) {
+            const e = caught as ApiError;
             if (e.response?.status === 503) {
                 setError(t("adminDb.backupBusy"));
             } else {

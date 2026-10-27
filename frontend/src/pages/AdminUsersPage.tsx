@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { api } from "../lib/api";
+import { api, type ApiError } from "../lib/api";
 
 interface AdminUser {
     userId: string;
@@ -59,8 +59,8 @@ export default function AdminUsersPage() {
             setUsers(res.data.content);
             setTotalPages(res.data.totalPages);
             setTotalElements(res.data.totalElements);
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("admin.errorLoading"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("admin.errorLoading"));
         } finally {
             setLoading(false);
         }
@@ -119,8 +119,8 @@ export default function AdminUsersPage() {
             setSuccessMsg(t("admin.userUpdated"));
             setTimeout(() => setSuccessMsg(""), 3000);
             loadUsers();
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("admin.errorSaving"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("admin.errorSaving"));
         } finally {
             setEditSaving(false);
         }
@@ -135,8 +135,8 @@ export default function AdminUsersPage() {
             setSuccessMsg(t("admin.userDeleted"));
             setTimeout(() => setSuccessMsg(""), 3000);
             loadUsers();
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("admin.errorDeleting"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("admin.errorDeleting"));
         } finally {
             setDeleting(false);
         }
@@ -148,8 +148,8 @@ export default function AdminUsersPage() {
             setSuccessMsg(t("admin.roleChanged", { name: `${u.firstName} ${u.lastName}` }));
             setTimeout(() => setSuccessMsg(""), 3000);
             loadUsers();
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("admin.errorChangingRole"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("admin.errorChangingRole"));
         }
     };
 
@@ -158,8 +158,8 @@ export default function AdminUsersPage() {
             await api.post(`/admin/users/${u.userId}/reset-password`);
             setSuccessMsg(t("admin.resetSent", { email: u.email }));
             setTimeout(() => setSuccessMsg(""), 3000);
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("admin.errorSending"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("admin.errorSending"));
         }
     };
 

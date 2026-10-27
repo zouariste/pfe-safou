@@ -18,31 +18,31 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
-
 import java.util.Optional;
 import java.util.UUID;
+
+import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
 
 /**
  * The last solved arrangement of a task, per student.
  *
- * There is deliberately no delete: redoing a task resets what the student sees
- * but keeps the stored solution, so abandoning a redo halfway leaves their
- * completed work intact. Solving again replaces it.
+ * There is deliberately no delete: redoing a task resets what the student sees but keeps the stored solution, so
+ * abandoning a redo halfway leaves their completed work intact. Solving again replaces it.
  */
 public interface TaskSubmissionRepository {
 
     /**
-     * Stores the student's solved arrangement, replacing any earlier one for the
-     * same student and task.
+     * Stores the student's solved arrangement, replacing any earlier one for the same student and task.
+     *
+     * @param submission the arrangement to store
      */
     void save(TaskSubmissionDTO submission);
 
     Optional<TaskSubmissionDTO> find(UUID userId, UUID taskId);
 
     /**
-     * Removes a student's stored arrangement for a task, so the next visit deals a fresh
-     * puzzle. A no-op when nothing is stored.
+     * Removes a student's stored arrangement for a task, so the next visit deals a fresh puzzle. A no-op when nothing
+     * is stored.
      *
      * @param userId the student
      * @param taskId the task

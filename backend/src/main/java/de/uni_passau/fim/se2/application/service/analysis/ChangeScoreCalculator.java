@@ -18,22 +18,21 @@
  */
 package de.uni_passau.fim.se2.application.service.analysis;
 
+import java.util.List;
+import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Set;
-
 /**
- * AP12 — Change-Analysis-Engine: Composite score computation and categorization.
- * Combines text, code, and AST-level metrics into a single overall score
- * and maps it to a human-readable change category.
+ * AP12 — Change-Analysis-Engine: Composite score computation and categorization. Combines text, code, and AST-level
+ * metrics into a single overall score and maps it to a human-readable change category.
  */
 @Service
 public class ChangeScoreCalculator {
 
-    private static final Logger logger = LoggerFactory.getLogger(ChangeScoreCalculator.class);
+    private static final Logger log = LoggerFactory.getLogger(ChangeScoreCalculator.class);
 
     /** Weight for text-level Levenshtein ratio. */
     private static final double W_TEXT = 0.25;
@@ -46,16 +45,16 @@ public class ChangeScoreCalculator {
 
     // ── Categories ──
 
-    public static final String NONE     = "NONE";
+    public static final String NONE = "NONE";
     public static final String COSMETIC = "COSMETIC";
-    public static final String MINOR    = "MINOR";
-    public static final String MAJOR    = "MAJOR";
-    public static final String REWRITE  = "REWRITE";
+    public static final String MINOR = "MINOR";
+    public static final String MAJOR = "MAJOR";
+    public static final String REWRITE = "REWRITE";
 
     /** Change types that indicate purely cosmetic edits (whitespace, comments). */
     private static final Set<String> COSMETIC_CHANGE_TYPES = Set.of(
-            "MODIFY_CONTENT", "ADD_LITERALS", "REMOVE_LITERALS",
-            "ADD_COMMENTS", "REMOVE_COMMENTS"
+        "MODIFY_CONTENT", "ADD_LITERALS", "REMOVE_LITERALS",
+        "ADD_COMMENTS", "REMOVE_COMMENTS"
     );
 
     // ── Public API ──
@@ -63,8 +62,8 @@ public class ChangeScoreCalculator {
     /**
      * Computes a weighted overall change score from three component metrics.
      *
-     * @param textLevenshtein   normalized Levenshtein ratio of the problem statement (0..1)
-     * @param codeLevenshtein   normalized Levenshtein ratio of the code (0..1)
+     * @param textLevenshtein    normalized Levenshtein ratio of the problem statement (0..1)
+     * @param codeLevenshtein    normalized Levenshtein ratio of the code (0..1)
      * @param astStructuralScore AST structural change score (0..1)
      * @return composite score in [0.0, 1.0]
      */
@@ -75,9 +74,9 @@ public class ChangeScoreCalculator {
     /**
      * Maps an overall score, code-level metric, and AST change types to a category.
      *
-     * @param overallScore     composite score (0..1)
-     * @param codeLevenshtein  code-level Levenshtein ratio (0..1)
-     * @param astChangeTypes   list of AST change type labels (e.g., "ADD_METHODS")
+     * @param overallScore    composite score (0..1)
+     * @param codeLevenshtein code-level Levenshtein ratio (0..1)
+     * @param astChangeTypes  list of AST change type labels (e.g., "ADD_METHODS")
      * @return one of NONE, COSMETIC, MINOR, MAJOR, REWRITE
      */
     public String categorize(double overallScore, double codeLevenshtein, List<String> astChangeTypes) {

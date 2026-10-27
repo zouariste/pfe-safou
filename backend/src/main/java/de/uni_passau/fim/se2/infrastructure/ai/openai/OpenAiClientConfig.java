@@ -18,19 +18,19 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai.openai;
 
-import de.uni_passau.fim.se2.application.service.*;
+import java.net.http.HttpClient;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
 import de.uni_passau.fim.se2.application.service.CodeSanitizerService;
 import de.uni_passau.fim.se2.domain.model.ConceptCatalog;
 import de.uni_passau.fim.se2.infrastructure.ai.AiProps;
 import de.uni_passau.fim.se2.infrastructure.ai.AiTransport;
 import de.uni_passau.fim.se2.infrastructure.ai.HttpClientTransport;
 import de.uni_passau.fim.se2.infrastructure.ai.PromptBuilder;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-import java.net.http.HttpClient;
 
 @Configuration
 @EnableConfigurationProperties(AiProps.class)
@@ -48,12 +48,12 @@ public class OpenAiClientConfig {
 
     @Bean
     public OpenAiClient chatGPTClient(
-            @Value("${openai.api.key}") String apiKey,
-            AiTransport transport,
-            PromptBuilder promptBuilder,
-            AiProps aiProps,
-            ConceptCatalog conceptCatalog,
-            CodeSanitizerService sanitizer
+        @Value("${openai.api.key}") String apiKey,
+        AiTransport transport,
+        PromptBuilder promptBuilder,
+        AiProps aiProps,
+        ConceptCatalog conceptCatalog,
+        CodeSanitizerService sanitizer
     ) {
         return new OpenAiClient(apiKey, transport, promptBuilder, aiProps, conceptCatalog, sanitizer);
     }

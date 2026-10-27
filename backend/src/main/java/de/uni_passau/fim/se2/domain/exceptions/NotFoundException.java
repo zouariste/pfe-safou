@@ -16,32 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with CodeOwl. If not, see <http://www.gnu.org/licenses/>.
  */
-package de.uni_passau.fim.se2;
+package de.uni_passau.fim.se2.domain.exceptions;
 
-import java.util.List;
+/** The requested entity does not exist. {@code GlobalExceptionHandler} answers it with 404. */
+public class NotFoundException extends RuntimeException {
 
-/**
- * Represents a set of problem statements.
- * <p>
- * This class encapsulates a list of problem statements that can be accessed via a getter method.
- * </p>
- *
- * @author Luca Cisternino
- * @version 1.0
- */
-public class ProblemSet {
-    
-    /**
-     * A list containing problem statements.
-     */
-    private List<String> problem_statements;
-
-    /**
-     * Retrieves the list of problem statements.
-     *
-     * @return a list of problem statements
-     */
-    public List<String> getProblemStatements() {
-        return problem_statements;
+    public NotFoundException(String message) {
+        super(message);
     }
 }

@@ -21,14 +21,15 @@ package de.uni_passau.fim.se2.domain.exceptions;
 /**
  * The submitted code snippet is in a language CodeOwl cannot build a task sequence for.
  *
- * <p>A {@link GenerationException}, but not a server fault: the request was well formed and the
- * model answered correctly, the input simply is not Python or Java. That distinction is the
- * reason this type exists -- the generic generation failure maps to 502, which tells a teacher
- * to try again, and trying again with the same snippet fails identically every time.
+ * <p>
+ * A {@link GenerationException}, but not a server fault: the request was well formed and the model answered correctly,
+ * the input simply is not Python or Java. That distinction is the reason this type exists -- the generic generation
+ * failure maps to 502, which tells a teacher to try again, and trying again with the same snippet fails identically
+ * every time.
  *
- * <p>{@link #CODE} travels to the browser in the error response so the frontend can show a
- * translated message. The exception's own message is the server-side record and the fallback
- * for any client that does not know the code.
+ * <p>
+ * {@link #CODE} travels to the browser in the error response so the frontend can show a translated message. The
+ * exception's own message is the server-side record and the fallback for any client that does not know the code.
  */
 public class UnsupportedLanguageException extends GenerationException {
 

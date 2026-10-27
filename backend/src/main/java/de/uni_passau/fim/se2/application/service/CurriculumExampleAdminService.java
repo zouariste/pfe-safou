@@ -18,20 +18,21 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.interfaces.CurriculumCodeExampleRepository;
 import de.uni_passau.fim.se2.domain.interfaces.CurriculumTopicRepository;
-import org.springframework.stereotype.Service;
-
-import java.util.Set;
-import java.util.UUID;
 
 /**
- * AP32 admin use case: create / update / delete curated curriculum code examples.
- * Validation lives here (not in the controller or DAO). Not-found conditions throw
- * {@link IllegalArgumentException} (mapped to 404 by the controller); invalid input
- * throws {@link DomainValidationException} (mapped to 400 by the global handler).
+ * AP32 admin use case: create / update / delete curated curriculum code examples. Validation lives here (not in the
+ * controller or DAO). Not-found conditions throw {@link IllegalArgumentException} (mapped to 404 by the controller);
+ * invalid input throws {@link DomainValidationException} (mapped to 400 by the global handler).
  */
 @Service
 public class CurriculumExampleAdminService {
@@ -41,13 +42,20 @@ public class CurriculumExampleAdminService {
     private final CurriculumCodeExampleRepository exampleRepo;
     private final CurriculumTopicRepository topicRepo;
 
-    public CurriculumExampleAdminService(CurriculumCodeExampleRepository exampleRepo,
-                                         CurriculumTopicRepository topicRepo) {
+    public CurriculumExampleAdminService(
+        CurriculumCodeExampleRepository exampleRepo,
+        CurriculumTopicRepository topicRepo
+    ) {
         this.exampleRepo = exampleRepo;
         this.topicRepo = topicRepo;
     }
 
-    /** Creates a new example under an existing topic. */
+    /**
+     * Creates a new example under an existing topic.
+     *
+     * @param dto the new example, including its topic
+     * @return the created example
+     */
     public CurriculumCodeExampleDTO create(CurriculumCodeExampleDTO dto) {
         if (dto.getTopicId() == null) {
             throw new DomainValidationException("topicId is required.");
@@ -60,7 +68,13 @@ public class CurriculumExampleAdminService {
         return exampleRepo.findById(id);
     }
 
-    /** Updates an existing example. The topic assignment is immutable. */
+    /**
+     * Updates an existing example. The topic assignment is immutable.
+     *
+     * @param id  the example to update
+     * @param dto the example's new fields
+     * @return the updated example
+     */
     public CurriculumCodeExampleDTO update(UUID id, CurriculumCodeExampleDTO dto) {
         CurriculumCodeExampleDTO existing = exampleRepo.findById(id);
         if (existing == null) {
@@ -73,7 +87,11 @@ public class CurriculumExampleAdminService {
         return exampleRepo.findById(id);
     }
 
-    /** Deletes an example by id. */
+    /**
+     * Deletes an example by id.
+     *
+     * @param id the example to delete
+     */
     public void delete(UUID id) {
         CurriculumCodeExampleDTO existing = exampleRepo.findById(id);
         if (existing == null) {
@@ -91,7 +109,7 @@ public class CurriculumExampleAdminService {
         dto.setLanguage(dto.getLanguage().trim());
         dto.setTitle(dto.getTitle().trim());
 
-        String difficulty = dto.getDifficulty() == null ? "" : dto.getDifficulty().trim().toLowerCase();
+        String difficulty = dto.getDifficulty() == null ? "" : dto.getDifficulty().trim().toLowerCase(Locale.ROOT);
         if (difficulty.isEmpty()) {
             difficulty = "medium";
         }

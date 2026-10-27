@@ -18,26 +18,26 @@
  */
 package de.uni_passau.fim.se2.domain.model;
 
-import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
-
 import java.util.UUID;
+
+import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
 
 /**
  * Who may do what with a worksheet.
  *
- * <p>These rules were previously spread across the controller, the service and the React page,
- * each expressing part of the answer and none of them the whole one. Introducing
- * {@link WorksheetVisibility} would have added a fourth place to keep in step, so they are
- * gathered here instead: pure functions over the few facts that decide the outcome, with no
+ * <p>
+ * These rules were previously spread across the controller, the service and the React page, each expressing part of the
+ * answer and none of them the whole one. Introducing {@link WorksheetVisibility} would have added a fourth place to
+ * keep in step, so they are gathered here instead: pure functions over the few facts that decide the outcome, with no
  * Spring, no database and no security context.
  *
- * <p>That makes the rules enumerable. {@code WorksheetAccessPolicyTest} walks every
- * combination of visibility, role and ownership, which is the only way to be sure a table this
- * shape has no hole in it.
+ * <p>
+ * That makes the rules enumerable. {@code WorksheetAccessPolicyTest} walks every combination of visibility, role and
+ * ownership, which is the only way to be sure a table this shape has no hole in it.
  *
- * <p>Callers pass {@code null} for {@code viewerId} and {@code viewerRole} to mean "not logged
- * in". Anonymous access is a real case here: students open worksheets by link without an
- * account.
+ * <p>
+ * Callers pass {@code null} for {@code viewerId} and {@code viewerRole} to mean "not logged in". Anonymous access is a
+ * real case here: students open worksheets by link without an account.
  */
 public final class WorksheetAccessPolicy {
 
@@ -47,11 +47,20 @@ public final class WorksheetAccessPolicy {
     /**
      * Whether someone may open the worksheet.
      *
-     * <p>Owners and admins always may. Beyond that a link is enough, which is how sharing has
-     * always worked — {@link WorksheetVisibility#PRIVATE} is the new ability to say no.
+     * <p>
+     * Owners and admins always may. Beyond that a link is enough, which is how sharing has always worked —
+     * {@link WorksheetVisibility#PRIVATE} is the new ability to say no.
+     *
+     * @param visibility the worksheet's visibility
+     * @param ownerId    the worksheet's owner
+     * @param viewerId   the viewer, or null if anonymous
+     * @param viewerRole the viewer's role, or null if anonymous
+     * @return true if the viewer may open the worksheet
      */
-    public static boolean canView(WorksheetVisibility visibility, UUID ownerId,
-                                  UUID viewerId, UserRole viewerRole) {
+    public static boolean canView(
+        WorksheetVisibility visibility, UUID ownerId,
+        UUID viewerId, UserRole viewerRole
+    ) {
         if (isOwnerOrAdmin(ownerId, viewerId, viewerRole)) {
             return true;
         }
@@ -61,16 +70,25 @@ public final class WorksheetAccessPolicy {
     /**
      * Whether someone may copy the worksheet into their own namespace.
      *
-     * <p>Teachers and admins only: a copy creates worksheets and sequences owned by the copier,
-     * which is not something a student account should be able to do. Beyond that, copying
-     * requires being able to view — a worksheet you may not open is not one you may duplicate.
+     * <p>
+     * Teachers and admins only: a copy creates worksheets and sequences owned by the copier, which is not something a
+     * student account should be able to do. Beyond that, copying requires being able to view — a worksheet you may not
+     * open is not one you may duplicate.
      *
-     * <p>Copying your own worksheet is allowed and simply duplicates it. The button is hidden
-     * for that case, but the rule does not forbid it; there is nothing to protect against, and
-     * an endpoint that rejected it would be surprising.
+     * <p>
+     * Copying your own worksheet is allowed and simply duplicates it. The button is hidden for that case, but the rule
+     * does not forbid it; there is nothing to protect against, and an endpoint that rejected it would be surprising.
+     *
+     * @param visibility the worksheet's visibility
+     * @param ownerId    the worksheet's owner
+     * @param viewerId   the viewer, or null if anonymous
+     * @param viewerRole the viewer's role, or null if anonymous
+     * @return true if the viewer may copy the worksheet
      */
-    public static boolean canCopy(WorksheetVisibility visibility, UUID ownerId,
-                                  UUID viewerId, UserRole viewerRole) {
+    public static boolean canCopy(
+        WorksheetVisibility visibility, UUID ownerId,
+        UUID viewerId, UserRole viewerRole
+    ) {
         if (viewerRole != UserRole.TEACHER && viewerRole != UserRole.ADMIN) {
             return false;
         }
@@ -80,9 +98,13 @@ public final class WorksheetAccessPolicy {
     /**
      * Whether the marketplace lists the worksheet.
      *
-     * <p>Only visibility decides this, deliberately. The listing is the same for everyone who
-     * can see the marketplace at all, so it can be a plain {@code WHERE} clause on the search
-     * query rather than a per-row check the database cannot express.
+     * <p>
+     * Only visibility decides this, deliberately. The listing is the same for everyone who can see the marketplace at
+     * all, so it can be a plain {@code WHERE} clause on the search query rather than a per-row check the database
+     * cannot express.
+     *
+     * @param visibility the worksheet's visibility
+     * @return true if the marketplace lists the worksheet
      */
     public static boolean canList(WorksheetVisibility visibility) {
         return visibility(visibility).listed();
@@ -91,17 +113,22 @@ public final class WorksheetAccessPolicy {
     /**
      * Whether someone may change the worksheet's visibility.
      *
-     * <p>Owners and admins, except for the Library Inbox. That worksheet is created by the
-     * system as a landing spot for one-click copies from the sequence library, so it is a
-     * scratch pile rather than teaching material — publishing it would put a teacher's
-     * unsorted clippings in front of their colleagues.
+     * <p>
+     * Owners and admins, except for the Library Inbox. That worksheet is created by the system as a landing spot for
+     * one-click copies from the sequence library, so it is a scratch pile rather than teaching material — publishing it
+     * would put a teacher's unsorted clippings in front of their colleagues.
      *
-     * @param isLibraryInbox whether this is the auto-created inbox; the caller decides, because
-     *                       recognising it means knowing about a sentinel in the description
-     *                       and that is not a domain rule
+     * @param isLibraryInbox whether this is the auto-created inbox; the caller decides, because recognising it means
+     *                       knowing about a sentinel in the description and that is not a domain rule
+     * @param ownerId        the worksheet's owner
+     * @param actorId        the user making the change, or null if anonymous
+     * @param actorRole      that user's role, or null if anonymous
+     * @return true if the user may change the visibility
      */
-    public static boolean canChangeVisibility(UUID ownerId, UUID actorId, UserRole actorRole,
-                                              boolean isLibraryInbox) {
+    public static boolean canChangeVisibility(
+        UUID ownerId, UUID actorId, UserRole actorRole,
+        boolean isLibraryInbox
+    ) {
         if (isLibraryInbox) {
             return false;
         }
@@ -111,10 +138,12 @@ public final class WorksheetAccessPolicy {
     /**
      * What a copy starts out as.
      *
-     * <p>Always {@link WorksheetVisibility#PRIVATE}, whatever the source was. Copying is how you
-     * take someone else's material to adapt it, and a half-adapted worksheet appearing in the
-     * marketplace under your name is not what anyone meant by pressing the button. Publishing
-     * it is then a separate, deliberate act.
+     * <p>
+     * Always {@link WorksheetVisibility#PRIVATE}, whatever the source was. Copying is how you take someone else's
+     * material to adapt it, and a half-adapted worksheet appearing in the marketplace under your name is not what
+     * anyone meant by pressing the button. Publishing it is then a separate, deliberate act.
+     *
+     * @return {@link WorksheetVisibility#PRIVATE}
      */
     public static WorksheetVisibility visibilityForCopy() {
         return WorksheetVisibility.PRIVATE;

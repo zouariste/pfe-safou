@@ -23,6 +23,7 @@ import lombok.Data;
 
 @Data
 public class CreateClassRequest {
+
     @NotBlank(message = "Klassenname ist erforderlich.")
     private String name;
     private String description;

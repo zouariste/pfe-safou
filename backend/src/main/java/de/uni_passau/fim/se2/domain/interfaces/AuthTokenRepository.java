@@ -18,15 +18,26 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import de.uni_passau.fim.se2.domain.entities.AuthTokenDTO;
 import java.util.Optional;
 import java.util.UUID;
 
+import de.uni_passau.fim.se2.domain.entities.AuthTokenDTO;
+
 public interface AuthTokenRepository {
+
     AuthTokenDTO save(AuthTokenDTO token);
+
     Optional<AuthTokenDTO> findByTokenValue(String tokenValue);
-    /** Atomically marks token as used. Returns true if the update succeeded (token was not already used). */
+
+    /**
+     * Atomically marks token as used. Returns true if the update succeeded (token was not already used).
+     *
+     * @param tokenId the token to mark
+     * @return true if the token was unused and is now marked; false if it was already used
+     */
     boolean markUsed(UUID tokenId);
+
     void deleteExpiredTokens();
+
     void deleteByUserIdAndType(UUID userId, AuthTokenDTO.TokenType tokenType);
 }

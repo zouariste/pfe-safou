@@ -32,7 +32,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class RuffAnalyzer {
 
-    private static final Logger logger = LoggerFactory.getLogger(RuffAnalyzer.class);
+    private static final Logger log = LoggerFactory.getLogger(RuffAnalyzer.class);
     private final SarifParser sarifParser;
 
     public RuffAnalyzer(SarifParser sarifParser) {
@@ -40,8 +40,11 @@ public class RuffAnalyzer {
     }
 
     /**
-     * Runs ruff check on the given Python code and returns findings.
-     * Creates a temporary file, runs ruff, parses SARIF output.
+     * Runs ruff check on the given Python code and returns findings. Creates a temporary file, runs ruff, parses SARIF
+     * output.
+     *
+     * @param pythonCode the code to check
+     * @return Ruff's findings; empty if Ruff could not be run
      */
     public List<AnalysisFinding> analyze(String pythonCode) {
         Path tempDir = null;
@@ -68,29 +71,43 @@ public class RuffAnalyzer {
 
             if (!finished) {
                 process.destroyForcibly();
-                logger.warn("Ruff process timed out");
+                log.warn("Ruff process timed out");
                 return List.of();
             }
 
             // Ruff returns exit code 1 when findings exist - that's expected
-            if (output.isBlank()) return List.of();
+            if (output.isBlank()) {
+                return List.of();
+            }
 
             return sarifParser.parse(output, "ruff");
 
-        } catch (Exception e) {
-            logger.error("Ruff analysis failed", e);
+        }
+        catch (IOException | InterruptedException | RuntimeException e) {
+            log.error("Ruff analysis failed", e);
             return List.of();
-        } finally {
+        }
+        finally {
             cleanupTempDir(tempDir);
         }
     }
 
     private void cleanupTempDir(Path dir) {
-        if (dir == null) return;
+        if (dir == null) {
+            return;
+        }
         try {
             Files.walk(dir).sorted(Comparator.reverseOrder()).forEach(p -> {
-                try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                try {
+                    Files.deleteIfExists(p);
+                }
+                catch (IOException ignored) {
+                    // Best effort: a leftover temp file is harmless.
+                }
             });
-        } catch (IOException ignored) {}
+        }
+        catch (IOException ignored) {
+            // Best effort: a leftover temp directory is harmless.
+        }
     }
 }

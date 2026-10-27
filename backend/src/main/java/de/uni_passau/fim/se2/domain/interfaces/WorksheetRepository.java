@@ -18,101 +18,95 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.exceptions.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
-import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-
-import java.util.*;
+import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
 
 /**
- * Repository interface for managing worksheet persistence.
- * Defines methods for creating, updating, deleting, and loading worksheet data,
- * ensuring consistent access to worksheet entities and their associated metadata.
+ * Repository interface for managing worksheet persistence. Defines methods for creating, updating, deleting, and
+ * loading worksheet data, ensuring consistent access to worksheet entities and their associated metadata.
  */
 public interface WorksheetRepository {
 
     /**
-     * Persists a new worksheet entity into the repository.
-     * This method stores the provided {@link WorksheetDTO} object,
+     * Persists a new worksheet entity into the repository. This method stores the provided {@link WorksheetDTO} object,
      * including its name and description, for later retrieval.
      *
-     * @param worksheet the {@link WorksheetDTO} object representing the worksheet to be created.
-     *                  It should contain all required information except for the generated identifier.
+     * @param worksheet the {@link WorksheetDTO} object representing the worksheet to be created. It should contain all
+     *                  required information except for the generated identifier.
      */
     void createWorksheet(WorksheetDTO worksheet);
 
     /**
-     * Updates the details of an existing worksheet in the repository.
-     * The target worksheet is identified by its unique identifier within the provided DTO.
+     * Updates the details of an existing worksheet in the repository. The target worksheet is identified by its unique
+     * identifier within the provided DTO.
      *
-     * @param worksheet the {@link WorksheetDTO} object containing updated worksheet details.
-     *                  The identifier must refer to an existing worksheet in the repository.
+     * @param worksheet the {@link WorksheetDTO} object containing updated worksheet details. The identifier must refer
+     *                  to an existing worksheet in the repository.
      */
     void updateWorksheet(WorksheetDTO worksheet);
 
     /**
-     * Deletes the specified worksheet from the repository.
-     * The worksheet to be removed is identified by the unique identifier within the given DTO.
+     * Deletes the specified worksheet from the repository. The worksheet to be removed is identified by the unique
+     * identifier within the given DTO.
      *
-     * @param worksheet the {@link WorksheetDTO} object representing the worksheet to delete,
-     *                  including its unique identifier.
+     * @param worksheet the {@link WorksheetDTO} object representing the worksheet to delete, including its unique
+     *                  identifier.
      */
     void deleteWorksheet(WorksheetDTO worksheet);
 
     /**
-     * Loads the details of a worksheet based on its unique identifier
-     * and populates the provided {@link WorksheetDTO} instance with the retrieved data.
+     * Loads the details of a worksheet based on its unique identifier and populates the provided {@link WorksheetDTO}
+     * instance with the retrieved data.
      *
-     * @param worksheet the {@link WorksheetDTO} instance to populate with data
-     *                  corresponding to its unique identifier.
+     * @param worksheet the {@link WorksheetDTO} instance to populate with data corresponding to its unique identifier.
      */
     void getWorksheetById(WorksheetDTO worksheet);
 
     /**
      * A worksheet, if there is one with that id.
      *
-     * <p>The non-throwing counterpart to {@link #getWorksheetById(WorksheetDTO)}, which raises
-     * a validation error for an id that does not exist. That distinction leaks: an endpoint
-     * built on it answers 400 with "not found" for an unknown worksheet and 404 for one the
-     * caller may not see, which tells an unauthorised caller exactly which ids are real. With
-     * an empty result instead, both cases can answer the same way.
+     * <p>
+     * The non-throwing counterpart to {@link #getWorksheetById(WorksheetDTO)}, which raises a validation error for an
+     * id that does not exist. That distinction leaks: an endpoint built on it answers 400 with "not found" for an
+     * unknown worksheet and 404 for one the caller may not see, which tells an unauthorised caller exactly which ids
+     * are real. With an empty result instead, both cases can answer the same way.
      *
      * @param worksheetId the worksheet to look for; {@code null} yields an empty result
      * @return the worksheet with its sequence references, or empty
      */
     Optional<WorksheetDTO> findById(UUID worksheetId);
 
-
     /**
      * Associates a single {@link TieredTaskSequenceDTO} with the specified {@link WorksheetDTO}.
      * <p>
-     * This operation creates a new entry in the {@code worksheets_sequence} join table,
-     * effectively linking the given worksheet and sequence.
-     * If the association already exists, implementations should ensure idempotency
-     * (i.e., not duplicate the relationship).
+     * This operation creates a new entry in the {@code worksheets_sequence} join table, effectively linking the given
+     * worksheet and sequence. If the association already exists, implementations should ensure idempotency (i.e., not
+     * duplicate the relationship).
      *
      * @param worksheet the worksheet to which the sequence should be added; must not be {@code null}
      * @param sequence  the sequence to associate with the given worksheet; must not be {@code null}
-     * @throws DomainValidationException if either the worksheet or sequence does not exist,
-     *                                   or if validation of identifiers fails
+     * @throws DomainValidationException if either the worksheet or sequence does not exist, or if validation of
+     *                                   identifiers fails
      */
     void addSequenceToWorksheet(WorksheetDTO worksheet, TieredTaskSequenceDTO sequence);
 
     /**
      * Associates multiple {@link TieredTaskSequenceDTO} objects with the specified {@link WorksheetDTO}.
      * <p>
-     * This method performs a batch operation to add multiple sequence references to the worksheet
-     * in the {@code worksheets_sequence} join table.
-     * Implementations should aim for transactional integrity — all associations are added
-     * successfully or none at all.
+     * This method performs a batch operation to add multiple sequence references to the worksheet in the
+     * {@code worksheets_sequence} join table. Implementations should aim for transactional integrity — all associations
+     * are added successfully or none at all.
      *
      * @param worksheet the worksheet to which the sequences should be added; must not be {@code null}
      * @param sequences a list of sequences to associate with the given worksheet; must not be {@code null} or empty
-     * @throws DomainValidationException if the worksheet does not exist, any sequence is invalid,
-     *                                   or a data integrity violation occurs
+     * @throws DomainValidationException if the worksheet does not exist, any sequence is invalid, or a data integrity
+     *                                   violation occurs
      */
     void addSequencesToWorksheet(WorksheetDTO worksheet, List<TieredTaskSequenceDTO> sequences);
 
@@ -122,47 +116,48 @@ public interface WorksheetRepository {
      * Rewrites the display order of the sequences on a worksheet.
      *
      * @param worksheetId        the worksheet whose sequences are being reordered
-     * @param orderedSequenceIds every sequence currently on the worksheet, in the order they
-     *                           should appear — must be exactly the worksheet's current set,
-     *                           neither more nor fewer
-     * @throws DomainValidationException if the id is null, the list is null/empty, or the id set
-     *                                   does not exactly match the worksheet's current sequences
+     * @param orderedSequenceIds every sequence currently on the worksheet, in the order they should appear — must be
+     *                           exactly the worksheet's current set, neither more nor fewer
+     * @throws DomainValidationException if the id is null, the list is null/empty, or the id set does not exactly match
+     *                                   the worksheet's current sequences
      */
     void reorderSequences(UUID worksheetId, List<UUID> orderedSequenceIds);
 
     /**
      * Whether {@code ownerId} owns any worksheet that contains {@code sequenceId}.
      *
-     * <p>This is the "curator" relation behind {@link
-     * de.uni_passau.fim.se2.domain.model.SequenceCuratorPolicy}: a teacher who put a sequence
-     * into a worksheet of theirs may inspect it, whoever generated it. The same predicate
-     * already drives {@code alreadyInMyWorksheet} in the library listing; it lives here so
-     * both read the relation from one place rather than from two hand-written joins that can
-     * disagree.
+     * <p>
+     * This is the "curator" relation behind {@link de.uni_passau.fim.se2.domain.model.SequenceCuratorPolicy}: a teacher
+     * who put a sequence into a worksheet of theirs may inspect it, whoever generated it. The same predicate already
+     * drives {@code alreadyInMyWorksheet} in the library listing; it lives here so both read the relation from one
+     * place rather than from two hand-written joins that can disagree.
      *
      * @param sequenceId the sequence in question; {@code null} yields {@code false}
-     * @param ownerId    the candidate curator; {@code null} yields {@code false}, because
-     *                   anonymous visitors curate nothing
+     * @param ownerId    the candidate curator; {@code null} yields {@code false}, because anonymous visitors curate
+     *                   nothing
+     * @return true if the owner curates the sequence through one of their worksheets
      */
     boolean isCuratedBy(UUID sequenceId, UUID ownerId);
 
     /**
      * Finds all worksheets owned by the specified user.
+     *
+     * @param ownerId the owner
+     * @return the owner's worksheets
      */
     List<WorksheetDTO> findByOwnerId(UUID ownerId);
 
     /**
      * Sets a worksheet's visibility.
      *
-     * <p>Its own method rather than a field on {@code updateWorksheet}, because publishing is a
-     * different act from editing: it is authorised differently, it is triggered from a separate
-     * control, and a full update would let a stale form overwrite a visibility the teacher had
-     * just changed in another tab.
+     * <p>
+     * Its own method rather than a field on {@code updateWorksheet}, because publishing is a different act from
+     * editing: it is authorised differently, it is triggered from a separate control, and a full update would let a
+     * stale form overwrite a visibility the teacher had just changed in another tab.
      *
      * @param worksheetId the worksheet to change
      * @param visibility  the new visibility
-     * @throws de.uni_passau.fim.se2.domain.exceptions.DomainValidationException
-     *         if no worksheet has that id
+     * @throws de.uni_passau.fim.se2.domain.exceptions.DomainValidationException if no worksheet has that id
      */
     void updateVisibility(UUID worksheetId, WorksheetVisibility visibility);
 

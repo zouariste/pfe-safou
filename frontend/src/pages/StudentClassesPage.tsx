@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, type ApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import type { ClassInfo } from "../types/models";
@@ -33,8 +33,8 @@ export default function StudentClassesPage() {
             setLoading(true);
             const res = await api.get<ClassInfo[]>("/classes");
             setClasses(res.data);
-        } catch (e: any) {
-            setError(e.response?.data?.error || t("classes.errorLoading"));
+        } catch (e) {
+            setError((e as ApiError).response?.data?.error || t("classes.errorLoading"));
         } finally {
             setLoading(false);
         }

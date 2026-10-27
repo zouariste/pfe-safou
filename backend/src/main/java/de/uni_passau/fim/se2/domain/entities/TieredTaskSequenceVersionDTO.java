@@ -18,30 +18,28 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.*;
+import java.util.UUID;
 
-import java.util.*;
+import lombok.Data;
 
 /**
- * Represents a data transfer object (DTO) that links a version
- * to a tiered task sequence.
+ * Represents a data transfer object (DTO) that links a version to a tiered task sequence.
  *
- * This class is typically used to manage the relationship between
- * a specific version of a task sequence and the sequence itself.
+ * This class is typically used to manage the relationship between a specific version of a task sequence and the
+ * sequence itself.
  */
 @Data
 public class TieredTaskSequenceVersionDTO {
 
     /**
-     * The unique identifier for a version in the context of a tiered task sequence.
-     * This ID is used to associate a specific version of a task sequence with its related data.
+     * The unique identifier for a version in the context of a tiered task sequence. This ID is used to associate a
+     * specific version of a task sequence with its related data.
      */
     UUID versionId;
 
     /**
-     * Represents the unique identifier of a tiered task sequence
-     * associated with a specific version in the context of mapping
-     * versioned sequences to their corresponding tasks.
+     * Represents the unique identifier of a tiered task sequence associated with a specific version in the context of
+     * mapping versioned sequences to their corresponding tasks.
      */
     UUID sequenceId;
 }

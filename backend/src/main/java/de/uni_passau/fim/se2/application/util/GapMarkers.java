@@ -22,15 +22,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * AP30 (Fill-in-the-Gaps): helpers for the inline gap marker
- * {@code $$blank:<expected>$$} / {@code $$blank:<expected>|<mode>$$}
- * with {@code mode ∈ {exact, trim, ci}} (default {@code trim}).
+ * AP30 (Fill-in-the-Gaps): helpers for the inline gap marker {@code $$blank:<expected>$$} /
+ * {@code $$blank:<expected>|<mode>$$} with {@code mode ∈ {exact, trim, ci}} (default {@code trim}).
  *
- * <p>Gaps are stored inline inside the task {@code solution} (no separate DB column).
- * Wherever the solution is treated as <em>executable code</em> — complexity analysis,
- * distractor generation, hint pipeline — the markers must first be replaced by their
- * expected value so the code stays syntactically usable. This mirrors how parsons.js
- * strips {@code #distractor}/{@code #context}/{@code #group} markers on the client.
+ * <p>
+ * Gaps are stored inline inside the task {@code solution} (no separate DB column). Wherever the solution is treated as
+ * <em>executable code</em> — complexity analysis, distractor generation, hint pipeline — the markers must first be
+ * replaced by their expected value so the code stays syntactically usable. This mirrors how parsons.js strips
+ * {@code #distractor}/{@code #context}/{@code #group} markers on the client.
  */
 public final class GapMarkers {
 
@@ -41,8 +40,8 @@ public final class GapMarkers {
     }
 
     /**
-     * Replaces every gap marker with its expected value (empty string when the marker
-     * carries no expected value), reconstructing the intended full line of code.
+     * Replaces every gap marker with its expected value (empty string when the marker carries no expected value),
+     * reconstructing the intended full line of code.
      *
      * @param code solution code possibly containing gap markers (may be {@code null})
      * @return the code with all gap markers resolved to their expected value
@@ -60,7 +59,12 @@ public final class GapMarkers {
         return sb.toString();
     }
 
-    /** True if the code contains at least one gap marker. */
+    /**
+     * True if the code contains at least one gap marker.
+     *
+     * @param code the code to check, or null
+     * @return true if the code contains a gap marker
+     */
     public static boolean hasGaps(final String code) {
         return code != null && BLANK.matcher(code).find();
     }
@@ -73,7 +77,7 @@ public final class GapMarkers {
         int sep = inner.lastIndexOf('|');
         if (sep >= 0) {
             String mode = inner.substring(sep + 1);
-            if (mode.equals("exact") || mode.equals("trim") || mode.equals("ci")) {
+            if ("exact".equals(mode) || "trim".equals(mode) || "ci".equals(mode)) {
                 return inner.substring(0, sep);
             }
         }

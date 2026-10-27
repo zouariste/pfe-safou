@@ -18,29 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
-import de.uni_passau.fim.se2.domain.entities.TaskDTO;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.SequenceTagRepository;
-import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
-import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
-import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
-import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -57,18 +34,43 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.SequenceTagRepository;
+import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
+import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
+import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
+import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
+
 /**
  * What a teacher gets when they copy someone else's worksheet.
  *
- * <p>The answer used to be "most of it". The copy rebuilt sequences and tasks by naming fields,
- * so the distractors, the AP22 context blocks, the AP31 split plans, the tier count and the
- * generation constraints were all quietly left behind — and the copy still looked plausible,
- * because Lombok's {@code @Builder.Default} filled the gaps with three tiers, German and
- * distractors switched on.
+ * <p>
+ * The answer used to be "most of it". The copy rebuilt sequences and tasks by naming fields, so the distractors, the
+ * AP22 context blocks, the AP31 split plans, the tier count and the generation constraints were all quietly left behind
+ * — and the copy still looked plausible, because Lombok's {@code @Builder.Default} filled the gaps with three tiers,
+ * German and distractors switched on.
  *
- * <p>{@code CloneCompletenessTest} guards the per-entity copies field by field. This class
- * covers what only the service can get wrong: that the pieces are wired to the right parents,
- * that tags and summaries come along, and that nothing reaches back into the source.
+ * <p>
+ * {@code CloneCompletenessTest} guards the per-entity copies field by field. This class covers what only the service
+ * can get wrong: that the pieces are wired to the right parents, that tags and summaries come along, and that nothing
+ * reaches back into the source.
  */
 class WorksheetCloneServiceTest {
 
@@ -114,9 +116,11 @@ class WorksheetCloneServiceTest {
     void copyPreservesTierCount() {
         service.copy(SOURCE_WORKSHEET, COPIER);
 
-        assertEquals(5, savedSequence().getTierCount(),
-                "the old copy left tierCount unset, so @Builder.Default made every copied "
-                        + "sequence a three-tier one");
+        assertEquals(
+            5, savedSequence().getTierCount(),
+            "the old copy left tierCount unset, so @Builder.Default made every copied "
+                + "sequence a three-tier one"
+        );
     }
 
     @Test
@@ -126,15 +130,18 @@ class WorksheetCloneServiceTest {
 
         TaskDTO copy = savedTask();
         assertAll(
-                () -> assertEquals("wrong line #distractor", copy.getDistractors()),
-                () -> assertEquals("{\"type\":\"LOGIC_FLIP\"}", copy.getDistractorPlan()),
-                () -> assertFalse(copy.isDistractorsEnabled(),
-                        "a task with distractors switched off must not come back switched on"),
-                () -> assertEquals("import java.util.*;", copy.getContextBefore()),
-                () -> assertEquals("}", copy.getContextAfter()),
-                () -> assertEquals("{\"splits\":[]}", copy.getSplitPlan()),
-                () -> assertEquals("public int f() {", copy.getSolution()),
-                () -> assertEquals(7, copy.getCyclomaticComplexity()));
+            () -> assertEquals("wrong line #distractor", copy.getDistractors()),
+            () -> assertEquals("{\"type\":\"LOGIC_FLIP\"}", copy.getDistractorPlan()),
+            () -> assertFalse(
+                copy.isDistractorsEnabled(),
+                "a task with distractors switched off must not come back switched on"
+            ),
+            () -> assertEquals("import java.util.*;", copy.getContextBefore()),
+            () -> assertEquals("}", copy.getContextAfter()),
+            () -> assertEquals("{\"splits\":[]}", copy.getSplitPlan()),
+            () -> assertEquals("public int f() {", copy.getSolution()),
+            () -> assertEquals(7, copy.getCyclomaticComplexity())
+        );
     }
 
     @Test
@@ -144,11 +151,14 @@ class WorksheetCloneServiceTest {
 
         TieredTaskSequenceDTO copy = savedSequence();
         assertAll(
-                () -> assertEquals("en", copy.getTargetLanguage(),
-                        "an English sequence used to come back in German"),
-                () -> assertEquals("java", copy.getProgrammingLanguage()),
-                () -> assertEquals("Reverse an array", copy.getTaskDescription()),
-                () -> assertEquals(List.of("recursion"), copy.getConcepts()));
+            () -> assertEquals(
+                "en", copy.getTargetLanguage(),
+                "an English sequence used to come back in German"
+            ),
+            () -> assertEquals("java", copy.getProgrammingLanguage()),
+            () -> assertEquals("Reverse an array", copy.getTaskDescription()),
+            () -> assertEquals(List.of("recursion"), copy.getConcepts())
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -161,8 +171,9 @@ class WorksheetCloneServiceTest {
         service.copy(SOURCE_WORKSHEET, COPIER);
 
         assertAll(
-                () -> assertEquals(COPIER, savedWorksheet().getOwnerId()),
-                () -> assertEquals(COPIER, savedSequence().getOwnerId()));
+            () -> assertEquals(COPIER, savedWorksheet().getOwnerId()),
+            () -> assertEquals(COPIER, savedSequence().getOwnerId())
+        );
     }
 
     @Test
@@ -170,8 +181,10 @@ class WorksheetCloneServiceTest {
     void copyStartsPrivate() {
         service.copy(SOURCE_WORKSHEET, COPIER);
 
-        assertEquals(WorksheetVisibility.PRIVATE, savedWorksheet().getVisibility(),
-                "a half-adapted copy must not inherit its source's place in the marketplace");
+        assertEquals(
+            WorksheetVisibility.PRIVATE, savedWorksheet().getVisibility(),
+            "a half-adapted copy must not inherit its source's place in the marketplace"
+        );
     }
 
     @Test
@@ -180,10 +193,13 @@ class WorksheetCloneServiceTest {
         service.copy(SOURCE_WORKSHEET, COPIER);
 
         assertAll(
-                () -> assertEquals(SOURCE_WORKSHEET, savedWorksheet().getCopiedFrom()),
-                () -> assertNotNull(savedWorksheet().getCopiedAt()),
-                () -> assertEquals(SOURCE_SEQUENCE, savedSequence().getCopiedFrom(),
-                        "the library search needs this to tell a clone from an original"));
+            () -> assertEquals(SOURCE_WORKSHEET, savedWorksheet().getCopiedFrom()),
+            () -> assertNotNull(savedWorksheet().getCopiedAt()),
+            () -> assertEquals(
+                SOURCE_SEQUENCE, savedSequence().getCopiedFrom(),
+                "the library search needs this to tell a clone from an original"
+            )
+        );
     }
 
     @Test
@@ -192,8 +208,9 @@ class WorksheetCloneServiceTest {
         service.copy(SOURCE_WORKSHEET, COPIER);
 
         assertAll(
-                () -> assertEquals(assignedSequenceId, savedTask().getSequenceId()),
-                () -> assertNotEquals(SOURCE_SEQUENCE, savedTask().getSequenceId()));
+            () -> assertEquals(assignedSequenceId, savedTask().getSequenceId()),
+            () -> assertNotEquals(SOURCE_SEQUENCE, savedTask().getSequenceId())
+        );
     }
 
     @Test
@@ -202,13 +219,13 @@ class WorksheetCloneServiceTest {
         service.copy(SOURCE_WORKSHEET, COPIER);
 
         ArgumentCaptor<WorksheetDTO> worksheet = ArgumentCaptor.forClass(WorksheetDTO.class);
-        ArgumentCaptor<TieredTaskSequenceDTO> sequence =
-                ArgumentCaptor.forClass(TieredTaskSequenceDTO.class);
+        ArgumentCaptor<TieredTaskSequenceDTO> sequence = ArgumentCaptor.forClass(TieredTaskSequenceDTO.class);
         verify(worksheetRepo).addSequenceToWorksheet(worksheet.capture(), sequence.capture());
 
         assertAll(
-                () -> assertNotEquals(SOURCE_WORKSHEET, worksheet.getValue().getId()),
-                () -> assertEquals(assignedSequenceId, sequence.getValue().getId()));
+            () -> assertNotEquals(SOURCE_WORKSHEET, worksheet.getValue().getId()),
+            () -> assertEquals(assignedSequenceId, sequence.getValue().getId())
+        );
     }
 
     @Test
@@ -218,44 +235,47 @@ class WorksheetCloneServiceTest {
 
         WorksheetDTO copy = savedWorksheet();
         assertAll(
-                () -> assertEquals("Arrays", copy.getName()),
-                () -> assertEquals("Week 3", copy.getDescription()),
-                () -> assertFalse(copy.isHintsEnabled(), "a worksheet with hints off stays off"),
-                () -> assertEquals(4, copy.getHintCreditsPerTask()));
+            () -> assertEquals("Arrays", copy.getName()),
+            () -> assertEquals("Week 3", copy.getDescription()),
+            () -> assertFalse(copy.isHintsEnabled(), "a worksheet with hints off stays off"),
+            () -> assertEquals(4, copy.getHintCreditsPerTask())
+        );
     }
 
     /**
-     * The worksheet shell is copied by naming fields, because two of the four must not come
-     * across. That is defensible for a type this small, but it is still a hand-written list, so
-     * it gets the same tripwire the DTOs have: add a field to {@link WorksheetDTO} and this
-     * fails until someone decides whether a copy should carry it.
+     * The worksheet shell is copied by naming fields, because two of the four must not come across. That is defensible
+     * for a type this small, but it is still a hand-written list, so it gets the same tripwire the DTOs have: add a
+     * field to {@link WorksheetDTO} and this fails until someone decides whether a copy should carry it.
      */
     @Test
     @DisplayName("adding a worksheet field forces a decision about copying it")
     void worksheetFieldsAreAccountedFor() {
         Set<String> carriedOver = Set.of("name", "description", "hintsEnabled", "hintCreditsPerTask");
         Set<String> deliberatelyReset = Set.of(
-                "id",             // a copy is a new row
-                "ownerId",        // the copy belongs to whoever made it
-                "sequenceDTOS",   // refilled with copied sequences, not the source's
-                "visibility",     // always PRIVATE; publishing a copy is a separate decision
-                "createdAt",      // stamped by the database
-                "copiedFrom",     // set to the source, not inherited from it
-                "copiedAt");      // when this copy was made
+            "id",             // a copy is a new row
+            "ownerId",        // the copy belongs to whoever made it
+            "sequenceDTOS",   // refilled with copied sequences, not the source's
+            "visibility",     // always PRIVATE; publishing a copy is a separate decision
+            "createdAt",      // stamped by the database
+            "copiedFrom",     // set to the source, not inherited from it
+            "copiedAt"
+        );      // when this copy was made
 
         Set<String> declared = java.util.Arrays.stream(WorksheetDTO.class.getDeclaredFields())
-                .filter(f -> !f.isSynthetic())
-                .filter(f -> !Modifier.isStatic(f.getModifiers()))
-                .map(Field::getName)
-                .collect(java.util.stream.Collectors.toSet());
+            .filter(f -> !f.isSynthetic())
+            .filter(f -> !Modifier.isStatic(f.getModifiers()))
+            .map(Field::getName)
+            .collect(java.util.stream.Collectors.toSet());
 
         Set<String> accountedFor = new java.util.HashSet<>(carriedOver);
         accountedFor.addAll(deliberatelyReset);
 
-        assertEquals(accountedFor, declared,
-                "WorksheetDTO's fields no longer match what WorksheetCloneService"
-                        + ".copyWorksheetShell handles. Should a copy carry the new field? Add it"
-                        + " there and to 'carriedOver'; if not, add it to 'deliberatelyReset'.");
+        assertEquals(
+            accountedFor, declared,
+            "WorksheetDTO's fields no longer match what WorksheetCloneService"
+                + ".copyWorksheetShell handles. Should a copy carry the new field? Add it"
+                + " there and to 'carriedOver'; if not, add it to 'deliberatelyReset'."
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -265,9 +285,12 @@ class WorksheetCloneServiceTest {
     @Test
     @DisplayName("tags are re-pointed at the copy, keeping source and confidence")
     void copyCarriesTags() {
-        when(tagRepo.findBySequenceId(SOURCE_SEQUENCE)).thenReturn(List.of(
+        when(tagRepo.findBySequenceId(SOURCE_SEQUENCE)).thenReturn(
+            List.of(
                 new SequenceTagDTO(SOURCE_SEQUENCE, "rekursion", "llm", 0.9f),
-                new SequenceTagDTO(SOURCE_SEQUENCE, "arrays", "manual", null)));
+                new SequenceTagDTO(SOURCE_SEQUENCE, "arrays", "manual", null)
+            )
+        );
 
         service.copy(SOURCE_WORKSHEET, COPIER);
 
@@ -277,12 +300,17 @@ class WorksheetCloneServiceTest {
         List<SequenceTagDTO> written = captor.getValue();
 
         assertAll(
-                () -> assertEquals(2, written.size()),
-                () -> assertTrue(written.stream().allMatch(t -> assignedSequenceId.equals(t.getSequenceId())),
-                        "every copied tag must point at the copy"),
-                () -> assertEquals("llm", written.get(0).getSource(),
-                        "a hand-corrected tag must not be downgraded to auto"),
-                () -> assertEquals(0.9f, written.get(0).getConfidence()));
+            () -> assertEquals(2, written.size()),
+            () -> assertTrue(
+                written.stream().allMatch(t -> assignedSequenceId.equals(t.getSequenceId())),
+                "every copied tag must point at the copy"
+            ),
+            () -> assertEquals(
+                "llm", written.get(0).getSource(),
+                "a hand-corrected tag must not be downgraded to auto"
+            ),
+            () -> assertEquals(0.9f, written.get(0).getConfidence())
+        );
     }
 
     @Test
@@ -350,12 +378,15 @@ class WorksheetCloneServiceTest {
             ArgumentCaptor<List<TieredTaskSequenceDTO>> linked = ArgumentCaptor.forClass(List.class);
             verify(worksheetRepo).addSequencesToWorksheet(any(), linked.capture());
             assertAll(
-                    () -> assertEquals(List.of(SOURCE_SEQUENCE, second),
-                            linked.getValue().stream().map(TieredTaskSequenceDTO::getId).toList(),
-                            "the class must keep working on the very same tasks, so its "
-                                    + "progress stays visible"),
-                    () -> verify(sequenceRepo, never()).save(any()),
-                    () -> verify(taskRepo, never()).save(any()));
+                () -> assertEquals(
+                    List.of(SOURCE_SEQUENCE, second),
+                    linked.getValue().stream().map(TieredTaskSequenceDTO::getId).toList(),
+                    "the class must keep working on the very same tasks, so its "
+                        + "progress stays visible"
+                ),
+                () -> verify(sequenceRepo, never()).save(any()),
+                () -> verify(taskRepo, never()).save(any())
+            );
         }
 
         @Test
@@ -365,11 +396,12 @@ class WorksheetCloneServiceTest {
 
             WorksheetDTO copy = savedWorksheet();
             assertAll(
-                    () -> assertEquals(COPIER, copy.getOwnerId()),
-                    () -> assertEquals(WorksheetVisibility.PRIVATE, copy.getVisibility()),
-                    () -> assertEquals(SOURCE_WORKSHEET, copy.getCopiedFrom()),
-                    () -> assertEquals("Arrays", copy.getName()),
-                    () -> assertEquals(4, copy.getHintCreditsPerTask()));
+                () -> assertEquals(COPIER, copy.getOwnerId()),
+                () -> assertEquals(WorksheetVisibility.PRIVATE, copy.getVisibility()),
+                () -> assertEquals(SOURCE_WORKSHEET, copy.getCopiedFrom()),
+                () -> assertEquals("Arrays", copy.getName()),
+                () -> assertEquals(4, copy.getHintCreditsPerTask())
+            );
         }
 
         @Test
@@ -380,8 +412,9 @@ class WorksheetCloneServiceTest {
             service.copyShallow(SOURCE_WORKSHEET, COPIER);
 
             assertAll(
-                    () -> verify(worksheetRepo).createWorksheet(any()),
-                    () -> verify(worksheetRepo, never()).addSequencesToWorksheet(any(), anyList()));
+                () -> verify(worksheetRepo).createWorksheet(any()),
+                () -> verify(worksheetRepo, never()).addSequencesToWorksheet(any(), anyList())
+            );
         }
     }
 
@@ -397,9 +430,10 @@ class WorksheetCloneServiceTest {
             service.copy(SOURCE_WORKSHEET, COPIER);
 
             assertAll(
-                    () -> verify(worksheetRepo).createWorksheet(any()),
-                    () -> verify(sequenceRepo, never()).save(any()),
-                    () -> verify(worksheetRepo, never()).addSequenceToWorksheet(any(), any()));
+                () -> verify(worksheetRepo).createWorksheet(any()),
+                () -> verify(sequenceRepo, never()).save(any()),
+                () -> verify(worksheetRepo, never()).addSequenceToWorksheet(any(), any())
+            );
         }
 
         @Test
@@ -410,17 +444,21 @@ class WorksheetCloneServiceTest {
             service.copy(SOURCE_WORKSHEET, COPIER);
 
             assertAll(
-                    () -> verify(sequenceRepo).save(any()),
-                    () -> verify(taskRepo, never()).save(any()));
+                () -> verify(sequenceRepo).save(any()),
+                () -> verify(taskRepo, never()).save(any())
+            );
         }
 
         @Test
         @DisplayName("every task of a multi-tier sequence is copied")
         void allTasksAreCopied() {
-            when(taskRepo.loadTasksBySequenceId(any())).thenReturn(List.of(
+            when(taskRepo.loadTasksBySequenceId(any())).thenReturn(
+                List.of(
                     TaskDTO.builder().tierLevel(1).statement("t1").build(),
                     TaskDTO.builder().tierLevel(2).statement("t2").build(),
-                    TaskDTO.builder().tierLevel(3).statement("t3").build()));
+                    TaskDTO.builder().tierLevel(3).statement("t3").build()
+                )
+            );
 
             service.copy(SOURCE_WORKSHEET, COPIER);
 
@@ -431,11 +469,16 @@ class WorksheetCloneServiceTest {
         @DisplayName("null arguments are rejected before anything is written")
         void nullArgumentsAreRejected() {
             assertAll(
-                    () -> assertThrows(DomainValidationException.class,
-                            () -> service.copy(null, COPIER)),
-                    () -> assertThrows(DomainValidationException.class,
-                            () -> service.copy(SOURCE_WORKSHEET, null)),
-                    () -> verify(worksheetRepo, never()).createWorksheet(any()));
+                () -> assertThrows(
+                    DomainValidationException.class,
+                    () -> service.copy(null, COPIER)
+                ),
+                () -> assertThrows(
+                    DomainValidationException.class,
+                    () -> service.copy(SOURCE_WORKSHEET, null)
+                ),
+                () -> verify(worksheetRepo, never()).createWorksheet(any())
+            );
         }
 
         @Test
@@ -454,11 +497,12 @@ class WorksheetCloneServiceTest {
         void sourceIsNotMutated() {
             service.copy(SOURCE_WORKSHEET, COPIER);
 
-            ArgumentCaptor<TieredTaskSequenceDTO> loaded =
-                    ArgumentCaptor.forClass(TieredTaskSequenceDTO.class);
+            ArgumentCaptor<TieredTaskSequenceDTO> loaded = ArgumentCaptor.forClass(TieredTaskSequenceDTO.class);
             verify(sequenceRepo).loadById(loaded.capture());
-            assertEquals(ORIGINAL_OWNER, loaded.getValue().getOwnerId(),
-                    "the source sequence must still belong to its author");
+            assertEquals(
+                ORIGINAL_OWNER, loaded.getValue().getOwnerId(),
+                "the source sequence must still belong to its author"
+            );
         }
     }
 
@@ -469,68 +513,77 @@ class WorksheetCloneServiceTest {
     /** A source sequence with every setting that the old copy used to drop. */
     private static TieredTaskSequenceDTO richSourceSequence() {
         return TieredTaskSequenceDTO.builder()
-                .id(SOURCE_SEQUENCE)
-                .programmingLanguage("java")
-                .taskDescription("Reverse an array")
-                .codeSnippet("int[] f(int[] a) {}")
-                .ownerId(ORIGINAL_OWNER)
-                .targetLanguage("en")
-                .tierCount(5)
-                .concepts(new ArrayList<>(List.of("recursion")))
-                .build();
+            .id(SOURCE_SEQUENCE)
+            .programmingLanguage("java")
+            .taskDescription("Reverse an array")
+            .codeSnippet("int[] f(int[] a) {}")
+            .ownerId(ORIGINAL_OWNER)
+            .targetLanguage("en")
+            .tierCount(5)
+            .concepts(new ArrayList<>(List.of("recursion")))
+            .build();
     }
 
     /** A source task carrying every payload the old copy used to drop. */
     private static TaskDTO richSourceTask() {
         return TaskDTO.builder()
-                .id(UUID.randomUUID())
-                .sequenceId(SOURCE_SEQUENCE)
-                .statement("Reverse it")
-                .solution("public int f() {")
-                .tierLevel(1)
-                .cyclomaticComplexity(7)
-                .distractors("wrong line #distractor")
-                .distractorPlan("{\"type\":\"LOGIC_FLIP\"}")
-                .distractorsEnabled(false)
-                .contextBefore("import java.util.*;")
-                .contextAfter("}")
-                .splitPlan("{\"splits\":[]}")
-                .build();
+            .id(UUID.randomUUID())
+            .sequenceId(SOURCE_SEQUENCE)
+            .statement("Reverse it")
+            .solution("public int f() {")
+            .tierLevel(1)
+            .cyclomaticComplexity(7)
+            .distractors("wrong line #distractor")
+            .distractorPlan("{\"type\":\"LOGIC_FLIP\"}")
+            .distractorsEnabled(false)
+            .contextBefore("import java.util.*;")
+            .contextAfter("}")
+            .splitPlan("{\"splits\":[]}")
+            .build();
     }
 
     private void stubWorksheetLoad(List<UUID> sequenceIds) {
         doAnswer(invocation -> {
-            WorksheetDTO target = invocation.getArgument(0);
-            // Only the source is filled in; the freshly created copy is re-read at the end and
-            // would otherwise be handed the source's sequence list.
-            if (SOURCE_WORKSHEET.equals(target.getId())) {
-                target.setName("Arrays");
-                target.setDescription("Week 3");
-                target.setOwnerId(ORIGINAL_OWNER);
-                target.setHintsEnabled(false);
-                target.setHintCreditsPerTask(4);
-                target.setSequenceDTOS(sequenceIds.stream()
-                        .map(id -> TieredTaskSequenceDTO.builder().id(id).build())
-                        .toList());
-            } else {
-                target.setSequenceDTOS(List.of());
-            }
+            fillWorksheet(invocation.getArgument(0), sequenceIds);
             return null;
         }).when(worksheetRepo).getWorksheetById(any());
     }
 
+    private static void fillWorksheet(WorksheetDTO target, List<UUID> sequenceIds) {
+        // Only the source is filled in; the freshly created copy is re-read at the end and
+        // would otherwise be handed the source's sequence list.
+        if (SOURCE_WORKSHEET.equals(target.getId())) {
+            target.setName("Arrays");
+            target.setDescription("Week 3");
+            target.setOwnerId(ORIGINAL_OWNER);
+            target.setHintsEnabled(false);
+            target.setHintCreditsPerTask(4);
+            target.setSequenceDTOS(
+                sequenceIds.stream()
+                    .map(id -> TieredTaskSequenceDTO.builder().id(id).build())
+                    .toList()
+            );
+        }
+        else {
+            target.setSequenceDTOS(List.of());
+        }
+    }
+
     private void stubSequenceLoad(TieredTaskSequenceDTO source) {
         doAnswer(invocation -> {
-            TieredTaskSequenceDTO target = invocation.getArgument(0);
-            target.setProgrammingLanguage(source.getProgrammingLanguage());
-            target.setTaskDescription(source.getTaskDescription());
-            target.setCodeSnippet(source.getCodeSnippet());
-            target.setOwnerId(source.getOwnerId());
-            target.setTargetLanguage(source.getTargetLanguage());
-            target.setTierCount(source.getTierCount());
-            target.setConcepts(source.getConcepts());
+            copySequence(source, invocation.getArgument(0));
             return null;
         }).when(sequenceRepo).loadById(any());
+    }
+
+    private static void copySequence(TieredTaskSequenceDTO source, TieredTaskSequenceDTO target) {
+        target.setProgrammingLanguage(source.getProgrammingLanguage());
+        target.setTaskDescription(source.getTaskDescription());
+        target.setCodeSnippet(source.getCodeSnippet());
+        target.setOwnerId(source.getOwnerId());
+        target.setTargetLanguage(source.getTargetLanguage());
+        target.setTierCount(source.getTierCount());
+        target.setConcepts(source.getConcepts());
     }
 
     /** Stands in for the database handing back a generated primary key. */
@@ -550,8 +603,7 @@ class WorksheetCloneServiceTest {
     }
 
     private TieredTaskSequenceDTO savedSequence() {
-        ArgumentCaptor<TieredTaskSequenceDTO> captor =
-                ArgumentCaptor.forClass(TieredTaskSequenceDTO.class);
+        ArgumentCaptor<TieredTaskSequenceDTO> captor = ArgumentCaptor.forClass(TieredTaskSequenceDTO.class);
         verify(sequenceRepo).save(captor.capture());
         return captor.getValue();
     }

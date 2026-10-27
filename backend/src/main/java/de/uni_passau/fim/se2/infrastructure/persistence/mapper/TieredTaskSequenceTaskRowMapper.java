@@ -19,14 +19,15 @@
 package de.uni_passau.fim.se2.infrastructure.persistence.mapper;
 
 import java.sql.ResultSet;
-
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceTaskDTO;
-import org.springframework.jdbc.core.RowMapper;
 import java.sql.SQLException;
 import java.util.UUID;
 
+import org.springframework.jdbc.core.RowMapper;
+
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceTaskDTO;
+
 public class TieredTaskSequenceTaskRowMapper implements RowMapper<TieredTaskSequenceTaskDTO> {
+
     @Override
     public TieredTaskSequenceTaskDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
         TieredTaskSequenceTaskDTO dto = new TieredTaskSequenceTaskDTO();

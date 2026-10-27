@@ -18,143 +18,149 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
 
 /**
- * AP16: Pass 2 — Analyzes sanitized code and adds #group:NAME_N and #swap:NAME
- * markers to identify interchangeable lines/blocks for Parsons puzzle grading.
+ * AP16: Pass 2 — Analyzes sanitized code and adds #group:NAME_N and #swap:NAME markers to identify interchangeable
+ * lines/blocks for Parsons puzzle grading.
  *
- * Called after CodeSanitizerService and CodeAnalyzer during task enrichment.
- * Uses an LLM call with a few-shot prompt to identify interchangeable lines.
- * On failure or empty result, returns the original solution unchanged (safe fallback).
+ * Called after CodeSanitizerService and CodeAnalyzer during task enrichment. Uses an LLM call with a few-shot prompt to
+ * identify interchangeable lines. On failure or empty result, returns the original solution unchanged (safe fallback).
  */
 @Service
 public class InterchangeableAnnotator {
 
-    private static final Logger logger = LoggerFactory.getLogger(InterchangeableAnnotator.class);
+    private static final Logger log = LoggerFactory.getLogger(InterchangeableAnnotator.class);
     private final AiModelClient aiModelClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String SYSTEM_PROMPT = """
-            You are a code analysis assistant for Parsons programming puzzles.
+        You are a code analysis assistant for Parsons programming puzzles.
 
-            Your job is to identify lines in a code solution that are INTERCHANGEABLE in their ordering.
-            You must be conservative — only mark lines as interchangeable when swapping them
-            produces semantically identical behavior. If in doubt, do NOT mark them.
+        Your job is to identify lines in a code solution that are INTERCHANGEABLE in their ordering.
+        You must be conservative — only mark lines as interchangeable when swapping them
+        produces semantically identical behavior. If in doubt, do NOT mark them.
 
-            Two annotation types exist:
+        Two annotation types exist:
 
-            1. "#swap:NAME" — Individual lines that are independently interchangeable.
-               Each line marked with the same swap name can appear in any order relative to the others.
-               Use for: independent variable declarations, independent assignments with no
-               cross-dependencies, independent function calls with no side-effect ordering.
+        1. "#swap:NAME" — Individual lines that are independently interchangeable.
+           Each line marked with the same swap name can appear in any order relative to the others.
+           Use for: independent variable declarations, independent assignments with no
+           cross-dependencies, independent function calls with no side-effect ordering.
 
-            2. "#group:NAME_N" — Multi-line blocks that must stay together as a unit.
-               Each cluster gets a unique name: same prefix, different number (e.g. base_1, base_2).
-               Lines with the SAME full name (e.g. base_1) form one cluster and stay together internally.
-               Clusters whose names share the SAME PREFIX (e.g. base_1 and base_2) are interchangeable
-               with each other — their relative order does not matter.
-               This distinction is necessary because without numbering there is no way to know which
-               lines belong to which cluster.
-               Use for: independent if-blocks (not elif chains!), independent try-except blocks,
-               independent case handlers.
+        2. "#group:NAME_N" — Multi-line blocks that must stay together as a unit.
+           Each cluster gets a unique name: same prefix, different number (e.g. base_1, base_2).
+           Lines with the SAME full name (e.g. base_1) form one cluster and stay together internally.
+           Clusters whose names share the SAME PREFIX (e.g. base_1 and base_2) are interchangeable
+           with each other — their relative order does not matter.
+           This distinction is necessary because without numbering there is no way to know which
+           lines belong to which cluster.
+           Use for: independent if-blocks (not elif chains!), independent try-except blocks,
+           independent case handlers.
 
-            Rules:
-            - Only mark lines where the order is TRULY irrelevant (no data dependency between them).
-            - Variables used later must be declared before use — do NOT mark as swappable if one
-              depends on another.
-            - elif/else chains are NOT interchangeable (they depend on evaluation order).
-            - Independent if-statements (no else) that test different conditions ARE interchangeable.
-            - Lines without any annotation remain position-fixed (the default).
-            - Return ONLY valid JSON matching the schema. No markdown, no explanation.
-            """;
+        Rules:
+        - Only mark lines where the order is TRULY irrelevant (no data dependency between them).
+        - Variables used later must be declared before use — do NOT mark as swappable if one
+          depends on another.
+        - elif/else chains are NOT interchangeable (they depend on evaluation order).
+        - Independent if-statements (no else) that test different conditions ARE interchangeable.
+        - Lines without any annotation remain position-fixed (the default).
+        - Return ONLY valid JSON matching the schema. No markdown, no explanation.
+        """;
 
     private static final String USER_PROMPT_TEMPLATE = """
-            Analyze this %s code and identify interchangeable lines.
+        Analyze this %s code and identify interchangeable lines.
 
-            CODE:
-            %s
+        CODE:
+        %s
 
-            Return JSON matching this schema:
-            {
-              "annotations": [
-                {"line": <1-based line number>, "type": "swap"|"group", "name": "<group_name>"}
-              ]
-            }
+        Return JSON matching this schema:
+        {
+          "annotations": [
+            {"line": <1-based line number>, "type": "swap"|"group", "name": "<group_name>"}
+          ]
+        }
 
-            If no lines are interchangeable, return: {"annotations": []}
+        If no lines are interchangeable, return: {"annotations": []}
 
-            EXAMPLES:
+        EXAMPLES:
 
-            --- Example 1: Independent variable declarations -> #swap ---
-            Code:
-            def calculate(a, b):
-                x = a * 2
-                y = b * 3
-                return x + y
+        --- Example 1: Independent variable declarations -> #swap ---
+        Code:
+        def calculate(a, b):
+            x = a * 2
+            y = b * 3
+            return x + y
 
-            Response:
-            {"annotations": [
-              {"line": 2, "type": "swap", "name": "vars"},
-              {"line": 3, "type": "swap", "name": "vars"}
-            ]}
-            Reason: x and y have no dependency on each other. Either can be computed first.
+        Response:
+        {"annotations": [
+          {"line": 2, "type": "swap", "name": "vars"},
+          {"line": 3, "type": "swap", "name": "vars"}
+        ]}
+        Reason: x and y have no dependency on each other. Either can be computed first.
 
-            --- Example 2: Independent if-blocks -> #group ---
-            Code:
-            def fibonacci(n):
-                if n == 0:
-                    return 0
-                if n == 1:
-                    return 1
-                return fibonacci(n-1) + fibonacci(n-2)
+        --- Example 2: Independent if-blocks -> #group ---
+        Code:
+        def fibonacci(n):
+            if n == 0:
+                return 0
+            if n == 1:
+                return 1
+            return fibonacci(n-1) + fibonacci(n-2)
 
-            Response:
-            {"annotations": [
-              {"line": 2, "type": "group", "name": "base_1"},
-              {"line": 3, "type": "group", "name": "base_1"},
-              {"line": 4, "type": "group", "name": "base_2"},
-              {"line": 5, "type": "group", "name": "base_2"}
-            ]}
-            Reason: Lines 2-3 form cluster base_1 (if n==0 + return 0), lines 4-5 form cluster base_2 (if n==1 + return 1). Same prefix "base" means the clusters are interchangeable as units. Different numbers mean lines within each cluster stay together internally.
+        Response:
+        {"annotations": [
+          {"line": 2, "type": "group", "name": "base_1"},
+          {"line": 3, "type": "group", "name": "base_1"},
+          {"line": 4, "type": "group", "name": "base_2"},
+          {"line": 5, "type": "group", "name": "base_2"}
+        ]}
+        Reason: Lines 2-3 form cluster base_1 (if n==0 + return 0), lines 4-5 form cluster base_2 (if n==1 + return 1). Same prefix "base" means the clusters are interchangeable as units. Different numbers mean lines within each cluster stay together internally.
 
-            --- Example 3: Dependent variables -> NO annotation ---
-            Code:
-            def process(n):
-                doubled = n * 2
-                result = doubled + 1
-                return result
+        --- Example 3: Dependent variables -> NO annotation ---
+        Code:
+        def process(n):
+            doubled = n * 2
+            result = doubled + 1
+            return result
 
-            Response:
-            {"annotations": []}
-            Reason: result depends on doubled. Order matters.
+        Response:
+        {"annotations": []}
+        Reason: result depends on doubled. Order matters.
 
-            --- Example 4: Mixed ---
-            Code:
-            def greet_all(names):
-                greeting = "Hello"
-                separator = ", "
-                results = []
-                for name in names:
-                    results.append(greeting + separator + name)
-                return results
+        --- Example 4: Mixed ---
+        Code:
+        def greet_all(names):
+            greeting = "Hello"
+            separator = ", "
+            results = []
+            for name in names:
+                results.append(greeting + separator + name)
+            return results
 
-            Response:
-            {"annotations": [
-              {"line": 2, "type": "swap", "name": "init"},
-              {"line": 3, "type": "swap", "name": "init"}
-            ]}
-            Reason: greeting and separator are independent. results = [] must come before the loop, so it is NOT swappable.
+        Response:
+        {"annotations": [
+          {"line": 2, "type": "swap", "name": "init"},
+          {"line": 3, "type": "swap", "name": "init"}
+        ]}
+        Reason: greeting and separator are independent. results = [] must come before the loop, so it is NOT swappable.
 
-            Now analyze the code above and return the JSON.
-            """;
+        Now analyze the code above and return the JSON.
+        """;
 
     public InterchangeableAnnotator(AiModelClient aiModelClient) {
         this.aiModelClient = aiModelClient;
@@ -168,7 +174,9 @@ public class InterchangeableAnnotator {
      * @return annotated solution string with markers, or original if annotation fails
      */
     public String annotate(String solution, String language) {
-        if (solution == null || solution.isBlank()) return solution;
+        if (solution == null || solution.isBlank()) {
+            return solution;
+        }
 
         try {
             String userPrompt = String.format(USER_PROMPT_TEMPLATE, language, solution);
@@ -176,21 +184,22 @@ public class InterchangeableAnnotator {
             // Use the 3-arg generateTaskDescription: (codeSnippet, systemPrompt, userPromptBody)
             String response = aiModelClient.generateTaskDescription(solution, SYSTEM_PROMPT, userPrompt);
 
-            logger.debug("InterchangeableAnnotator LLM response: {}", response);
+            log.debug("InterchangeableAnnotator LLM response: {}", response);
 
             // Parse the JSON response
             List<Annotation> annotations = parseAnnotations(response);
 
             if (annotations.isEmpty()) {
-                logger.info("No interchangeable annotations found for solution");
+                log.info("No interchangeable annotations found for solution");
                 return solution;
             }
 
             // Apply annotations to solution lines
             return applyAnnotations(solution, annotations);
 
-        } catch (Exception e) {
-            logger.warn("InterchangeableAnnotator failed, returning original solution: {}", e.getMessage());
+        }
+        catch (Exception e) {
+            log.warn("InterchangeableAnnotator failed, returning original solution: {}", e.getMessage());
             return solution; // Safe fallback
         }
     }
@@ -215,8 +224,8 @@ public class InterchangeableAnnotator {
                 String type = node.get("type").asText();
                 String name = node.get("name").asText();
 
-                if (line < 1 || (!type.equals("swap") && !type.equals("group"))) {
-                    logger.warn("Skipping invalid annotation: line={}, type={}, name={}", line, type, name);
+                if (line < 1 || !"swap".equals(type) && !"group".equals(type)) {
+                    log.warn("Skipping invalid annotation: line={}, type={}, name={}", line, type, name);
                     continue;
                 }
 
@@ -224,8 +233,9 @@ public class InterchangeableAnnotator {
             }
             return result;
 
-        } catch (Exception e) {
-            logger.warn("Failed to parse annotation JSON: {}", e.getMessage());
+        }
+        catch (JsonProcessingException | RuntimeException e) {
+            log.warn("Failed to parse annotation JSON: {}", e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -258,5 +268,6 @@ public class InterchangeableAnnotator {
         return result.toString();
     }
 
-    private record Annotation(int line, String type, String name) {}
+    private record Annotation(int line, String type, String name) {
+    }
 }

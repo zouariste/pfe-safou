@@ -18,40 +18,41 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
 /**
  * The pure-logic pieces of the prefix-matching free-text search: the fixed parameter order every
- * {@link SequenceSearchService#TSQUERY_EXPR} / {@link SequenceSearchService#HIGHLIGHT_TSQUERY_EXPR}
- * occurrence relies on.
+ * {@link SequenceSearchService#TSQUERY_EXPR} / {@link SequenceSearchService#HIGHLIGHT_TSQUERY_EXPR} occurrence relies
+ * on.
  *
- * <p>Umlaut tolerance for <em>matching</em> is no longer Java-side logic to unit test here —
- * {@code search_normalize} (folding German umlauts to their digraph spelling, then stripping
- * every other language's accents via the {@code unaccent} extension) runs in Postgres, applied
- * identically to the generated {@code search_vector} columns and to the query text. See {@code
+ * <p>
+ * Umlaut tolerance for <em>matching</em> is no longer Java-side logic to unit test here — {@code search_normalize}
+ * (folding German umlauts to their digraph spelling, then stripping every other language's accents via the
+ * {@code unaccent} extension) runs in Postgres, applied identically to the generated {@code search_vector} columns and
+ * to the query text. See {@code
  * db/migration/V19__unaccent_search.sql} and {@code MarketplaceJourneyDatabaseTest} /
  * {@code WorksheetSearchDatabaseTest} for the behaviour that matters.
  *
- * <p><em>Highlighting</em> still has Java-side umlaut logic, because {@code ts_headline}
- * re-tokenizes raw column text rather than reading {@code search_vector} and so cannot use the
- * same normalized query — {@link SequenceSearchService#addHighlightTsqueryParams} folds and
- * expands the query for that reason alone; see its tests below and
- * {@code FullTextSearch#HIGHLIGHT_TSQUERY_EXPR}'s Javadoc for why.
+ * <p>
+ * <em>Highlighting</em> still has Java-side umlaut logic, because {@code ts_headline} re-tokenizes raw column text
+ * rather than reading {@code search_vector} and so cannot use the same normalized query —
+ * {@link SequenceSearchService#addHighlightTsqueryParams} folds and expands the query for that reason alone; see its
+ * tests below and {@code FullTextSearch#HIGHLIGHT_TSQUERY_EXPR}'s Javadoc for why.
  *
- * <p>What this class deliberately does NOT cover: whether the SQL itself actually matches rows in
- * Postgres. The project has no database-integration test setup (no Testcontainers, no live-DB
- * test profile — every existing test here is a Mockito unit test), so that part was verified by
- * hand against a running dev database rather than in this suite. A regression in the SQL text
- * itself (e.g. a broken tsquery expression) would not be caught by these tests.
+ * <p>
+ * What this class deliberately does NOT cover: whether the SQL itself actually matches rows in Postgres. The project
+ * has no database-integration test setup (no Testcontainers, no live-DB test profile — every existing test here is a
+ * Mockito unit test), so that part was verified by hand against a running dev database rather than in this suite. A
+ * regression in the SQL text itself (e.g. a broken tsquery expression) would not be caught by these tests.
  */
 class SequenceSearchServiceTest {
 
@@ -111,17 +112,23 @@ class SequenceSearchServiceTest {
         @DisplayName("normalizes the query through search_normalize on both branches")
         void normalizesBothBranches() {
             long normalizeCalls = SequenceSearchService.TSQUERY_EXPR
-                    .split("search_normalize", -1).length - 1;
-            assertEquals(2, normalizeCalls,
-                    "both the websearch branch and the prefix branch must normalize the query, "
-                            + "or matching stops being symmetric with how search_vector was built");
+                .split("search_normalize", -1).length - 1;
+            assertEquals(
+                2, normalizeCalls,
+                "both the websearch branch and the prefix branch must normalize the query, "
+                    + "or matching stops being symmetric with how search_vector was built"
+            );
         }
 
         private void assertBalancedParens(String sql) {
             int depth = 0;
             for (char c : sql.toCharArray()) {
-                if (c == '(') depth++;
-                if (c == ')') depth--;
+                if (c == '(') {
+                    depth++;
+                }
+                if (c == ')') {
+                    depth--;
+                }
                 assertTrue(depth >= 0, "unbalanced parentheses in TSQUERY_EXPR");
             }
             assertEquals(0, depth, "unbalanced parentheses in TSQUERY_EXPR");
@@ -154,8 +161,10 @@ class SequenceSearchServiceTest {
 
             // This is the direction the old, Java-side fold never covered: a query typed without
             // umlauts must still be able to highlight a row spelled with them.
-            assertEquals(List.of("fakultaet", "fakultaet", "fakultaet", "fakultaet", "fakultät", "fakultät"),
-                    params);
+            assertEquals(
+                List.of("fakultaet", "fakultaet", "fakultaet", "fakultaet", "fakultät", "fakultät"),
+                params
+            );
         }
     }
 
@@ -166,8 +175,7 @@ class SequenceSearchServiceTest {
         @Test
         @DisplayName("has exactly six '?' placeholders, matching addHighlightTsqueryParams' six params")
         void hasExactlySixPlaceholders() {
-            long placeholderCount =
-                    SequenceSearchService.HIGHLIGHT_TSQUERY_EXPR.chars().filter(c -> c == '?').count();
+            long placeholderCount = SequenceSearchService.HIGHLIGHT_TSQUERY_EXPR.chars().filter(c -> c == '?').count();
             assertEquals(6, placeholderCount);
         }
 

@@ -18,23 +18,22 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
-
 /**
- * A student's arrangement of one task, kept so that reopening the task shows their
- * work rather than a reshuffled puzzle -- whether they solved it or merely started.
+ * A student's arrangement of one task, kept so that reopening the task shows their work rather than a reshuffled puzzle
+ * -- whether they solved it or merely started.
  *
- * This is UI state, not research data. The record of how the student got there
- * lives in learning_events, which nulls user_id for classes with tracking
- * disabled and therefore cannot be used to restore a particular student's work.
+ * This is UI state, not research data. The record of how the student got there lives in learning_events, which nulls
+ * user_id for classes with tracking disabled and therefore cannot be used to restore a particular student's work.
  */
 @Getter
 @Setter
@@ -56,9 +55,8 @@ public class TaskSubmissionDTO {
     /**
      * Whether this arrangement is a solved one, as opposed to work in progress.
      *
-     * Sticky: once true it stays true, because a student who solves a task and then pulls
-     * it apart has still solved it. It is also what keeps "who has solved this task" from
-     * counting students who merely opened it.
+     * Sticky: once true it stays true, because a student who solves a task and then pulls it apart has still solved it.
+     * It is also what keeps "who has solved this task" from counting students who merely opened it.
      */
     private boolean solved;
 

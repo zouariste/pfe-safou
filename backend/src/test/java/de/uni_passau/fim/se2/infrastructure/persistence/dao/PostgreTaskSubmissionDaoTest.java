@@ -18,9 +18,15 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
-import de.uni_passau.fim.se2.domain.interfaces.TaskSubmissionRepository;
-import de.uni_passau.fim.se2.testsupport.TestDatabase;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -29,22 +35,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
+import de.uni_passau.fim.se2.domain.interfaces.TaskSubmissionRepository;
+import de.uni_passau.fim.se2.testsupport.TestDatabase;
 
 /**
  * The upsert's stickiness against a real Postgres, not a mock.
  *
- * <p>{@code TaskSubmissionService}'s own tests mock {@link TaskSubmissionRepository} and say
- * outright that they trust the DAO's upsert to keep a solved arrangement from being overwritten
- * by a later autosave -- they never verify it. This class is that verification: it drives {@link
- * PostgreTaskSubmissionDao} directly, below the service layer, against the same {@code ON
+ * <p>
+ * {@code TaskSubmissionService}'s own tests mock {@link TaskSubmissionRepository} and say outright that they trust the
+ * DAO's upsert to keep a solved arrangement from being overwritten by a later autosave -- they never verify it. This
+ * class is that verification: it drives {@link PostgreTaskSubmissionDao} directly, below the service layer, against the
+ * same {@code ON
  * CONFLICT DO UPDATE} the service ultimately relies on.
  */
 @DisplayName("task submission upsert against real Postgres")
@@ -59,36 +61,48 @@ class PostgreTaskSubmissionDaoTest {
 
     @BeforeAll
     static void connect() {
-        Assumptions.assumeTrue(TestDatabase.isAvailable(),
-                "no test database: set SPRING_DATASOURCE_URL or start Docker");
+        Assumptions.assumeTrue(
+            TestDatabase.isAvailable(),
+            "no test database: set SPRING_DATASOURCE_URL or start Docker"
+        );
         jdbc = TestDatabase.jdbc();
         dao = new PostgreTaskSubmissionDao(jdbc);
 
         // Fixtures this class needs, not data the migrated schema happens to already carry --
         // the schema is what V1...latest guarantees, not the pg_dump's row contents.
         versionId = UUID.randomUUID();
-        jdbc.update("INSERT INTO versions (id, version_name) VALUES (?, ?)",
-                versionId, "database-test-version");
+        jdbc.update(
+            "INSERT INTO versions (id, version_name) VALUES (?, ?)",
+            versionId, "database-test-version"
+        );
 
         userId = UUID.randomUUID();
-        jdbc.update("INSERT INTO users (user_id, email, first_name, last_name, password_hash,"
-                        + " role, is_verified, is_active) VALUES (?,?,?,?,?,CAST(? AS user_role),?,?)",
-                userId, "student@example.invalid", "S", "S", "unused", "STUDENT", true, true);
+        jdbc.update(
+            "INSERT INTO users (user_id, email, first_name, last_name, password_hash,"
+                + " role, is_verified, is_active) VALUES (?,?,?,?,?,CAST(? AS user_role),?,?)",
+            userId, "student@example.invalid", "S", "S", "unused", "STUDENT", true, true
+        );
 
         UUID sequenceId = UUID.randomUUID();
-        jdbc.update("INSERT INTO tiered_task_sequences (id, programming_language, task_description,"
-                        + " version_id, owner_id) VALUES (?, ?, ?, ?, ?)",
-                sequenceId, "python", "database-test-sequence", versionId, userId);
+        jdbc.update(
+            "INSERT INTO tiered_task_sequences (id, programming_language, task_description,"
+                + " version_id, owner_id) VALUES (?, ?, ?, ?, ?)",
+            sequenceId, "python", "database-test-sequence", versionId, userId
+        );
 
         taskId = UUID.randomUUID();
-        jdbc.update("INSERT INTO tasks (id, statement, solution, tier_level, cyclomatic_complexity,"
-                        + " sequence_id) VALUES (?, ?, ?, 1, 1, ?)",
-                taskId, "Order the lines", "a = 1", sequenceId);
+        jdbc.update(
+            "INSERT INTO tasks (id, statement, solution, tier_level, cyclomatic_complexity,"
+                + " sequence_id) VALUES (?, ?, ?, 1, 1, ?)",
+            taskId, "Order the lines", "a = 1", sequenceId
+        );
     }
 
     @AfterAll
     static void cleanup() {
-        if (jdbc == null) return; // connect() aborted: there was no test database
+        if (jdbc == null) {
+            return; // connect() aborted: there was no test database
+        }
         jdbc.update("DELETE FROM tasks WHERE id = ?", taskId);
         jdbc.update("DELETE FROM tiered_task_sequences WHERE version_id = ?", versionId);
         jdbc.update("DELETE FROM users WHERE user_id = ?", userId);
@@ -110,12 +124,17 @@ class PostgreTaskSubmissionDaoTest {
 
         TaskSubmissionDTO found = dao.find(userId, taskId).orElseThrow();
         assertAll(
-                () -> assertTrue(found.isSolved(), "solving is sticky"),
-                () -> assertEquals(List.of("a = 1"), found.getBlockOrder(),
-                        "the graded-correct arrangement must survive an abandoned redo"),
-                () -> assertEquals(List.of(0), found.getIndentLevels()),
-                () -> assertEquals(updatedAtAfterSolve, found.getUpdatedAt(),
-                        "a discarded autosave must not claim the row was updated"));
+            () -> assertTrue(found.isSolved(), "solving is sticky"),
+            () -> assertEquals(
+                List.of("a = 1"), found.getBlockOrder(),
+                "the graded-correct arrangement must survive an abandoned redo"
+            ),
+            () -> assertEquals(List.of(0), found.getIndentLevels()),
+            () -> assertEquals(
+                updatedAtAfterSolve, found.getUpdatedAt(),
+                "a discarded autosave must not claim the row was updated"
+            )
+        );
     }
 
     @Test
@@ -126,9 +145,10 @@ class PostgreTaskSubmissionDaoTest {
 
         TaskSubmissionDTO found = dao.find(userId, taskId).orElseThrow();
         assertAll(
-                () -> assertFalse(found.isSolved()),
-                () -> assertEquals(List.of("second", "attempt"), found.getBlockOrder()),
-                () -> assertEquals(List.of(0, 1), found.getIndentLevels()));
+            () -> assertFalse(found.isSolved()),
+            () -> assertEquals(List.of("second", "attempt"), found.getBlockOrder()),
+            () -> assertEquals(List.of(0, 1), found.getIndentLevels())
+        );
     }
 
     @Test
@@ -139,18 +159,19 @@ class PostgreTaskSubmissionDaoTest {
 
         TaskSubmissionDTO found = dao.find(userId, taskId).orElseThrow();
         assertAll(
-                () -> assertTrue(found.isSolved()),
-                () -> assertEquals(List.of("b = 2", "c = 3"), found.getBlockOrder()),
-                () -> assertEquals(List.of(0, 1), found.getIndentLevels()));
+            () -> assertTrue(found.isSolved()),
+            () -> assertEquals(List.of("b = 2", "c = 3"), found.getBlockOrder()),
+            () -> assertEquals(List.of(0, 1), found.getIndentLevels())
+        );
     }
 
     private TaskSubmissionDTO submission(boolean solved, List<String> blockOrder, List<Integer> indentLevels) {
         return TaskSubmissionDTO.builder()
-                .userId(userId)
-                .taskId(taskId)
-                .solved(solved)
-                .blockOrder(blockOrder)
-                .indentLevels(indentLevels)
-                .build();
+            .userId(userId)
+            .taskId(taskId)
+            .solved(solved)
+            .blockOrder(blockOrder)
+            .indentLevels(indentLevels)
+            .build();
     }
 }

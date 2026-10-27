@@ -18,10 +18,10 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
+import java.util.Optional;
+
 import de.uni_passau.fim.se2.domain.exceptions.DirectoryUnavailableException;
 import de.uni_passau.fim.se2.domain.model.FimAccount;
-
-import java.util.Optional;
 
 /**
  * Checks FIM-Account credentials against the FIM directory.
@@ -29,6 +29,8 @@ import java.util.Optional;
 public interface FimAccountDirectory {
 
     /**
+     * @param username the FIM username
+     * @param password the FIM password
      * @return the account if username and password are valid, empty if they are not
      * @throws DirectoryUnavailableException if the directory could not be asked at all
      */

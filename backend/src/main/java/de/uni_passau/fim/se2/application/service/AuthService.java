@@ -18,6 +18,14 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
 import de.uni_passau.fim.se2.domain.entities.AuthTokenDTO;
 import de.uni_passau.fim.se2.domain.entities.UserDTO;
 import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
@@ -25,20 +33,15 @@ import de.uni_passau.fim.se2.domain.interfaces.FimAccountDirectory;
 import de.uni_passau.fim.se2.domain.interfaces.UserRepository;
 import de.uni_passau.fim.se2.domain.model.FimAccount;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @Slf4j
 public class AuthService {
 
+    private static final String USER_NOT_FOUND = "Benutzer nicht gefunden.";
+
     /** Shown when a password is changed or reset for an account whose password lives in the FIM directory. */
-    private static final String FIM_PASSWORD_MESSAGE =
-            "Das Passwort eines FIM-Accounts kann nicht in CodeOwl geändert werden.";
+    private static final String FIM_PASSWORD_MESSAGE = "Das Passwort eines FIM-Accounts kann nicht in CodeOwl geändert werden.";
 
     private final UserRepository userRepository;
     private final PasswordHasherService passwordHasher;
@@ -48,13 +51,15 @@ public class AuthService {
     private final FimAccountDirectory fimAccountDirectory;
     private final String rootAdminEmail;
 
-    public AuthService(UserRepository userRepository,
-                       PasswordHasherService passwordHasher,
-                       JwtService jwtService,
-                       TokenService tokenService,
-                       EmailService emailService,
-                       FimAccountDirectory fimAccountDirectory,
-                       @Value("${auth.root-admin-email:}") String rootAdminEmail) {
+    public AuthService(
+        UserRepository userRepository,
+        PasswordHasherService passwordHasher,
+        JwtService jwtService,
+        TokenService tokenService,
+        EmailService emailService,
+        FimAccountDirectory fimAccountDirectory,
+        @Value("${auth.root-admin-email:}") String rootAdminEmail
+    ) {
         this.userRepository = userRepository;
         this.passwordHasher = passwordHasher;
         this.jwtService = jwtService;
@@ -67,8 +72,12 @@ public class AuthService {
     // ── Teacher Registration ──────────────────────────────────
 
     /**
-     * Registers a new teacher. Sends email verification.
-     * Root admin email automatically gets ADMIN role.
+     * Registers a new teacher. Sends email verification. Root admin email automatically gets ADMIN role.
+     *
+     * @param email     the teacher's email address
+     * @param password  the chosen password
+     * @param firstName the teacher's first name
+     * @param lastName  the teacher's last name
      */
     @Transactional
     public void registerTeacher(String email, String password, String firstName, String lastName) {
@@ -77,17 +86,17 @@ public class AuthService {
         }
 
         boolean isRootAdmin = rootAdminEmail != null && !rootAdminEmail.isBlank()
-                && rootAdminEmail.equalsIgnoreCase(email.trim());
+            && rootAdminEmail.equalsIgnoreCase(email.trim());
 
         UserDTO user = UserDTO.builder()
-                .firstName(firstName)
-                .lastName(lastName)
-                .email(email)
-                .passwordHash(passwordHasher.hashPassword(password))
-                .role(isRootAdmin ? UserDTO.UserRole.ADMIN : UserDTO.UserRole.TEACHER)
-                .verified(isRootAdmin) // Root admin is auto-verified
-                .active(true)
-                .build();
+            .firstName(firstName)
+            .lastName(lastName)
+            .email(email)
+            .passwordHash(passwordHasher.hashPassword(password))
+            .role(isRootAdmin ? UserDTO.UserRole.ADMIN : UserDTO.UserRole.TEACHER)
+            .verified(isRootAdmin) // Root admin is auto-verified
+            .active(true)
+            .build();
 
         userRepository.save(user);
 
@@ -101,10 +110,14 @@ public class AuthService {
 
     /**
      * Login with email + password. Returns JWT.
+     *
+     * @param email    the user's email address
+     * @param password the user's password
+     * @return a signed JWT for the user
      */
     public String login(String email, String password) {
         UserDTO user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AuthenticationException("Ungültige Anmeldedaten."));
+            .orElseThrow(() -> new AuthenticationException("Ungültige Anmeldedaten."));
 
         if (!user.isActive()) {
             throw new AuthenticationException("Account ist deaktiviert.");
@@ -123,18 +136,21 @@ public class AuthService {
     }
 
     /**
-     * Login with a FIM-Account. The FIM LDAP server checks the credentials; on the
-     * first login the FIM-Account is linked to a CodeOwl account (see
-     * {@link #linkOrCreateFimUser}). Returns JWT.
+     * Login with a FIM-Account. The FIM LDAP server checks the credentials; on the first login the FIM-Account is
+     * linked to a CodeOwl account (see {@link #linkOrCreateFimUser}). Returns JWT.
+     *
+     * @param username the FIM username
+     * @param password the FIM password
+     * @return a signed JWT for the linked CodeOwl account
      */
     @Transactional
     public String loginWithFimAccount(String username, String password) {
         FimAccount account = fimAccountDirectory.authenticate(username, password)
-                .orElseThrow(() -> new AuthenticationException("Ungültige Anmeldedaten."));
+            .orElseThrow(() -> new AuthenticationException("Ungültige Anmeldedaten."));
 
         UserDTO user = userRepository.findByFimUid(account.uid())
-                .map(existing -> completeFimProfile(existing, account))
-                .orElseGet(() -> linkOrCreateFimUser(account));
+            .map(existing -> completeFimProfile(existing, account))
+            .orElseGet(() -> linkOrCreateFimUser(account));
 
         if (!user.isActive()) {
             throw new AuthenticationException("Account ist deaktiviert.");
@@ -147,26 +163,27 @@ public class AuthService {
     }
 
     /**
-     * Fills in what a teacher could not know when adding a FIM student before their
-     * first login (see {@code ClassService.addFimStudents}): the name, still the
-     * username then, and the email, still empty.
+     * Fills in what a teacher could not know when adding a FIM student before their first login (see
+     * {@code ClassService.addFimStudents}): the name, still the username then, and the email, still empty.
      *
-     * Only placeholders are replaced. A name someone has since edited stays as it
-     * is, and an email is not taken if another account already uses it.
+     * Only placeholders are replaced. A name someone has since edited stays as it is, and an email is not taken if
+     * another account already uses it.
      */
     private UserDTO completeFimProfile(UserDTO user, FimAccount account) {
         boolean changed = false;
 
         boolean namePending = account.uid().equals(user.getFirstName())
-                && (user.getLastName() == null || user.getLastName().isEmpty());
+            && (user.getLastName() == null || user.getLastName().isEmpty());
         if (namePending && account.firstName() != null) {
             user.setFirstName(account.firstName());
             user.setLastName(account.lastName() != null ? account.lastName() : "");
             changed = true;
         }
 
-        if (user.getEmail() == null && account.email() != null && !account.email().isBlank()
-                && !userRepository.existsByEmail(account.email())) {
+        if (
+            user.getEmail() == null && account.email() != null && !account.email().isBlank()
+                && !userRepository.existsByEmail(account.email())
+        ) {
             user.setEmail(account.email());
             changed = true;
         }
@@ -179,14 +196,13 @@ public class AuthService {
     }
 
     /**
-     * Links a FIM-Account seen for the first time to the existing account with the
-     * same email, or creates a verified student account for it. An admin can promote
-     * it to teacher or admin afterwards; a linked existing account keeps its role.
+     * Links a FIM-Account seen for the first time to the existing account with the same email, or creates a verified
+     * student account for it. An admin can promote it to teacher or admin afterwards; a linked existing account keeps
+     * its role.
      *
-     * An existing account is only linked if its email is verified: an unverified
-     * account may have been registered by someone who merely typed this address, and
-     * linking it would give them — through its password — access to everything the
-     * FIM user does in it.
+     * An existing account is only linked if its email is verified: an unverified account may have been registered by
+     * someone who merely typed this address, and linking it would give them — through its password — access to
+     * everything the FIM user does in it.
      */
     private UserDTO linkOrCreateFimUser(FimAccount account) {
         if (account.email() != null && !account.email().isBlank()) {
@@ -195,7 +211,8 @@ public class AuthService {
                 UserDTO user = existing.get();
                 if (!user.isVerified() || user.getFimUid() != null) {
                     throw new AuthenticationException(
-                            "Für die Email-Adresse dieses FIM-Accounts existiert bereits ein anderer CodeOwl-Account.");
+                        "Für die Email-Adresse dieses FIM-Accounts existiert bereits ein anderer CodeOwl-Account."
+                    );
                 }
                 user.setFimUid(account.uid());
                 userRepository.update(user);
@@ -205,14 +222,14 @@ public class AuthService {
         }
 
         UserDTO user = UserDTO.builder()
-                .firstName(account.firstName() != null ? account.firstName() : account.uid())
-                .lastName(account.lastName() != null ? account.lastName() : "")
-                .email(account.email())
-                .fimUid(account.uid())
-                .role(UserDTO.UserRole.STUDENT)
-                .verified(true) // the FIM directory vouches for the account
-                .active(true)
-                .build();
+            .firstName(account.firstName() != null ? account.firstName() : account.uid())
+            .lastName(account.lastName() != null ? account.lastName() : "")
+            .email(account.email())
+            .fimUid(account.uid())
+            .role(UserDTO.UserRole.STUDENT)
+            .verified(true) // the FIM directory vouches for the account
+            .active(true)
+            .build();
         userRepository.save(user);
 
         log.info("User created for FIM-Account {} ({})", account.uid(), user.getUserId());
@@ -223,8 +240,9 @@ public class AuthService {
      * Ensures the root admin always has the ADMIN role.
      */
     private void restoreRootAdminRole(UserDTO user) {
-        if (rootAdminEmail != null && !rootAdminEmail.isBlank() && user.getEmail() != null
-                && rootAdminEmail.equalsIgnoreCase(user.getEmail().trim()) && user.getRole() != UserDTO.UserRole.ADMIN) {
+        boolean isRootAdmin = StringUtils.hasText(rootAdminEmail) && user.getEmail() != null
+            && rootAdminEmail.equalsIgnoreCase(user.getEmail().trim());
+        if (isRootAdmin && user.getRole() != UserDTO.UserRole.ADMIN) {
             user.setRole(UserDTO.UserRole.ADMIN);
             userRepository.update(user);
             log.info("Root admin role restored for: {}", user.getEmail());
@@ -235,12 +253,14 @@ public class AuthService {
 
     /**
      * Verifies email using token.
+     *
+     * @param tokenValue the verification token from the email
      */
     public void verifyEmail(String tokenValue) {
         AuthTokenDTO token = tokenService.validateAndConsume(tokenValue, AuthTokenDTO.TokenType.EMAIL_VERIFICATION);
 
         UserDTO user = userRepository.findById(token.getUserId())
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException(USER_NOT_FOUND));
 
         user.setVerified(true);
         userRepository.update(user);
@@ -252,30 +272,37 @@ public class AuthService {
 
     /**
      * Initiates password reset. Sends email with reset token.
+     *
+     * @param email the address to send the reset link to
      */
     public void requestPasswordReset(String email) {
-        userRepository.findByEmail(email).ifPresent(user -> {
-            // A FIM-Account's password is reset at the FIM, not here. Skipped silently:
-            // the response must not reveal which addresses belong to an account.
-            if (user.getFimUid() != null) {
-                log.info("Password reset ignored for FIM-Account user: {}", user.getUserId());
-                return;
-            }
-            AuthTokenDTO resetToken = tokenService.createPasswordResetToken(user.getUserId());
-            emailService.sendPasswordResetEmail(email, resetToken.getTokenValue());
-            log.info("Password reset requested for: {}", email);
-        });
+        userRepository.findByEmail(email).ifPresent(user -> sendPasswordReset(user, email));
         // Always succeed to not reveal whether email exists
+    }
+
+    private void sendPasswordReset(UserDTO user, String email) {
+        // A FIM-Account's password is reset at the FIM, not here. Skipped silently:
+        // the response must not reveal which addresses belong to an account.
+        if (user.getFimUid() != null) {
+            log.info("Password reset ignored for FIM-Account user: {}", user.getUserId());
+            return;
+        }
+        AuthTokenDTO resetToken = tokenService.createPasswordResetToken(user.getUserId());
+        emailService.sendPasswordResetEmail(email, resetToken.getTokenValue());
+        log.info("Password reset requested for: {}", email);
     }
 
     /**
      * Resets password using token.
+     *
+     * @param tokenValue  the reset token from the email
+     * @param newPassword the new password
      */
     public void resetPassword(String tokenValue, String newPassword) {
         AuthTokenDTO token = tokenService.validateAndConsume(tokenValue, AuthTokenDTO.TokenType.PASSWORD_RESET);
 
         UserDTO user = userRepository.findById(token.getUserId())
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException(USER_NOT_FOUND));
 
         // The token may predate the account being linked to a FIM-Account.
         if (user.getFimUid() != null) {
@@ -291,17 +318,24 @@ public class AuthService {
     // ── Student Invite Token Flow ────────────────────────────
 
     /**
-     * Validates a student invite token (without consuming).
-     * Returns the student user info so the frontend can show the onboarding form.
+     * Validates a student invite token (without consuming). Returns the student user info so the frontend can show the
+     * onboarding form.
+     *
+     * @param tokenValue the invite token from the onboarding link
+     * @return the student the token belongs to
      */
     public UserDTO validateStudentToken(String tokenValue) {
         AuthTokenDTO token = tokenService.validateWithoutConsuming(tokenValue, AuthTokenDTO.TokenType.STUDENT_INVITE);
         return userRepository.findById(token.getUserId())
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException(USER_NOT_FOUND));
     }
 
     /**
      * Completes student onboarding: sets email + password, sends verification email, invalidates invite token.
+     *
+     * @param tokenValue the invite token from the onboarding link
+     * @param email      the email address the student chose
+     * @param password   the password the student chose
      */
     @Transactional
     public void completeStudentOnboarding(String tokenValue, String email, String password) {
@@ -312,7 +346,7 @@ public class AuthService {
         }
 
         UserDTO student = userRepository.findById(token.getUserId())
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException(USER_NOT_FOUND));
 
         student.setEmail(email);
         student.setPasswordHash(passwordHasher.hashPassword(password));
@@ -329,10 +363,15 @@ public class AuthService {
 
     /**
      * Updates the user's first and last name.
+     *
+     * @param userId    the user to update
+     * @param firstName the new first name
+     * @param lastName  the new last name
+     * @return the updated user
      */
     public UserDTO updateProfile(UUID userId, String firstName, String lastName) {
         UserDTO user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException(USER_NOT_FOUND));
         user.setFirstName(firstName);
         user.setLastName(lastName);
         userRepository.update(user);
@@ -342,11 +381,14 @@ public class AuthService {
 
     /**
      * Updates the user's email. Marks as unverified and sends verification email.
+     *
+     * @param userId   the user to update
+     * @param newEmail the new email address
      */
     @Transactional
     public void updateEmail(UUID userId, String newEmail) {
         UserDTO user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException(USER_NOT_FOUND));
 
         // Check if new email is already taken by another user
         userRepository.findByEmail(newEmail).ifPresent(existing -> {
@@ -367,10 +409,14 @@ public class AuthService {
 
     /**
      * Changes the user's password. Requires current password for verification.
+     *
+     * @param userId          the user to update
+     * @param currentPassword the current password, to confirm the change
+     * @param newPassword     the new password
      */
     public void updatePassword(UUID userId, String currentPassword, String newPassword) {
         UserDTO user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException(USER_NOT_FOUND));
 
         // A FIM-Account's password lives in the FIM directory; changing the local hash
         // would not change the one that logs the user in.
@@ -390,12 +436,15 @@ public class AuthService {
     }
 
     /**
-     * Changes a temporary password without requiring the old password.
-     * Only valid when the user has mustChangePassword = true.
+     * Changes a temporary password without requiring the old password. Only valid when the user has mustChangePassword
+     * = true.
+     *
+     * @param userId      the user to update
+     * @param newPassword the new password
      */
     public void changeTempPassword(UUID userId, String newPassword) {
         UserDTO user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException(USER_NOT_FOUND));
 
         if (user.getFimUid() != null) {
             throw new AuthenticationException(FIM_PASSWORD_MESSAGE);
@@ -416,18 +465,24 @@ public class AuthService {
 
     /**
      * Get current user from JWT token.
+     *
+     * @param token the JWT to read the user ID from
+     * @return the user the token was issued for
      */
     public UserDTO getUserFromToken(String token) {
         UUID userId = jwtService.extractUserId(token);
         return userRepository.findById(userId)
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException(USER_NOT_FOUND));
     }
 
     /**
      * Get user by ID.
+     *
+     * @param userId the user to load
+     * @return the user
      */
     public UserDTO getUserById(UUID userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new AuthenticationException("Benutzer nicht gefunden."));
+            .orElseThrow(() -> new AuthenticationException(USER_NOT_FOUND));
     }
 }

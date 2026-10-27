@@ -18,24 +18,26 @@
  */
 package de.uni_passau.fim.se2.domain.model;
 
-import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.UUID;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import de.uni_passau.fim.se2.domain.entities.UserDTO.UserRole;
+
 /**
  * Every combination of owner, role and curator, walked exhaustively.
  *
- * <p>The rule decides two different things — who may look, and whose edits land where — and the
- * dangerous mistakes are the ones where those two come apart: a curator allowed to edit in
- * place would silently rewrite a sequence inside other teachers' worksheets, and a student
- * granted inspection would be handed the distractor plans for tasks they are about to solve.
+ * <p>
+ * The rule decides two different things — who may look, and whose edits land where — and the dangerous mistakes are the
+ * ones where those two come apart: a curator allowed to edit in place would silently rewrite a sequence inside other
+ * teachers' worksheets, and a student granted inspection would be handed the distractor plans for tasks they are about
+ * to solve.
  */
 class SequenceCuratorPolicyTest {
 
@@ -51,9 +53,10 @@ class SequenceCuratorPolicyTest {
         @DisplayName("inspects and edits in place, and is never asked to fork")
         void ownerEditsDirectly() {
             assertAll(
-                    () -> assertTrue(SequenceCuratorPolicy.canInspect(OWNER, OWNER, UserRole.TEACHER, false)),
-                    () -> assertTrue(SequenceCuratorPolicy.canEditInPlace(OWNER, OWNER, UserRole.TEACHER)),
-                    () -> assertFalse(SequenceCuratorPolicy.mustForkToEdit(OWNER, OWNER, UserRole.TEACHER, false)));
+                () -> assertTrue(SequenceCuratorPolicy.canInspect(OWNER, OWNER, UserRole.TEACHER, false)),
+                () -> assertTrue(SequenceCuratorPolicy.canEditInPlace(OWNER, OWNER, UserRole.TEACHER)),
+                () -> assertFalse(SequenceCuratorPolicy.mustForkToEdit(OWNER, OWNER, UserRole.TEACHER, false))
+            );
         }
 
         @Test
@@ -81,8 +84,9 @@ class SequenceCuratorPolicyTest {
         @DisplayName("may not edit in place, because the sequence is in other worksheets too")
         void curatorDoesNotEditInPlace() {
             assertAll(
-                    () -> assertFalse(SequenceCuratorPolicy.canEditInPlace(OWNER, CURATOR, UserRole.TEACHER)),
-                    () -> assertTrue(SequenceCuratorPolicy.mustForkToEdit(OWNER, CURATOR, UserRole.TEACHER, true)));
+                () -> assertFalse(SequenceCuratorPolicy.canEditInPlace(OWNER, CURATOR, UserRole.TEACHER)),
+                () -> assertTrue(SequenceCuratorPolicy.mustForkToEdit(OWNER, CURATOR, UserRole.TEACHER, true))
+            );
         }
 
         @Test
@@ -91,9 +95,10 @@ class SequenceCuratorPolicyTest {
             // Most of the library predates ownership and has owner_id NULL. If that counted as
             // "not yours", the feature would miss the case it was reported for.
             assertAll(
-                    () -> assertTrue(SequenceCuratorPolicy.canInspect(null, CURATOR, UserRole.TEACHER, true)),
-                    () -> assertFalse(SequenceCuratorPolicy.canEditInPlace(null, CURATOR, UserRole.TEACHER)),
-                    () -> assertTrue(SequenceCuratorPolicy.mustForkToEdit(null, CURATOR, UserRole.TEACHER, true)));
+                () -> assertTrue(SequenceCuratorPolicy.canInspect(null, CURATOR, UserRole.TEACHER, true)),
+                () -> assertFalse(SequenceCuratorPolicy.canEditInPlace(null, CURATOR, UserRole.TEACHER)),
+                () -> assertTrue(SequenceCuratorPolicy.mustForkToEdit(null, CURATOR, UserRole.TEACHER, true))
+            );
         }
     }
 
@@ -107,49 +112,55 @@ class SequenceCuratorPolicyTest {
             // No fork offer either: forking writes into a worksheet, and a stranger has none
             // here to write into.
             assertAll(
-                    () -> assertFalse(SequenceCuratorPolicy.canInspect(OWNER, STRANGER, UserRole.TEACHER, false)),
-                    () -> assertFalse(SequenceCuratorPolicy.mustForkToEdit(OWNER, STRANGER, UserRole.TEACHER, false)));
+                () -> assertFalse(SequenceCuratorPolicy.canInspect(OWNER, STRANGER, UserRole.TEACHER, false)),
+                () -> assertFalse(SequenceCuratorPolicy.mustForkToEdit(OWNER, STRANGER, UserRole.TEACHER, false))
+            );
         }
 
         @Test
         @DisplayName("a student never inspects, not even one whose class uses the worksheet")
         void studentsExcluded() {
             assertAll(
-                    () -> assertFalse(SequenceCuratorPolicy.canInspect(OWNER, CURATOR, UserRole.STUDENT, true)),
-                    () -> assertFalse(SequenceCuratorPolicy.canEditInPlace(CURATOR, CURATOR, UserRole.STUDENT)),
-                    () -> assertFalse(SequenceCuratorPolicy.mustForkToEdit(OWNER, CURATOR, UserRole.STUDENT, true)));
+                () -> assertFalse(SequenceCuratorPolicy.canInspect(OWNER, CURATOR, UserRole.STUDENT, true)),
+                () -> assertFalse(SequenceCuratorPolicy.canEditInPlace(CURATOR, CURATOR, UserRole.STUDENT)),
+                () -> assertFalse(SequenceCuratorPolicy.mustForkToEdit(OWNER, CURATOR, UserRole.STUDENT, true))
+            );
         }
 
         @Test
         @DisplayName("an anonymous visitor inspects nothing")
         void anonymousExcluded() {
             assertAll(
-                    () -> assertFalse(SequenceCuratorPolicy.canInspect(OWNER, null, null, true)),
-                    () -> assertFalse(SequenceCuratorPolicy.canEditInPlace(OWNER, null, null)),
-                    () -> assertFalse(SequenceCuratorPolicy.mustForkToEdit(OWNER, null, null, true)));
+                () -> assertFalse(SequenceCuratorPolicy.canInspect(OWNER, null, null, true)),
+                () -> assertFalse(SequenceCuratorPolicy.canEditInPlace(OWNER, null, null)),
+                () -> assertFalse(SequenceCuratorPolicy.mustForkToEdit(OWNER, null, null, true))
+            );
         }
 
         @Test
         @DisplayName("an admin edits anything in place")
         void adminEditsDirectly() {
             assertAll(
-                    () -> assertTrue(SequenceCuratorPolicy.canInspect(OWNER, STRANGER, UserRole.ADMIN, false)),
-                    () -> assertTrue(SequenceCuratorPolicy.canEditInPlace(OWNER, STRANGER, UserRole.ADMIN)),
-                    () -> assertFalse(SequenceCuratorPolicy.mustForkToEdit(OWNER, STRANGER, UserRole.ADMIN, true)));
+                () -> assertTrue(SequenceCuratorPolicy.canInspect(OWNER, STRANGER, UserRole.ADMIN, false)),
+                () -> assertTrue(SequenceCuratorPolicy.canEditInPlace(OWNER, STRANGER, UserRole.ADMIN)),
+                () -> assertFalse(SequenceCuratorPolicy.mustForkToEdit(OWNER, STRANGER, UserRole.ADMIN, true))
+            );
         }
     }
 
     @Test
     @DisplayName("inspecting and forking never disagree: a fork is only ever offered to someone who may look")
     void forkImpliesInspect() {
-        for (UUID owner : new UUID[]{OWNER, null}) {
-            for (UUID viewer : new UUID[]{OWNER, CURATOR, STRANGER, null}) {
-                for (UserRole role : new UserRole[]{UserRole.TEACHER, UserRole.ADMIN, UserRole.STUDENT, null}) {
-                    for (boolean curator : new boolean[]{true, false}) {
+        for (UUID owner : new UUID[] { OWNER, null }) {
+            for (UUID viewer : new UUID[] { OWNER, CURATOR, STRANGER, null }) {
+                for (UserRole role : new UserRole[] { UserRole.TEACHER, UserRole.ADMIN, UserRole.STUDENT, null }) {
+                    for (boolean curator : new boolean[] { true, false }) {
                         if (SequenceCuratorPolicy.mustForkToEdit(owner, viewer, role, curator)) {
-                            assertTrue(SequenceCuratorPolicy.canInspect(owner, viewer, role, curator),
-                                    "fork offered without inspection rights: owner=" + owner
-                                            + " viewer=" + viewer + " role=" + role + " curator=" + curator);
+                            assertTrue(
+                                SequenceCuratorPolicy.canInspect(owner, viewer, role, curator),
+                                "fork offered without inspection rights: owner=" + owner
+                                    + " viewer=" + viewer + " role=" + role + " curator=" + curator
+                            );
                         }
                     }
                 }

@@ -18,18 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
-import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.TaskSubmissionRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-
-import java.util.List;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -40,13 +28,27 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import java.util.List;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.TaskSubmissionRepository;
+
 /**
  * Autosaving work in progress, and keeping it distinct from having solved the task.
  *
- * <p>The distinction is the whole point of the {@code solved} flag. An autosave must not claim
- * a student finished a task they are halfway through, and it must not take away a solve they
- * already earned by fiddling with the blocks afterwards. The stickiness itself is enforced in
- * the DAO's upsert; what is checked here is that the service asks for the right thing.
+ * <p>
+ * The distinction is the whole point of the {@code solved} flag. An autosave must not claim a student finished a task
+ * they are halfway through, and it must not take away a solve they already earned by fiddling with the blocks
+ * afterwards. The stickiness itself is enforced in the DAO's upsert; what is checked here is that the service asks for
+ * the right thing.
  */
 class TaskSubmissionProgressTest {
 
@@ -81,9 +83,10 @@ class TaskSubmissionProgressTest {
 
             TaskSubmissionDTO dto = saved();
             assertAll(
-                    () -> assertFalse(dto.isSolved(), "an autosave is not a solve"),
-                    () -> assertEquals(List.of("a = 1", "b = 2"), dto.getBlockOrder()),
-                    () -> assertEquals(List.of(0, 1), dto.getIndentLevels()));
+                () -> assertFalse(dto.isSolved(), "an autosave is not a solve"),
+                () -> assertEquals(List.of("a = 1", "b = 2"), dto.getBlockOrder()),
+                () -> assertEquals(List.of(0, 1), dto.getIndentLevels())
+            );
         }
 
         @Test
@@ -103,8 +106,9 @@ class TaskSubmissionProgressTest {
 
             TaskSubmissionDTO dto = saved();
             assertAll(
-                    () -> assertEquals(List.of(), dto.getBlockOrder()),
-                    () -> assertEquals(List.of(), dto.getIndentLevels()));
+                () -> assertEquals(List.of(), dto.getBlockOrder()),
+                () -> assertEquals(List.of(), dto.getIndentLevels())
+            );
         }
 
         @Test
@@ -127,8 +131,10 @@ class TaskSubmissionProgressTest {
         @Test
         @DisplayName("needs a task")
         void taskIsRequired() {
-            assertThrows(DomainValidationException.class,
-                    () -> service.saveProgress(USER, null, List.of("a = 1"), List.of(0)));
+            assertThrows(
+                DomainValidationException.class,
+                () -> service.saveProgress(USER, null, List.of("a = 1"), List.of(0))
+            );
         }
     }
 
@@ -147,8 +153,10 @@ class TaskSubmissionProgressTest {
         @Test
         @DisplayName("still refuses an empty arrangement, which would look solved-but-blank")
         void emptyArrangementIsRejected() {
-            assertThrows(DomainValidationException.class,
-                    () -> service.saveSolved(USER, TASK, List.of(), List.of()));
+            assertThrows(
+                DomainValidationException.class,
+                () -> service.saveSolved(USER, TASK, List.of(), List.of())
+            );
             verify(repository, never()).save(any());
         }
     }
@@ -186,6 +194,7 @@ class TaskSubmissionProgressTest {
 
     /** Marker for the exception WorksheetAccessService raises; see doThrowOnAccessCheck. */
     private static class AccessDeniedLike extends RuntimeException {
+
         AccessDeniedLike() {
             super("not solvable");
         }
@@ -193,6 +202,6 @@ class TaskSubmissionProgressTest {
 
     private void doThrowOnAccessCheck() {
         org.mockito.Mockito.doThrow(new AccessDeniedLike())
-                .when(access).requireSolvable(TASK);
+            .when(access).requireSolvable(TASK);
     }
 }

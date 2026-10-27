@@ -18,19 +18,20 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai.tagging;
 
-import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
-import de.uni_passau.fim.se2.infrastructure.ai.IdentityLoader;
-import de.uni_passau.fim.se2.infrastructure.ai.tagging.LlmSemanticTagger.SemanticTagResult;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
+import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
+import de.uni_passau.fim.se2.infrastructure.ai.IdentityLoader;
+import de.uni_passau.fim.se2.infrastructure.ai.tagging.LlmSemanticTagger.SemanticTagResult;
 
 /**
  * Parsing of the semantic tagger's bilingual tag output.
@@ -47,30 +48,33 @@ class LlmSemanticTaggerTest {
     @Test
     void readsGermanTagsAndEnglishTranslationsFromPairs() throws Exception {
         SemanticTagResult result = tagWithResponse("""
-                {
-                  "primary_tags": [
-                    {"de": "fakultaet", "en": "factorial"},
-                    {"de": "quicksort", "en": "quicksort"}
-                  ],
-                  "aliases": [{"de": "Fakultäts-Funktion", "en": "factorial function"}],
-                  "short_description": "Berechnet die Fakultät."
-                }
-                """);
+            {
+              "primary_tags": [
+                {"de": "fakultaet", "en": "factorial"},
+                {"de": "quicksort", "en": "quicksort"}
+              ],
+              "aliases": [{"de": "Fakultäts-Funktion", "en": "factorial function"}],
+              "short_description": "Berechnet die Fakultät."
+            }
+            """);
 
         assertEquals(List.of("fakultaet", "quicksort"), result.primaryTags());
         assertEquals(List.of("fakult-ts-funktion"), result.aliases());
-        assertEquals(Map.of(
+        assertEquals(
+            Map.of(
                 "fakultaet", "factorial",
                 "quicksort", "quicksort",
-                "fakult-ts-funktion", "factorial-function"), result.translations());
+                "fakult-ts-funktion", "factorial-function"
+            ), result.translations()
+        );
         assertEquals("Berechnet die Fakultät.", result.shortDescription());
     }
 
     @Test
     void acceptsPlainStringTagsWithoutTranslation() throws Exception {
         SemanticTagResult result = tagWithResponse("""
-                {"primary_tags": ["fibonacci", {"de": "zahlenfolge"}], "aliases": []}
-                """);
+            {"primary_tags": ["fibonacci", {"de": "zahlenfolge"}], "aliases": []}
+            """);
 
         assertEquals(List.of("fibonacci", "zahlenfolge"), result.primaryTags());
         assertEquals(Map.of(), result.translations());

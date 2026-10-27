@@ -18,13 +18,16 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.*;
-
 import java.util.List;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 /**
- * AP20: Constraints that control what programming constructs are allowed/forbidden
- * in generated task sequences. Stored as JSONB in the sequences table.
+ * AP20: Constraints that control what programming constructs are allowed/forbidden in generated task sequences. Stored
+ * as JSONB in the sequences table.
  */
 @Data
 @Builder
@@ -33,36 +36,40 @@ import java.util.List;
 public class GenerationConstraints {
 
     /**
-     * Constructs that MUST NOT appear in generated code.
-     * e.g. ["ternary", "lambda", "list comprehension"]
+     * Constructs that MUST NOT appear in generated code. e.g. ["ternary", "lambda", "list comprehension"]
      */
     private List<String> blacklist;
 
     /**
-     * If non-empty, ONLY these constructs may appear.
-     * e.g. ["if/else", "for", "while", "print"]
+     * If non-empty, ONLY these constructs may appear. e.g. ["if/else", "for", "while", "print"]
      */
     private List<String> whitelist;
 
     /**
-     * Controls how steeply difficulty increases across tiers.
-     * Values: "gentle", "moderate", "steep"
+     * Controls how steeply difficulty increases across tiers. Values: "gentle", "moderate", "steep"
      */
     private String difficultySlope;
 
     /**
-     * Free-text teacher instructions injected into the generation prompt.
-     * e.g. "Use German variable names", "Focus on string manipulation"
+     * Free-text teacher instructions injected into the generation prompt. e.g. "Use German variable names", "Focus on
+     * string manipulation"
      */
     private String additionalContext;
 
     /**
-     * Returns true if any constraint is actually set.
+     * Returns whether any constraint is actually set.
+     *
+     * @return true if at least one list is non-empty or one text field is non-blank
      */
     public boolean hasAny() {
-        return (blacklist != null && !blacklist.isEmpty())
-                || (whitelist != null && !whitelist.isEmpty())
-                || (difficultySlope != null && !difficultySlope.isBlank())
-                || (additionalContext != null && !additionalContext.isBlank());
+        return isSet(blacklist) || isSet(whitelist) || isSet(difficultySlope) || isSet(additionalContext);
+    }
+
+    private static boolean isSet(List<String> values) {
+        return values != null && !values.isEmpty();
+    }
+
+    private static boolean isSet(String value) {
+        return value != null && !value.isBlank();
     }
 }

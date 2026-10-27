@@ -24,8 +24,13 @@ import lombok.Data;
 
 @Data
 public class PasswordResetConfirmRequest {
+
     @NotBlank
     private String token;
-    @NotBlank @Size(min = 8, message = "Passwort muss mindestens 8 Zeichen lang sein.")
+    @NotBlank
+    @Size(
+        min = 8,
+        message = "Passwort muss mindestens 8 Zeichen lang sein."
+    )
     private String newPassword;
 }

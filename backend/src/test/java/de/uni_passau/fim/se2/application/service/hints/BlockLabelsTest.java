@@ -18,26 +18,25 @@
  */
 package de.uni_passau.fim.se2.application.service.hints;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.HashSet;
+import java.util.Set;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 /**
- * The label a hint uses for a block has to be the one the solve page badges it
- * with. lib/blockLabel.ts on the frontend implements the same scheme; if either
- * side changes, a hint starts pointing at the wrong block.
+ * The label a hint uses for a block has to be the one the solve page badges it with. lib/blockLabel.ts on the frontend
+ * implements the same scheme; if either side changes, a hint starts pointing at the wrong block.
  */
 class BlockLabelsTest {
 
     @ParameterizedTest
-    @CsvSource({"0,A", "1,B", "25,Z", "26,AA", "27,AB", "51,AZ", "52,BA", "701,ZZ", "702,AAA"})
+    @CsvSource({ "0,A", "1,B", "25,Z", "26,AA", "27,AB", "51,AZ", "52,BA", "701,ZZ", "702,AAA" })
     @DisplayName("counts like spreadsheet columns")
     void labels(int index, String expected) {
         assertEquals(expected, BlockLabels.of(index));

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, apiErrorMessage, isNotFound } from "../lib/api.ts";
-import type { Worksheet, ClassInfo, LibraryItem, LibrarySearchResponse, WorksheetVisibility } from "../types/models.ts";
+import { api, apiErrorMessage, isNotFound, type ApiError, type ApiErrorBody } from "../lib/api.ts";
+import type { Worksheet, ClassInfo, LibraryItem, LibrarySearchResponse, WorksheetVisibility, ApiSequence } from "../types/models.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useHomePath } from "../hooks/useHomePath.ts";
 import { marketplaceBackLink } from "../lib/worksheetBackLink.ts";
@@ -42,7 +42,7 @@ export default function WorksheetPage() {
     const { sheetId } = useParams<{ sheetId: string }>();
     const navigate = useNavigate();
     const location = useLocation();
-    const justCopied = (location.state as any)?.justCopied === true;
+    const justCopied = (location.state as { justCopied?: boolean } | null)?.justCopied === true;
 
     // Only show "back to class" when navigated FROM a class, the same way the sequence page
     // decides on "back to worksheet". The query string is read first because it survives a
@@ -204,8 +204,8 @@ export default function WorksheetPage() {
             });
             setWorksheet({ ...worksheet, name: editName.trim(), description: editDescription.trim() });
             setEditing(false);
-        } catch (err: any) {
-            alert(err?.response?.data?.error || t("worksheet.errorSaving"));
+        } catch (err) {
+            alert((err as ApiError).response?.data?.error || t("worksheet.errorSaving"));
         } finally {
             setSaving(false);
         }
@@ -217,7 +217,7 @@ export default function WorksheetPage() {
             await api.delete(`/worksheets/${sheetId}/sequences/${sequenceId}`);
             const { data } = await api.get(`/worksheets/${sheetId}`);
             setWorksheet(data);
-        } catch (err: any) {
+        } catch (err) {
             alert(apiErrorMessage(err, "Error removing sequence."));
         }
     }
@@ -232,7 +232,7 @@ export default function WorksheetPage() {
     async function persistSequenceOrder(orderedIds: string[], previous: Worksheet["sequenceDTOS"]) {
         try {
             await api.put(`/worksheets/${sheetId}/sequences/order`, orderedIds);
-        } catch (err: any) {
+        } catch (err) {
             // Revert: the drag already moved the row optimistically, and a rejected reorder
             // (stale data — a sequence added or removed elsewhere mid-drag) must not leave the
             // page showing an order the server never accepted.
@@ -273,8 +273,9 @@ export default function WorksheetPage() {
         try {
             const { data } = await api.post<Worksheet>(`/worksheets/${sheetId}/copy`);
             navigate(`/worksheets/${data.id}`, { state: { justCopied: true } });
-        } catch (err: any) {
-            alert(err?.response?.data?.error || err?.response?.data || t("worksheet.errorSaving"));
+        } catch (caught) {
+            const data = (caught as ApiError<ApiErrorBody | string>).response?.data;
+            alert((typeof data === "string" ? data : data?.error) || t("worksheet.errorSaving"));
         } finally {
             setCopying(false);
         }
@@ -288,7 +289,7 @@ export default function WorksheetPage() {
         try {
             const { data } = await api.get<ClassInfo[]>("/classes");
             setMyClasses(data);
-        } catch (err: any) {
+        } catch {
             setAssignError(t("classes.errorLoading"));
         } finally {
             setLoadingClasses(false);
@@ -302,8 +303,9 @@ export default function WorksheetPage() {
             await api.post(`/classes/${classId}/worksheets/${sheetId}`);
             setAssignSuccess(t("worksheet.assignSuccess"));
             setTimeout(() => setAssignSuccess(null), 3000);
-        } catch (err: any) {
-            setAssignError(err?.response?.data?.error || err?.response?.data || t("classDetail.errorAssigning"));
+        } catch (caught) {
+            const data = (caught as ApiError<ApiErrorBody | string>).response?.data;
+            setAssignError((typeof data === "string" ? data : data?.error) || t("classDetail.errorAssigning"));
         } finally {
             setAssigningClassId(null);
         }
@@ -360,13 +362,13 @@ export default function WorksheetPage() {
         setExporting(true);
         try {
             const seqPromises = (worksheet.sequenceDTOS ?? []).map((s) =>
-                api.get(`/sequence/${s.id}`).then(({ data }): ExportableSequence => ({
+                api.get<ApiSequence>(`/sequence/${s.id}`).then(({ data }): ExportableSequence => ({
                     id: String(data.id),
                     programmingLanguage: String(data.programmingLanguage ?? "unknown"),
                     concepts: Array.isArray(data.concepts) ? data.concepts.map(String) : [],
                     taskDescription: data.taskDescription ?? undefined,
                     tasks: Array.isArray(data.tasks)
-                        ? data.tasks.map((t: any) => ({
+                        ? data.tasks.map((t) => ({
                             id: String(t.id),
                             statement: String(t.statement ?? ""),
                             solution: String(t.solution ?? ""),
@@ -387,7 +389,7 @@ export default function WorksheetPage() {
                 description: worksheet.description,
                 sequences,
             };
-        } catch (err: any) {
+        } catch {
             alert(t("worksheet.errorSaving"));
             return null;
         } finally {
@@ -479,7 +481,7 @@ export default function WorksheetPage() {
                 setWorksheet(data);
                 setShowModal(false);
                 resetAddSequenceModal();
-            } catch (err: any) {
+            } catch (err) {
                 setModalError(apiErrorMessage(err, "Error adding sequences."));
             } finally {
                 setAdding(false);
@@ -497,7 +499,7 @@ export default function WorksheetPage() {
                 setWorksheet(data);
                 setShowModal(false);
                 resetAddSequenceModal();
-            } catch (err: any) {
+            } catch (err) {
                 setModalError(apiErrorMessage(err, "Error adding sequence."));
             } finally {
                 setAdding(false);
@@ -515,7 +517,7 @@ export default function WorksheetPage() {
                 setWorksheet(data);
                 setShowModal(false);
                 resetAddSequenceModal();
-            } catch (err: any) {
+            } catch (err) {
                 setModalError(apiErrorMessage(err, "Error adding sequence."));
             } finally {
                 setAdding(false);

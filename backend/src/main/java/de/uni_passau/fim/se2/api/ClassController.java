@@ -18,6 +18,21 @@
  */
 package de.uni_passau.fim.se2.api;
 
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import de.uni_passau.fim.se2.api.dto.AddFimStudentsRequest;
 import de.uni_passau.fim.se2.api.dto.BulkCreateStudentsRequest;
 import de.uni_passau.fim.se2.api.dto.CreateClassRequest;
@@ -29,18 +44,13 @@ import de.uni_passau.fim.se2.domain.entities.StudentTaskStateDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
-import java.time.Instant;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/classes")
 @RequiredArgsConstructor
 public class ClassController {
+
+    private static final String MESSAGE_KEY = "message";
 
     private final ClassService classService;
 
@@ -86,8 +96,9 @@ public class ClassController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<ClassDTO> updateClass(
-            @PathVariable UUID id,
-            @Valid @RequestBody CreateClassRequest request) {
+        @PathVariable UUID id,
+        @Valid @RequestBody CreateClassRequest request
+    ) {
         ClassDTO updated = classService.updateClass(id, request.getName(), request.getDescription());
         return ResponseEntity.ok(updated);
     }
@@ -101,7 +112,7 @@ public class ClassController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteClass(@PathVariable UUID id) {
         classService.deleteClass(id);
-        return ResponseEntity.ok(Map.of("message", "Klasse gelöscht."));
+        return ResponseEntity.ok(Map.of(MESSAGE_KEY, "Klasse gelöscht."));
     }
 
     /**
@@ -113,18 +124,20 @@ public class ClassController {
      */
     @PostMapping("/{id}/students")
     public ResponseEntity<ClassDTO.StudentInfo> createStudent(
-            @PathVariable UUID id,
-            @Valid @RequestBody CreateStudentRequest request) {
+        @PathVariable UUID id,
+        @Valid @RequestBody CreateStudentRequest request
+    ) {
         ClassDTO.StudentInfo student = classService.createStudent(
-                id, request.getFirstName(), request.getLastName());
+            id, request.getFirstName(), request.getLastName()
+        );
         return ResponseEntity.ok(student);
     }
 
     /**
      * Adds a whole class list at once, as read from a teacher's CSV.
      *
-     * All or nothing: a single unusable row rejects the request naming that row,
-     * rather than leaving the teacher with a half-imported class.
+     * All or nothing: a single unusable row rejects the request naming that row, rather than leaving the teacher with a
+     * half-imported class.
      *
      * @param id      the UUID of the class
      * @param request the request body containing one first/last name pair per student
@@ -132,14 +145,15 @@ public class ClassController {
      */
     @PostMapping("/{id}/students/bulk")
     public ResponseEntity<List<ClassDTO.StudentInfo>> createStudents(
-            @PathVariable UUID id,
-            @RequestBody BulkCreateStudentsRequest request) {
+        @PathVariable UUID id,
+        @RequestBody BulkCreateStudentsRequest request
+    ) {
         // No @Valid: the service does the checking, so a bad row comes back as
         // a 400 naming it rather than as the catch-all's generic 500.
         List<ClassService.NewStudent> rows = request.getStudents() == null ? List.of()
-                : request.getStudents().stream()
-                        .map(s -> new ClassService.NewStudent(s.getFirstName(), s.getLastName()))
-                        .toList();
+            : request.getStudents().stream()
+                .map(s -> new ClassService.NewStudent(s.getFirstName(), s.getLastName()))
+                .toList();
         return ResponseEntity.ok(classService.createStudents(id, rows));
     }
 
@@ -152,15 +166,15 @@ public class ClassController {
      */
     @PostMapping("/{id}/students/fim")
     public ResponseEntity<List<ClassDTO.StudentInfo>> addFimStudents(
-            @PathVariable UUID id,
-            @RequestBody AddFimStudentsRequest request) {
+        @PathVariable UUID id,
+        @RequestBody AddFimStudentsRequest request
+    ) {
         // No @Valid, as for the CSV import: the service names the offending username.
         return ResponseEntity.ok(classService.addFimStudents(id, request.getUsernames()));
     }
 
     /**
-     * Resets a student's password to a teacher-readable temporary password.
-     * The student must change it on next login.
+     * Resets a student's password to a teacher-readable temporary password. The student must change it on next login.
      *
      * @param id        the UUID of the class
      * @param studentId the UUID of the student
@@ -169,9 +183,10 @@ public class ClassController {
      */
     @PostMapping("/{id}/students/{studentId}/reset-temp-password")
     public ResponseEntity<?> resetTempPassword(
-            @PathVariable UUID id,
-            @PathVariable UUID studentId,
-            @RequestBody(required = false) Map<String, String> body) {
+        @PathVariable UUID id,
+        @PathVariable UUID studentId,
+        @RequestBody(required = false) Map<String, String> body
+    ) {
         String locale = (body != null) ? body.getOrDefault("locale", "en") : "en";
         String tempPassword = classService.resetTempPassword(id, studentId, locale);
         return ResponseEntity.ok(Map.of("tempPassword", tempPassword));
@@ -186,10 +201,11 @@ public class ClassController {
      */
     @DeleteMapping("/{id}/students/{studentId}")
     public ResponseEntity<?> removeStudent(
-            @PathVariable UUID id,
-            @PathVariable UUID studentId) {
+        @PathVariable UUID id,
+        @PathVariable UUID studentId
+    ) {
         classService.removeStudent(id, studentId);
-        return ResponseEntity.ok(Map.of("message", "Schüler entfernt."));
+        return ResponseEntity.ok(Map.of(MESSAGE_KEY, "Schüler entfernt."));
     }
 
     /**
@@ -201,10 +217,11 @@ public class ClassController {
      */
     @PostMapping("/{id}/worksheets/{worksheetId}")
     public ResponseEntity<?> assignWorksheet(
-            @PathVariable UUID id,
-            @PathVariable UUID worksheetId) {
+        @PathVariable UUID id,
+        @PathVariable UUID worksheetId
+    ) {
         classService.assignWorksheet(id, worksheetId);
-        return ResponseEntity.ok(Map.of("message", "Worksheet zugewiesen."));
+        return ResponseEntity.ok(Map.of(MESSAGE_KEY, "Worksheet zugewiesen."));
     }
 
     /**
@@ -216,15 +233,16 @@ public class ClassController {
      */
     @DeleteMapping("/{id}/worksheets/{worksheetId}")
     public ResponseEntity<?> removeWorksheet(
-            @PathVariable UUID id,
-            @PathVariable UUID worksheetId) {
+        @PathVariable UUID id,
+        @PathVariable UUID worksheetId
+    ) {
         classService.removeWorksheet(id, worksheetId);
-        return ResponseEntity.ok(Map.of("message", "Worksheet-Zuweisung entfernt."));
+        return ResponseEntity.ok(Map.of(MESSAGE_KEY, "Worksheet-Zuweisung entfernt."));
     }
 
     /**
-     * Gives the class owner their own copy of a worksheet the class uses but someone else owns,
-     * and moves this class onto it. Schedule, published state and student progress carry over.
+     * Gives the class owner their own copy of a worksheet the class uses but someone else owns, and moves this class
+     * onto it. Schedule, published state and student progress carry over.
      *
      * @param id          the UUID of the class
      * @param worksheetId the UUID of the foreign worksheet currently assigned
@@ -232,8 +250,9 @@ public class ClassController {
      */
     @PostMapping("/{id}/worksheets/{worksheetId}/fork")
     public ResponseEntity<Map<String, UUID>> forkWorksheet(
-            @PathVariable UUID id,
-            @PathVariable UUID worksheetId) {
+        @PathVariable UUID id,
+        @PathVariable UUID worksheetId
+    ) {
         WorksheetDTO copy = classService.forkAssignedWorksheet(id, worksheetId);
         return ResponseEntity.ok(Map.of("worksheetId", copy.getId()));
     }
@@ -241,25 +260,36 @@ public class ClassController {
     /**
      * Sets when a worksheet opens and closes for this class.
      *
-     * Any field may be omitted or null to lift that constraint: no release means
-     * available at once, no deadline means open indefinitely, no grace period
-     * means the deadline is sharp.
+     * Any field may be omitted or null to lift that constraint: no release means available at once, no deadline means
+     * open indefinitely, no grace period means the deadline is sharp.
+     *
+     * @param id          the class
+     * @param worksheetId the worksheet assigned to the class
+     * @param request     the release time, deadline and grace period
+     * @return 204 No Content
      */
     @PutMapping("/{id}/worksheets/{worksheetId}/schedule")
     public ResponseEntity<?> setWorksheetSchedule(
-            @PathVariable UUID id,
-            @PathVariable UUID worksheetId,
-            @RequestBody WorksheetScheduleRequest request) {
-        classService.setWorksheetSchedule(id, worksheetId,
-                request.releaseAt(), request.deadlineAt(), request.graceMinutes());
+        @PathVariable UUID id,
+        @PathVariable UUID worksheetId,
+        @RequestBody WorksheetScheduleRequest request
+    ) {
+        classService.setWorksheetSchedule(
+            id, worksheetId,
+            request.releaseAt(), request.deadlineAt(), request.graceMinutes()
+        );
         return ResponseEntity.noContent().build();
     }
 
     /**
      * Publishes an assignment immediately, so the class can see it.
      *
-     * A newly assigned worksheet is hidden until this is called or its release
-     * date arrives, so students never meet one that is still being prepared.
+     * A newly assigned worksheet is hidden until this is called or its release date arrives, so students never meet one
+     * that is still being prepared.
+     *
+     * @param id          the class
+     * @param worksheetId the worksheet assigned to the class
+     * @return 204 No Content
      */
     @PostMapping("/{id}/worksheets/{worksheetId}/publish")
     public ResponseEntity<?> publishWorksheet(@PathVariable UUID id, @PathVariable UUID worksheetId) {
@@ -267,7 +297,13 @@ public class ClassController {
         return ResponseEntity.noContent().build();
     }
 
-    /** Takes an assignment back out of sight, e.g. one published by mistake. */
+    /**
+     * Takes an assignment back out of sight, e.g. one published by mistake.
+     *
+     * @param id          the class
+     * @param worksheetId the worksheet assigned to the class
+     * @return 204 No Content
+     */
     @PostMapping("/{id}/worksheets/{worksheetId}/unpublish")
     public ResponseEntity<?> unpublishWorksheet(@PathVariable UUID id, @PathVariable UUID worksheetId) {
         classService.setWorksheetPublished(id, worksheetId, false);
@@ -275,8 +311,12 @@ public class ClassController {
     }
 
     /**
-     * Ends an assignment now: the deadline becomes this moment, so students may
-     * still read the tasks but no longer work on them.
+     * Ends an assignment now: the deadline becomes this moment, so students may still read the tasks but no longer work
+     * on them.
+     *
+     * @param id          the class
+     * @param worksheetId the worksheet assigned to the class
+     * @return 204 No Content
      */
     @PostMapping("/{id}/worksheets/{worksheetId}/close")
     public ResponseEntity<?> closeWorksheet(@PathVariable UUID id, @PathVariable UUID worksheetId) {
@@ -285,7 +325,8 @@ public class ClassController {
     }
 
     /** All fields optional; null clears that part of the schedule. */
-    public record WorksheetScheduleRequest(Instant releaseAt, Instant deadlineAt, Integer graceMinutes) {}
+    public record WorksheetScheduleRequest(Instant releaseAt, Instant deadlineAt, Integer graceMinutes) {
+    }
 
     /**
      * Toggles tracking for a specified class.
@@ -296,14 +337,17 @@ public class ClassController {
      */
     @PutMapping("/{id}/tracking")
     public ResponseEntity<?> toggleTracking(
-            @PathVariable UUID id,
-            @RequestBody Map<String, Boolean> body) {
+        @PathVariable UUID id,
+        @RequestBody Map<String, Boolean> body
+    ) {
         boolean enabled = body.getOrDefault("enabled", false);
         classService.setTrackingEnabled(id, enabled);
-        return ResponseEntity.ok(Map.of(
-                "message", enabled ? "Tracking aktiviert." : "Tracking deaktiviert.",
+        return ResponseEntity.ok(
+            Map.of(
+                MESSAGE_KEY, enabled ? "Tracking aktiviert." : "Tracking deaktiviert.",
                 "trackingEnabled", enabled
-        ));
+            )
+        );
     }
 
     /**
@@ -319,36 +363,40 @@ public class ClassController {
     }
 
     /**
-     * One student's work across this class's assigned worksheets: every task,
-     * how many times they attempted it, and whether it was solved.
+     * One student's work across this class's assigned worksheets: every task, how many times they attempted it, and
+     * whether it was solved.
      *
      * @param classId   the UUID of the class
      * @param studentId the UUID of the student
+     * @return the student's progress across the class's worksheets
      */
     @GetMapping("/{classId}/students/{studentId}/progress")
     public ResponseEntity<StudentProgressDetailDTO> getStudentProgressDetail(
-            @PathVariable UUID classId,
-            @PathVariable UUID studentId) {
+        @PathVariable UUID classId,
+        @PathVariable UUID studentId
+    ) {
         return ResponseEntity.ok(classService.getStudentProgressDetail(classId, studentId));
     }
 
     /**
      * What one student last built for one task, beside the solution it was meant to become.
      *
-     * <p>Class-scoped on purpose. The arrangement is keyed by student and task alone, so reading
-     * it needs a reason, and the reason is that this class was assigned the worksheet the task
-     * sits in. That also keeps the authorization identical to the progress page this is opened
-     * from, rather than inventing a second story for the same data.
+     * <p>
+     * Class-scoped on purpose. The arrangement is keyed by student and task alone, so reading it needs a reason, and
+     * the reason is that this class was assigned the worksheet the task sits in. That also keeps the authorization
+     * identical to the progress page this is opened from, rather than inventing a second story for the same data.
      *
      * @param classId   the UUID of the class
      * @param studentId the UUID of the student
      * @param taskId    the UUID of the task, which must belong to this class's worksheets
+     * @return the student's last arrangement for the task, with the solution beside it
      */
     @GetMapping("/{classId}/students/{studentId}/tasks/{taskId}/state")
     public ResponseEntity<StudentTaskStateDTO> getStudentTaskState(
-            @PathVariable UUID classId,
-            @PathVariable UUID studentId,
-            @PathVariable UUID taskId) {
+        @PathVariable UUID classId,
+        @PathVariable UUID studentId,
+        @PathVariable UUID taskId
+    ) {
         return ResponseEntity.ok(classService.getStudentTaskState(classId, studentId, taskId));
     }
 }

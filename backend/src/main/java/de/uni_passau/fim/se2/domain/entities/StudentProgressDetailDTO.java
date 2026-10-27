@@ -22,41 +22,44 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * One student's work across every worksheet assigned to one class: every task
- * they could have attempted, how many times they clicked "Feedback" on it,
- * and whether one of those clicks was correct.
+ * One student's work across every worksheet assigned to one class: every task they could have attempted, how many times
+ * they clicked "Feedback" on it, and whether one of those clicks was correct.
  *
- * <p>Built from {@code feedback_logs} rather than {@code learning_events} so
- * its numbers agree with the class-wide progress table teachers already see
- * on the class page — both are derived from the same feedback-click rows.
+ * <p>
+ * Built from {@code feedback_logs} rather than {@code learning_events} so its numbers agree with the class-wide
+ * progress table teachers already see on the class page — both are derived from the same feedback-click rows.
  */
 public record StudentProgressDetailDTO(
-        UUID studentId,
-        String studentName,
-        List<WorksheetProgress> worksheets
+    UUID studentId,
+    String studentName,
+    List<WorksheetProgress> worksheets
 ) {
+
     public record WorksheetProgress(
-            UUID worksheetId,
-            String name,
-            List<SequenceProgress> sequences
-    ) {}
+        UUID worksheetId,
+        String name,
+        List<SequenceProgress> sequences
+    ) {
+    }
 
     /** {@code index} is the sequence's 1-based position in the worksheet — sequences have no name of their own. */
     public record SequenceProgress(
-            UUID sequenceId,
-            int index,
-            String programmingLanguage,
-            List<String> concepts,
-            String taskDescription,
-            List<TaskProgress> tasks
-    ) {}
+        UUID sequenceId,
+        int index,
+        String programmingLanguage,
+        List<String> concepts,
+        String taskDescription,
+        List<TaskProgress> tasks
+    ) {
+    }
 
     public record TaskProgress(
-            UUID taskId,
-            int tierLevel,
-            String statement,
-            int attempts,
-            int correctAttempts,
-            boolean solved
-    ) {}
+        UUID taskId,
+        int tierLevel,
+        String statement,
+        int attempts,
+        int correctAttempts,
+        boolean solved
+    ) {
+    }
 }

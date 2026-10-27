@@ -18,9 +18,15 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import lombok.*;
+import java.util.UUID;
 
-import java.util.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * Represents a task with a statement, solution, and tier level.
@@ -58,9 +64,8 @@ public class TaskDTO {
     private int tierLevel;
 
     /**
-     * A name the sequence owner gave this task, e.g. "Warm-up: summing a list".
-     * NULL when none was given; clients then show a numbered default derived from
-     * {@link #tierLevel}, in the viewer's language.
+     * A name the sequence owner gave this task, e.g. "Warm-up: summing a list". NULL when none was given; clients then
+     * show a numbered default derived from {@link #tierLevel}, in the viewer's language.
      */
     private String title;
 
@@ -93,26 +98,23 @@ public class TaskDTO {
     private int linesOfCode;
 
     /**
-     * Represents the maximum level of nesting in the solution code for the task.*
-     * The nesting depth refers to the deepest level of code blocks (e.g., loops,
-     * conditionals) present in the task's solution, which can be an indicator
-     * of complexity.
+     * Represents the maximum level of nesting in the solution code for the task.* The nesting depth refers to the
+     * deepest level of code blocks (e.g., loops, conditionals) present in the task's solution, which can be an
+     * indicator of complexity.
      */
     private int maximalNestingDepth;
 
     /**
-     * The number of method calls made within the task's solution implementation.*
-     * This value quantifies the total count of distinct method calls present in
-     * the provided solution code for the task. It is used as a metric to analyze
+     * The number of method calls made within the task's solution implementation.* This value quantifies the total count
+     * of distinct method calls present in the provided solution code for the task. It is used as a metric to analyze
      * the complexity and modularity of the solution.
      */
     private int methodCallCount;
 
     /**
-     * The number of distinct identifiers used in the task's solution.*
-     * This metric counts the unique variable names, functions, classes, or other identifiers
-     * present in the task's solution code. It is used to measure the semantic diversity
-     * and complexity of the code.
+     * The number of distinct identifiers used in the task's solution.* This metric counts the unique variable names,
+     * functions, classes, or other identifiers present in the task's solution code. It is used to measure the semantic
+     * diversity and complexity of the code.
      */
     private int distinctIdentifierCount;
 
@@ -122,29 +124,27 @@ public class TaskDTO {
     private String programmingLanguage;
 
     /**
-     * Distractor lines separated by \n. Each line ends with #distractor.
-     * NULL when distractors are not enabled or not yet generated.
+     * Distractor lines separated by \n. Each line ends with #distractor. NULL when distractors are not enabled or not
+     * yet generated.
      */
     private String distractors;
 
     /**
-     * JSON string with the distractor plan from sequence generation.
-     * Format: {"type":"LOGIC_FLIP","rationale":"..."}
+     * JSON string with the distractor plan from sequence generation. Format: {"type":"LOGIC_FLIP","rationale":"..."}
      * NULL when distractors are not enabled.
      */
     private String distractorPlan;
 
     /**
-     * Whether distractors should be delivered to students.
-     * When false, distractors are kept in DB but not sent to non-owners.
-     * Default: true (distractors active if present).
+     * Whether distractors should be delivered to students. When false, distractors are kept in DB but not sent to
+     * non-owners. Default: true (distractors active if present).
      */
     @Builder.Default
     private boolean distractorsEnabled = true;
 
     /**
-     * AP22: Read-only context lines displayed BEFORE the puzzle (imports, class decl, etc.).
-     * Stored separately from solution so parsons.js never sees them.
+     * AP22: Read-only context lines displayed BEFORE the puzzle (imports, class decl, etc.). Stored separately from
+     * solution so parsons.js never sees them.
      */
     private String contextBefore;
 
@@ -154,35 +154,35 @@ public class TaskDTO {
     private String contextAfter;
 
     /**
-     * AP31: JSON string with the inline-split plan (fragment decomposition of selected lines).
-     * Format: {"splits":[{"lineIndex":4,"fragments":["int i = 0;","i < arr.length;","i++"],
-     *          "prefix":"for (","suffix":") {","distractors":[{"text":"i <= arr.length;","type":"OFF_BY_ONE"}]}]}
-     * NULL when no split lines are defined. Fragment distractors are intentionally visible
-     * (no answer-stripping on delivery).
+     * AP31: JSON string with the inline-split plan (fragment decomposition of selected lines). Format:
+     * {"splits":[{"lineIndex":4,"fragments":["int i = 0;","i < arr.length;","i++"], "prefix":"for (","suffix":")
+     * {","distractors":[{"text":"i <= arr.length;","type":"OFF_BY_ONE"}]}]} NULL when no split lines are defined.
+     * Fragment distractors are intentionally visible (no answer-stripping on delivery).
      */
     private String splitPlan;
 
     /**
      * A detached copy of this task, belonging to a different sequence.
      *
-     * <p>Built from {@code toBuilder()} rather than by naming fields one by one. That is the
-     * whole point: every field travels with the copy automatically, so a column added later
-     * cannot silently fall out of it. Naming fields is how the distractors, the context blocks
-     * and the AP31 split plan were lost by the worksheet copy for as long as they existed.
+     * <p>
+     * Built from {@code toBuilder()} rather than by naming fields one by one. That is the whole point: every field
+     * travels with the copy automatically, so a column added later cannot silently fall out of it. Naming fields is how
+     * the distractors, the context blocks and the AP31 split plan were lost by the worksheet copy for as long as they
+     * existed.
      *
-     * <p>Only identity is reset — the id because a copy is a new row, and the sequence id
-     * because the copy belongs to a different parent. Everything else, including the
-     * {@code distractorsEnabled} flag whose {@code @Builder.Default} would otherwise silently
-     * flip a disabled task back to enabled, is carried over as-is.
+     * <p>
+     * Only identity is reset — the id because a copy is a new row, and the sequence id because the copy belongs to a
+     * different parent. Everything else, including the {@code distractorsEnabled} flag whose {@code @Builder.Default}
+     * would otherwise silently flip a disabled task back to enabled, is carried over as-is.
      *
      * @param newSequenceId the sequence the copy belongs to
      * @return a new task, ready to be persisted
      */
     public TaskDTO copyFor(UUID newSequenceId) {
         return toBuilder()
-                .id(null)
-                .sequenceId(newSequenceId)
-                .build();
+            .id(null)
+            .sequenceId(newSequenceId)
+            .build();
     }
 
 }

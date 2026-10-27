@@ -30,8 +30,12 @@ import org.springframework.stereotype.Service;
 public class BlockMapper {
 
     /**
-     * Maps findings (which have line numbers) back to block indices.
-     * Returns findings enriched with block index information.
+     * Maps findings (which have line numbers) back to block indices. Returns findings enriched with block index
+     * information.
+     *
+     * @param findings         the findings, with line numbers in the assembled code
+     * @param lineToBlockIndex the block each line of the assembled code came from
+     * @return the findings with their block indices
      */
     public List<BlockFinding> map(List<AnalysisFinding> findings, Map<Integer, Integer> lineToBlockIndex) {
         List<BlockFinding> mapped = new ArrayList<>();
@@ -48,5 +52,6 @@ public class BlockMapper {
         return mapped;
     }
 
-    public record BlockFinding(int blockIndex, AnalysisFinding finding) {}
+    public record BlockFinding(int blockIndex, AnalysisFinding finding) {
+    }
 }

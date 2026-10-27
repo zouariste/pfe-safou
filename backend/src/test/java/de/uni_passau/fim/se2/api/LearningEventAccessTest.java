@@ -18,20 +18,6 @@
  */
 package de.uni_passau.fim.se2.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import de.uni_passau.fim.se2.application.service.LearningEventService;
-import de.uni_passau.fim.se2.application.service.OwnershipService;
-import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
-import de.uni_passau.fim.se2.domain.entities.TaskDTO;
-import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.security.access.AccessDeniedException;
-
-import java.util.List;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,16 +27,33 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.access.AccessDeniedException;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import de.uni_passau.fim.se2.application.service.LearningEventService;
+import de.uni_passau.fim.se2.application.service.OwnershipService;
+import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+
 /**
  * Who may read the learning events of a task or sequence.
  *
- * <p>These endpoints were {@code authenticated} and nothing more, so any logged-in student
- * could read every event for any task — including the arrangements other students had built.
- * Recording every move rather than a snapshot at each Feedback click makes that considerably
- * worse, which is why the guard landed with the feature.
+ * <p>
+ * These endpoints were {@code authenticated} and nothing more, so any logged-in student could read every event for any
+ * task — including the arrangements other students had built. Recording every move rather than a snapshot at each
+ * Feedback click makes that considerably worse, which is why the guard landed with the feature.
  *
- * <p>Plain JUnit and Mockito, like the rest of this suite: the project has no Spring test
- * context, so what is checked is the guard the controller applies, not the {@code
+ * <p>
+ * Plain JUnit and Mockito, like the rest of this suite: the project has no Spring test context, so what is checked is
+ * the guard the controller applies, not the {@code
  * SecurityConfig} matcher in front of it.
  */
 class LearningEventAccessTest {
@@ -85,7 +88,7 @@ class LearningEventAccessTest {
     /** Makes the caller someone other than the sequence's owner. */
     private void callerIsNotTheOwner() {
         doThrow(new AccessDeniedException("not yours"))
-                .when(ownership).checkOwnership(any(), any());
+            .when(ownership).checkOwnership(any(), any());
     }
 
     @Test

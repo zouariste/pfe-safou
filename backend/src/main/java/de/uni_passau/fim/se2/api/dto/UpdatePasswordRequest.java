@@ -24,8 +24,13 @@ import lombok.Data;
 
 @Data
 public class UpdatePasswordRequest {
+
     @NotBlank(message = "Aktuelles Passwort ist erforderlich.")
     private String currentPassword;
-    @NotBlank @Size(min = 8, message = "Neues Passwort muss mindestens 8 Zeichen lang sein.")
+    @NotBlank
+    @Size(
+        min = 8,
+        message = "Neues Passwort muss mindestens 8 Zeichen lang sein."
+    )
     private String newPassword;
 }

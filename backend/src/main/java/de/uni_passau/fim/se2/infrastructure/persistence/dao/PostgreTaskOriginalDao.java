@@ -18,17 +18,19 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import de.uni_passau.fim.se2.domain.entities.TaskOriginalDTO;
-import de.uni_passau.fim.se2.domain.interfaces.TaskOriginalRepository;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-import java.sql.ResultSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import de.uni_passau.fim.se2.domain.entities.TaskOriginalDTO;
+import de.uni_passau.fim.se2.domain.interfaces.TaskOriginalRepository;
 
 @Repository
 public class PostgreTaskOriginalDao implements TaskOriginalRepository {
@@ -39,7 +41,9 @@ public class PostgreTaskOriginalDao implements TaskOriginalRepository {
         this.jdbc = jdbc;
     }
 
-    private static final RowMapper<TaskOriginalDTO> ROW_MAPPER = (ResultSet rs, int rowNum) -> {
+    private static final RowMapper<TaskOriginalDTO> ROW_MAPPER = PostgreTaskOriginalDao::mapRow;
+
+    private static TaskOriginalDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
         TaskOriginalDTO dto = new TaskOriginalDTO();
         dto.setId(rs.getObject("id", UUID.class));
         dto.setTaskId(rs.getObject("task_id", UUID.class));
@@ -47,10 +51,13 @@ public class PostgreTaskOriginalDao implements TaskOriginalRepository {
         dto.setOriginalCode(rs.getString("original_code"));
         int rating = rs.getInt("adjustment_rating");
         dto.setAdjustmentRating(rs.wasNull() ? null : rating);
-        dto.setSavedAt(rs.getTimestamp("saved_at") != null
-                ? rs.getTimestamp("saved_at").toLocalDateTime() : null);
+        dto.setSavedAt(
+            rs.getTimestamp("saved_at") != null
+                ? rs.getTimestamp("saved_at").toLocalDateTime()
+                : null
+        );
         return dto;
-    };
+    }
 
     @Override
     public void save(TaskOriginalDTO original) {
@@ -58,15 +65,16 @@ public class PostgreTaskOriginalDao implements TaskOriginalRepository {
         original.setId(id);
 
         String sql = """
-            INSERT INTO task_originals (id, task_id, original_problem_statement, original_code, adjustment_rating)
-            VALUES (?, ?, ?, ?, ?)
-        """;
-        jdbc.update(sql,
-                id,
-                original.getTaskId(),
-                original.getOriginalProblemStatement(),
-                original.getOriginalCode(),
-                original.getAdjustmentRating()
+                INSERT INTO task_originals (id, task_id, original_problem_statement, original_code, adjustment_rating)
+                VALUES (?, ?, ?, ?, ?)
+            """;
+        jdbc.update(
+            sql,
+            id,
+            original.getTaskId(),
+            original.getOriginalProblemStatement(),
+            original.getOriginalCode(),
+            original.getAdjustmentRating()
         );
     }
 
@@ -76,7 +84,8 @@ public class PostgreTaskOriginalDao implements TaskOriginalRepository {
         try {
             TaskOriginalDTO result = jdbc.queryForObject(sql, ROW_MAPPER, taskId);
             return Optional.ofNullable(result);
-        } catch (EmptyResultDataAccessException e) {
+        }
+        catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
     }
