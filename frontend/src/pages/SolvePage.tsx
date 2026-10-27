@@ -1,7 +1,7 @@
 /* eslint-env browser */
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useNavigate, useParams} from "react-router-dom";
-import {api, type ApiError} from "../lib/api.ts";
+import {api, isNotFound, type ApiError} from "../lib/api.ts";
 import type {Task} from "../types/models.ts";
 import {parseSplitPlan} from "../types/models.ts";
 import $ from "jquery";
@@ -291,7 +291,9 @@ export default function SolvePage() {
                 setTask(t);
             })
             .catch((err: ApiError) => {
-                const msg = err?.response?.data?.message || err?.message || t("solve.apiError");
+                const msg = isNotFound(err)
+                    ? t("solve.notFound")
+                    : err?.response?.data?.message || err?.message || t("solve.apiError");
                 PersistentLogger.logWithContext("SolvePage", "error", "Task fetch failed:", msg);
                 setError(msg);
             })

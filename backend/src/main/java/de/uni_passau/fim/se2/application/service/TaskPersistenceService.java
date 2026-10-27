@@ -34,6 +34,7 @@ import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.exceptions.NotFoundException;
 import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
@@ -120,6 +121,7 @@ public class TaskPersistenceService {
      *
      * @param id the task ID
      * @return the loaded task
+     * @throws NotFoundException if the task does not exist
      */
     @Transactional(readOnly = true)
     public TaskDTO loadTaskById(UUID id) {
@@ -138,6 +140,10 @@ public class TaskPersistenceService {
             task.setProgrammingLanguage(sequenceDTO.getProgrammingLanguage());
             log.debug("Successfully loaded task: {}", task);
             return task;
+        }
+        catch (NotFoundException e) {
+            // An unknown ID is the caller's mistake and becomes a 404, not a server error worth a stack trace.
+            throw e;
         }
         catch (Exception e) {
             log.error("Error loading task with ID: {}", id, e);
@@ -174,6 +180,7 @@ public class TaskPersistenceService {
      *
      * @param id the sequence to load
      * @return the sequence with its tasks
+     * @throws NotFoundException if the sequence does not exist
      */
     @Transactional
     public TieredTaskSequenceDTO loadSequenceById(UUID id) {

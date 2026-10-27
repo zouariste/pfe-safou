@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import org.postgresql.util.PGobject;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -34,6 +35,7 @@ import de.uni_passau.fim.se2.domain.entities.SnippetDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.exceptions.NotFoundException;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
 import de.uni_passau.fim.se2.infrastructure.persistence.mapper.TaskRowMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -77,11 +79,17 @@ public class PostgreTaskDao implements TaskRepository {
                 JOIN tiered_task_sequences s ON s.id = t.sequence_id
                 WHERE t.id = ?
             """;
-        TaskDTO result = jdbc.queryForObject(sql, (rs, n) -> {
-            TaskDTO dto = Objects.requireNonNull(new TaskRowMapper().mapRow(rs, n));
-            dto.setProgrammingLanguage(rs.getString("programming_language"));
-            return dto;
-        }, target.getId());
+        TaskDTO result;
+        try {
+            result = jdbc.queryForObject(sql, (rs, n) -> {
+                TaskDTO dto = Objects.requireNonNull(new TaskRowMapper().mapRow(rs, n));
+                dto.setProgrammingLanguage(rs.getString("programming_language"));
+                return dto;
+            }, target.getId());
+        }
+        catch (EmptyResultDataAccessException e) {
+            throw new NotFoundException("Task not found: " + target.getId());
+        }
         if (result != null) {
             target.setStatement(result.getStatement());
             target.setSolution(result.getSolution());

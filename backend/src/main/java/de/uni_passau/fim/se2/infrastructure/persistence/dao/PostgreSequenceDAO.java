@@ -42,6 +42,7 @@ import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceConceptDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.exceptions.NotFoundException;
 import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
 import de.uni_passau.fim.se2.infrastructure.persistence.mapper.TieredTaskSequenceRowMapper;
 
@@ -92,7 +93,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
             }
         }
         catch (EmptyResultDataAccessException e) {
-            throw new IllegalArgumentException("Sequence not found: " + target.getId());
+            throw new NotFoundException("Sequence not found: " + target.getId());
         }
     }
 

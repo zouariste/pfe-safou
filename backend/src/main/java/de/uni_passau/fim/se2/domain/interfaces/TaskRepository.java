@@ -37,6 +37,7 @@ public interface TaskRepository {
      *
      * @param target the TaskDTO instance to be populated with the details of the task identified by its unique
      *               identifier
+     * @throws de.uni_passau.fim.se2.domain.exceptions.NotFoundException if no task has that ID
      */
     void loadById(TaskDTO target);
 

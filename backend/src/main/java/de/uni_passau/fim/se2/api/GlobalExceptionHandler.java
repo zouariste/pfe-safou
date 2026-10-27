@@ -37,6 +37,7 @@ import de.uni_passau.fim.se2.api.dto.ApiErrorResponse;
 import de.uni_passau.fim.se2.application.service.BackupService;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
+import de.uni_passau.fim.se2.domain.exceptions.NotFoundException;
 import de.uni_passau.fim.se2.domain.exceptions.UnsupportedLanguageException;
 import de.uni_passau.fim.se2.domain.interfaces.DatabaseDumpExecutor;
 import lombok.extern.slf4j.Slf4j;
@@ -106,6 +107,19 @@ public class GlobalExceptionHandler {
             ex instanceof UnsupportedLanguageException ? UnsupportedLanguageException.CODE : null
         );
         return ResponseEntity.status(status).body(error);
+    }
+
+    /**
+     * A task, sequence or other entity that does not exist -> 404.
+     *
+     * @param ex the lookup that found nothing
+     * @return 404 with the error details
+     */
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotFound(NotFoundException ex) {
+        log.warn("Not found: {}", ex.getMessage());
+        ApiErrorResponse error = new ApiErrorResponse("Nicht gefunden", safeMsg(ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error); // 404
     }
 
     /**

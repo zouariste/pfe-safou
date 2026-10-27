@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TieredTaskSequence, Task, ApiSequence } from "../types/models.ts";
-import { api, apiErrorMessage, type ApiError } from "../lib/api.ts";
+import { api, apiErrorMessage, isNotFound, type ApiError } from "../lib/api.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useHomePath } from "../hooks/useHomePath.ts";
 import {PersistentLogger} from "../PersistentLogger.ts";
@@ -376,7 +376,9 @@ export default function SequencePage() {
                     PersistentLogger.logWithContext("SequencePage", "warn", "Fetch aborted for sequence:", id);
                     return;
                 }
-                const msg = err?.response?.data?.message || err?.message || "Error during API-Request";
+                const msg = isNotFound(err)
+                    ? t("sequence.notFound")
+                    : err?.response?.data?.message || err?.message || "Error during API-Request";
                 PersistentLogger.logWithContext("SequencePage", "error", "Sequence fetch failed:", msg);
                 setState("error");
                 setErrorMsg(msg);
@@ -386,7 +388,7 @@ export default function SequencePage() {
             PersistentLogger.logWithContext("SequencePage", "info", "Unmounting — aborting request for id:", id);
             ac.abort();
         };
-    }, [id, isTemplate]);
+    }, [id, isTemplate, t]);
 
 
     if (state === "loading" && !seq) return <div>{t("sequence.loading")}</div>;

@@ -38,6 +38,7 @@ public interface TieredTaskSequenceRepository {
      * with the retrieved information.
      *
      * @param target the TieredTaskSequenceDTO object to be populated with the details of the tiered task sequence
+     * @throws de.uni_passau.fim.se2.domain.exceptions.NotFoundException if no sequence has that ID
      */
     void loadById(TieredTaskSequenceDTO target);
 
