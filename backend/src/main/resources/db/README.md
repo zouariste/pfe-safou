@@ -98,37 +98,30 @@ those three), the undo says so rather than pretending.
 
 ## The database tests run Flyway too
 
-`WorksheetSearchDatabaseTest` and `MarketplaceJourneyDatabaseTest` start a bare Postgres
-container with Testcontainers and then run the exact same `migration/` scripts against it via
-the Flyway Java API before running any assertions, so the schema under test is the schema that
-ships. A migration that breaks a fresh `migrate()` therefore breaks those tests rather than only
-breaking the next person who points Flyway at an empty database.
+`WorksheetSearchDatabaseTest`, `MarketplaceJourneyDatabaseTest` and
+`PostgreTaskSubmissionDaoTest` get their database from `TestDatabase`, which runs the exact same
+`migration/` scripts against an empty Postgres via the Flyway Java API before any assertions, so
+the schema under test is the schema that ships. A migration that breaks a fresh `migrate()`
+therefore breaks those tests rather than only breaking the next person who points Flyway at an
+empty database.
 
-**But only locally.** Both classes are skipped where there is no Docker daemon, and the shared
-CI runner is unprivileged, so a `docker:dind` service cannot start there. A green pipeline
-consequently says nothing about whether these migrations still apply cleanly. Run `mvn test`
-with Docker up after changing anything under `migration/`, and do not take CI's word for it.
+Where that Postgres comes from depends on where the tests run:
 
-### On Windows: enable Docker Desktop's WSL integration first
+- **CI:** the `backend-test` job starts a throwaway `postgres:17-alpine` service beside the job
+  and points the tests at it through `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` and
+  `SPRING_DATASOURCE_PASSWORD`. Every pipeline migrates from `V1`, so a green pipeline does mean
+  the migrations still apply cleanly to an empty database.
+- **Locally:** with those variables unset, Testcontainers starts the container instead. Without
+  a Docker daemon the classes are **skipped**, and the build still reports success. Run
+  `mvn test` with Docker up after changing anything under `migration/`, and check for
+  `Skipped: 0`.
 
-"Docker up" means up *inside the distro you build in*. Docker Desktop running on Windows is
-not enough: without integration the distro has no `docker` CLI and no `/var/run/docker.sock`,
-Testcontainers finds no Docker environment, and the two classes above skip — leaving a green
-`BUILD SUCCESS` that has verified nothing. It is the same false green as CI, on your own
-machine, which makes it much easier to trust by mistake.
+The database is shared by all test classes in a run (one per JVM locally, one per job in CI)
+rather than one per class, so each class clears the tables it uses before it starts.
 
-Enable it under **Settings → Resources → WSL Integration**, for the distro holding the
-checkout. Then `ls -la /var/run/docker.sock` inside that distro should show a socket owned by
-`root:docker`, and your user should appear in `id -nG`.
+### Docker API version
 
-Two things to expect:
-
-- Toggling it **restarts the Docker engine**, which stops running containers. Anything without
-  a `restart:` policy stays down until started again.
-- Confirm the tests actually ran. `Tests run: N, ... Skipped: 0` is the thing to look for;
-  `Skipped: 11` with a green build is the failure mode this whole section is about.
-
-Separately, the daemon's API version is handled in `backend/pom.xml`: Docker Engine 29 refuses
+The daemon's API version is handled in `backend/pom.xml`: Docker Engine 29 refuses
 the API 1.32 that docker-java defaults to, so Surefire pins `api.version` via the
 `docker.api.version` property. On a daemon older than Docker 25, override it with
 `-Ddocker.api.version=1.41` or similar.
