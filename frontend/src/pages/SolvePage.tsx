@@ -20,6 +20,7 @@ import { readArrangement } from "../lib/readArrangement.ts";
 import { applyHintLabels } from "../lib/hintHighlight.ts";
 import { shuffleElementChildren } from "../lib/shuffleSource.ts";
 import { taskName } from "../lib/taskName.ts";
+import TaskStatement from "../components/TaskStatement.tsx";
 import type { ParsonsCodeLine, ParsonsLogEntry, ParsonsSplitFragment, ParsonsWidget, ParsonsWidgetConstructor } from "../types/parsons.ts";
 
 declare global {
@@ -1282,7 +1283,7 @@ export default function SolvePage() {
                     <div className="card mb-3">
                         <div className="card-body">
                             <b>{t("solve.taskLabel")}</b>
-                            <div className="mt-2" style={{whiteSpace: "pre-wrap"}}>{task.statement}</div>
+                            <TaskStatement className="mt-2" statement={task.statement} />
                             <div className="text-muted mt-2">
                                 {t("solve.tierAndLanguage", { name: taskName(task, t), language: task.programmingLanguage })}
                             </div>

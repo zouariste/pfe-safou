@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
 import { useTranslation } from "react-i18next";
 import type { TieredTaskSequence } from "../types/models";
 import { taskName } from "../lib/taskName";
+import TaskStatement from "./TaskStatement";
 
 interface Props {
     sequence: TieredTaskSequence;
@@ -57,7 +57,7 @@ export const SequenceView: React.FC<Props> = ({ sequence }) => {
                     <div className="card-body">
                         <h5 className="card-title">{taskName(selectedTask, t)}</h5>
                         <b>{t("sequence.statementLabel")}</b>
-                        <ReactMarkdown>{selectedTask.statement}</ReactMarkdown>
+                        <TaskStatement statement={selectedTask.statement} />
                     </div>
                 </div>
             )}

@@ -22,6 +22,7 @@ import TagChipSkeleton from "../components/TagChipSkeleton.tsx";
 import TagEditor from "../components/TagEditor.tsx";
 import SimilarSequencesPanel from "../components/SimilarSequencesPanel.tsx";
 import AddToWorksheetModal from "../components/AddToWorksheetModal.tsx";
+import TaskStatement from "../components/TaskStatement.tsx";
 import {
     exportSequenceJSON,
     exportSequenceCSV,
@@ -923,10 +924,11 @@ export default function SequencePage() {
                                             data-bs-parent={`#solution-${task.id}`}
                                         >
                                             <div className="accordion-body bg-light rounded-bottom">
+                                                <div className="mt-3 mb-3">
+                                                    <strong>{t("sequence.taskDescription")}:</strong>
+                                                    <TaskStatement statement={task.statement} />
+                                                </div>
                                                 <pre style={{ overflowX: "auto" }}>
-                                                    <p className="mt-3" style={{ whiteSpace: "pre-wrap" }}>
-                                                        <strong>{t("sequence.taskDescription")}:</strong> {task.statement}
-                                                    </p>
                                                     <code>{task.solution}</code>
                                                 </pre>
                                                 {/* AP22: Context mode indicator in teacher view */}

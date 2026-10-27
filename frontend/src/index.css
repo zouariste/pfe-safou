@@ -104,3 +104,8 @@
         transform: none !important;
     }
 }
+
+/* Markdown task statements (TaskStatement): no stray gap under the last paragraph or list. */
+.task-statement > :last-child {
+    margin-bottom: 0;
+}
