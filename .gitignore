@@ -58,3 +58,7 @@ CLAUDE.md
 
 # tree-sitter native libraries built by backend/scripts/build-treesitter-natives.sh
 backend/native/
+
+# Code Quality reports written by the CI lint jobs (config/codequality)
+gl-code-quality-*.json
+frontend/eslint-report.json
