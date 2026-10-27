@@ -90,10 +90,12 @@ class TaskEnricherFieldCompletenessTest {
         TieredTaskSequenceDTO enriched = enricher.enrichWithSolutions(seed, false, false, false);
 
         for (Field field : TieredTaskSequenceDTO.class.getDeclaredFields()) {
-            if (field.isSynthetic() || Modifier.isStatic(field.getModifiers()))
+            if (field.isSynthetic() || Modifier.isStatic(field.getModifiers())) {
                 continue;
-            if (RESET_BY_ENRICHMENT.contains(field.getName()))
+            }
+            if (RESET_BY_ENRICHMENT.contains(field.getName())) {
                 continue;
+            }
 
             field.setAccessible(true);
             assertEquals(

@@ -18,9 +18,9 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import java.util.*;
+import java.util.UUID;
 
-import lombok.*;
+import lombok.Data;
 
 /**
  * Represents a data transfer object (DTO) that links a version to a tiered task sequence.

@@ -18,15 +18,13 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import java.util.*;
+import java.util.List;
 
-import org.springframework.stereotype.*;
+import org.springframework.stereotype.Repository;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceTaskDTO;
-import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceTaskRepository;
 
 @Repository

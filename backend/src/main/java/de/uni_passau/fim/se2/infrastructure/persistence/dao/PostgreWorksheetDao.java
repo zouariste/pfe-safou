@@ -19,25 +19,27 @@
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
 import java.sql.Array;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
-import org.springframework.dao.*;
-import org.springframework.jdbc.core.*;
-import org.springframework.stereotype.*;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
-import de.uni_passau.fim.se2.domain.exceptions.*;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
 import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
-import lombok.extern.slf4j.*;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * PostgreSQL-based implementation of the {@link WorksheetRepository}. Provides CRUD operations for worksheet
@@ -166,7 +168,9 @@ public class PostgreWorksheetDao implements WorksheetRepository {
                  w.hint_credits_per_task, w.visibility, w.created_at, w.copied_from, w.copied_at
         """;
 
-    private static final RowMapper<WorksheetDTO> WORKSHEET_MAPPER = (rs, rowNum) -> {
+    private static final RowMapper<WorksheetDTO> WORKSHEET_MAPPER = PostgreWorksheetDao::mapWorksheet;
+
+    private static WorksheetDTO mapWorksheet(ResultSet rs, int rowNum) throws SQLException {
         List<TieredTaskSequenceDTO> sequences = new ArrayList<>();
         UUID[] seqArray = (UUID[]) rs.getArray("sequence_ids").getArray();
         UUID[] ownerArray = (UUID[]) rs.getArray("sequence_owner_ids").getArray();
@@ -196,7 +200,7 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             .copiedAt(toInstant(rs.getTimestamp("copied_at")))
             .sequenceDTOS(sequences)
             .build();
-    };
+    }
 
     @Override
     public Optional<WorksheetDTO> findById(UUID worksheetId) {
@@ -341,7 +345,6 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             );
 
             log.info("Linked {} sequences to worksheet id={}", sequences.size(), worksheet.getId());
-
         }
         catch (DataAccessException e) {
             log.error("Error batch-linking sequences to worksheet id={}", worksheet.getId(), e);
@@ -481,22 +484,7 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             ORDER BY w.name
             """;
 
-        return jdbc.query(
-            sql, (rs, rowNum) -> WorksheetDTO.builder()
-                .id(UUID.fromString(rs.getString("id")))
-                .name(rs.getString("name"))
-                .description(rs.getString("description"))
-                .ownerId(rs.getObject("owner_id", UUID.class))
-                .hintsEnabled(rs.getBoolean("hints_enabled"))
-                .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
-                .sequenceDTOS(sequenceReferences(rs.getArray("sequence_ids")))
-                .visibility(WorksheetVisibility.parse(rs.getString("visibility")))
-                .createdAt(toInstant(rs.getTimestamp("created_at")))
-                .copiedFrom(rs.getObject("copied_from", UUID.class))
-                .copiedAt(toInstant(rs.getTimestamp("copied_at")))
-                .build(),
-            ownerId
-        );
+        return jdbc.query(sql, PostgreWorksheetDao::mapOwnedWorksheet, ownerId);
     }
 
     @Override
@@ -574,5 +562,21 @@ public class PostgreWorksheetDao implements WorksheetRepository {
             log.warn("{} — worksheet={}", msg, worksheet);
             throw new DomainValidationException(msg);
         }
+    }
+
+    private static WorksheetDTO mapOwnedWorksheet(ResultSet rs, int rowNum) throws SQLException {
+        return WorksheetDTO.builder()
+            .id(UUID.fromString(rs.getString("id")))
+            .name(rs.getString("name"))
+            .description(rs.getString("description"))
+            .ownerId(rs.getObject("owner_id", UUID.class))
+            .hintsEnabled(rs.getBoolean("hints_enabled"))
+            .hintCreditsPerTask((Integer) rs.getObject("hint_credits_per_task"))
+            .sequenceDTOS(sequenceReferences(rs.getArray("sequence_ids")))
+            .visibility(WorksheetVisibility.parse(rs.getString("visibility")))
+            .createdAt(toInstant(rs.getTimestamp("created_at")))
+            .copiedFrom(rs.getObject("copied_from", UUID.class))
+            .copiedAt(toInstant(rs.getTimestamp("copied_at")))
+            .build();
     }
 }

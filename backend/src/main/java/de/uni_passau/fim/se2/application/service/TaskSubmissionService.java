@@ -48,6 +48,11 @@ public class TaskSubmissionService {
      *
      * Anonymous solvers are skipped rather than rejected: a task can be opened through a shared link without an
      * account, and there is nobody to store the work against. They keep the behaviour they have always had.
+     *
+     * @param userId       the student, or null if anonymous
+     * @param taskId       the solved task
+     * @param blockOrder   the text of each block in the solution, in order
+     * @param indentLevels the indent level of each block
      */
     @Transactional
     public void saveSolved(UUID userId, UUID taskId, List<String> blockOrder, List<Integer> indentLevels) {
@@ -80,6 +85,11 @@ public class TaskSubmissionService {
      * the top of their actual work.
      *
      * Anonymous solvers are skipped for the same reason as above -- no account, nothing to store the work against.
+     *
+     * @param userId       the student, or null if anonymous
+     * @param taskId       the task being worked on
+     * @param blockOrder   the text of each block in the solution area, in order
+     * @param indentLevels the indent level of each block
      */
     @Transactional
     public void saveProgress(UUID userId, UUID taskId, List<String> blockOrder, List<Integer> indentLevels) {
@@ -117,21 +127,26 @@ public class TaskSubmissionService {
      *
      * This is the student discarding their own work on purpose, which is why it is allowed on a closed worksheet: there
      * is nothing to gain by forcing them to keep it.
+     *
+     * @param userId the student
+     * @param taskId the task whose arrangement to discard
      */
     @Transactional
     public void discard(UUID userId, UUID taskId) {
         if (taskId == null) {
             throw new DomainValidationException("taskId is required");
         }
-        if (userId == null)
+        if (userId == null) {
             return;
+        }
         repository.delete(userId, taskId);
     }
 
     @Transactional(readOnly = true)
     public Optional<TaskSubmissionDTO> find(UUID userId, UUID taskId) {
-        if (userId == null || taskId == null)
+        if (userId == null || taskId == null) {
             return Optional.empty();
+        }
         return repository.find(userId, taskId);
     }
 }

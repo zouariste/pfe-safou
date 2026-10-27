@@ -18,20 +18,20 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import java.sql.*;
-import java.util.*;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.List;
+import java.util.UUID;
 
-import org.springframework.dao.*;
-import org.springframework.jdbc.core.*;
-import org.springframework.stereotype.*;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.FeedbackLogDTO;
-import de.uni_passau.fim.se2.domain.exceptions.*;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.interfaces.FeedbackLogRepository;
-import lombok.extern.slf4j.*;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * PostgreSQL-based implementation of the {@link FeedbackLogRepository}.
@@ -102,18 +102,7 @@ public class PostgreFeedbackLogDao implements FeedbackLogRepository {
         try {
             return jdbc.query(
                 sql,
-                (ResultSet rs, int rowNum) -> FeedbackLogDTO.builder()
-                    .id(rs.getObject("id", UUID.class))
-                    .taskId(rs.getObject("task_id", UUID.class))
-                    .correct(rs.getBoolean("correct"))
-                    .userId(rs.getObject("user_id", UUID.class))
-                    .classId(rs.getObject("class_id", UUID.class))
-                    .clickedAt(
-                        rs.getTimestamp("clicked_at") != null
-                            ? rs.getTimestamp("clicked_at").toLocalDateTime()
-                            : null
-                    )
-                    .build(),
+                PostgreFeedbackLogDao::mapFeedbackLog,
                 taskId
             );
         }
@@ -161,18 +150,7 @@ public class PostgreFeedbackLogDao implements FeedbackLogRepository {
         try {
             return jdbc.query(
                 sql,
-                (ResultSet rs, int rowNum) -> FeedbackLogDTO.builder()
-                    .id(rs.getObject("id", UUID.class))
-                    .taskId(rs.getObject("task_id", UUID.class))
-                    .correct(rs.getBoolean("correct"))
-                    .userId(rs.getObject("user_id", UUID.class))
-                    .classId(rs.getObject("class_id", UUID.class))
-                    .clickedAt(
-                        rs.getTimestamp("clicked_at") != null
-                            ? rs.getTimestamp("clicked_at").toLocalDateTime()
-                            : null
-                    )
-                    .build(),
+                PostgreFeedbackLogDao::mapFeedbackLog,
                 classId
             );
         }
@@ -199,5 +177,17 @@ public class PostgreFeedbackLogDao implements FeedbackLogRepository {
         if (taskId == null) {
             throw new DomainValidationException("Task ID cannot be null");
         }
+    }
+
+    private static FeedbackLogDTO mapFeedbackLog(ResultSet rs, int rowNum) throws SQLException {
+        Timestamp clickedAt = rs.getTimestamp("clicked_at");
+        return FeedbackLogDTO.builder()
+            .id(rs.getObject("id", UUID.class))
+            .taskId(rs.getObject("task_id", UUID.class))
+            .correct(rs.getBoolean("correct"))
+            .userId(rs.getObject("user_id", UUID.class))
+            .classId(rs.getObject("class_id", UUID.class))
+            .clickedAt(clickedAt != null ? clickedAt.toLocalDateTime() : null)
+            .build();
     }
 }

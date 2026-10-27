@@ -23,7 +23,14 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import de.uni_passau.fim.se2.application.service.BulkRetagJobStatus;
 import de.uni_passau.fim.se2.application.service.BulkRetagService;
@@ -66,6 +73,9 @@ public class AdminTagController {
     /**
      * Queues a bulk retag job. Returns {@code 202 Accepted} with the job ID and a {@code pollUrl} the SPA can hit to
      * track progress. The actual LLM work happens on a background virtual thread.
+     *
+     * @param body optional job options; null retags with the defaults
+     * @return 202 with the job ID and the URL to poll for its progress
      */
     @PostMapping("/sequences/retag")
     public ResponseEntity<Map<String, Object>> startBulkRetag(@RequestBody(required = false) BulkRetagRequest body) {
@@ -90,6 +100,9 @@ public class AdminTagController {
     /**
      * Returns the live progress of a single job. {@code 404} if the job ID is unknown (never existed, or already
      * evicted from the in-memory ring).
+     *
+     * @param jobId the job to report on
+     * @return the job's progress, or 404 if the job is unknown
      */
     @GetMapping("/sequences/retag/{jobId}")
     public ResponseEntity<?> getBulkRetagStatus(@PathVariable UUID jobId) {
@@ -101,7 +114,11 @@ public class AdminTagController {
         return ResponseEntity.ok(snapshot);
     }
 
-    /** Lists all retag jobs currently in memory, newest first. Used by the admin dashboard. */
+    /**
+     * Lists all retag jobs currently in memory, newest first. Used by the admin dashboard.
+     *
+     * @return all retag jobs still held in memory, newest first
+     */
     @GetMapping("/sequences/retag")
     public ResponseEntity<?> listBulkRetagJobs() {
         return ResponseEntity.ok(bulkRetagService.listRecent());
@@ -114,6 +131,8 @@ public class AdminTagController {
     /**
      * Returns the full tag cloud: every distinct tag_name with its usage count, sorted by popularity. This is the
      * source of truth for the admin "merge tags" UI (AP19 A16) and the Library filter sidebar facet counts (AP19 A8).
+     *
+     * @return every distinct tag with its usage count, most used first
      */
     @GetMapping("/tags")
     public ResponseEntity<?> listAllTags() {
@@ -132,6 +151,7 @@ public class AdminTagController {
      *
      * @param days  window size in days (1..90, default 7)
      * @param limit max rows (1..200, default 50)
+     * @return the tags first seen within the period, most used first
      */
     @GetMapping("/tags/new-topics")
     public ResponseEntity<java.util.List<SequenceTagRepository.NewTopic>> listNewTopics(
@@ -166,13 +186,13 @@ public class AdminTagController {
      *
      * <p>
      * Response returns the affected-row count so the UI can show "Merged — N rows updated".
+     *
+     * @param body the tag to merge away and the tag to merge it into
+     * @return the number of affected rows, or 400 if either name is missing
      */
     @PostMapping("/tags/merge")
     public ResponseEntity<Map<String, Object>> mergeTags(@RequestBody MergeTagsRequest body) {
-        if (
-            body == null || body.from() == null || body.to() == null
-                || body.from().isBlank() || body.to().isBlank()
-        ) {
+        if (body == null || !StringUtils.hasText(body.from()) || !StringUtils.hasText(body.to())) {
             return ResponseEntity.badRequest().body(
                 Map.of(
                     "error", "Both 'from' and 'to' tag names are required."

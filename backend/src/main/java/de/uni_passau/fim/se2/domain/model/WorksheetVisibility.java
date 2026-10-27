@@ -50,12 +50,20 @@ public enum WorksheetVisibility {
     /** What a worksheet gets when nobody says otherwise — today's behaviour, unchanged. */
     public static final WorksheetVisibility DEFAULT = UNLISTED;
 
-    /** Whether someone who was handed the link may open it. */
+    /**
+     * Whether someone who was handed the link may open it.
+     *
+     * @return true unless the worksheet is private
+     */
     public boolean readableByLink() {
         return this != PRIVATE;
     }
 
-    /** Whether the marketplace lists it. */
+    /**
+     * Whether the marketplace lists it.
+     *
+     * @return true if the worksheet is public
+     */
     public boolean listed() {
         return this == PUBLIC;
     }

@@ -19,6 +19,7 @@
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,7 +41,9 @@ public class PostgreTaskOriginalDao implements TaskOriginalRepository {
         this.jdbc = jdbc;
     }
 
-    private static final RowMapper<TaskOriginalDTO> ROW_MAPPER = (ResultSet rs, int rowNum) -> {
+    private static final RowMapper<TaskOriginalDTO> ROW_MAPPER = PostgreTaskOriginalDao::mapRow;
+
+    private static TaskOriginalDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
         TaskOriginalDTO dto = new TaskOriginalDTO();
         dto.setId(rs.getObject("id", UUID.class));
         dto.setTaskId(rs.getObject("task_id", UUID.class));
@@ -54,7 +57,7 @@ public class PostgreTaskOriginalDao implements TaskOriginalRepository {
                 : null
         );
         return dto;
-    };
+    }
 
     @Override
     public void save(TaskOriginalDTO original) {

@@ -544,40 +544,46 @@ class WorksheetCloneServiceTest {
 
     private void stubWorksheetLoad(List<UUID> sequenceIds) {
         doAnswer(invocation -> {
-            WorksheetDTO target = invocation.getArgument(0);
-            // Only the source is filled in; the freshly created copy is re-read at the end and
-            // would otherwise be handed the source's sequence list.
-            if (SOURCE_WORKSHEET.equals(target.getId())) {
-                target.setName("Arrays");
-                target.setDescription("Week 3");
-                target.setOwnerId(ORIGINAL_OWNER);
-                target.setHintsEnabled(false);
-                target.setHintCreditsPerTask(4);
-                target.setSequenceDTOS(
-                    sequenceIds.stream()
-                        .map(id -> TieredTaskSequenceDTO.builder().id(id).build())
-                        .toList()
-                );
-            }
-            else {
-                target.setSequenceDTOS(List.of());
-            }
+            fillWorksheet(invocation.getArgument(0), sequenceIds);
             return null;
         }).when(worksheetRepo).getWorksheetById(any());
     }
 
+    private static void fillWorksheet(WorksheetDTO target, List<UUID> sequenceIds) {
+        // Only the source is filled in; the freshly created copy is re-read at the end and
+        // would otherwise be handed the source's sequence list.
+        if (SOURCE_WORKSHEET.equals(target.getId())) {
+            target.setName("Arrays");
+            target.setDescription("Week 3");
+            target.setOwnerId(ORIGINAL_OWNER);
+            target.setHintsEnabled(false);
+            target.setHintCreditsPerTask(4);
+            target.setSequenceDTOS(
+                sequenceIds.stream()
+                    .map(id -> TieredTaskSequenceDTO.builder().id(id).build())
+                    .toList()
+            );
+        }
+        else {
+            target.setSequenceDTOS(List.of());
+        }
+    }
+
     private void stubSequenceLoad(TieredTaskSequenceDTO source) {
         doAnswer(invocation -> {
-            TieredTaskSequenceDTO target = invocation.getArgument(0);
-            target.setProgrammingLanguage(source.getProgrammingLanguage());
-            target.setTaskDescription(source.getTaskDescription());
-            target.setCodeSnippet(source.getCodeSnippet());
-            target.setOwnerId(source.getOwnerId());
-            target.setTargetLanguage(source.getTargetLanguage());
-            target.setTierCount(source.getTierCount());
-            target.setConcepts(source.getConcepts());
+            copySequence(source, invocation.getArgument(0));
             return null;
         }).when(sequenceRepo).loadById(any());
+    }
+
+    private static void copySequence(TieredTaskSequenceDTO source, TieredTaskSequenceDTO target) {
+        target.setProgrammingLanguage(source.getProgrammingLanguage());
+        target.setTaskDescription(source.getTaskDescription());
+        target.setCodeSnippet(source.getCodeSnippet());
+        target.setOwnerId(source.getOwnerId());
+        target.setTargetLanguage(source.getTargetLanguage());
+        target.setTierCount(source.getTierCount());
+        target.setConcepts(source.getConcepts());
     }
 
     /** Stands in for the database handing back a generated primary key. */

@@ -36,10 +36,12 @@ import de.uni_passau.fim.se2.domain.entities.UserDTO;
 @Service
 public class OwnershipService {
 
-    private static final Logger logger = LoggerFactory.getLogger(OwnershipService.class);
+    private static final Logger log = LoggerFactory.getLogger(OwnershipService.class);
 
     /**
      * Returns the current authenticated user's ID, or null if anonymous.
+     *
+     * @return the current user's ID, or null if anonymous
      */
     public UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -56,6 +58,8 @@ public class OwnershipService {
 
     /**
      * Returns the current authenticated user's role, or null if anonymous.
+     *
+     * @return the current user's role name, or null if anonymous
      */
     public String getCurrentRole() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -77,6 +81,8 @@ public class OwnershipService {
      * The string form above is what the older checks here are built on. Anything reasoning about roles rather than
      * merely comparing them — {@link de.uni_passau.fim.se2.domain.model.WorksheetAccessPolicy}, for one — wants the
      * enum, and translating once here beats every caller doing it slightly differently.
+     *
+     * @return the current user's role, or null if anonymous or unrecognised
      */
     public UserDTO.UserRole getCurrentUserRole() {
         String role = getCurrentRole();
@@ -95,6 +101,8 @@ public class OwnershipService {
 
     /**
      * Checks if the current user is an admin.
+     *
+     * @return true if the current user is an admin
      */
     public boolean isAdmin() {
         return "ADMIN".equals(getCurrentRole());
@@ -102,6 +110,8 @@ public class OwnershipService {
 
     /**
      * Checks if the current user is a student.
+     *
+     * @return true if the current user is a student
      */
     public boolean isStudent() {
         return "STUDENT".equals(getCurrentRole());
@@ -109,6 +119,8 @@ public class OwnershipService {
 
     /**
      * Checks if the current user is a teacher.
+     *
+     * @return true if the current user is a teacher
      */
     public boolean isTeacher() {
         return "TEACHER".equals(getCurrentRole());
@@ -116,6 +128,8 @@ public class OwnershipService {
 
     /**
      * Checks if the current user is authenticated (not anonymous).
+     *
+     * @return true if a user is logged in
      */
     public boolean isAuthenticated() {
         return getCurrentUserId() != null;
@@ -128,8 +142,9 @@ public class OwnershipService {
      * @return true if the user is the owner or an admin
      */
     public boolean isOwnerOrAdmin(UUID resourceOwnerId) {
-        if (isAdmin())
+        if (isAdmin()) {
             return true;
+        }
         UUID currentUserId = getCurrentUserId();
         return currentUserId != null && currentUserId.equals(resourceOwnerId);
     }
@@ -142,8 +157,9 @@ public class OwnershipService {
      * @param resourceType    human-readable name for error messages
      */
     public void checkOwnership(UUID resourceOwnerId, String resourceType) {
-        if (isAdmin())
+        if (isAdmin()) {
             return;
+        }
 
         UUID currentUserId = getCurrentUserId();
         if (currentUserId == null) {
@@ -152,7 +168,7 @@ public class OwnershipService {
             );
         }
         if (!currentUserId.equals(resourceOwnerId)) {
-            logger.warn(
+            log.warn(
                 "User {} tried to modify {} owned by {}",
                 currentUserId, resourceType, resourceOwnerId
             );
@@ -165,6 +181,8 @@ public class OwnershipService {
     /**
      * Throws AccessDeniedException if the current user is a student. Students cannot generate sequences or create
      * worksheets.
+     *
+     * @param action what the student tried to do, for the error message
      */
     public void denyStudents(String action) {
         if (isStudent()) {

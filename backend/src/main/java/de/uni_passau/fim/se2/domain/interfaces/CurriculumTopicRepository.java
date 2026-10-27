@@ -73,6 +73,7 @@ public interface CurriculumTopicRepository {
      * agree on what counts as a match. A topic with zero matches is simply absent from the returned map.
      *
      * @param topicIds the topics to count for; an empty collection short-circuits to an empty map
+     * @return the number of matching sequences, keyed by topic ID
      */
     Map<UUID, Integer> countSequencesByTopicIds(Collection<UUID> topicIds);
 }

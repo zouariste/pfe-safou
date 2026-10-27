@@ -23,7 +23,12 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import de.uni_passau.fim.se2.application.service.BulkConceptReclassifyJobStatus;
 import de.uni_passau.fim.se2.application.service.BulkConceptReclassifyService;
@@ -59,6 +64,9 @@ public class AdminConceptController {
     /**
      * Queues a bulk concept re-classify job. Returns {@code 202 Accepted} with the job ID and a {@code pollUrl} the SPA
      * can hit to track progress. The actual LLM work happens on a background virtual thread.
+     *
+     * @param body optional job options; null re-classifies with the defaults
+     * @return 202 with the job ID and the URL to poll for its progress
      */
     @PostMapping("/sequences/reclassify-concepts")
     public ResponseEntity<Map<String, Object>> startBulkConceptReclassify(
@@ -85,6 +93,9 @@ public class AdminConceptController {
     /**
      * Returns the live progress of a single job. {@code 404} if the job ID is unknown (never existed, or already
      * evicted from the in-memory ring).
+     *
+     * @param jobId the job to report on
+     * @return the job's progress, or 404 if the job is unknown
      */
     @GetMapping("/sequences/reclassify-concepts/{jobId}")
     public ResponseEntity<?> getBulkConceptReclassifyStatus(@PathVariable UUID jobId) {
@@ -96,7 +107,11 @@ public class AdminConceptController {
         return ResponseEntity.ok(snapshot);
     }
 
-    /** Lists all concept-reclassify jobs currently in memory, newest first. */
+    /**
+     * Lists all concept-reclassify jobs currently in memory, newest first.
+     *
+     * @return all jobs still held in memory, newest first
+     */
     @GetMapping("/sequences/reclassify-concepts")
     public ResponseEntity<?> listBulkConceptReclassifyJobs() {
         return ResponseEntity.ok(bulkConceptReclassifyService.listRecent());

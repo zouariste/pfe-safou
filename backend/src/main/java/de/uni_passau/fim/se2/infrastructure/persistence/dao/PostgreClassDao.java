@@ -18,10 +18,18 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -38,6 +46,12 @@ import lombok.extern.slf4j.Slf4j;
 @Repository
 @RequiredArgsConstructor
 public class PostgreClassDao implements ClassRepository {
+
+    private static final String TRACKING_ENABLED = "tracking_enabled";
+    private static final String CREATED_AT = "created_at";
+    private static final String UPDATED_AT = "updated_at";
+    private static final String NAME = "name";
+    private static final String DESCRIPTION = "description";
 
     private final JdbcTemplate jdbc;
 
@@ -56,8 +70,8 @@ public class PostgreClassDao implements ClassRepository {
         boolean published = rs.getBoolean("published");
         return ClassDTO.WorksheetInfo.builder()
             .worksheetId(rs.getObject("worksheet_id", UUID.class))
-            .name(rs.getString("name"))
-            .description(rs.getString("description"))
+            .name(rs.getString(NAME))
+            .description(rs.getString(DESCRIPTION))
             .published(published)
             .releaseAt(releaseAt)
             .deadlineAt(deadlineAt)
@@ -74,8 +88,9 @@ public class PostgreClassDao implements ClassRepository {
      * The overview needs deadlines, and loading them class by class would mean a query per card.
      */
     private void attachWorksheets(List<ClassDTO> classes) {
-        if (classes.isEmpty())
+        if (classes.isEmpty()) {
             return;
+        }
 
         List<UUID> ids = classes.stream().map(ClassDTO::getId).toList();
         String placeholders = String.join(", ", Collections.nCopies(ids.size(), "?"));
@@ -124,23 +139,7 @@ public class PostgreClassDao implements ClassRepository {
     public Optional<ClassDTO> findById(UUID id) {
         List<ClassDTO> results = jdbc.query(
             "SELECT * FROM classes WHERE id = ?",
-            (rs, rowNum) -> ClassDTO.builder()
-                .id(rs.getObject("id", UUID.class))
-                .name(rs.getString("name"))
-                .description(rs.getString("description"))
-                .ownerId(rs.getObject("owner_id", UUID.class))
-                .trackingEnabled(rs.getBoolean("tracking_enabled"))
-                .createdAt(
-                    rs.getTimestamp("created_at") != null
-                        ? rs.getTimestamp("created_at").toLocalDateTime()
-                        : null
-                )
-                .updatedAt(
-                    rs.getTimestamp("updated_at") != null
-                        ? rs.getTimestamp("updated_at").toLocalDateTime()
-                        : null
-                )
-                .build(),
+            PostgreClassDao::mapClass,
             id
         );
         return results.stream().findFirst();
@@ -149,8 +148,9 @@ public class PostgreClassDao implements ClassRepository {
     @Override
     public Optional<ClassDTO> findByIdWithDetails(UUID id) {
         Optional<ClassDTO> classOpt = findById(id);
-        if (classOpt.isEmpty())
+        if (classOpt.isEmpty()) {
             return Optional.empty();
+        }
 
         ClassDTO classDTO = classOpt.get();
 
@@ -204,23 +204,7 @@ public class PostgreClassDao implements ClassRepository {
                 GROUP BY c.id
                 ORDER BY c.created_at DESC
                 """,
-            (rs, rowNum) -> ClassDTO.builder()
-                .id(rs.getObject("id", UUID.class))
-                .name(rs.getString("name"))
-                .description(rs.getString("description"))
-                .ownerId(rs.getObject("owner_id", UUID.class))
-                .trackingEnabled(rs.getBoolean("tracking_enabled"))
-                .createdAt(
-                    rs.getTimestamp("created_at") != null
-                        ? rs.getTimestamp("created_at").toLocalDateTime()
-                        : null
-                )
-                .updatedAt(
-                    rs.getTimestamp("updated_at") != null
-                        ? rs.getTimestamp("updated_at").toLocalDateTime()
-                        : null
-                )
-                .build(),
+            PostgreClassDao::mapClass,
             ownerId
         );
     }
@@ -236,24 +220,9 @@ public class PostgreClassDao implements ClassRepository {
                 LEFT JOIN users u ON u.user_id = c.owner_id
                 ORDER BY c.created_at DESC
                 """,
-            (rs, rowNum) -> ClassDTO.builder()
-                .id(rs.getObject("id", UUID.class))
-                .name(rs.getString("name"))
-                .description(rs.getString("description"))
-                .ownerId(rs.getObject("owner_id", UUID.class))
+            (rs, rowNum) -> classBuilder(rs)
                 .ownerName(rs.getString("owner_name"))
                 .ownerEmail(rs.getString("owner_email"))
-                .trackingEnabled(rs.getBoolean("tracking_enabled"))
-                .createdAt(
-                    rs.getTimestamp("created_at") != null
-                        ? rs.getTimestamp("created_at").toLocalDateTime()
-                        : null
-                )
-                .updatedAt(
-                    rs.getTimestamp("updated_at") != null
-                        ? rs.getTimestamp("updated_at").toLocalDateTime()
-                        : null
-                )
                 .build()
         );
     }
@@ -360,23 +329,7 @@ public class PostgreClassDao implements ClassRepository {
                 WHERE cs.student_id = ?
                 ORDER BY c.name
                 """,
-            (rs, rowNum) -> ClassDTO.builder()
-                .id(rs.getObject("id", UUID.class))
-                .name(rs.getString("name"))
-                .description(rs.getString("description"))
-                .ownerId(rs.getObject("owner_id", UUID.class))
-                .trackingEnabled(rs.getBoolean("tracking_enabled"))
-                .createdAt(
-                    rs.getTimestamp("created_at") != null
-                        ? rs.getTimestamp("created_at").toLocalDateTime()
-                        : null
-                )
-                .updatedAt(
-                    rs.getTimestamp("updated_at") != null
-                        ? rs.getTimestamp("updated_at").toLocalDateTime()
-                        : null
-                )
-                .build(),
+            PostgreClassDao::mapClass,
             studentId
         );
         // The overview shows deadlines, so the assignments have to come with it.
@@ -386,6 +339,7 @@ public class PostgreClassDao implements ClassRepository {
 
     // ── Tracking (AP5) ──────────────────────────────────────
 
+    @Override
     public void updateTrackingEnabled(UUID classId, boolean enabled) {
         int rows = jdbc.update(
             """
@@ -402,10 +356,11 @@ public class PostgreClassDao implements ClassRepository {
         log.info("Updated tracking_enabled={} for class id={}", enabled, classId);
     }
 
+    @Override
     public boolean isTrackingEnabled(UUID classId) {
         List<Boolean> results = jdbc.query(
             "SELECT tracking_enabled FROM classes WHERE id = ?",
-            (rs, rowNum) -> rs.getBoolean("tracking_enabled"),
+            (rs, rowNum) -> rs.getBoolean(TRACKING_ENABLED),
             classId
         );
         return results.stream().findFirst().orElse(false);
@@ -413,6 +368,9 @@ public class PostgreClassDao implements ClassRepository {
 
     /**
      * Returns the class_id for a student (first class found). Used to determine tracking context when logging feedback.
+     *
+     * @param studentId the student
+     * @return the ID of a class the student belongs to, or null if none
      */
     public UUID findClassIdForStudent(UUID studentId) {
         List<UUID> results = jdbc.query(
@@ -434,6 +392,10 @@ public class PostgreClassDao implements ClassRepository {
      * Two things can release an assignment — the publish flag and a release date that has arrived — so taking it back
      * out of sight has to neutralise both. Clearing only the flag would leave a passed release date still releasing it,
      * and the button would appear to do nothing.
+     *
+     * @param classId     the class
+     * @param worksheetId the worksheet assigned to the class
+     * @param published   whether the class should see the worksheet
      */
     public void setWorksheetPublished(UUID classId, UUID worksheetId, boolean published) {
         int rows;
@@ -471,6 +433,10 @@ public class PostgreClassDao implements ClassRepository {
     /**
      * Ends an assignment now: the deadline becomes this moment with no grace, so it reads as closed immediately and the
      * reason is visible in the schedule rather than hidden in a separate flag.
+     *
+     * @param classId     the class
+     * @param worksheetId the worksheet assigned to the class
+     * @param now         the moment to use as the deadline
      */
     public void closeWorksheetNow(UUID classId, UUID worksheetId, Instant now) {
         int rows = jdbc.update("""
@@ -486,6 +452,12 @@ public class PostgreClassDao implements ClassRepository {
 
     /**
      * Sets the schedule for one worksheet in one class. Passing null for a field clears that constraint.
+     *
+     * @param classId      the class
+     * @param worksheetId  the worksheet assigned to the class
+     * @param releaseAt    when the worksheet becomes available, or null for at once
+     * @param deadlineAt   when it closes, or null for never
+     * @param graceMinutes how long after the deadline work is still accepted, or null for none
      */
     public void updateWorksheetSchedule(
         UUID classId, UUID worksheetId,
@@ -506,5 +478,25 @@ public class PostgreClassDao implements ClassRepository {
         if (rows == 0) {
             throw new DomainValidationException("That worksheet is not assigned to this class.");
         }
+    }
+
+    private static ClassDTO mapClass(ResultSet rs, int rowNum) throws SQLException {
+        return classBuilder(rs).build();
+    }
+
+    /** The columns every class query selects; callers add what their query joins in. */
+    private static ClassDTO.ClassDTOBuilder classBuilder(ResultSet rs) throws SQLException {
+        return ClassDTO.builder()
+            .id(rs.getObject("id", UUID.class))
+            .name(rs.getString(NAME))
+            .description(rs.getString(DESCRIPTION))
+            .ownerId(rs.getObject("owner_id", UUID.class))
+            .trackingEnabled(rs.getBoolean(TRACKING_ENABLED))
+            .createdAt(toLocalDateTime(rs.getTimestamp(CREATED_AT)))
+            .updatedAt(toLocalDateTime(rs.getTimestamp(UPDATED_AT)));
+    }
+
+    private static LocalDateTime toLocalDateTime(Timestamp timestamp) {
+        return timestamp != null ? timestamp.toLocalDateTime() : null;
     }
 }

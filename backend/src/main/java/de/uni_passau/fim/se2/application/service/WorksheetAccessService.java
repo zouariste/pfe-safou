@@ -18,7 +18,6 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -57,16 +56,22 @@ public class WorksheetAccessService {
      *
      * A worksheet can be assigned to several classes on different schedules. A student in more than one gets the most
      * permissive answer: if any of their classes still has it open, they can work on it.
+     *
+     * @param taskId the task to check
+     * @return true if the current user may still submit work for the task
      */
     public boolean canSolve(UUID taskId) {
-        if (taskId == null)
+        if (taskId == null) {
             return true;
-        if (!ownershipService.isStudent())
+        }
+        if (!ownershipService.isStudent()) {
             return true;
+        }
 
         UUID userId = ownershipService.getCurrentUserId();
-        if (userId == null)
+        if (userId == null) {
             return true;
+        }
 
         List<Schedule> schedules = schedulesFor(userId, taskId);
         if (schedules.isEmpty()) {
@@ -81,7 +86,11 @@ public class WorksheetAccessService {
             .anyMatch(WorksheetAvailability::allowsSolving);
     }
 
-    /** Throws rather than returning false, for use at the top of a write endpoint. */
+    /**
+     * Throws rather than returning false, for use at the top of a write endpoint.
+     *
+     * @param taskId the task to check
+     */
     public void requireSolvable(UUID taskId) {
         if (!canSolve(taskId)) {
             throw new org.springframework.security.access.AccessDeniedException(

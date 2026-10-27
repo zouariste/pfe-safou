@@ -35,31 +35,62 @@ import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
  */
 public interface SequenceTagRepository {
 
-    /** All tags for a single sequence, ordered by source (manual first) then tag_name. */
+    /**
+     * All tags for a single sequence, ordered by source (manual first) then tag_name.
+     *
+     * @param sequenceId the sequence
+     * @return the sequence's tags
+     */
     List<SequenceTagDTO> findBySequenceId(UUID sequenceId);
 
-    /** All tags for a batch of sequences, grouped by sequenceId. Empty lists omitted. */
+    /**
+     * All tags for a batch of sequences, grouped by sequenceId. Empty lists omitted.
+     *
+     * @param sequenceIds the sequences
+     * @return the tags of each sequence that has any, keyed by sequence ID
+     */
     Map<UUID, List<SequenceTagDTO>> findBySequenceIds(List<UUID> sequenceIds);
 
     /**
      * Upsert a batch of tags for a single sequence. {@code ON CONFLICT DO NOTHING} — existing tags (esp. manual) are
      * not overwritten.
+     *
+     * @param tags the tags to insert
      */
     void upsertAll(List<SequenceTagDTO> tags);
 
     /**
      * Replace all tags of a given source for a sequence (e.g. re-running the LLM tagger after a code change). Never
      * touches tags with a different source.
+     *
+     * @param sequenceId the sequence
+     * @param source     the source whose tags to replace
+     * @param newTags    the new tags for that source
      */
     void replaceForSource(UUID sequenceId, String source, List<SequenceTagDTO> newTags);
 
-    /** Delete a single tag. */
+    /**
+     * Delete a single tag.
+     *
+     * @param sequenceId the sequence
+     * @param tagName    the tag to delete
+     */
     void delete(UUID sequenceId, String tagName);
 
-    /** Distinct tag names across the system, with usage counts (for autocomplete / tag cloud). */
+    /**
+     * Distinct tag names across the system, with usage counts (for autocomplete / tag cloud).
+     *
+     * @return each distinct tag with its usage count
+     */
     List<TagCount> findAllTagsWithCounts();
 
-    /** Distinct tag names that match the given prefix, limited for autocomplete. */
+    /**
+     * Distinct tag names that match the given prefix, limited for autocomplete.
+     *
+     * @param prefix the prefix to match
+     * @param limit  the maximum number of names
+     * @return the matching tag names
+     */
     List<String> findTagsByPrefix(String prefix, int limit);
 
     /**
@@ -77,6 +108,8 @@ public interface SequenceTagRepository {
      * on a sequence that also has {@code fromTagName}, the row is dropped rather than duplicated, so the unique key is
      * preserved. Source of the merged row is kept from the earlier insertion.
      *
+     * @param fromTagName the tag to merge away
+     * @param toTagName   the tag to merge it into
      * @return number of sequence_tags rows affected (renamed + deleted)
      */
     int mergeTags(String fromTagName, String toTagName);
@@ -84,10 +117,16 @@ public interface SequenceTagRepository {
     /**
      * Stores English display slugs for canonical tag names (key → value). Existing translations are overwritten, so a
      * re-tag can correct a bad one.
+     *
+     * @param translations the English slug for each canonical tag name
      */
     void upsertTranslations(Map<String, String> translations);
 
-    /** Every known canonical tag name → English slug mapping. */
+    /**
+     * Every known canonical tag name → English slug mapping.
+     *
+     * @return the English slug for each canonical tag name
+     */
     Map<String, String> findAllTranslations();
 
     record TagCount(String tagName, long count) {

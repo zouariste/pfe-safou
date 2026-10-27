@@ -18,6 +18,7 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
@@ -39,17 +40,22 @@ public class PostgreLearningEventDao implements LearningEventRepository {
 
     private final JdbcTemplate jdbc;
 
-    private static final RowMapper<LearningEventDTO> ROW_MAPPER = (rs, rowNum) -> LearningEventDTO.builder()
-        .id(rs.getObject("id", UUID.class))
-        .userId(rs.getObject("user_id", UUID.class))
-        .classId(rs.getObject("class_id", UUID.class))
-        .taskId(rs.getObject("task_id", UUID.class))
-        .sequenceId(rs.getObject("sequence_id", UUID.class))
-        .tierLevel(rs.getObject("tier_level") != null ? rs.getInt("tier_level") : null)
-        .eventType(rs.getString("event_type"))
-        .eventData(rs.getString("event_data"))
-        .createdAt(rs.getTimestamp("created_at"))
-        .build();
+    private static final RowMapper<LearningEventDTO> ROW_MAPPER = PostgreLearningEventDao::mapRow;
+
+    private static LearningEventDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
+
+        return LearningEventDTO.builder()
+            .id(rs.getObject("id", UUID.class))
+            .userId(rs.getObject("user_id", UUID.class))
+            .classId(rs.getObject("class_id", UUID.class))
+            .taskId(rs.getObject("task_id", UUID.class))
+            .sequenceId(rs.getObject("sequence_id", UUID.class))
+            .tierLevel(rs.getObject("tier_level") != null ? rs.getInt("tier_level") : null)
+            .eventType(rs.getString("event_type"))
+            .eventData(rs.getString("event_data"))
+            .createdAt(rs.getTimestamp("created_at"))
+            .build();
+    }
 
     @Override
     public void save(LearningEventDTO event) {
@@ -63,7 +69,7 @@ public class PostgreLearningEventDao implements LearningEventRepository {
             jsonObj.setValue(event.getEventData() != null ? event.getEventData() : "{}");
         }
         catch (SQLException e) {
-            throw new RuntimeException("Failed to set JSONB value", e);
+            throw new IllegalStateException("Failed to set JSONB value", e);
         }
 
         jdbc.update(
@@ -118,6 +124,9 @@ public class PostgreLearningEventDao implements LearningEventRepository {
 
     /**
      * Checks whether any class this student belongs to has tracking_enabled = true.
+     *
+     * @param userId the student
+     * @return true if one of the student's classes tracks progress
      */
     public boolean isTrackingEnabledForStudent(UUID userId) {
         List<Boolean> results = jdbc.query(
@@ -146,10 +155,15 @@ public class PostgreLearningEventDao implements LearningEventRepository {
      * Falls back to the student's first class when the intersection is empty, which happens when a task is reached
      * outside any worksheet — {@code /api/tasks/**} is {@code permitAll}, so a task can be solved from a direct link.
      * Returns null when even that finds nothing, and for a visitor who is not logged in at all.
+     *
+     * @param userId the student
+     * @param taskId the task
+     * @return the class the work belongs to, or null if none can be determined
      */
     public UUID resolveClassId(UUID userId, UUID taskId) {
-        if (userId == null || taskId == null)
+        if (userId == null || taskId == null) {
             return null;
+        }
 
         // Oldest assignment first, so the answer is stable rather than whatever the planner
         // happened to return first, in the rare case a student is in two classes sharing a
@@ -168,8 +182,9 @@ public class PostgreLearningEventDao implements LearningEventRepository {
             (rs, rowNum) -> rs.getObject("class_id", UUID.class),
             userId, taskId
         );
-        if (!matched.isEmpty())
+        if (!matched.isEmpty()) {
             return matched.get(0);
+        }
 
         List<UUID> fallback = jdbc.query(
             "SELECT class_id FROM class_students WHERE student_id = ? ORDER BY joined_at LIMIT 1",

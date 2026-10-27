@@ -20,7 +20,18 @@ package de.uni_passau.fim.se2.domain.model;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.core.io.ClassPathResource;
@@ -115,8 +126,9 @@ public class ConceptCatalog {
             Map<String, String> normalized = new HashMap<>();
             for (var entry : raw.entrySet()) {
                 String key = entry.getKey().toLowerCase(Locale.ROOT).trim();
-                if (key.startsWith("_"))
+                if (key.startsWith("_")) {
                     continue; // skip _comment etc.
+                }
                 normalized.put(key, entry.getValue());
             }
             // Also add all aliases from the catalog entries themselves
@@ -133,10 +145,16 @@ public class ConceptCatalog {
 
     // ── Public API ────────────────────────────────────────
 
-    /** Returns true if the given string is a valid catalog slug — from the file or added since. */
+    /**
+     * Returns true if the given string is a valid catalog slug — from the file or added since.
+     *
+     * @param slug the string to check, or null
+     * @return true if it is a valid slug
+     */
     public boolean isValidSlug(String slug) {
-        if (slug == null)
+        if (slug == null) {
             return false;
+        }
         String key = slug.toLowerCase(Locale.ROOT).trim();
         return bySlug.containsKey(key) || loadConceptsBeyondCatalog().containsKey(key);
     }
@@ -144,27 +162,37 @@ public class ConceptCatalog {
     /**
      * Tries to resolve a free-text string to a catalog slug: a direct slug match, a known alias, or a concept name
      * added to the {@code concepts} table after the file was written.
+     *
+     * @param input the free-text concept name, or null
+     * @return the matching slug, or empty if there is none
      */
     public Optional<String> resolveAlias(String input) {
-        if (input == null)
+        if (input == null) {
             return Optional.empty();
+        }
         String key = input.toLowerCase(Locale.ROOT).trim();
         // Direct slug match first
-        if (bySlug.containsKey(key))
+        if (bySlug.containsKey(key)) {
             return Optional.of(key);
+        }
         // Alias lookup
         String alias = aliasToSlug.get(key);
-        if (alias != null)
+        if (alias != null) {
             return Optional.of(alias);
+        }
         // A concept nobody had used when the file was written, but that exists now.
-        if (loadConceptsBeyondCatalog().containsKey(key))
+        if (loadConceptsBeyondCatalog().containsKey(key)) {
             return Optional.of(key);
+        }
         return Optional.empty();
     }
 
     /**
      * Normalizes a raw concept string: returns the canonical slug if it's a valid slug or a known alias, empty
      * otherwise.
+     *
+     * @param raw the concept string, or null
+     * @return the canonical slug, or empty if the string is not known
      */
     public Optional<String> normalize(String raw) {
         return resolveAlias(raw);
@@ -175,6 +203,9 @@ public class ConceptCatalog {
      * plus every concept added to the {@code concepts} table beyond the file — those carry no language of their own, so
      * they are appended for every language rather than excluded from all of them. Format per line: "slug —
      * displayNameEn: description".
+     *
+     * @param language the programming language to filter for
+     * @return the matching catalogue entries, one per line
      */
     public String getCatalogForPrompt(String language) {
         String lang = language == null ? "" : language.toLowerCase(Locale.ROOT).trim();
@@ -197,16 +228,21 @@ public class ConceptCatalog {
             )
             .collect(Collectors.joining("\n"));
 
-        if (addedSince.isBlank())
+        if (addedSince.isBlank()) {
             return fromFile;
-        if (fromFile.isBlank())
+        }
+        if (fromFile.isBlank()) {
             return addedSince;
+        }
         return fromFile + "\n" + addedSince;
     }
 
     /**
      * Returns the set of valid slugs for a specific programming language, plus every concept added beyond the file
      * (which, carrying no language, counts for all of them).
+     *
+     * @param language the programming language
+     * @return the valid slugs for the language
      */
     public Set<String> getValidSlugsForLanguage(String language) {
         String lang = language == null ? "" : language.toLowerCase(Locale.ROOT).trim();
@@ -221,7 +257,11 @@ public class ConceptCatalog {
         return Collections.unmodifiableSet(fromFile);
     }
 
-    /** Every valid slug regardless of language: the file's, plus every concept added since. */
+    /**
+     * Every valid slug regardless of language: the file's, plus every concept added since.
+     *
+     * @return every valid slug
+     */
     public Set<String> getAllValidSlugs() {
         Set<String> all = new LinkedHashSet<>(validSlugs);
         all.addAll(loadConceptsBeyondCatalog().keySet());
@@ -237,6 +277,8 @@ public class ConceptCatalog {
      * {@code concepts} table since — in the slug form topics (sequence tags) use. A topic in this set names a concept,
      * and topics and concepts are kept disjoint. The table part is queried fresh, like everywhere else here; callers
      * checking several topics should fetch the set once.
+     *
+     * @return every name a concept goes by, as topic slugs
      */
     public Set<String> getConceptNamesAsTopicSlugs() {
         Set<String> all = new HashSet<>(fileNamesAsTopicSlugs);
@@ -249,10 +291,14 @@ public class ConceptCatalog {
     /**
      * Converts a name to the slug form topics use: lowercase, umlauts transliterated, every run of other characters
      * collapsed to a single hyphen ("Verkettete Liste" → "verkettete-liste").
+     *
+     * @param name the name to convert, or null
+     * @return the slug; empty for null
      */
     public static String toTopicSlug(String name) {
-        if (name == null)
+        if (name == null) {
             return "";
+        }
         String s = name.toLowerCase(Locale.ROOT)
             .replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss");
         return s.replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
@@ -274,15 +320,17 @@ public class ConceptCatalog {
      * names, each of which a topic could be called.
      */
     private static void addTopicSlugVariants(String name, Set<String> out) {
-        if (name == null || name.isBlank())
+        if (name == null || name.isBlank()) {
             return;
+        }
         List<String> variants = new ArrayList<>();
         variants.add(name);
         variants.addAll(Arrays.asList(name.split("[()/]")));
         for (String v : variants) {
             String slug = toTopicSlug(v);
-            if (!slug.isEmpty())
+            if (!slug.isEmpty()) {
                 out.add(slug);
+            }
         }
     }
 

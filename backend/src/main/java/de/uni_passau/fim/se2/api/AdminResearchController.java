@@ -18,6 +18,7 @@
  */
 package de.uni_passau.fim.se2.api;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -27,7 +28,11 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import de.uni_passau.fim.se2.application.service.AdminAuditService;
 import de.uni_passau.fim.se2.application.service.ResearchExportService;
@@ -67,7 +72,18 @@ public class AdminResearchController {
 
     private static final DateTimeFormatter FILE_TS = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
-    /** One page of a dataset, filtered. */
+    /**
+     * One page of a dataset, filtered.
+     *
+     * @param dataset   the dataset to read
+     * @param classId   only rows from this class, or all classes if null
+     * @param eventType only events of this type, or all types if null
+     * @param from      the first day to include, or unbounded if null
+     * @param to        the last day to include, or unbounded if null
+     * @param page      the zero-based page number
+     * @param size      the number of rows per page
+     * @return the requested page of matching rows
+     */
     @GetMapping("/{dataset}")
     public ResponseEntity<ResearchLog.Page> getPage(
         @PathVariable String dataset,
@@ -84,7 +100,16 @@ public class AdminResearchController {
         return ResponseEntity.ok(researchLogService.page(ds, filter));
     }
 
-    /** Counts for the strip above the table, over the same filter. */
+    /**
+     * Counts for the strip above the table, over the same filter.
+     *
+     * @param dataset   the dataset to count
+     * @param classId   only rows from this class, or all classes if null
+     * @param eventType only events of this type, or all types if null
+     * @param from      the first day to include, or unbounded if null
+     * @param to        the last day to include, or unbounded if null
+     * @return the counts for the matching rows
+     */
     @GetMapping("/{dataset}/summary")
     public ResponseEntity<ResearchLog.Summary> getSummary(
         @PathVariable String dataset,
@@ -106,6 +131,15 @@ public class AdminResearchController {
      * Written straight to the response like the other admin downloads: the result can be large, and buffering it into a
      * {@code ResponseEntity} to set Content-Length would mean holding the whole export in memory to save the client a
      * progress bar.
+     *
+     * @param dataset   the dataset to export
+     * @param classId   only rows from this class, or all classes if null
+     * @param eventType only events of this type, or all types if null
+     * @param from      the first day to include, or unbounded if null
+     * @param to        the last day to include, or unbounded if null
+     * @param adminId   the admin requesting the export, recorded in the audit log
+     * @param req       the request, for the client address and user agent in the audit log
+     * @param resp      the response the CSV is written to
      */
     @GetMapping("/{dataset}/export.csv")
     public void downloadCsv(
@@ -117,7 +151,7 @@ public class AdminResearchController {
         @AuthenticationPrincipal UUID adminId,
         HttpServletRequest req,
         HttpServletResponse resp
-    ) throws Exception {
+    ) throws IOException {
 
         ResearchDataset ds = ResearchDataset.fromWireName(dataset);
         ResearchLog.Filter filter = researchLogService.buildFilter(ds, classId, eventType, from, to, 0, 1);
@@ -145,7 +179,17 @@ public class AdminResearchController {
         }
     }
 
-    /** All four datasets for one class, bundled with the roster and a metadata file. */
+    /**
+     * All four datasets for one class, bundled with the roster and a metadata file.
+     *
+     * @param classId   the class to export
+     * @param eventType only events of this type, or all types if null
+     * @param from      the first day to include, or unbounded if null
+     * @param to        the last day to include, or unbounded if null
+     * @param adminId   the admin requesting the export, recorded in the audit log
+     * @param req       the request, for the client address and user agent in the audit log
+     * @param resp      the response the ZIP is streamed into
+     */
     @GetMapping("/export.zip")
     public void downloadClassZip(
         @RequestParam(required = false) UUID classId,
@@ -155,7 +199,7 @@ public class AdminResearchController {
         @AuthenticationPrincipal UUID adminId,
         HttpServletRequest req,
         HttpServletResponse resp
-    ) throws Exception {
+    ) throws IOException {
 
         // The filter is built against EVENTS because that is the only dataset an eventType can
         // apply to; the export narrows the other three by class and date alone.

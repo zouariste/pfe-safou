@@ -35,11 +35,13 @@ public class SequenceTagRowMapper implements RowMapper<SequenceTagDTO> {
         dto.setTagName(rs.getString("tag_name"));
         dto.setSource(rs.getString("source"));
         float conf = rs.getFloat("confidence");
-        if (!rs.wasNull())
+        if (!rs.wasNull()) {
             dto.setConfidence(conf);
+        }
         var ts = rs.getTimestamp("created_at");
-        if (ts != null)
+        if (ts != null) {
             dto.setCreatedAt(ts.toLocalDateTime());
+        }
         return dto;
     }
 }

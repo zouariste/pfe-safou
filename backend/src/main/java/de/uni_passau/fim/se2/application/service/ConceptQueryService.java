@@ -42,7 +42,11 @@ public class ConceptQueryService {
         this.conceptRepo = conceptRepo;
     }
 
-    /** Every known concept name, sorted case-insensitively. */
+    /**
+     * Every known concept name, sorted case-insensitively.
+     *
+     * @return every concept name, sorted case-insensitively
+     */
     public List<String> getCatalogue() {
         return conceptRepo.loadAll().stream()
             .map(ConceptDTO::getName)

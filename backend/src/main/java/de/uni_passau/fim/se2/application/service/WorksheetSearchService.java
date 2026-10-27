@@ -123,6 +123,7 @@ public class WorksheetSearchService {
      *                              a teacher has <em>not</em> filtered to or the sidebar would only ever show the one
      *                              they picked
      */
+    @SuppressWarnings("checkstyle:MethodLength")
     static WhereClause buildWhere(
         WorksheetSearchQuery q, UUID currentUserId,
         boolean includeLanguageFilter
@@ -214,6 +215,7 @@ public class WorksheetSearchService {
         return total == null ? 0L : total;
     }
 
+    @SuppressWarnings("checkstyle:MethodLength")
     private List<WorksheetSearchResult.Item> fetchPage(
         WorksheetSearchQuery q, WhereClause where,
         UUID currentUserId

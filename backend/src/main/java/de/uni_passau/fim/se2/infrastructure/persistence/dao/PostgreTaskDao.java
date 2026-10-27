@@ -18,27 +18,32 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import java.util.*;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
-import org.postgresql.util.*;
-import org.springframework.jdbc.core.*;
-import org.springframework.stereotype.*;
+import org.postgresql.util.PGobject;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.SnippetDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.exceptions.*;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
-import de.uni_passau.fim.se2.infrastructure.persistence.mapper.*;
 import de.uni_passau.fim.se2.infrastructure.persistence.mapper.TaskRowMapper;
-import lombok.extern.slf4j.*;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Repository
 public class PostgreTaskDao implements TaskRepository {
+
+    private static final String TASK_ID_REQUIRED = "Task ID cannot be null";
+    private static final String TASK_NOT_FOUND = "Task not found: ";
 
     private final JdbcTemplate jdbc;
 
@@ -73,7 +78,7 @@ public class PostgreTaskDao implements TaskRepository {
                 WHERE t.id = ?
             """;
         TaskDTO result = jdbc.queryForObject(sql, (rs, n) -> {
-            TaskDTO dto = new TaskRowMapper().mapRow(rs, n);
+            TaskDTO dto = Objects.requireNonNull(new TaskRowMapper().mapRow(rs, n));
             dto.setProgrammingLanguage(rs.getString("programming_language"));
             return dto;
         }, target.getId());
@@ -195,45 +200,11 @@ public class PostgreTaskDao implements TaskRepository {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
-        jdbc.batchUpdate(sql, tasks, tasks.size(), (ps, task) -> {
-            validateTaskCreate(task);
-            UUID id = UUID.randomUUID();
-            ps.setObject(1, id);
-            ps.setString(2, task.getStatement());
-            ps.setString(3, task.getSolution());
-            ps.setInt(4, task.getTierLevel());
-            ps.setInt(5, task.getCyclomaticComplexity());
-            ps.setObject(6, sequence.getId());
-            ps.setObject(7, task.getLinesOfCode());
-            ps.setObject(8, task.getDistinctIdentifierCount());
-            ps.setObject(9, task.getMaximalNestingDepth());
-            ps.setObject(10, task.getMethodCallCount());
-            ps.setString(11, task.getDistractors());
-            try {
-                ps.setObject(12, createJsonbObject(task.getDistractorPlan()));
-            }
-            catch (Exception e) {
-                log.error("Failed to set distractor_plan as jsonb", e);
-                ps.setNull(12, java.sql.Types.OTHER);
-            }
-            ps.setString(13, task.getContextBefore());
-            ps.setString(14, task.getContextAfter());
-            try {
-                ps.setObject(15, createJsonbObject(task.getSplitPlan())); // AP31
-            }
-            catch (Exception e) {
-                log.error("Failed to set split_plan as jsonb", e);
-                ps.setNull(15, java.sql.Types.OTHER);
-            }
-            // See save(TaskDTO): the column's DEFAULT true would otherwise re-enable
-            // distractors on any task that had them switched off.
-            ps.setBoolean(16, task.isDistractorsEnabled());
-            ps.setString(17, task.getTitle());
-            task.setId(id);
-        });
+        UUID sequenceId = sequence.getId();
+        jdbc.batchUpdate(sql, tasks, tasks.size(), (ps, task) -> setInsertParameters(ps, task, sequenceId));
     }
 
-    private PGobject createJsonbObject(String jsonValue) throws Exception {
+    private PGobject createJsonbObject(String jsonValue) throws SQLException {
         PGobject jsonObject = new PGobject();
         jsonObject.setType("jsonb");
         jsonObject.setValue(jsonValue);
@@ -262,7 +233,7 @@ public class PostgreTaskDao implements TaskRepository {
     @Override
     public void deleteBySequenceId(TaskDTO target) {
         if (target == null || target.getSequenceId() == null) {
-            // TODO Logging
+            log.warn("Delete by sequence failed: task or sequence id is null");
             throw new DomainValidationException("Task and ID cannot be null");
         }
         String sql = "DELETE FROM tasks WHERE sequence_id = ?";
@@ -300,68 +271,68 @@ public class PostgreTaskDao implements TaskRepository {
     @Override
     public void updateStatementAndSolution(UUID taskId, String statement, String solution) {
         if (taskId == null) {
-            throw new DomainValidationException("Task ID cannot be null");
+            throw new DomainValidationException(TASK_ID_REQUIRED);
         }
         String sql = "UPDATE tasks SET statement = ?, solution = ? WHERE id = ?";
         int updated = jdbc.update(sql, statement, solution, taskId);
         if (updated != 1) {
-            throw new DomainValidationException("Task not found: " + taskId);
+            throw new DomainValidationException(TASK_NOT_FOUND + taskId);
         }
     }
 
     @Override
     public void updateDistractors(UUID taskId, String distractors) {
         if (taskId == null) {
-            throw new DomainValidationException("Task ID cannot be null");
+            throw new DomainValidationException(TASK_ID_REQUIRED);
         }
         String sql = "UPDATE tasks SET distractors = ? WHERE id = ?";
         int updated = jdbc.update(sql, distractors, taskId);
         if (updated != 1) {
-            throw new DomainValidationException("Task not found: " + taskId);
+            throw new DomainValidationException(TASK_NOT_FOUND + taskId);
         }
     }
 
     @Override
     public void updateDistractorsEnabled(UUID taskId, boolean enabled) {
         if (taskId == null) {
-            throw new DomainValidationException("Task ID cannot be null");
+            throw new DomainValidationException(TASK_ID_REQUIRED);
         }
         String sql = "UPDATE tasks SET distractors_enabled = ? WHERE id = ?";
         int updated = jdbc.update(sql, enabled, taskId);
         if (updated != 1) {
-            throw new DomainValidationException("Task not found: " + taskId);
+            throw new DomainValidationException(TASK_NOT_FOUND + taskId);
         }
     }
 
     @Override
     public void updateTitle(UUID taskId, String title) {
         if (taskId == null) {
-            throw new DomainValidationException("Task ID cannot be null");
+            throw new DomainValidationException(TASK_ID_REQUIRED);
         }
         String sql = "UPDATE tasks SET title = ? WHERE id = ?";
         int updated = jdbc.update(sql, title, taskId);
         if (updated != 1) {
-            throw new DomainValidationException("Task not found: " + taskId);
+            throw new DomainValidationException(TASK_NOT_FOUND + taskId);
         }
     }
 
     @Override
     public void updateSplitPlan(UUID taskId, String splitPlanJson) {
         if (taskId == null) {
-            throw new DomainValidationException("Task ID cannot be null");
+            throw new DomainValidationException(TASK_ID_REQUIRED);
         }
         // split_plan is JSONB — cast the text (or SQL NULL) so a null clears the plan.
         String sql = "UPDATE tasks SET split_plan = ?::jsonb WHERE id = ?";
         int updated = jdbc.update(sql, splitPlanJson, taskId);
         if (updated != 1) {
-            throw new DomainValidationException("Task not found: " + taskId);
+            throw new DomainValidationException(TASK_NOT_FOUND + taskId);
         }
     }
 
     @Override
     public void softDelete(UUID taskId) {
         if (taskId == null) {
-            throw new DomainValidationException("Task ID cannot be null");
+            throw new DomainValidationException(TASK_ID_REQUIRED);
         }
         String sql = "UPDATE tasks SET deleted_at = now() WHERE id = ? AND deleted_at IS NULL";
         int updated = jdbc.update(sql, taskId);
@@ -386,7 +357,7 @@ public class PostgreTaskDao implements TaskRepository {
 
     private void validateTask(TaskDTO task) {
         if (task == null || task.getId() == null) {
-            // TODO Logging
+            log.warn("Task validation failed: task or id is null");
             throw new DomainValidationException("Task and ID cannot be null");
         }
     }
@@ -422,5 +393,42 @@ public class PostgreTaskDao implements TaskRepository {
             log.warn("{} — taskId={}", msg, task.getId());
             throw new DomainValidationException(msg);
         }
+    }
+
+    private void setInsertParameters(PreparedStatement ps, TaskDTO task, UUID sequenceId) throws SQLException {
+        validateTaskCreate(task);
+        UUID id = UUID.randomUUID();
+        ps.setObject(1, id);
+        ps.setString(2, task.getStatement());
+        ps.setString(3, task.getSolution());
+        ps.setInt(4, task.getTierLevel());
+        ps.setInt(5, task.getCyclomaticComplexity());
+        ps.setObject(6, sequenceId);
+        ps.setObject(7, task.getLinesOfCode());
+        ps.setObject(8, task.getDistinctIdentifierCount());
+        ps.setObject(9, task.getMaximalNestingDepth());
+        ps.setObject(10, task.getMethodCallCount());
+        ps.setString(11, task.getDistractors());
+        try {
+            ps.setObject(12, createJsonbObject(task.getDistractorPlan()));
+        }
+        catch (Exception e) {
+            log.error("Failed to set distractor_plan as jsonb", e);
+            ps.setNull(12, java.sql.Types.OTHER);
+        }
+        ps.setString(13, task.getContextBefore());
+        ps.setString(14, task.getContextAfter());
+        try {
+            ps.setObject(15, createJsonbObject(task.getSplitPlan())); // AP31
+        }
+        catch (Exception e) {
+            log.error("Failed to set split_plan as jsonb", e);
+            ps.setNull(15, java.sql.Types.OTHER);
+        }
+        // See save(TaskDTO): the column's DEFAULT true would otherwise re-enable
+        // distractors on any task that had them switched off.
+        ps.setBoolean(16, task.isDistractorsEnabled());
+        ps.setString(17, task.getTitle());
+        task.setId(id);
     }
 }

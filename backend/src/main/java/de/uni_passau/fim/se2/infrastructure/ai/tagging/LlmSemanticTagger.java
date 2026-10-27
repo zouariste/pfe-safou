@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -53,7 +54,7 @@ import de.uni_passau.fim.se2.infrastructure.ai.IdentityLoader;
 @Component
 public class LlmSemanticTagger {
 
-    private static final Logger logger = LoggerFactory.getLogger(LlmSemanticTagger.class);
+    private static final Logger log = LoggerFactory.getLogger(LlmSemanticTagger.class);
 
     private static final int MAX_INPUT_CHARS = 6000;   // safety cap before sending to LLM
     private static final int MAX_SUMMARY_CHARS = 500;
@@ -78,17 +79,23 @@ public class LlmSemanticTagger {
      * <li>LLM response not valid JSON</li>
      * <li>LLM returns empty {@code primary_tags}</li>
      * </ul>
+     *
+     * @param language          the programming language of the sequence
+     * @param combinedStatement the problem statements of all tasks
+     * @param combinedCode      the solutions of all tasks
+     * @return the tags, or null on failure
      */
     public SemanticTagResult tag(String language, String combinedStatement, String combinedCode) {
-        if (combinedCode == null || combinedCode.isBlank())
+        if (combinedCode == null || combinedCode.isBlank()) {
             return null;
+        }
 
         String identity;
         try {
             identity = identityLoader.load("SequenceSemanticTagger");
         }
         catch (Exception e) {
-            logger.warn("SequenceSemanticTagger identity not found: {}", e.getMessage());
+            log.warn("SequenceSemanticTagger identity not found: {}", e.getMessage());
             return null;
         }
 
@@ -100,7 +107,7 @@ public class LlmSemanticTagger {
             response = aiModelClient.generateSemanticTags(identity, userPrompt);
         }
         catch (Exception e) {
-            logger.warn("LLM call for semantic tagging failed: {}", e.getMessage());
+            log.warn("LLM call for semantic tagging failed: {}", e.getMessage());
             return null;
         }
 
@@ -114,11 +121,13 @@ public class LlmSemanticTagger {
         String codePart = combinedCode.trim();
 
         // Clamp to MAX_INPUT_CHARS: prefer keeping the statement intact, then clip the code.
-        if (statementPart.length() > 1500)
+        if (statementPart.length() > 1500) {
             statementPart = statementPart.substring(0, 1500) + "…";
+        }
         int budget = MAX_INPUT_CHARS - statementPart.length();
-        if (codePart.length() > budget)
+        if (codePart.length() > budget) {
             codePart = codePart.substring(0, Math.max(100, budget)) + "\n…";
+        }
 
         return """
             Language: %s
@@ -135,9 +144,11 @@ public class LlmSemanticTagger {
             """.formatted(language == null ? "unknown" : language, statementPart, codePart);
     }
 
+    @SuppressWarnings("checkstyle:NPathComplexity")
     private SemanticTagResult parse(String response) {
-        if (response == null || response.isBlank())
+        if (response == null || response.isBlank()) {
             return null;
+        }
         String json = response.trim();
         if (json.startsWith("```")) {
             json = json.replaceAll("^```(json)?\\s*", "").replaceAll("\\s*```$", "");
@@ -147,8 +158,8 @@ public class LlmSemanticTagger {
         try {
             root = objectMapper.readTree(json);
         }
-        catch (Exception e) {
-            logger.warn(
+        catch (JsonProcessingException | RuntimeException e) {
+            log.warn(
                 "Semantic tagger returned non-JSON, ignoring. Raw response (trunc): {}",
                 truncate(response, 200)
             );
@@ -160,7 +171,7 @@ public class LlmSemanticTagger {
         List<String> aliases = extractTags(root.get("aliases"), translations);
 
         if (primary.isEmpty()) {
-            logger.debug("Semantic tagger returned no primary_tags");
+            log.debug("Semantic tagger returned no primary_tags");
             return null;
         }
 
@@ -182,8 +193,9 @@ public class LlmSemanticTagger {
      * slug.
      */
     private List<String> extractTags(JsonNode node, Map<String, String> translations) {
-        if (node == null || !node.isArray())
+        if (node == null || !node.isArray()) {
             return List.of();
+        }
         List<String> out = new ArrayList<>();
         for (JsonNode n : node) {
             String de;
@@ -198,11 +210,13 @@ public class LlmSemanticTagger {
             else {
                 continue;
             }
-            if (de.isEmpty() || out.contains(de))
+            if (de.isEmpty() || out.contains(de)) {
                 continue;
+            }
             out.add(de);
-            if (en != null && !en.isEmpty())
+            if (en != null && !en.isEmpty()) {
                 translations.putIfAbsent(de, en);
+            }
         }
         return out;
     }
@@ -214,8 +228,9 @@ public class LlmSemanticTagger {
     }
 
     private String truncate(String s, int n) {
-        if (s == null)
+        if (s == null) {
             return "";
+        }
         return s.length() <= n ? s : s.substring(0, n) + "…";
     }
 

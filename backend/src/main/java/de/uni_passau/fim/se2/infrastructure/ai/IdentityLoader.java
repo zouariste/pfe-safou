@@ -42,7 +42,7 @@ import org.springframework.stereotype.Component;
 @Component
 public final class IdentityLoader {
 
-    private static final Logger logger = Logger.getLogger(IdentityLoader.class.getName());
+    private static final Logger log = Logger.getLogger(IdentityLoader.class.getName());
 
     private final PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
 
@@ -79,7 +79,7 @@ public final class IdentityLoader {
             }
         }
         catch (IOException e) {
-            logger.log(Level.SEVERE, "Identity resource not found or unreadable: " + resourcePath, e);
+            log.log(Level.SEVERE, "Identity resource not found or unreadable: " + resourcePath, e);
             throw new UncheckedIOException("Identity resource not found or unreadable: " + resourcePath, e);
         }
     }

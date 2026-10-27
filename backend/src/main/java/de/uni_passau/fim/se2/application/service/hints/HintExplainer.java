@@ -18,6 +18,7 @@
  */
 package de.uni_passau.fim.se2.application.service.hints;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
@@ -30,14 +31,22 @@ import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
 @Service
 public class HintExplainer {
 
-    private static final Logger logger = LoggerFactory.getLogger(HintExplainer.class);
+    private static final Logger log = LoggerFactory.getLogger(HintExplainer.class);
     private final AiModelClient aiModelClient;
 
     public HintExplainer(AiModelClient aiModelClient) {
         this.aiModelClient = aiModelClient;
     }
 
-    /** Convenience overload without block-count context (no tooFewBlocks detection). */
+    /**
+     * Convenience overload without block-count context (no tooFewBlocks detection).
+     *
+     * @param blockFindings   the findings mapped to blocks
+     * @param studentCode     the code assembled from the student's arrangement
+     * @param correctSolution the task's solution
+     * @param language        the programming language of the task
+     * @return the explanation, or a generic pointer to the highlighted blocks if the LLM call fails
+     */
     public String explain(
         List<BlockMapper.BlockFinding> blockFindings, String studentCode,
         String correctSolution, String language
@@ -48,7 +57,16 @@ public class HintExplainer {
         );
     }
 
-    /** AP15-aware overload without block-count context. */
+    /**
+     * AP15-aware overload without block-count context.
+     *
+     * @param blockFindings          the findings mapped to blocks
+     * @param studentCode            the code assembled from the student's arrangement
+     * @param correctSolution        the task's solution
+     * @param language               the programming language of the task
+     * @param distractorBlockIndices the indices of blocks that are distractors
+     * @return the explanation, or a generic pointer to the highlighted blocks if the LLM call fails
+     */
     public String explain(
         List<BlockMapper.BlockFinding> blockFindings, String studentCode,
         String correctSolution, String language,
@@ -73,7 +91,15 @@ public class HintExplainer {
      *                                  requires
      * @param studentNonDistractorCount how many non-distractor blocks the student placed
      * @param correctBlockCount         how many blocks the correct solution has
+     * @param blockFindings             the findings mapped to blocks
+     * @param studentCode               the code assembled from the student's arrangement
+     * @param correctSolution           the task's solution
+     * @param language                  the programming language of the task
+     * @param distractorBlockIndices    the indices of blocks that are distractors
+     * @param locale                    the language to write the explanation in
+     * @return the explanation, or a generic pointer to the highlighted blocks if the LLM call fails
      */
+    @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     public String explain(
         List<BlockMapper.BlockFinding> blockFindings, String studentCode,
         String correctSolution, String language,
@@ -119,15 +145,18 @@ public class HintExplainer {
             // Distractors in solution space
             if (!distractorBlockIndices.isEmpty()) {
                 prompt.append("- DISTRAKTOR");
-                if (distractorBlockIndices.size() > 1)
+                if (distractorBlockIndices.size() > 1) {
                     prompt.append("EN");
+                }
                 prompt.append(" IM LÖSUNGSBEREICH: Block");
-                if (distractorBlockIndices.size() > 1)
+                if (distractorBlockIndices.size() > 1) {
                     prompt.append("e");
+                }
                 prompt.append(" ");
                 for (int i = 0; i < distractorBlockIndices.size(); i++) {
-                    if (i > 0)
+                    if (i > 0) {
                         prompt.append(", ");
+                    }
                     prompt.append(BlockLabels.of(distractorBlockIndices.get(i)));
                 }
                 prompt.append(" gehör");
@@ -177,20 +206,20 @@ public class HintExplainer {
                     .append("Schreibe korrektes Deutsch mit Umlauten (ä, ö, ü, ß).");
             }
 
-            logger.info(
+            log.info(
                 "HintExplainer: lang={}, tooFewBlocks={} ({}/{}), distractors={}, findings={}",
                 lang, tooFewBlocks, studentNonDistractorCount, correctBlockCount,
                 distractorBlockIndices.size(), blockFindings.size()
             );
-            logger.debug("LLM prompt:\n{}", prompt);
+            log.debug("LLM prompt:\n{}", prompt);
 
             String response = aiModelClient.generateTaskDescription(studentCode, prompt.toString());
-            logger.info("LLM response: {}", response);
+            log.info("LLM response: {}", response);
             return response;
 
         }
-        catch (Exception e) {
-            logger.error("LLM explanation failed", e);
+        catch (IOException | InterruptedException | RuntimeException e) {
+            log.error("LLM explanation failed", e);
             return locale == HintLocale.EN
                 ? "The explanation could not be generated. Take a closer look at the highlighted blocks."
                 : "Erklärung konnte nicht generiert werden. Schau dir die markierten Blöcke genauer an.";

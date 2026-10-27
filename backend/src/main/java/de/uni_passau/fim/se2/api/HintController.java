@@ -24,7 +24,12 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import de.uni_passau.fim.se2.application.service.OwnershipService;
 import de.uni_passau.fim.se2.application.service.hints.HintLocale;
@@ -42,6 +47,13 @@ public class HintController {
         this.ownershipService = ownershipService;
     }
 
+    /**
+     * Generates a hint for the student's current arrangement of a task.
+     *
+     * @param taskId  the task being solved
+     * @param request the current block order, indent levels, requested hint level and UI locale
+     * @return the hint text, the affected blocks, an explanation and the analysis findings
+     */
     @PostMapping("/{taskId}")
     public ResponseEntity<HintService.HintResponse> getHint(
         @PathVariable UUID taskId,
@@ -61,6 +73,9 @@ public class HintController {
      *
      * This drives the buttons in the UI. It is not the enforcement point — HintService re-checks both on every actual
      * hint request.
+     *
+     * @param taskId the task being solved
+     * @return whether hints are enabled, the credit budget and the credits left
      */
     @GetMapping("/{taskId}/config")
     public ResponseEntity<Map<String, Object>> getHintConfig(@PathVariable UUID taskId) {

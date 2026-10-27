@@ -23,9 +23,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.uni_passau.fim.se2.domain.exceptions.*;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.strategy.*;
 import de.uni_passau.fim.se2.domain.strategy.CodeAndConceptStrategy;
 import de.uni_passau.fim.se2.domain.strategy.CodeOnlyStrategy;
 import de.uni_passau.fim.se2.domain.strategy.ConceptOnlyStrategy;
@@ -55,6 +53,7 @@ public final class TaskGenerationStrategyFactory {
      * @param codeSnippet     Solution to aforementioned problem statement.
      * @param concepts        List of concepts found in codeSnippet.
      * @param language        Programming language of the codeSnippet.
+     * @param targetLanguage  the human language of the problem statements
      * @return A TaskGenerationStrategy fitting for the input.
      */
     public static TaskGenerationStrategy choose(
@@ -98,15 +97,13 @@ public final class TaskGenerationStrategyFactory {
         final String language, final String codeSnippet,
         final String targetLanguage
     ) {
-        boolean illegalArguments = (hasLanguage && !hasTask && !hasConcepts && !hasCode);
-        boolean conceptOnly = (!hasTask && hasConcepts && hasLanguage && !hasCode);
-        boolean taskOnly = (hasTask && !hasConcepts && hasLanguage && !hasCode);
-        boolean taskAndConcepts = (hasTask && hasConcepts && hasLanguage && !hasCode);
-        boolean taskAndCode = (hasTask && !hasConcepts && hasCode);
-        boolean taskConceptsAndCode = (hasTask && hasConcepts && hasCode);
-        boolean codeOnly = (!hasTask && !hasConcepts && hasCode);
-        @SuppressWarnings("unused")
-        boolean codeAndConcepts = (!hasTask && hasConcepts && hasCode);
+        boolean illegalArguments = hasLanguage && !hasTask && !hasConcepts && !hasCode;
+        boolean conceptOnly = !hasTask && hasConcepts && hasLanguage && !hasCode;
+        boolean taskOnly = hasTask && !hasConcepts && hasLanguage && !hasCode;
+        boolean taskAndConcepts = hasTask && hasConcepts && hasLanguage && !hasCode;
+        boolean taskAndCode = hasTask && !hasConcepts && hasCode;
+        boolean taskConceptsAndCode = hasTask && hasConcepts && hasCode;
+        boolean codeOnly = !hasTask && !hasConcepts && hasCode;
 
         if (illegalArguments) {
             String e = "Invalid input: language alone insufficient";

@@ -18,8 +18,13 @@
  */
 package de.uni_passau.fim.se2.application.service.hints;
 
-import java.util.*;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +48,7 @@ import de.uni_passau.fim.se2.domain.model.SupportedLanguage;
 @Service
 public class HintService {
 
-    private static final Logger logger = LoggerFactory.getLogger(HintService.class);
+    private static final Logger log = LoggerFactory.getLogger(HintService.class);
     private final CodeAssembler codeAssembler;
     private final RuffAnalyzer ruffAnalyzer;
     private final JavacAnalyzer javacAnalyzer;
@@ -86,6 +91,9 @@ public class HintService {
     /**
      * Resolves hint-configuration for a task by walking task → sequence → worksheet. Returns true when no worksheet is
      * linked (default) or when the worksheet has hints enabled.
+     *
+     * @param taskId the task
+     * @return true unless the task's worksheet has hints switched off
      */
     public boolean isHintsEnabled(UUID taskId) {
         String sql = """
@@ -100,7 +108,7 @@ public class HintService {
             Boolean enabled = jdbc.queryForObject(sql, Boolean.class, taskId);
             return enabled == null || enabled;
         }
-        catch (Exception e) {
+        catch (RuntimeException e) {
             // Standalone sequence (no worksheet) → hints enabled by default
             return true;
         }
@@ -109,6 +117,9 @@ public class HintService {
     /**
      * What one hint costs. Level 2 asks the LLM for an explanation on top of the deterministic finding, so it is
      * charged double.
+     *
+     * @param hintLevel the requested hint level
+     * @return the number of credits the hint costs
      */
     public static int creditCost(int hintLevel) {
         return hintLevel >= 2 ? 2 : 1;
@@ -117,6 +128,9 @@ public class HintService {
     /**
      * The credit budget configured for a task's worksheet, or {@code null} for unlimited — which is also the answer for
      * a task that is not in any worksheet.
+     *
+     * @param taskId the task
+     * @return the credits per task, or null for unlimited
      */
     public Integer resolveCreditsPerTask(UUID taskId) {
         String sql = """
@@ -141,10 +155,15 @@ public class HintService {
      *
      * Derived from hint_usage rather than a counter column, so resetting the puzzle does not refund anything: the usage
      * rows outlive the reset. Anonymous requests cannot be attributed to anyone and always report 0.
+     *
+     * @param taskId the task
+     * @param userId the student, or null if anonymous
+     * @return the credits spent; 0 for an anonymous user
      */
     public int creditsSpent(UUID taskId, UUID userId) {
-        if (userId == null)
+        if (userId == null) {
             return 0;
+        }
         String sql = """
             SELECT COALESCE(SUM(CASE WHEN hint_level >= 2 THEN 2 ELSE 1 END), 0)
             FROM hint_usage
@@ -157,6 +176,10 @@ public class HintService {
     /**
      * Everything the client needs to render the hint buttons: whether the teacher enabled hints at all, the budget, and
      * what is left of it.
+     *
+     * @param taskId the task
+     * @param userId the student, or null if anonymous
+     * @return whether hints are enabled, the budget, the credits spent and the credits left
      */
     public HintStatus getStatus(UUID taskId, UUID userId) {
         boolean enabled = isHintsEnabled(taskId);
@@ -174,19 +197,28 @@ public class HintService {
     }
 
     /**
-     * @param locale the UI language the hint text should be written in; hints used to be German-only, so a client that
-     *               sends nothing keeps German.
+     * @param locale       the UI language the hint text should be written in; hints used to be German-only, so a client
+     *                     that sends nothing keeps German.
+     * @param taskId       the task being solved
+     * @param blockOrder   the text of each block in the solution area, in order
+     * @param indentLevels the indent level of each block
+     * @param hintLevel    the requested hint level; 2 adds an LLM explanation
+     * @param userId       the student, or null if anonymous
+     * @return the hint text, the affected blocks, the explanation and the findings
      */
+    @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     @Transactional
     public HintResponse getHint(
         UUID taskId, List<String> blockOrder, List<Integer> indentLevels, int hintLevel,
         UUID userId, HintLocale locale
     ) {
         // Guard against null inputs from the client — treat as empty lists rather than crashing.
-        if (blockOrder == null)
+        if (blockOrder == null) {
             blockOrder = List.of();
-        if (indentLevels == null)
+        }
+        if (indentLevels == null) {
             indentLevels = List.of();
+        }
 
         // 0. Authorisation, before any analysis runs.
         //
@@ -216,7 +248,7 @@ public class HintService {
         TaskDTO task = new TaskDTO();
         task.setId(taskId);
         taskRepository.loadById(task);
-        String language = task.getProgrammingLanguage() != null ? task.getProgrammingLanguage().toLowerCase()
+        String language = task.getProgrammingLanguage() != null ? task.getProgrammingLanguage().toLowerCase(Locale.ROOT)
             : "python";
 
         // AP15: Identify which blocks in the solution space are distractors
@@ -230,19 +262,19 @@ public class HintService {
         }
         boolean hasDistractorsInSolution = !distractorBlockIndices.isEmpty();
         if (hasDistractorsInSolution) {
-            logger.info("AP15: Distractors detected in solution space at block indices: {}", distractorBlockIndices);
+            log.info("AP15: Distractors detected in solution space at block indices: {}", distractorBlockIndices);
         }
 
         // 2. Assemble code from block order with indentation (excluding distractors for clean analysis)
         CodeAssembler.CodeAssembly assembly = codeAssembler.assemble(blockOrder, indentLevels);
-        logger.info("Hint request for task={}, language={}, hintLevel={}", taskId, language, hintLevel);
-        logger.info("Block order: {}", blockOrder);
-        logger.info("Indent levels: {}", indentLevels);
-        logger.info("Assembled code:\n{}", assembly.code());
+        log.info("Hint request for task={}, language={}, hintLevel={}", taskId, language, hintLevel);
+        log.info("Block order: {}", blockOrder);
+        log.info("Indent levels: {}", indentLevels);
+        log.info("Assembled code:\n{}", assembly.code());
 
         // 3. Run static analysis based on language
         List<AnalysisFinding> findings = runAnalysis(assembly.code(), language);
-        logger.info("Analysis findings ({}): {}", findings.size(), findings);
+        log.info("Analysis findings ({}): {}", findings.size(), findings);
 
         // 4. Map findings to blocks (max 2 most important)
         List<BlockMapper.BlockFinding> blockFindings = blockMapper.map(findings, assembly.lineToBlockIndex());
@@ -257,7 +289,7 @@ public class HintService {
         int studentNonDistractorCount = blockOrder.size() - distractorBlockIndices.size();
         boolean tooFewBlocks = correctBlockCount > 0 && studentNonDistractorCount < correctBlockCount;
         if (tooFewBlocks) {
-            logger.info(
+            log.info(
                 "Block count mismatch: student placed {} non-distractor blocks, correct solution has {}",
                 studentNonDistractorCount, correctBlockCount
             );
@@ -309,8 +341,9 @@ public class HintService {
      * needing the actual block list (which is assembled at the frontend, not stored in DB).
      */
     private int countSolutionBlocks(String solution) {
-        if (solution == null || solution.isBlank())
+        if (solution == null || solution.isBlank()) {
             return 0;
+        }
         return (int) Arrays.stream(solution.split("\n"))
             .filter(line -> !line.isBlank())
             .count();
@@ -321,17 +354,20 @@ public class HintService {
      * marker) for comparison against block text.
      */
     private Set<String> parseDistractorLines(String distractors) {
-        if (distractors == null || distractors.isBlank())
+        if (distractors == null || distractors.isBlank()) {
             return Set.of();
+        }
         Set<String> result = new HashSet<>();
         for (String line : distractors.split("\n")) {
             String trimmed = line.trim();
-            if (trimmed.isEmpty())
+            if (trimmed.isEmpty()) {
                 continue;
+            }
             // Remove #distractor suffix to match against block text (widget strips it)
             String clean = trimmed.replaceAll("\\s*#distractor\\s*$", "").trim();
-            if (!clean.isEmpty())
+            if (!clean.isEmpty()) {
                 result.add(clean);
+            }
         }
         return result;
     }
@@ -362,7 +398,7 @@ public class HintService {
         // no findings at all. That is a silent quality loss for the student, and the cause is
         // always bad data rather than an unsupported language -- the column is free text
         // filled from the language-detection LLM, and a typo ("Pyhton") lands here.
-        logger.warn(
+        log.warn(
             "No static analysis for programming language '{}' -- hint will be generated "
                 + "without findings. Check tiered_task_sequences.programming_language.",
             language
@@ -389,7 +425,7 @@ public class HintService {
             hintUsageRepository.save(usage);
         }
         catch (JsonProcessingException e) {
-            logger.error("Failed to serialize hint usage data", e);
+            log.error("Failed to serialize hint usage data", e);
         }
     }
 

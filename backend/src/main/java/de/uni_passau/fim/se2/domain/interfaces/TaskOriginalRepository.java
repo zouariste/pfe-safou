@@ -31,16 +31,24 @@ public interface TaskOriginalRepository {
 
     /**
      * Saves a task original record.
+     *
+     * @param original the original to save
      */
     void save(TaskOriginalDTO original);
 
     /**
      * Finds the original version of a task, if one has been saved.
+     *
+     * @param taskId the task
+     * @return the task's original, or empty if none was saved
      */
     Optional<TaskOriginalDTO> findByTaskId(UUID taskId);
 
     /**
      * Checks whether an original already exists for the given task.
+     *
+     * @param taskId the task
+     * @return true if the task has an original
      */
     boolean existsByTaskId(UUID taskId);
 

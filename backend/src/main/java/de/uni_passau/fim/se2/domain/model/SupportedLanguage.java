@@ -61,12 +61,21 @@ public enum SupportedLanguage {
         this.canonicalName = canonicalName;
     }
 
-    /** The one spelling this language is stored and compared as: lowercase, no variants. */
+    /**
+     * The one spelling this language is stored and compared as: lowercase, no variants.
+     *
+     * @return the canonical lowercase name
+     */
     public String canonicalName() {
         return canonicalName;
     }
 
-    /** Whether {@code raw} names this language, ignoring case and surrounding whitespace. */
+    /**
+     * Whether {@code raw} names this language, ignoring case and surrounding whitespace.
+     *
+     * @param raw the name to check, or null
+     * @return true if it names this language
+     */
     public boolean matches(final String raw) {
         return raw != null && canonicalName.equalsIgnoreCase(raw.trim());
     }
@@ -94,13 +103,19 @@ public enum SupportedLanguage {
         return Optional.empty();
     }
 
-    /** The canonical names, for building the language-detection response schema. */
+    /**
+     * The canonical names, for building the language-detection response schema.
+     *
+     * @return the canonical name of every supported language
+     */
     public static List<String> canonicalNames() {
         return List.of(values()).stream().map(SupportedLanguage::canonicalName).toList();
     }
 
     /**
      * Every value the detection model may answer: the supported languages plus {@link #UNSUPPORTED}.
+     *
+     * @return the canonical names plus {@link #UNSUPPORTED}
      */
     public static List<String> detectionChoices() {
         return List.of(PYTHON.canonicalName, JAVA.canonicalName, UNSUPPORTED);

@@ -18,10 +18,12 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import java.util.*;
+import java.util.List;
 
-import lombok.*;
-import lombok.extern.jackson.*;
+import lombok.Builder;
+import lombok.NonNull;
+import lombok.Singular;
+import lombok.extern.jackson.Jacksonized;
 
 @Jacksonized
 @Builder
@@ -33,6 +35,8 @@ public record SolveContract(
     @NonNull String prePostConditions,
     @Singular("example") @NonNull List<ExamplePair> examples
 ) {
+
+    private static final String NEWLINE = "\n";
 
     public SolveContract {
         language = requireText(language, "language");
@@ -48,8 +52,9 @@ public record SolveContract(
 
     private static String requireText(String s, String field) {
         String t = s.trim();
-        if (t.isEmpty())
+        if (t.isEmpty()) {
             throw new IllegalArgumentException(field + " must not be blank");
+        }
         return t;
     }
 
@@ -57,21 +62,21 @@ public record SolveContract(
 
         public ExamplePair {
             input = (input == null) ? "" : input.trim();
-            output = (output == null) ? "" : output.replace("\r\n", "\n");
+            output = (output == null) ? "" : output.replace("\r\n", NEWLINE);
         }
     }
 
     @Override
     public @NonNull String toString() {
-        StringBuilder result = new StringBuilder("Language: " + language + "\n");
-        result.append("Task Statement: ").append(taskStatement).append("\n");
-        result.append("Function Signature: ").append(functionSignature).append("\n");
-        result.append("Purpose Behavior: ").append(purposeBehavior).append("\n");
-        result.append("Pre-Post Conditions: ").append(prePostConditions).append("\n");
+        StringBuilder result = new StringBuilder("Language: " + language + NEWLINE);
+        result.append("Task Statement: ").append(taskStatement).append(NEWLINE);
+        result.append("Function Signature: ").append(functionSignature).append(NEWLINE);
+        result.append("Purpose Behavior: ").append(purposeBehavior).append(NEWLINE);
+        result.append("Pre-Post Conditions: ").append(prePostConditions).append(NEWLINE);
         result.append("Examples:\n");
         for (ExamplePair example : examples) {
-            result.append("  Input: ").append(example.input).append("\n");
-            result.append("  Output: ").append(example.output).append("\n");
+            result.append("  Input: ").append(example.input).append(NEWLINE);
+            result.append("  Output: ").append(example.output).append(NEWLINE);
         }
         return result.toString();
     }

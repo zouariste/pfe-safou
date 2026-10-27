@@ -29,6 +29,8 @@ import de.uni_passau.fim.se2.domain.model.FimAccount;
 public interface FimAccountDirectory {
 
     /**
+     * @param username the FIM username
+     * @param password the FIM password
      * @return the account if username and password are valid, empty if they are not
      * @throws DirectoryUnavailableException if the directory could not be asked at all
      */

@@ -18,17 +18,15 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 
-import org.springframework.jdbc.core.*;
-import org.springframework.stereotype.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.interfaces.CurriculumCodeExampleRepository;
-import de.uni_passau.fim.se2.infrastructure.persistence.mapper.*;
 import de.uni_passau.fim.se2.infrastructure.persistence.mapper.CurriculumCodeExampleRowMapper;
 
 @Repository

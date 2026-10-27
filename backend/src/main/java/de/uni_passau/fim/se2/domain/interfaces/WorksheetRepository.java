@@ -18,12 +18,12 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
-import de.uni_passau.fim.se2.domain.exceptions.*;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
 
@@ -135,11 +135,15 @@ public interface WorksheetRepository {
      * @param sequenceId the sequence in question; {@code null} yields {@code false}
      * @param ownerId    the candidate curator; {@code null} yields {@code false}, because anonymous visitors curate
      *                   nothing
+     * @return true if the owner curates the sequence through one of their worksheets
      */
     boolean isCuratedBy(UUID sequenceId, UUID ownerId);
 
     /**
      * Finds all worksheets owned by the specified user.
+     *
+     * @param ownerId the owner
+     * @return the owner's worksheets
      */
     List<WorksheetDTO> findByOwnerId(UUID ownerId);
 

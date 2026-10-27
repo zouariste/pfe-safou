@@ -48,7 +48,7 @@ import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer.ComplexityResult;
 @Service
 public class ManualTaskService {
 
-    private static final Logger logger = LoggerFactory.getLogger(ManualTaskService.class);
+    private static final Logger log = LoggerFactory.getLogger(ManualTaskService.class);
 
     @Value("${app.version.id:aa09775e-f584-49cd-a0f2-196464f88fa9}")
     private UUID versionId;
@@ -75,7 +75,7 @@ public class ManualTaskService {
      * @return the persisted sequence with IDs
      */
     public TieredTaskSequenceDTO createManualSequence(ManualTaskRequest request, UUID ownerId) {
-        logger.info(
+        log.info(
             "Creating manual task sequence for language={}, concepts={}", request.getLanguage(), request.getConcepts()
         );
 
@@ -123,7 +123,7 @@ public class ManualTaskService {
 
         // ── Persist ─────────────────────────────────────────────
         persistenceService.persistSequence(sequence);
-        logger.info("Manual sequence persisted: id={}", sequenceId);
+        log.info("Manual sequence persisted: id={}", sequenceId);
 
         return sequence;
     }
@@ -135,6 +135,13 @@ public class ManualTaskService {
      * Public because adding a tier to an existing sequence ({@link SequenceTierService}) must produce exactly what
      * manual creation produces; a second copy of this would drift the way the old worksheet copy did.
      *
+     * @param statement  the problem statement
+     * @param solution   the solution code
+     * @param tierLevel  the tier the task belongs to
+     * @param splits     the inline-split entries, or null for none
+     * @param language   the programming language of the solution
+     * @param sequenceId the sequence the task belongs to
+     * @return the task with its metrics computed
      * @throws DomainValidationException if a split fails the reconstruction check
      */
     public TaskDTO buildTask(
@@ -190,13 +197,14 @@ public class ManualTaskService {
             return objectMapper.writeValueAsString(plan);
         }
         catch (JsonProcessingException e) {
-            logger.warn("Failed to serialize split_plan for tier {}: {}", tierLevel, e.getMessage());
+            log.warn("Failed to serialize split_plan for tier {}: {}", tierLevel, e.getMessage());
             return null;
         }
     }
 
     // ── Validation ──────────────────────────────────────────────
 
+    @SuppressWarnings("checkstyle:NPathComplexity")
     private void validateRequest(ManualTaskRequest request) {
         if (request.getLanguage() == null || request.getLanguage().isBlank()) {
             throw new DomainValidationException("Programming language is required.");

@@ -18,12 +18,17 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -39,7 +44,7 @@ import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
 @Service
 public class InterchangeableAnnotator {
 
-    private static final Logger logger = LoggerFactory.getLogger(InterchangeableAnnotator.class);
+    private static final Logger log = LoggerFactory.getLogger(InterchangeableAnnotator.class);
     private final AiModelClient aiModelClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -169,8 +174,9 @@ public class InterchangeableAnnotator {
      * @return annotated solution string with markers, or original if annotation fails
      */
     public String annotate(String solution, String language) {
-        if (solution == null || solution.isBlank())
+        if (solution == null || solution.isBlank()) {
             return solution;
+        }
 
         try {
             String userPrompt = String.format(USER_PROMPT_TEMPLATE, language, solution);
@@ -178,13 +184,13 @@ public class InterchangeableAnnotator {
             // Use the 3-arg generateTaskDescription: (codeSnippet, systemPrompt, userPromptBody)
             String response = aiModelClient.generateTaskDescription(solution, SYSTEM_PROMPT, userPrompt);
 
-            logger.debug("InterchangeableAnnotator LLM response: {}", response);
+            log.debug("InterchangeableAnnotator LLM response: {}", response);
 
             // Parse the JSON response
             List<Annotation> annotations = parseAnnotations(response);
 
             if (annotations.isEmpty()) {
-                logger.info("No interchangeable annotations found for solution");
+                log.info("No interchangeable annotations found for solution");
                 return solution;
             }
 
@@ -193,7 +199,7 @@ public class InterchangeableAnnotator {
 
         }
         catch (Exception e) {
-            logger.warn("InterchangeableAnnotator failed, returning original solution: {}", e.getMessage());
+            log.warn("InterchangeableAnnotator failed, returning original solution: {}", e.getMessage());
             return solution; // Safe fallback
         }
     }
@@ -218,8 +224,8 @@ public class InterchangeableAnnotator {
                 String type = node.get("type").asText();
                 String name = node.get("name").asText();
 
-                if (line < 1 || (!type.equals("swap") && !type.equals("group"))) {
-                    logger.warn("Skipping invalid annotation: line={}, type={}, name={}", line, type, name);
+                if (line < 1 || !"swap".equals(type) && !"group".equals(type)) {
+                    log.warn("Skipping invalid annotation: line={}, type={}, name={}", line, type, name);
                     continue;
                 }
 
@@ -228,8 +234,8 @@ public class InterchangeableAnnotator {
             return result;
 
         }
-        catch (Exception e) {
-            logger.warn("Failed to parse annotation JSON: {}", e.getMessage());
+        catch (JsonProcessingException | RuntimeException e) {
+            log.warn("Failed to parse annotation JSON: {}", e.getMessage());
             return Collections.emptyList();
         }
     }

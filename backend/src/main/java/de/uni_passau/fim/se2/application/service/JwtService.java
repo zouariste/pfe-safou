@@ -34,7 +34,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
 @Service
-public class JwtService {
+public final class JwtService {
 
     private final SecretKey signingKey;
     private final long expirationMs;
@@ -47,6 +47,12 @@ public class JwtService {
         this.expirationMs = expirationMs;
     }
 
+    /**
+     * Issues a signed JWT carrying the user's ID, email address, role and name.
+     *
+     * @param user the user to issue the token for
+     * @return the compact, signed token
+     */
     public String generateToken(UserDTO user) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
@@ -71,6 +77,12 @@ public class JwtService {
         return extractClaims(token).get("role", String.class);
     }
 
+    /**
+     * Checks a token's signature and expiry.
+     *
+     * @param token the token to check
+     * @return true if the token is correctly signed and not expired
+     */
     public boolean isTokenValid(String token) {
         try {
             Claims claims = extractClaims(token);

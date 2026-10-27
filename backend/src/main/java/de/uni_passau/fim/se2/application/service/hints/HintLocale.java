@@ -36,14 +36,22 @@ public enum HintLocale {
      *
      * Anything unrecognised, including null, falls back to German: it is the platform's default UI language and was the
      * only language hints existed in before this, so an older client that sends nothing keeps what it had.
+     *
+     * @param tag the client's locale tag, or null
+     * @return English for tags starting with {@code en}, German otherwise
      */
     public static HintLocale from(String tag) {
-        if (tag == null)
+        if (tag == null) {
             return DE;
+        }
         return tag.toLowerCase(Locale.ROOT).startsWith("en") ? EN : DE;
     }
 
-    /** Language name for an LLM instruction, in that language. */
+    /**
+     * Language name for an LLM instruction, in that language.
+     *
+     * @return the language's own name for itself
+     */
     public String promptName() {
         return this == EN ? "English" : "Deutsch";
     }

@@ -18,19 +18,21 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai.gemini;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.util.List;
 
-import org.springframework.stereotype.*;
+import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.JsonNode;
 
-import de.uni_passau.fim.se2.application.service.*;
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.infrastructure.ai.*;
+import de.uni_passau.fim.se2.application.service.CodeSanitizerService;
+import de.uni_passau.fim.se2.domain.entities.SolveContract;
+import de.uni_passau.fim.se2.infrastructure.ai.AbstractAiClient;
 
 @Component
 public class GeminiClient extends AbstractAiClient {
+
+    private static final String NOT_IMPLEMENTED = "GeminiClient not implemented yet";
 
     protected GeminiClient(CodeSanitizerService sanitizer) {
         super(sanitizer);
@@ -41,8 +43,7 @@ public class GeminiClient extends AbstractAiClient {
      */
     @Override
     public JsonNode solveProblem(final SolveContract contract) throws IOException, InterruptedException {
-        // TODO: echten Aufruf an Gemini API (fixes Modell)
-        throw new UnsupportedOperationException("GeminiClient not implemented yet");
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
     /**
@@ -53,12 +54,11 @@ public class GeminiClient extends AbstractAiClient {
         String taskDescription, List<String> concepts, String codeSnippet, String language
     )
         throws IOException, InterruptedException {
-        throw new UnsupportedOperationException("GeminiClient not implemented yet");
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
     @Override
     public JsonNode solveProblemSimple(final String taskDescription, final String language) {
-        // TODO: echten Aufruf an Claude API (fixes Modell)
         throw new UnsupportedOperationException("Gemini not implemented yet");
     }
 
@@ -67,7 +67,7 @@ public class GeminiClient extends AbstractAiClient {
      */
     @Override
     public String getProgrammingLanguage(String codeSnippet) throws IOException, InterruptedException {
-        throw new UnsupportedOperationException("GeminiClient not implemented yet");
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
     /**
@@ -76,7 +76,7 @@ public class GeminiClient extends AbstractAiClient {
     @Override
     public String generateTaskDescription(List<String> concepts, String language)
         throws IOException, InterruptedException {
-        throw new UnsupportedOperationException("GeminiClient not implemented yet");
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
     /**
@@ -84,7 +84,7 @@ public class GeminiClient extends AbstractAiClient {
      */
     @Override
     public String generateTaskDescription(String codeSnippet) throws IOException, InterruptedException {
-        throw new UnsupportedOperationException("GeminiClient not implemented yet");
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 
     /**
@@ -92,6 +92,6 @@ public class GeminiClient extends AbstractAiClient {
      */
     @Override
     public List<String> generateConcepts(String codeSnippet, String language) throws IOException, InterruptedException {
-        throw new UnsupportedOperationException("GeminiClient not implemented yet");
+        throw new UnsupportedOperationException(NOT_IMPLEMENTED);
     }
 }

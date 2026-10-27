@@ -19,11 +19,13 @@
 package de.uni_passau.fim.se2.application.service;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.springframework.core.io.ClassPathResource;
@@ -51,6 +53,9 @@ public class TempPasswordGenerator {
     private static final List<String> SUPPORTED_LOCALES = List.of("de", "en");
     private static final String FALLBACK_LOCALE = "en";
 
+    /**
+     * Loads the adjective and noun lists for every supported locale.
+     */
     @PostConstruct
     public void init() {
         for (String locale : SUPPORTED_LOCALES) {
@@ -82,10 +87,11 @@ public class TempPasswordGenerator {
     }
 
     private String resolveLocale(String locale) {
-        if (locale == null)
+        if (locale == null) {
             return FALLBACK_LOCALE;
+        }
         // Accept "de", "de-DE", "de_DE" etc.
-        String prefix = locale.split("[-_]")[0].toLowerCase();
+        String prefix = locale.split("[-_]")[0].toLowerCase(Locale.ROOT);
         return SUPPORTED_LOCALES.contains(prefix) ? prefix : FALLBACK_LOCALE;
     }
 
@@ -101,12 +107,13 @@ public class TempPasswordGenerator {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String word = line.trim();
-                    if (!word.isEmpty())
+                    if (!word.isEmpty()) {
                         words.add(word);
+                    }
                 }
             }
         }
-        catch (Exception e) {
+        catch (IOException | RuntimeException e) {
             log.error("Failed to load word list from {}: {}", resourcePath, e.getMessage());
         }
         return words;

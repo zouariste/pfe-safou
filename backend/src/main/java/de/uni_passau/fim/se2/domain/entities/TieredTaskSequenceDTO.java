@@ -18,13 +18,26 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import java.time.*;
-import java.util.*;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * Represents a complete sequence of tiered programming tasks. Typically, includes one task per tier level (e.g., 1–3).
@@ -164,8 +177,9 @@ public class TieredTaskSequenceDTO {
      * @return an optional task with that level
      */
     public Optional<TaskDTO> getTaskByTierLevel(final int tierLevel) {
-        if (tasks == null)
+        if (tasks == null) {
             return Optional.empty();
+        }
         return tasks.stream().filter(task -> task.getTierLevel() == tierLevel).findFirst();
     }
 

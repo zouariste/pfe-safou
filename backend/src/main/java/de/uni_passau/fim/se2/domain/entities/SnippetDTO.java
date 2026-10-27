@@ -18,9 +18,10 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import java.util.*;
+import java.util.List;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 @Data
 @AllArgsConstructor

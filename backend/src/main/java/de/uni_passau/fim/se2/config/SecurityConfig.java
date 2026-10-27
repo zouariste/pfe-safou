@@ -43,11 +43,21 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private static final String ADMIN_ROLE = "ADMIN";
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Value("${CORS_ALLOWED_ORIGINS:*}")
     private String corsAllowedOrigins;
 
+    /**
+     * Configures stateless JWT authentication and which endpoints need which role. Anything not listed requires a
+     * logged-in user.
+     *
+     * @param http the security builder to configure
+     * @return the configured filter chain
+     */
+    @SuppressWarnings({ "checkstyle:LambdaBodyLength", "checkstyle:MethodLength" })
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -61,7 +71,7 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.PUT, "/api/auth/profile").authenticated()
 
                     // Admin endpoints: require ADMIN role
-                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                    .requestMatchers("/api/admin/**").hasRole(ADMIN_ROLE)
 
                     // Auth endpoints: open
                     .requestMatchers("/api/auth/**").permitAll()
@@ -96,7 +106,7 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/api/library/tags/translations").permitAll()
 
                     // Task generation: teachers and admins only
-                    .requestMatchers(HttpMethod.POST, "/api/tasks/generate").hasAnyRole("TEACHER", "ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/tasks/generate").hasAnyRole("TEACHER", ADMIN_ROLE)
 
                     // Feedback logging: open (anonymous feedback allowed)
                     .requestMatchers(HttpMethod.POST, "/api/tasks/*/feedback-log").permitAll()
@@ -107,17 +117,17 @@ public class SecurityConfig {
                     // caller to own the sequence. This matcher is the coarse floor in front
                     // of that check, not a substitute for it.
                     .requestMatchers(HttpMethod.POST, "/api/events").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/events/export").hasRole("ADMIN")
-                    .requestMatchers(HttpMethod.GET, "/api/events/**").hasAnyRole("TEACHER", "ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/api/events/export").hasRole(ADMIN_ROLE)
+                    .requestMatchers(HttpMethod.GET, "/api/events/**").hasAnyRole("TEACHER", ADMIN_ROLE)
 
                     // Hints (AP13): public (anonymous students allowed)
                     .requestMatchers(HttpMethod.POST, "/api/hints/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/hints/**").permitAll()
 
                     // Change Analysis (AP12): analysis endpoints require auth, batch/export/summary admin
-                    .requestMatchers(HttpMethod.POST, "/api/analysis/batch").hasRole("ADMIN")
-                    .requestMatchers(HttpMethod.GET, "/api/analysis/export").hasRole("ADMIN")
-                    .requestMatchers(HttpMethod.GET, "/api/analysis/summary").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/api/analysis/batch").hasRole(ADMIN_ROLE)
+                    .requestMatchers(HttpMethod.GET, "/api/analysis/export").hasRole(ADMIN_ROLE)
+                    .requestMatchers(HttpMethod.GET, "/api/analysis/summary").hasRole(ADMIN_ROLE)
                     .requestMatchers("/api/analysis/**").authenticated()
 
                     // Worksheet mutations: require authentication (ownership checked in controller)
@@ -142,6 +152,12 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Builds the CORS configuration from {@code CORS_ALLOWED_ORIGINS}: a comma-separated list of origins, or {@code *}
+     * for any.
+     *
+     * @return the CORS configuration for all paths
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();

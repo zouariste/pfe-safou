@@ -19,7 +19,9 @@
 package de.uni_passau.fim.se2.application.service;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
@@ -31,14 +33,12 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import de.uni_passau.fim.se2.application.mapper.TaskSequenceMapper;
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
 import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
 import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
-import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.interfaces.ConceptCurriculumTopicRepository;
 import de.uni_passau.fim.se2.domain.interfaces.CurriculumCodeExampleRepository;
 import de.uni_passau.fim.se2.domain.interfaces.CurriculumTopicRepository;
@@ -47,7 +47,7 @@ import de.uni_passau.fim.se2.infrastructure.ai.openai.OpenAiClient;
 @Service
 public class CurriculumGenerationService {
 
-    private static final Logger logger = LoggerFactory.getLogger(CurriculumGenerationService.class);
+    private static final Logger log = LoggerFactory.getLogger(CurriculumGenerationService.class);
 
     private final CurriculumTopicRepository topicRepo;
     private final CurriculumCodeExampleRepository exampleRepo;
@@ -78,7 +78,19 @@ public class CurriculumGenerationService {
     /**
      * Generates a tiered task sequence based on a curriculum topic. Selects seed code examples and concept mappings
      * from the DB, then delegates to the OpenAiClient with the dedicated curriculum prompt.
+     *
+     * @param topicId            the curriculum topic to generate for
+     * @param language           the programming language of the tasks
+     * @param targetLanguage     the human language of the problem statements
+     * @param tierCount          the number of tiers
+     * @param distractorsEnabled whether to generate distractors
+     * @param contextModeEnabled whether to mark read-only context lines
+     * @param splitEnabled       whether to generate inline-split lines
+     * @param constraints        the teacher's generation constraints, or null
+     * @param ownerId            the teacher who will own the sequence
+     * @return the generated and saved sequence
      */
+    @SuppressWarnings("checkstyle:MethodLength")
     public TieredTaskSequenceDTO generate(
         UUID topicId, String language, String targetLanguage,
         int tierCount, boolean distractorsEnabled,
@@ -100,7 +112,7 @@ public class CurriculumGenerationService {
             // The controller maps this to a 422 { error: "no_examples" } which the frontend
             // renders via the i18n key `curriculum.noExamples`. The literal below is the
             // German source string / fallback.
-            logger.warn(
+            log.warn(
                 "No curated seed examples for topic '{}' — curriculum generation unavailable.",
                 topic.getName()
             );
@@ -122,7 +134,7 @@ public class CurriculumGenerationService {
             concepts = List.of("general-programming");
         }
 
-        logger.info(
+        log.info(
             "Curriculum generation: topic='{}', grade={}, language={}, tierCount={}, examples={}, concepts={}",
             topic.getName(), topic.getGradeLevel(), language, tierCount, examples.size(), concepts
         );
@@ -139,7 +151,7 @@ public class CurriculumGenerationService {
             }
             catch (IOException | RuntimeException e) {
                 lastError = e;
-                logger.warn("Curriculum generation attempt {}/{} failed: {}", attempt, maxAttempts, e.getMessage());
+                log.warn("Curriculum generation attempt {}/{} failed: {}", attempt, maxAttempts, e.getMessage());
                 if (attempt < maxAttempts) {
                     // Exponential backoff with jitter
                     long delay = (long) Math.min(
@@ -206,7 +218,11 @@ public class CurriculumGenerationService {
         return enriched;
     }
 
-    /** Returns all top-level curriculum topics (Jahrgangsstufen). */
+    /**
+     * Returns all top-level curriculum topics (Jahrgangsstufen).
+     *
+     * @return the top-level curriculum topics
+     */
     public List<CurriculumTopicDTO> getTopLevelTopics() {
         return topicRepo.findTopLevel();
     }
@@ -214,6 +230,9 @@ public class CurriculumGenerationService {
     /**
      * Returns sub-topics for a given parent topic, each carrying how many sequences match its mapped concepts — the
      * Curriculum page's per-topic count badge.
+     *
+     * @param parentId the topic whose children to list
+     * @return the sub-topics with their matching sequence counts
      */
     public List<CurriculumTopicDTO> getSubTopics(UUID parentId) {
         List<CurriculumTopicDTO> topics = topicRepo.findByParentId(parentId);
@@ -233,7 +252,13 @@ public class CurriculumGenerationService {
         }
     }
 
-    /** Returns code examples for a given topic and language. */
+    /**
+     * Returns code examples for a given topic and language.
+     *
+     * @param topicId  the topic whose examples to list
+     * @param language only examples in this language, or all if null
+     * @return the topic's code examples
+     */
     public List<CurriculumCodeExampleDTO> getExamples(UUID topicId, String language) {
         if (language != null && !language.isBlank()) {
             return exampleRepo.findByTopicIdAndLanguage(topicId, language);

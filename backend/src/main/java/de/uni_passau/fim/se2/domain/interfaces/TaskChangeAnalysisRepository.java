@@ -31,26 +31,38 @@ public interface TaskChangeAnalysisRepository {
 
     /**
      * Saves (upserts) a change-analysis record.
+     *
+     * @param analysis the analysis to save
      */
     void save(TaskChangeAnalysisDTO analysis);
 
     /**
      * Finds the change analysis for a given task, if one exists.
+     *
+     * @param taskId the task
+     * @return the task's analysis, or empty if it has none
      */
     Optional<TaskChangeAnalysisDTO> findByTaskId(UUID taskId);
 
     /**
      * Returns all change-analysis records (used by the export endpoint).
+     *
+     * @return every analysis
      */
     List<TaskChangeAnalysisDTO> findAll();
 
     /**
      * Checks whether an analysis already exists for the given task.
+     *
+     * @param taskId the task
+     * @return true if the task has an analysis
      */
     boolean existsByTaskId(UUID taskId);
 
     /**
      * Deletes the change analysis for the given task.
+     *
+     * @param taskId the task
      */
     void deleteByTaskId(UUID taskId);
 }

@@ -20,7 +20,6 @@ package de.uni_passau.fim.se2.domain.interfaces;
 
 import java.util.List;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.ConceptCurriculumTopicDTO;
 import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
 import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;

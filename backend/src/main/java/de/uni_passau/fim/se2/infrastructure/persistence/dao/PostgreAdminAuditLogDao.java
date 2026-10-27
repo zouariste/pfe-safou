@@ -18,7 +18,9 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -45,37 +47,17 @@ public class PostgreAdminAuditLogDao implements AdminAuditLogRepository {
 
     @Override
     public AdminAuditLogDTO save(AdminAuditLogDTO entry) {
-        if (entry.getCreatedAt() == null)
+        if (entry.getCreatedAt() == null) {
             entry.setCreatedAt(LocalDateTime.now());
+        }
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbc.update(con -> {
-            PreparedStatement ps = con.prepareStatement("""
-                INSERT INTO admin_audit_log
-                  (admin_id, action, ip_address, user_agent, bytes_sent, rows_sent, success, error_msg, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, Statement.RETURN_GENERATED_KEYS);
-            ps.setObject(1, entry.getAdminId());
-            ps.setString(2, entry.getAction());
-            ps.setString(3, entry.getIpAddress());
-            ps.setString(4, entry.getUserAgent());
-            if (entry.getBytesSent() != null)
-                ps.setLong(5, entry.getBytesSent());
-            else
-                ps.setNull(5, Types.BIGINT);
-            if (entry.getRowsSent() != null)
-                ps.setLong(6, entry.getRowsSent());
-            else
-                ps.setNull(6, Types.BIGINT);
-            ps.setBoolean(7, entry.isSuccess());
-            ps.setString(8, entry.getErrorMsg());
-            ps.setTimestamp(9, Timestamp.valueOf(entry.getCreatedAt()));
-            return ps;
-        }, keyHolder);
+        jdbc.update(con -> prepareInsert(con, entry), keyHolder);
 
         Number key = keyHolder.getKey();
-        if (key != null)
+        if (key != null) {
             entry.setId(key.longValue());
+        }
         return entry;
     }
 
@@ -93,5 +75,39 @@ public class PostgreAdminAuditLogDao implements AdminAuditLogRepository {
             "SELECT * FROM admin_audit_log WHERE admin_id = ? ORDER BY created_at DESC LIMIT ?",
             rowMapper, adminId, limit
         );
+    }
+
+    private static PreparedStatement prepareInsert(Connection con, AdminAuditLogDTO entry) throws SQLException {
+        PreparedStatement ps = con.prepareStatement("""
+            INSERT INTO admin_audit_log
+              (admin_id, action, ip_address, user_agent, bytes_sent, rows_sent, success, error_msg, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, Statement.RETURN_GENERATED_KEYS);
+        try {
+            ps.setObject(1, entry.getAdminId());
+            ps.setString(2, entry.getAction());
+            ps.setString(3, entry.getIpAddress());
+            ps.setString(4, entry.getUserAgent());
+            if (entry.getBytesSent() != null) {
+                ps.setLong(5, entry.getBytesSent());
+            }
+            else {
+                ps.setNull(5, Types.BIGINT);
+            }
+            if (entry.getRowsSent() != null) {
+                ps.setLong(6, entry.getRowsSent());
+            }
+            else {
+                ps.setNull(6, Types.BIGINT);
+            }
+            ps.setBoolean(7, entry.isSuccess());
+            ps.setString(8, entry.getErrorMsg());
+            ps.setTimestamp(9, Timestamp.valueOf(entry.getCreatedAt()));
+            return ps;
+        }
+        catch (SQLException | RuntimeException e) {
+            ps.close();
+            throw e;
+        }
     }
 }

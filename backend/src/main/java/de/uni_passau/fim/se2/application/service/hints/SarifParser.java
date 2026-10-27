@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -33,6 +34,10 @@ public class SarifParser {
 
     /**
      * Parse SARIF JSON output from Ruff or SpotBugs into unified findings.
+     *
+     * @param sarifJson the SARIF report
+     * @param toolName  the tool that produced it, recorded on each finding
+     * @return the findings in the report
      */
     public List<AnalysisFinding> parse(String sarifJson, String toolName) {
         // Parse the SARIF JSON
@@ -46,12 +51,14 @@ public class SarifParser {
         try {
             JsonNode root = objectMapper.readTree(sarifJson);
             JsonNode runs = root.path("runs");
-            if (!runs.isArray() || runs.isEmpty())
+            if (!runs.isArray() || runs.isEmpty()) {
                 return findings;
+            }
 
             JsonNode results = runs.get(0).path("results");
-            if (!results.isArray())
+            if (!results.isArray()) {
                 return findings;
+            }
 
             for (JsonNode result : results) {
                 String ruleId = result.path("ruleId").asText("");
@@ -72,7 +79,7 @@ public class SarifParser {
                 findings.add(new AnalysisFinding(ruleId, message, severity, startLine, endLine, toolName, category));
             }
         }
-        catch (Exception e) {
+        catch (JsonProcessingException | RuntimeException e) {
             // Log but don't throw - partial results are fine
         }
         return findings;
@@ -98,12 +105,15 @@ public class SarifParser {
             };
         }
         else if ("spotbugs".equals(tool)) {
-            if (ruleId.startsWith("NP_"))
+            if (ruleId.startsWith("NP_")) {
                 return "null_safety";
-            if (ruleId.startsWith("DLS_"))
+            }
+            if (ruleId.startsWith("DLS_")) {
                 return "dead_code";
-            if (ruleId.startsWith("UC_"))
+            }
+            if (ruleId.startsWith("UC_")) {
                 return "logic";
+            }
             return "other";
         }
         return "other";

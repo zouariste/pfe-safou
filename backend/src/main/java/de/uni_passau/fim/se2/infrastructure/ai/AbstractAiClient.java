@@ -18,14 +18,14 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.util.List;
 
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.JsonNode;
 
-import de.uni_passau.fim.se2.application.service.*;
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.interfaces.*;
+import de.uni_passau.fim.se2.application.service.CodeSanitizerService;
+import de.uni_passau.fim.se2.domain.entities.SolveContract;
+import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
 
 public class AbstractAiClient implements AiModelClient {
 

@@ -18,31 +18,41 @@
  */
 package de.uni_passau.fim.se2.api;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
-import org.springframework.http.*;
-import org.springframework.security.access.*;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import de.uni_passau.fim.se2.api.dto.*;
 import de.uni_passau.fim.se2.api.dto.LibraryItemDTO;
 import de.uni_passau.fim.se2.api.dto.LibrarySearchResponse;
 import de.uni_passau.fim.se2.application.query.WorksheetSearchQuery;
 import de.uni_passau.fim.se2.application.query.WorksheetSearchResult;
-import de.uni_passau.fim.se2.application.service.*;
 import de.uni_passau.fim.se2.application.service.OwnershipService;
 import de.uni_passau.fim.se2.application.service.SequenceSearchService;
-import de.uni_passau.fim.se2.application.service.SequenceSearchService.*;
+import de.uni_passau.fim.se2.application.service.SequenceSearchService.SearchQuery;
 import de.uni_passau.fim.se2.application.service.SequenceTagService;
 import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
 import de.uni_passau.fim.se2.application.service.WorksheetSearchService;
 import de.uni_passau.fim.se2.application.service.WorksheetService;
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
-import lombok.*;
-import lombok.extern.slf4j.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * AP19 Teil A: read-side Library endpoints.
@@ -191,6 +201,9 @@ public class LibraryController {
      * @param lang  restrict to worksheets containing sequences in this language
      * @param owner {@code "me"} to see only what the caller published
      * @param sort  {@code recent} (default), {@code relevance} or {@code popularity}
+     * @param page  the zero-based page number
+     * @param size  the number of results per page
+     * @return the matching worksheets with facet counts
      */
     @GetMapping("/worksheets")
     public ResponseEntity<WorksheetSearchResult> searchWorksheets(
@@ -259,6 +272,8 @@ public class LibraryController {
     /**
      * English display slugs for topics (sequence tags), keyed by the canonical German tag name. The frontend uses this
      * to show topics in English when the UI language is English; tags without an entry are shown as-is.
+     *
+     * @return the English slug for each canonical German tag name
      */
     @GetMapping("/tags/translations")
     public ResponseEntity<Map<String, String>> tagTranslations() {
@@ -379,6 +394,10 @@ public class LibraryController {
      * <p>
      * Undo is handled by the existing {@code DELETE /tasks/worksheets/{sheetId}/sequences/{sequenceId}} endpoint — the
      * frontend just remembers the target sheet ID from this response.
+     *
+     * @param sequenceId        the Library sequence to copy
+     * @param targetWorksheetId the worksheet to copy into, or the teacher's default worksheet if null
+     * @return the copy's ID and the worksheet it landed in
      */
     @PostMapping("/sequences/{sequenceId}/copy-to-default")
     public ResponseEntity<CopyToWorksheetResponse> copyToDefault(
@@ -399,7 +418,7 @@ public class LibraryController {
         WorksheetDTO target;
         if (targetWorksheetId != null) {
             target = worksheetService.loadWorksheetById(targetWorksheetId);
-            if (target == null || target.getId() == null) {
+            if (target.getId() == null) {
                 throw new AccessDeniedException("Worksheet not found.");
             }
             ownershipService.checkOwnership(target.getOwnerId(), "worksheet");
@@ -462,7 +481,11 @@ public class LibraryController {
      * <p>
      * No per-sequence Undo is offered — undoing a batch of N selectively is a fiddly UX problem. The caller can always
      * navigate to the worksheet and remove items individually.
+     *
+     * @param body the sequences to copy and the target worksheet
+     * @return the copies made, or 400 if no sequences were given
      */
+    @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     @PostMapping("/sequences/bulk-copy")
     public ResponseEntity<BulkCopyResponse> bulkCopy(@RequestBody BulkCopyRequest body) {
         if (body == null || body.sequenceIds() == null || body.sequenceIds().isEmpty()) {
@@ -488,7 +511,7 @@ public class LibraryController {
         WorksheetDTO target;
         if (body.worksheetId() != null) {
             target = worksheetService.loadWorksheetById(body.worksheetId());
-            if (target == null || target.getId() == null) {
+            if (target.getId() == null) {
                 throw new AccessDeniedException("Worksheet not found.");
             }
             ownershipService.checkOwnership(target.getOwnerId(), "worksheet");

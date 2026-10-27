@@ -81,7 +81,12 @@ public class CurriculumTopicAdminService {
         this.conceptTopicRepo = conceptTopicRepo;
     }
 
-    /** The concept names mapped to a topic, for the edit form to start from. */
+    /**
+     * The concept names mapped to a topic, for the edit form to start from.
+     *
+     * @param topicId the topic
+     * @return the names of the concepts mapped to the topic
+     */
     public List<String> getConceptNames(UUID topicId) {
         CurriculumTopicDTO topic = topicRepo.findById(topicId)
             .orElseThrow(() -> new IllegalArgumentException("Curriculum topic not found: " + topicId));
@@ -96,6 +101,9 @@ public class CurriculumTopicAdminService {
      * Jahrgangsstufe's name is derived from grade level and track rather than typed, because that is exactly what the
      * curriculum page displays for it — asking for a name too would let the two drift apart. A module has no such
      * derivation, so it keeps the name it was given.
+     *
+     * @param dto the new entry
+     * @return the created topic
      */
     public CurriculumTopicDTO createTopLevelTopic(CurriculumTopicDTO dto) {
         Integer grade = dto.getGradeLevel();
@@ -142,6 +150,10 @@ public class CurriculumTopicAdminService {
     /**
      * Creates a Lernbereich under an existing top-level entry. Grade level, track and education level are inherited
      * from the parent, so a sub-topic cannot contradict the Jahrgangsstufe or module it hangs under.
+     *
+     * @param parentId the top-level entry to add the sub-topic under
+     * @param dto      the new sub-topic
+     * @return the created sub-topic
      */
     public CurriculumTopicDTO createSubTopic(UUID parentId, CurriculumTopicDTO dto) {
         CurriculumTopicDTO parent = topicRepo.findById(parentId)
@@ -190,6 +202,10 @@ public class CurriculumTopicAdminService {
      * <p>
      * A top-level entry may also change shape: clearing its grade level turns a Jahrgangsstufe into a module, which
      * then needs a name of its own, and giving a module a grade level turns it back.
+     *
+     * @param id  the topic to edit
+     * @param dto the topic's new fields
+     * @return the updated topic
      */
     public CurriculumTopicDTO update(UUID id, CurriculumTopicDTO dto) {
         CurriculumTopicDTO existing = topicRepo.findById(id)

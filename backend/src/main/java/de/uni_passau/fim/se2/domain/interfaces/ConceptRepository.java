@@ -18,9 +18,9 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
 
 /**
@@ -67,6 +67,7 @@ public interface ConceptRepository {
      * allowing it to be retrieved or modified at a later time.
      *
      * @param concept the ConceptDTO object representing the programming concept to be saved into the repository
+     * @return the ID of the saved concept
      */
     UUID save(ConceptDTO concept);
 

@@ -42,6 +42,7 @@
         <argLine></argLine>
         <!-- jtreesitter calls restricted FFM methods; without this the JDK warns on startup. -->
         <spring-boot.run.jvmArguments>--enable-native-access=ALL-UNNAMED</spring-boot.run.jvmArguments>
+        <checkstyle.version>14.3.0</checkstyle.version>
     </properties>
 
     <dependencies>
@@ -262,6 +263,42 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- The lint setup follows litterbox-web; its configuration lives in ../config. -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>3.10.4</version>
+                <configuration>
+                    <java>
+                        <eclipse>
+                            <version>4.40</version>
+                            <file>${project.basedir}/../config/spotless/spotless-format.xml</file>
+                        </eclipse>
+                        <importOrder>
+                            <file>${project.basedir}/../config/spotless/spotless.importorder</file>
+                        </importOrder>
+                    </java>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <configLocation>${project.basedir}/../config/checkstyle/checkstyle.xml</configLocation>
+                    <consoleOutput>true</consoleOutput>
+                    <linkXRef>false</linkXRef>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    <violationSeverity>warning</violationSeverity>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>${checkstyle.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -282,5 +319,36 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Keeps SpotBugs out of the normal build; CI runs it with -Pstatic-analysis. -->
+        <profile>
+            <id>static-analysis</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs-maven-plugin</artifactId>
+                        <version>4.10.5.0</version>
+                        <configuration>
+                            <effort>Max</effort>
+                            <threshold>Low</threshold>
+                            <excludeFilterFile>${project.basedir}/../config/spotbugs/exclude.xml</excludeFilterFile>
+                            <failOnError>true</failOnError>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>spotbugs-check</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

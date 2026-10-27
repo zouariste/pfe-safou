@@ -29,7 +29,13 @@ public class HintGenerator {
         return generate(blockFindings, language, List.of(), false, 0, 0, HintLocale.DE);
     }
 
-    /** @deprecated Use the full overload with block-count context. */
+    /**
+     * @param blockFindings          the findings mapped to blocks
+     * @param language               the programming language of the task
+     * @param distractorBlockIndices the indices of blocks that are distractors
+     * @return the hint text
+     * @deprecated Use the full overload with block-count context.
+     */
     public String generate(
         List<BlockMapper.BlockFinding> blockFindings, String language,
         List<Integer> distractorBlockIndices
@@ -48,9 +54,16 @@ public class HintGenerator {
      * and SpotBugs, which only emit English — so a German hint stays a German frame around an English tool message.
      * Translating those would mean mapping every rule id by hand.
      *
-     * @param language the programming language, not the UI language
-     * @param locale   the UI language to write the hint in
+     * @param language                  the programming language, not the UI language
+     * @param locale                    the UI language to write the hint in
+     * @param blockFindings             the findings mapped to blocks
+     * @param distractorBlockIndices    the indices of blocks that are distractors
+     * @param tooFewBlocks              whether the student placed fewer blocks than the solution has
+     * @param studentNonDistractorCount the number of non-distractor blocks the student placed
+     * @param correctBlockCount         the number of blocks in the solution
+     * @return the hint text
      */
+    @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     public String generate(
         List<BlockMapper.BlockFinding> blockFindings, String language,
         List<Integer> distractorBlockIndices,
@@ -90,8 +103,9 @@ public class HintGenerator {
             else {
                 sb.append(en ? "• Blocks " : "• Blöcke ");
                 for (int i = 0; i < distractorBlockIndices.size(); i++) {
-                    if (i > 0)
+                    if (i > 0) {
                         sb.append(", ");
+                    }
                     sb.append(BlockLabels.of(distractorBlockIndices.get(i)));
                 }
                 sb.append(

@@ -18,7 +18,8 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 
 import de.uni_passau.fim.se2.domain.entities.SnippetDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
@@ -80,24 +81,35 @@ public interface TaskRepository {
 
     /**
      * Updates the statement and solution of an existing task (AP9).
+     *
+     * @param taskId    the task
+     * @param statement the new problem statement
+     * @param solution  the new solution
      */
     void updateStatementAndSolution(UUID taskId, String statement, String solution);
 
     /**
      * Updates only the distractors column of an existing task (AP15).
+     *
+     * @param taskId      the task
+     * @param distractors the new distractor lines
      */
     void updateDistractors(UUID taskId, String distractors);
 
     /**
      * Enables or disables distractors for an existing task (AP15). When disabled, distractors are kept in DB but not
      * delivered to students.
+     *
+     * @param taskId  the task
+     * @param enabled whether students should get the distractors
      */
     void updateDistractorsEnabled(UUID taskId, boolean enabled);
 
     /**
      * Sets or clears the owner-given name of a task.
      *
-     * @param title the new name, or {@code null} to fall back to the numbered default
+     * @param title  the new name, or {@code null} to fall back to the numbered default
+     * @param taskId the task
      */
     void updateTitle(UUID taskId, String title);
 
@@ -106,6 +118,7 @@ public interface TaskRepository {
      *
      * @param splitPlanJson serialized {@link de.uni_passau.fim.se2.domain.entities.SplitPlan}, or {@code null} to clear
      *                      the plan.
+     * @param taskId        the task
      */
     void updateSplitPlan(UUID taskId, String splitPlanJson);
 
@@ -113,6 +126,7 @@ public interface TaskRepository {
      * Takes a task out of its sequence without deleting the row, so the learning events, submissions and hint usage
      * recorded against it survive. {@link #loadTasksBySequenceId} no longer returns it; {@link #loadById} still does.
      *
+     * @param taskId the task to remove
      * @throws de.uni_passau.fim.se2.domain.exceptions.DomainValidationException if no such task exists or it is already
      *                                                                           deleted
      */
@@ -121,6 +135,10 @@ public interface TaskRepository {
     /**
      * Moves every non-deleted task of a sequence at or above {@code fromLevel} by {@code delta} tier levels —
      * {@code +1} to open a gap for an inserted tier, {@code -1} to close the gap a deleted one left.
+     *
+     * @param sequenceId the sequence
+     * @param fromLevel  the lowest tier level to move
+     * @param delta      how many levels to move by
      */
     void shiftTierLevels(UUID sequenceId, int fromLevel, int delta);
 }

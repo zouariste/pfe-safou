@@ -147,8 +147,9 @@ class MarketplaceJourneyDatabaseTest {
 
     @AfterAll
     static void cleanup() {
-        if (jdbc == null)
+        if (jdbc == null) {
             return; // wire() aborted: there was no test database
+        }
         // tasks, sequence_tags, tiered_task_sequence_concepts and worksheets_sequence all
         // cascade from these two, so nothing else needs an explicit delete.
         jdbc.update("DELETE FROM tiered_task_sequences");
@@ -456,6 +457,7 @@ class MarketplaceJourneyDatabaseTest {
         );
     }
 
+    @SuppressWarnings("checkstyle:MethodLength")
     @Test
     @Order(12)
     @DisplayName("12. Anna forks Ben's sequence to edit it, and Ben's own copy survives untouched")

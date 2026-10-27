@@ -46,6 +46,12 @@ public class EmailService {
         this.mailConfigured = mailHost != null && !mailHost.isBlank();
     }
 
+    /**
+     * Sends the link that verifies an email address. Without a configured mail server the email is logged instead.
+     *
+     * @param toEmail the address to verify
+     * @param token   the verification token to put in the link
+     */
     public void sendVerificationEmail(String toEmail, String token) {
         String subject = "CodeOwl - Email-Adresse bestätigen";
         String postfix = "verify-email?token=" + token;
@@ -64,10 +70,16 @@ public class EmailService {
         sendMail(toEmail, subject, body);
     }
 
-    private boolean endsWithSlash(String appBaseUrl) {
-        return appBaseUrl.endsWith("/");
+    private boolean endsWithSlash(String url) {
+        return url.endsWith("/");
     }
 
+    /**
+     * Sends the link that resets a password. Without a configured mail server the email is logged instead.
+     *
+     * @param toEmail the account's email address
+     * @param token   the reset token to put in the link
+     */
     public void sendPasswordResetEmail(String toEmail, String token) {
         String subject = "CodeOwl - Passwort zurücksetzen";
         String postfix = "reset-password?token=" + token;

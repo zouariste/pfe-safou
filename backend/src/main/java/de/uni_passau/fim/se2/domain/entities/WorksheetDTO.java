@@ -19,10 +19,18 @@
 package de.uni_passau.fim.se2.domain.entities;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 import de.uni_passau.fim.se2.domain.model.WorksheetVisibility;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * Data transfer object representing a worksheet within the system. A worksheet acts as a collection of tiered task

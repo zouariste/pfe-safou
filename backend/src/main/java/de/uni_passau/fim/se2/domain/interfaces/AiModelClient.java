@@ -18,12 +18,13 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.util.List;
 
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.JsonNode;
 
-import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
+import de.uni_passau.fim.se2.domain.entities.SolveContract;
 
 public interface AiModelClient {
 
@@ -34,15 +35,14 @@ public interface AiModelClient {
      * The prompt strictly instructs the provider to return only properly formatted code, without any explanation,
      * comments, or extra output.
      *
-     * @param problem  the problem description to solve
-     * @param language TODO
+     * @param contract the task statement, signature, behaviour, conditions and examples the solution must satisfy
      * @return a {@link JsonNode} containing one field "code" with the solution
      * @throws IOException          if API communication fails
      * @throws InterruptedException if the thread is interrupted during the request
      */
-    JsonNode solveProblem(final SolveContract contract) throws IOException, InterruptedException;
+    JsonNode solveProblem(SolveContract contract) throws IOException, InterruptedException;
 
-    JsonNode solveProblemSimple(final String taskDescription, final String language)
+    JsonNode solveProblemSimple(String taskDescription, String language)
         throws IOException, InterruptedException;
 
     /**
@@ -57,16 +57,21 @@ public interface AiModelClient {
      * @throws InterruptedException throws InterruptedException.
      */
     JsonNode generateTieredTaskSequence(
-        final String taskDescription,
-        final List<String> concepts,
-        final String codeSnippet,
-        final String language
+        String taskDescription,
+        List<String> concepts,
+        String codeSnippet,
+        String language
     ) throws IOException, InterruptedException;
 
     /**
      * Generates a TieredTaskSequence with a specified target language for problem statements.
      *
-     * @param targetLanguage Human language code for statements (e.g. "de", "en").
+     * @param targetLanguage  Human language code for statements (e.g. "de", "en").
+     * @param taskDescription the teacher's sample task description, or null
+     * @param concepts        the concepts the sequence should cover
+     * @param codeSnippet     the teacher's code snippet, or null
+     * @param language        the programming language of the tasks
+     * @return the model's response describing the tiered tasks
      */
     default JsonNode generateTieredTaskSequence(
         final String taskDescription,
@@ -81,6 +86,10 @@ public interface AiModelClient {
     /**
      * Generates a problem statement for a given code snippet using a provided prompt body. Default implementation falls
      * back to the single-argument variant, so existing clients keep working until they implement the override.
+     *
+     * @param codeSnippet    the code to describe
+     * @param userPromptBody the prompt to send with the code
+     * @return the generated problem statement
      */
     default String generateTaskDescription(final String codeSnippet, final String userPromptBody)
         throws IOException, InterruptedException {
@@ -90,6 +99,11 @@ public interface AiModelClient {
     /**
      * Generate using explicit system prompt + user prompt/body. Providers that support roles should use both; others
      * may concatenate.
+     *
+     * @param codeSnippet    the code to describe
+     * @param systemPrompt   the system prompt to send
+     * @param userPromptBody the user prompt to send with the code
+     * @return the generated problem statement
      */
     default String generateTaskDescription(
         final String codeSnippet,
@@ -112,7 +126,7 @@ public interface AiModelClient {
      * @throws IOException          throws IOException.
      * @throws InterruptedException throws InterruptedException.
      */
-    String getProgrammingLanguage(final String codeSnippet)
+    String getProgrammingLanguage(String codeSnippet)
         throws IOException, InterruptedException;
 
     /**
@@ -125,8 +139,8 @@ public interface AiModelClient {
      * @throws InterruptedException throws InterruptedException.
      */
     String generateTaskDescription(
-        final List<String> concepts,
-        final String language
+        List<String> concepts,
+        String language
     )
         throws IOException, InterruptedException;
 
@@ -138,7 +152,7 @@ public interface AiModelClient {
      * @throws IOException          throws IOException
      * @throws InterruptedException throws InterruptedException
      */
-    String generateTaskDescription(final String codeSnippet)
+    String generateTaskDescription(String codeSnippet)
         throws IOException, InterruptedException;
 
     /**
@@ -151,7 +165,7 @@ public interface AiModelClient {
      * @throws IOException          throws IOException.
      * @throws InterruptedException throws InterruptedException.
      */
-    List<String> generateConcepts(final String codeSnippet, final String language)
+    List<String> generateConcepts(String codeSnippet, String language)
         throws IOException, InterruptedException;
 
     /**
@@ -192,6 +206,10 @@ public interface AiModelClient {
      * AP31: Generates an inline-split plan for a (solved) task — one complex line decomposed into 2–4 fragments with
      * optional display prefix/suffix and fragment distractors.
      *
+     * @param solutionCode  the task's solution
+     * @param language      the programming language of the solution
+     * @param taskStatement the task's problem statement
+     * @param tierLevel     the task's tier
      * @return split_plan JSON string (object with a "splits" array), or {@code null}.
      */
     default String generateSplitPlan(
@@ -206,6 +224,12 @@ public interface AiModelClient {
      * AP31: Second pass — generates ONE fragment-level distractor for an already-decided split so the wrong fragment is
      * a drop-in for a single slot (shape-matched to one of {@code fragments}).
      *
+     * @param fragments     the correct fragments of the split line, in order
+     * @param prefix        the fixed text before the fragments
+     * @param suffix        the fixed text after the fragments
+     * @param language      the programming language of the line
+     * @param taskStatement the task's problem statement
+     * @param tierLevel     the task's tier
      * @return JSON {@code {"fragmentIndex":int,"text":"...","type":"..."}}, or {@code null} if none fits.
      */
     default String generateSplitDistractor(
@@ -218,6 +242,14 @@ public interface AiModelClient {
 
     /**
      * Generates a TieredTaskSequence with optional distractor planning (AP15).
+     *
+     * @param taskDescription    the teacher's sample task description, or null
+     * @param concepts           the concepts the sequence should cover
+     * @param codeSnippet        the teacher's code snippet, or null
+     * @param language           the programming language of the tasks
+     * @param targetLanguage     the human language of the problem statements
+     * @param distractorsEnabled whether to plan distractors
+     * @return the model's response describing the tiered tasks
      */
     default JsonNode generateTieredTaskSequence(
         final String taskDescription,
@@ -233,6 +265,15 @@ public interface AiModelClient {
 
     /**
      * AP20: Generates a TieredTaskSequence with constraints + distractors.
+     *
+     * @param taskDescription    the teacher's sample task description, or null
+     * @param concepts           the concepts the sequence should cover
+     * @param codeSnippet        the teacher's code snippet, or null
+     * @param language           the programming language of the tasks
+     * @param targetLanguage     the human language of the problem statements
+     * @param distractorsEnabled whether to plan distractors
+     * @param constraints        the teacher's generation constraints, or null
+     * @return the model's response describing the tiered tasks
      */
     default JsonNode generateTieredTaskSequence(
         final String taskDescription,
@@ -251,6 +292,16 @@ public interface AiModelClient {
 
     /**
      * AP21: Generates a TieredTaskSequence with constraints + distractors + tierCount.
+     *
+     * @param taskDescription    the teacher's sample task description, or null
+     * @param concepts           the concepts the sequence should cover
+     * @param codeSnippet        the teacher's code snippet, or null
+     * @param language           the programming language of the tasks
+     * @param targetLanguage     the human language of the problem statements
+     * @param distractorsEnabled whether to plan distractors
+     * @param constraints        the teacher's generation constraints, or null
+     * @param tierCount          the number of tiers
+     * @return the model's response describing the tiered tasks
      */
     default JsonNode generateTieredTaskSequence(
         final String taskDescription,

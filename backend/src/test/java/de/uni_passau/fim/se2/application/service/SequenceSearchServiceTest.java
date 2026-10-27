@@ -123,10 +123,12 @@ class SequenceSearchServiceTest {
         private void assertBalancedParens(String sql) {
             int depth = 0;
             for (char c : sql.toCharArray()) {
-                if (c == '(')
+                if (c == '(') {
                     depth++;
-                if (c == ')')
+                }
+                if (c == ')') {
                     depth--;
+                }
                 assertTrue(depth >= 0, "unbalanced parentheses in TSQUERY_EXPR");
             }
             assertEquals(0, depth, "unbalanced parentheses in TSQUERY_EXPR");

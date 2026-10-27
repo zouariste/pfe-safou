@@ -72,6 +72,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class WorksheetController {
 
+    private static final String WORKSHEET_RESOURCE = "worksheet";
+
     private final WorksheetService worksheetService;
     private final OwnershipService ownershipService;
     private final SequenceForkService sequenceForkService;
@@ -80,12 +82,15 @@ public class WorksheetController {
 
     /**
      * Get all worksheets owned by the current user.
+     *
+     * @return the current user's worksheets, or 401 if not logged in
      */
     @GetMapping("/worksheets/my")
     public ResponseEntity<List<WorksheetDTO>> getMyWorksheets() {
         UUID userId = ownershipService.getCurrentUserId();
-        if (userId == null)
+        if (userId == null) {
             return ResponseEntity.status(401).build();
+        }
         return ResponseEntity.ok(worksheetService.findByOwnerId(userId));
     }
 
@@ -96,6 +101,9 @@ public class WorksheetController {
      * Still reachable without logging in — that is how a student opens a worksheet from a link their teacher sent — but
      * no longer unconditionally. A PRIVATE worksheet answers 404 rather than 403, so the endpoint does not confirm that
      * an id someone guessed exists.
+     *
+     * @param sheetId the worksheet to load
+     * @return the worksheet, or 404 if it does not exist or is not visible to the caller
      */
     @GetMapping("/worksheets/{sheetId}")
     public ResponseEntity<WorksheetDTO> getWorksheetById(@PathVariable UUID sheetId) {
@@ -116,6 +124,10 @@ public class WorksheetController {
     /**
      * Publish a worksheet to the marketplace, or take it back out. Allowed: Owner, Admin — except for the Library
      * Inbox, which is a scratch pile.
+     *
+     * @param sheetId the worksheet to update
+     * @param request the new visibility
+     * @return the updated worksheet; 400 if the visibility is invalid, 404 if the worksheet does not exist
      */
     @PutMapping("/worksheets/{sheetId}/visibility")
     public ResponseEntity<WorksheetDTO> setWorksheetVisibility(
@@ -152,6 +164,9 @@ public class WorksheetController {
 
     /**
      * Create a new worksheet. Allowed: Teacher (becomes owner), Admin Denied: Anonymous, Students
+     *
+     * @param worksheet the new worksheet's name, description and settings
+     * @return 201 with the created worksheet, or 401 if not logged in
      */
     @PostMapping("/worksheets")
     public ResponseEntity<WorksheetDTO> createWorksheet(@RequestBody WorksheetDTO worksheet) {
@@ -170,14 +185,19 @@ public class WorksheetController {
 
     /**
      * Update a worksheet. Allowed: Owner, Admin Denied: Everyone else
+     *
+     * @param sheetId   the worksheet to update
+     * @param worksheet the worksheet's new fields
+     * @return 204, or 404 if the worksheet does not exist
      */
     @PutMapping("/worksheets/{sheetId}")
     public ResponseEntity<Void> updateWorksheet(@PathVariable UUID sheetId, @RequestBody WorksheetDTO worksheet) {
         WorksheetDTO existing = worksheetService.findWorksheetById(sheetId).orElse(null);
-        if (existing == null)
+        if (existing == null) {
             return ResponseEntity.notFound().build();
+        }
 
-        ownershipService.checkOwnership(existing.getOwnerId(), "worksheet");
+        ownershipService.checkOwnership(existing.getOwnerId(), WORKSHEET_RESOURCE);
 
         worksheet.setId(sheetId);
         worksheet.setOwnerId(existing.getOwnerId()); // preserve owner
@@ -187,14 +207,18 @@ public class WorksheetController {
 
     /**
      * Delete a worksheet. Allowed: Owner, Admin Denied: Everyone else
+     *
+     * @param sheetId the worksheet to delete
+     * @return 204, or 404 if the worksheet does not exist
      */
     @DeleteMapping("/worksheets/{sheetId}")
     public ResponseEntity<Void> deleteWorksheet(@PathVariable UUID sheetId) {
         WorksheetDTO existing = worksheetService.findWorksheetById(sheetId).orElse(null);
-        if (existing == null)
+        if (existing == null) {
             return ResponseEntity.notFound().build();
+        }
 
-        ownershipService.checkOwnership(existing.getOwnerId(), "worksheet");
+        ownershipService.checkOwnership(existing.getOwnerId(), WORKSHEET_RESOURCE);
 
         worksheetService.deleteWorksheet(sheetId);
         return ResponseEntity.noContent().build();
@@ -202,14 +226,19 @@ public class WorksheetController {
 
     /**
      * Add a single sequence to a worksheet. Allowed: Owner of worksheet, Admin
+     *
+     * @param sheetId    the worksheet to add to
+     * @param sequenceId the sequence to add
+     * @return 204, or 404 if the worksheet does not exist
      */
     @PostMapping("/worksheets/{sheetId}/sequences/{sequenceId}")
     public ResponseEntity<Void> addSequenceToWorksheet(@PathVariable UUID sheetId, @PathVariable UUID sequenceId) {
         WorksheetDTO existing = worksheetService.findWorksheetById(sheetId).orElse(null);
-        if (existing == null)
+        if (existing == null) {
             return ResponseEntity.notFound().build();
+        }
 
-        ownershipService.checkOwnership(existing.getOwnerId(), "worksheet");
+        ownershipService.checkOwnership(existing.getOwnerId(), WORKSHEET_RESOURCE);
 
         worksheetService.addSequenceToWorksheet(sheetId, sequenceId);
         return ResponseEntity.noContent().build();
@@ -217,6 +246,10 @@ public class WorksheetController {
 
     /**
      * Add multiple sequences to a worksheet. Allowed: Owner of worksheet, Admin
+     *
+     * @param sheetId     the worksheet to add to
+     * @param sequenceIds the sequences to add
+     * @return 204, or 404 if the worksheet does not exist
      */
     @PostMapping("/worksheets/{sheetId}/sequences")
     public ResponseEntity<Void> addSequencesToWorksheet(
@@ -224,10 +257,11 @@ public class WorksheetController {
         @RequestBody List<UUID> sequenceIds
     ) {
         WorksheetDTO existing = worksheetService.findWorksheetById(sheetId).orElse(null);
-        if (existing == null)
+        if (existing == null) {
             return ResponseEntity.notFound().build();
+        }
 
-        ownershipService.checkOwnership(existing.getOwnerId(), "worksheet");
+        ownershipService.checkOwnership(existing.getOwnerId(), WORKSHEET_RESOURCE);
 
         worksheetService.addSequencesToWorksheet(sheetId, sequenceIds);
         return ResponseEntity.noContent().build();
@@ -242,6 +276,10 @@ public class WorksheetController {
      * client is the likely cause and the worksheet should not end up half reordered.
      *
      * Allowed: Owner of worksheet, Admin
+     *
+     * @param sheetId            the worksheet to reorder
+     * @param orderedSequenceIds every sequence on the worksheet, in the new order
+     * @return 204, or 404 if the worksheet does not exist
      */
     @PutMapping("/worksheets/{sheetId}/sequences/order")
     public ResponseEntity<Void> reorderSequences(
@@ -249,10 +287,11 @@ public class WorksheetController {
         @RequestBody List<UUID> orderedSequenceIds
     ) {
         WorksheetDTO existing = worksheetService.findWorksheetById(sheetId).orElse(null);
-        if (existing == null)
+        if (existing == null) {
             return ResponseEntity.notFound().build();
+        }
 
-        ownershipService.checkOwnership(existing.getOwnerId(), "worksheet");
+        ownershipService.checkOwnership(existing.getOwnerId(), WORKSHEET_RESOURCE);
 
         worksheetService.reorderSequences(sheetId, orderedSequenceIds);
         return ResponseEntity.noContent().build();
@@ -260,14 +299,19 @@ public class WorksheetController {
 
     /**
      * Remove a sequence from a worksheet. Allowed: Owner of worksheet, Admin
+     *
+     * @param sheetId    the worksheet to remove from
+     * @param sequenceId the sequence to remove
+     * @return 204, or 404 if the worksheet does not exist
      */
     @DeleteMapping("/worksheets/{sheetId}/sequences/{sequenceId}")
     public ResponseEntity<Void> removeSequenceFromWorksheet(@PathVariable UUID sheetId, @PathVariable UUID sequenceId) {
         WorksheetDTO existing = worksheetService.findWorksheetById(sheetId).orElse(null);
-        if (existing == null)
+        if (existing == null) {
             return ResponseEntity.notFound().build();
+        }
 
-        ownershipService.checkOwnership(existing.getOwnerId(), "worksheet");
+        ownershipService.checkOwnership(existing.getOwnerId(), WORKSHEET_RESOURCE);
 
         worksheetService.removeSequenceFromWorksheet(sheetId, sequenceId);
         return ResponseEntity.noContent().build();
@@ -276,6 +320,9 @@ public class WorksheetController {
     /**
      * Deep-copy a worksheet (with all sequences and tasks). The copy belongs to the current authenticated user and
      * starts out PRIVATE. Allowed: TEACHER, ADMIN, on a worksheet they are allowed to see Denied: Students, Anonymous
+     *
+     * @param sheetId the worksheet to copy
+     * @return 201 with the copy; 401 if not logged in, 404 if the worksheet does not exist
      */
     @PostMapping("/worksheets/{sheetId}/copy")
     public ResponseEntity<WorksheetDTO> copyWorksheet(@PathVariable UUID sheetId) {
@@ -320,6 +367,10 @@ public class WorksheetController {
      * <p>
      * Answers rather than refuses when the user may do nothing: the page uses this to decide what to render, and a 403
      * would turn an ordinary "no teacher view for you" into an error the client has to special-case.
+     *
+     * @param sheetId    the worksheet holding the sequence
+     * @param sequenceId the sequence to check
+     * @return what the current user may do with the sequence
      */
     @GetMapping("/worksheets/{sheetId}/sequences/{sequenceId}/access")
     public ResponseEntity<SequenceAccessResponse> sequenceAccess(
@@ -330,9 +381,6 @@ public class WorksheetController {
         UserDTO.UserRole role = ownershipService.getCurrentUserRole();
 
         TieredTaskSequenceDTO sequence = taskPersistenceService.loadSequenceById(sequenceId);
-        if (sequence == null) {
-            return ResponseEntity.notFound().build();
-        }
 
         // The curator relation is asked of the worksheet the caller named, not of all their
         // worksheets: someone who owns a different worksheet containing this sequence has no
@@ -361,6 +409,8 @@ public class WorksheetController {
      * How a curator edits material that is not theirs. The original stays untouched and stays in everyone else's
      * worksheets; only this worksheet moves to the copy.
      *
+     * @param sheetId    the worksheet to repoint
+     * @param sequenceId the sequence to copy
      * @return the id of the copy, so the client can navigate to it
      */
     @PostMapping("/worksheets/{sheetId}/sequences/{sequenceId}/fork")
@@ -383,9 +433,6 @@ public class WorksheetController {
         }
 
         TieredTaskSequenceDTO sequence = taskPersistenceService.loadSequenceById(sequenceId);
-        if (sequence == null) {
-            return ResponseEntity.notFound().build();
-        }
 
         if (
             !SequenceCuratorPolicy.mustForkToEdit(

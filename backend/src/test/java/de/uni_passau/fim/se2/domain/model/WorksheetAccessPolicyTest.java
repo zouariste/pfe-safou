@@ -305,8 +305,9 @@ class WorksheetAccessPolicyTest {
         void behaviourFlagsAgreeWithTheTable() {
             List<String> wrong = new ArrayList<>();
             for (WorksheetVisibility v : WorksheetVisibility.values()) {
-                if (v.listed() != (v == WorksheetVisibility.PUBLIC))
+                if (v.listed() != (v == WorksheetVisibility.PUBLIC)) {
                     wrong.add(v + ".listed()");
+                }
                 if (v.readableByLink() == (v == WorksheetVisibility.PRIVATE)) {
                     wrong.add(v + ".readableByLink()");
                 }

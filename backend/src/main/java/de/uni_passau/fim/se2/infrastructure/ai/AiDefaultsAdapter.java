@@ -20,7 +20,6 @@ package de.uni_passau.fim.se2.infrastructure.ai;
 
 import org.springframework.stereotype.Component;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.AiProviderKey;
 import de.uni_passau.fim.se2.domain.entities.OpenAiModel;
 

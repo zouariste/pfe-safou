@@ -24,7 +24,6 @@ import java.util.UUID;
 
 import org.springframework.jdbc.core.RowMapper;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
 
 public class ConceptRowMapper implements RowMapper<ConceptDTO> {

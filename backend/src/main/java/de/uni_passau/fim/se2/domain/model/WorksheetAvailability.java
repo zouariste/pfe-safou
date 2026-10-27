@@ -37,12 +37,20 @@ public enum WorksheetAvailability {
     /** Past the deadline and its grace: students may read the tasks, not solve them. */
     CLOSED;
 
-    /** Whether a student may work on the tasks. */
+    /**
+     * Whether a student may work on the tasks.
+     *
+     * @return true if the tasks may be worked on
+     */
     public boolean allowsSolving() {
         return this == OPEN;
     }
 
-    /** Whether a student is shown the worksheet at all. */
+    /**
+     * Whether a student is shown the worksheet at all.
+     *
+     * @return true if students see the worksheet
+     */
     public boolean visibleToStudents() {
         return this != SCHEDULED;
     }
@@ -60,6 +68,9 @@ public enum WorksheetAvailability {
      * @param published    set by the teacher's publish button
      * @param releaseAt    when it opens by itself; null means only publishing opens it
      * @param graceMinutes minutes allowed after the deadline; null or 0 is sharp
+     * @param deadlineAt   when the assignment closes, or null for never
+     * @param now          the moment to evaluate at
+     * @return the assignment's state at {@code now}
      */
     public static WorksheetAvailability of(
         boolean published, Instant releaseAt, Instant deadlineAt,

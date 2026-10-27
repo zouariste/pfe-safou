@@ -39,6 +39,12 @@ public class PasswordHasherService {
 
     private final SecureRandom secureRandom = new SecureRandom();
 
+    /**
+     * Hashes a password with Argon2id and a random salt.
+     *
+     * @param password the password to hash
+     * @return the salt and hash, encoded as {@code $argon2id$<salt>$<hash>}
+     */
     public String hashPassword(String password) {
         byte[] salt = new byte[SALT_LENGTH];
         secureRandom.nextBytes(salt);
@@ -51,6 +57,13 @@ public class PasswordHasherService {
             Base64.getEncoder().encodeToString(hash);
     }
 
+    /**
+     * Checks a password against a hash produced by {@link #hashPassword}.
+     *
+     * @param password   the password to check
+     * @param storedHash the stored hash, or null
+     * @return true if the password matches; false for a missing or malformed hash
+     */
     public boolean verifyPassword(String password, String storedHash) {
         if (storedHash == null || !storedHash.startsWith("$argon2id$")) {
             return false;
@@ -58,8 +71,9 @@ public class PasswordHasherService {
 
         String[] parts = storedHash.split("\\$");
         // parts: ["", "argon2id", salt, hash]
-        if (parts.length != 4)
+        if (parts.length != 4) {
             return false;
+        }
 
         byte[] salt = Base64.getDecoder().decode(parts[2]);
         byte[] expectedHash = Base64.getDecoder().decode(parts[3]);
@@ -85,8 +99,9 @@ public class PasswordHasherService {
     }
 
     private boolean constantTimeEquals(byte[] a, byte[] b) {
-        if (a.length != b.length)
+        if (a.length != b.length) {
             return false;
+        }
         int result = 0;
         for (int i = 0; i < a.length; i++) {
             result |= a[i] ^ b[i];

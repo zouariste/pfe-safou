@@ -61,7 +61,7 @@ import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository.Reta
 @Service
 public class BulkConceptReclassifyService {
 
-    private static final Logger logger = LoggerFactory.getLogger(BulkConceptReclassifyService.class);
+    private static final Logger log = LoggerFactory.getLogger(BulkConceptReclassifyService.class);
 
     /** Hard cap on candidates per job — protects LLM budget on an accidental "all sequences" call. */
     private static final int MAX_CANDIDATES_PER_JOB = 5_000;
@@ -97,6 +97,9 @@ public class BulkConceptReclassifyService {
     /**
      * Queue a new re-classify job. Returns a snapshot with {@code status = QUEUED/RUNNING} and the generated
      * {@code jobId}; the work itself happens on a background virtual thread.
+     *
+     * @param request the job options, or null for the defaults
+     * @return a snapshot of the new job
      */
     public BulkConceptReclassifyJobStatus submit(BulkConceptReclassifyRequest request) {
         BulkConceptReclassifyRequest req = request == null ? new BulkConceptReclassifyRequest() : request;
@@ -109,7 +112,7 @@ public class BulkConceptReclassifyService {
         jobs.put(jobId, state);
         pruneJobs();
 
-        logger.info(
+        log.info(
             "Bulk concept reclassify job {} queued: filter='{}', total={}",
             jobId, state.filter, state.total
         );
@@ -125,17 +128,27 @@ public class BulkConceptReclassifyService {
         return state.snapshot();
     }
 
-    /** Live snapshot of a single job, or {@code null} if unknown / evicted. */
+    /**
+     * Live snapshot of a single job, or {@code null} if unknown / evicted.
+     *
+     * @param jobId the job to report on
+     * @return a snapshot of the job, or null if it is unknown
+     */
     public BulkConceptReclassifyJobStatus status(UUID jobId) {
         JobState s = jobs.get(jobId);
         return s == null ? null : s.snapshot();
     }
 
-    /** All jobs currently in memory, most recently started first. */
+    /**
+     * All jobs currently in memory, most recently started first.
+     *
+     * @return snapshots of all jobs in memory, newest first
+     */
     public List<BulkConceptReclassifyJobStatus> listRecent() {
         List<BulkConceptReclassifyJobStatus> out = new ArrayList<>();
-        for (JobState s : jobs.values())
+        for (JobState s : jobs.values()) {
             out.add(s.snapshot());
+        }
         out.sort(Comparator.comparing(BulkConceptReclassifyJobStatus::startedAt).reversed());
         return out;
     }
@@ -151,7 +164,7 @@ public class BulkConceptReclassifyService {
             return sequenceRepo.findConceptReclassifyCandidates(missingOnly, ids, MAX_CANDIDATES_PER_JOB);
         }
         catch (Exception e) {
-            logger.warn(
+            log.warn(
                 "Failed to load concept reclassify candidates for filter '{}': {}",
                 req.effectiveFilterLabel(), e.getMessage()
             );
@@ -166,7 +179,7 @@ public class BulkConceptReclassifyService {
     private void runJob(JobState state, List<RetagCandidate> candidates) {
         MDC.put("bulkConceptReclassifyJobId", state.jobId.toString());
         state.markRunning();
-        logger.info(
+        log.info(
             "Bulk concept reclassify job {} started, processing {} sequences",
             state.jobId, candidates.size()
         );
@@ -176,14 +189,14 @@ public class BulkConceptReclassifyService {
                 processOne(c, state);
             }
             state.markDone();
-            logger.info(
+            log.info(
                 "Bulk concept reclassify job {} finished: succeeded={}, failed={}, total={}",
                 state.jobId, state.succeeded.get(), state.failed.get(), state.total
             );
         }
         catch (Exception e) {
             state.markFailed(e.getMessage());
-            logger.error("Bulk concept reclassify job {} aborted: {}", state.jobId, e.getMessage(), e);
+            log.error("Bulk concept reclassify job {} aborted: {}", state.jobId, e.getMessage(), e);
         }
         finally {
             MDC.remove("bulkConceptReclassifyJobId");
@@ -220,7 +233,7 @@ public class BulkConceptReclassifyService {
         }
         catch (Exception e) {
             state.failed.incrementAndGet();
-            logger.warn(
+            log.warn(
                 "Concept reclassify failed for sequence {} in job {}: {}",
                 c.sequenceId(), state.jobId, e.getMessage()
             );
@@ -233,8 +246,9 @@ public class BulkConceptReclassifyService {
 
     /** Evict oldest finished jobs so the in-memory map doesn't grow unbounded. */
     private void pruneJobs() {
-        if (jobs.size() <= MAX_JOBS)
+        if (jobs.size() <= MAX_JOBS) {
             return;
+        }
         List<JobState> finished = jobs.values().stream()
             .filter(
                 s -> BulkConceptReclassifyJobStatus.DONE.equals(s.status)
@@ -306,12 +320,15 @@ public class BulkConceptReclassifyService {
         }
 
         String effectiveFilterLabel() {
-            if (sequenceIds != null && !sequenceIds.isEmpty())
+            if (sequenceIds != null && !sequenceIds.isEmpty()) {
                 return "specific(" + sequenceIds.size() + ")";
-            if (isMissingConcepts())
+            }
+            if (isMissingConcepts()) {
                 return "missing-concepts";
-            if ("all".equalsIgnoreCase(filter))
+            }
+            if ("all".equalsIgnoreCase(filter)) {
                 return "all";
+            }
             return filter == null ? "missing-concepts" : filter;
         }
     }

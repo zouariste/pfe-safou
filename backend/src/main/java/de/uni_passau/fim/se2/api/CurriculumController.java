@@ -55,6 +55,10 @@ import lombok.Setter;
 @RequiredArgsConstructor
 public class CurriculumController {
 
+    private static final String ERROR_KEY = "error";
+    private static final String MESSAGE_KEY = "message";
+    private static final String NOT_FOUND_CODE = "not_found";
+
     private final CurriculumGenerationService curriculumService;
     private final TaskPersistenceService taskPersistenceService;
     private final OwnershipService ownershipService;
@@ -63,6 +67,8 @@ public class CurriculumController {
 
     /**
      * Get all top-level curriculum topics (Jahrgangsstufen). Public endpoint — anyone can browse the curriculum tree.
+     *
+     * @return the top-level curriculum topics
      */
     @GetMapping("/topics")
     public ResponseEntity<List<CurriculumTopicDTO>> getTopLevelTopics() {
@@ -71,6 +77,9 @@ public class CurriculumController {
 
     /**
      * Get sub-topics (Lernbereiche/Themen) for a given parent topic. Public endpoint.
+     *
+     * @param parentId the topic whose children to list
+     * @return the parent's direct sub-topics
      */
     @GetMapping("/topics/{parentId}/children")
     public ResponseEntity<List<CurriculumTopicDTO>> getSubTopics(@PathVariable UUID parentId) {
@@ -80,6 +89,10 @@ public class CurriculumController {
     /**
      * Get curated code examples for a given curriculum topic. Optional query param ?language=java to filter by
      * language. Public endpoint.
+     *
+     * @param topicId  the topic whose examples to list
+     * @param language only examples in this programming language, or all if null
+     * @return the topic's curated code examples
      */
     @GetMapping("/topics/{topicId}/examples")
     public ResponseEntity<List<CurriculumCodeExampleDTO>> getExamples(
@@ -92,7 +105,13 @@ public class CurriculumController {
     /**
      * Generate a tiered task sequence from a curriculum topic (Beta). Uses curated seed code examples and the dedicated
      * curriculum prompt. Allowed: Teacher, Admin Denied: Students, Anonymous
+     *
+     * @param topicId the curriculum topic to generate for
+     * @param request the programming language, target language, tier count and generation options
+     * @return 201 with the generated sequence; 401 if not logged in, 404 if the topic is unknown, 422 if it has no seed
+     *         examples
      */
+    @SuppressWarnings("checkstyle:NPathComplexity")
     @PostMapping("/topics/{topicId}/generate")
     public ResponseEntity<?> generateFromCurriculum(
         @PathVariable UUID topicId,
@@ -107,16 +126,19 @@ public class CurriculumController {
         }
 
         String language = request.getLanguage();
-        if (language == null || language.isBlank())
+        if (language == null || language.isBlank()) {
             language = "java";
+        }
 
         String targetLanguage = request.getTargetLanguage();
-        if (targetLanguage == null || targetLanguage.isBlank())
+        if (targetLanguage == null || targetLanguage.isBlank()) {
             targetLanguage = "de";
+        }
 
         int tierCount = request.getTierCount();
-        if (tierCount != 3 && tierCount != 5)
+        if (tierCount != 3 && tierCount != 5) {
             tierCount = 3;
+        }
 
         GenerationConstraints constraints = GenerationConstraints.builder()
             .blacklist(request.getBlacklist())
@@ -144,18 +166,21 @@ public class CurriculumController {
         catch (IllegalArgumentException e) {
             // Topic not found
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
         catch (IllegalStateException e) {
             // No seed code examples available yet for this topic
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(Map.of("error", "no_examples", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, "no_examples", MESSAGE_KEY, e.getMessage()));
         }
     }
 
     /**
      * Admin: add a top-level entry to the curriculum tree — a Jahrgangsstufe when the body carries a grade level,
      * otherwise a named module such as "Programmieren 1". See CurriculumTopicAdminService. Allowed: Admin only.
+     *
+     * @param body the new topic
+     * @return 201 with the created topic
      */
     @PostMapping("/topics")
     public ResponseEntity<CurriculumTopicDTO> createTopLevelTopic(@RequestBody CurriculumTopicDTO body) {
@@ -167,6 +192,10 @@ public class CurriculumController {
 
     /**
      * Admin: add a Lernbereich under an existing Jahrgangsstufe or module. Allowed: Admin only.
+     *
+     * @param parentId the top-level topic to add the sub-topic under
+     * @param body     the new sub-topic
+     * @return 201 with the created sub-topic, or 404 if the parent does not exist
      */
     @PostMapping("/topics/{parentId}/children")
     public ResponseEntity<?> createSubTopic(
@@ -181,13 +210,16 @@ public class CurriculumController {
         }
         catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
     }
 
     /**
      * The concept names mapped to a topic. Feeds the admin form; the mapping is a relation, so it does not ride along
      * on the topic itself.
+     *
+     * @param topicId the topic whose concepts to list
+     * @return the concept names mapped to the topic, or 404 if the topic does not exist
      */
     @GetMapping("/topics/{topicId}/concepts")
     public ResponseEntity<?> getTopicConcepts(@PathVariable UUID topicId) {
@@ -196,7 +228,7 @@ public class CurriculumController {
         }
         catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
     }
 
@@ -204,6 +236,10 @@ public class CurriculumController {
      * Admin: edit a curriculum entry, at either level — the endpoint reads the level off the stored topic. A top-level
      * entry may also change shape between Jahrgangsstufe and module; a sub-topic keeps the grade level, track and
      * education level it inherits. See CurriculumTopicAdminService. Allowed: Admin only.
+     *
+     * @param topicId the topic to update
+     * @param body    the topic's new fields
+     * @return the updated topic, or 404 if the topic does not exist
      */
     @PutMapping("/topics/{topicId}")
     public ResponseEntity<?> updateTopic(
@@ -216,12 +252,16 @@ public class CurriculumController {
         }
         catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
     }
 
     /**
      * AP32 admin: create a curated code example under a topic. Allowed: Admin only.
+     *
+     * @param topicId the topic to add the example to
+     * @param body    the new example
+     * @return 201 with the created example, or 404 if the topic does not exist
      */
     @PostMapping("/topics/{topicId}/examples")
     public ResponseEntity<?> createExample(
@@ -237,12 +277,16 @@ public class CurriculumController {
         }
         catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
     }
 
     /**
      * AP32 admin: update a curated code example. The topic assignment is immutable. Allowed: Admin only.
+     *
+     * @param exampleId the example to update
+     * @param body      the example's new fields
+     * @return the updated example, or 404 if the example does not exist
      */
     @PutMapping("/examples/{exampleId}")
     public ResponseEntity<?> updateExample(
@@ -255,12 +299,15 @@ public class CurriculumController {
         }
         catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
     }
 
     /**
      * AP32 admin: delete a curated code example. Allowed: Admin only.
+     *
+     * @param exampleId the example to delete
+     * @return 204, or 404 if the example does not exist
      */
     @DeleteMapping("/examples/{exampleId}")
     public ResponseEntity<?> deleteExample(@PathVariable UUID exampleId) {
@@ -271,7 +318,7 @@ public class CurriculumController {
         }
         catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "not_found", "message", e.getMessage()));
+                .body(Map.of(ERROR_KEY, NOT_FOUND_CODE, MESSAGE_KEY, e.getMessage()));
         }
     }
 

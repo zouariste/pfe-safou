@@ -27,7 +27,11 @@ import java.util.Map;
  */
 public interface ResearchDataReader {
 
-    /** users: only user_id, role, is_verified, created_at — NO email/name/hash. */
+    /**
+     * users: only user_id, role, is_verified, created_at — NO email/name/hash.
+     *
+     * @return one row per user
+     */
     List<Map<String, Object>> readUsersPseudonymized();
 
     List<Map<String, Object>> readLearningEvents();
@@ -36,7 +40,11 @@ public interface ResearchDataReader {
 
     List<Map<String, Object>> readHintUsage();
 
-    /** The students' saved block arrangements — UI state, but the only record of what they built. */
+    /**
+     * The students' saved block arrangements — UI state, but the only record of what they built.
+     *
+     * @return one row per stored arrangement
+     */
     List<Map<String, Object>> readTaskSubmissions();
 
     List<Map<String, Object>> readTaskChangeAnalyses();
@@ -47,7 +55,11 @@ public interface ResearchDataReader {
 
     List<Map<String, Object>> readTieredTaskSequences();
 
-    /** worksheets_sequence junction table (worksheet_id, sequence_id, last_used_at). */
+    /**
+     * worksheets_sequence junction table (worksheet_id, sequence_id, last_used_at).
+     *
+     * @return one row per worksheet-sequence link
+     */
     List<Map<String, Object>> readWorksheetsSequence();
 
     List<Map<String, Object>> readConcepts();
@@ -60,7 +72,12 @@ public interface ResearchDataReader {
 
     List<Map<String, Object>> readClassStudents();
 
-    /** Roster of one class, for the per-class export bundle. */
+    /**
+     * Roster of one class, for the per-class export bundle.
+     *
+     * @param classId the class
+     * @return one row per student in the class
+     */
     List<Map<String, Object>> readClassStudents(java.util.UUID classId);
 
     List<Map<String, Object>> readClassWorksheets();

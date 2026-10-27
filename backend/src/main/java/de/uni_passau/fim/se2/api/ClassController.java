@@ -24,7 +24,14 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import de.uni_passau.fim.se2.api.dto.AddFimStudentsRequest;
 import de.uni_passau.fim.se2.api.dto.BulkCreateStudentsRequest;
@@ -42,6 +49,8 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/classes")
 @RequiredArgsConstructor
 public class ClassController {
+
+    private static final String MESSAGE_KEY = "message";
 
     private final ClassService classService;
 
@@ -103,7 +112,7 @@ public class ClassController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteClass(@PathVariable UUID id) {
         classService.deleteClass(id);
-        return ResponseEntity.ok(Map.of("message", "Klasse gelöscht."));
+        return ResponseEntity.ok(Map.of(MESSAGE_KEY, "Klasse gelöscht."));
     }
 
     /**
@@ -196,7 +205,7 @@ public class ClassController {
         @PathVariable UUID studentId
     ) {
         classService.removeStudent(id, studentId);
-        return ResponseEntity.ok(Map.of("message", "Schüler entfernt."));
+        return ResponseEntity.ok(Map.of(MESSAGE_KEY, "Schüler entfernt."));
     }
 
     /**
@@ -212,7 +221,7 @@ public class ClassController {
         @PathVariable UUID worksheetId
     ) {
         classService.assignWorksheet(id, worksheetId);
-        return ResponseEntity.ok(Map.of("message", "Worksheet zugewiesen."));
+        return ResponseEntity.ok(Map.of(MESSAGE_KEY, "Worksheet zugewiesen."));
     }
 
     /**
@@ -228,7 +237,7 @@ public class ClassController {
         @PathVariable UUID worksheetId
     ) {
         classService.removeWorksheet(id, worksheetId);
-        return ResponseEntity.ok(Map.of("message", "Worksheet-Zuweisung entfernt."));
+        return ResponseEntity.ok(Map.of(MESSAGE_KEY, "Worksheet-Zuweisung entfernt."));
     }
 
     /**
@@ -253,6 +262,11 @@ public class ClassController {
      *
      * Any field may be omitted or null to lift that constraint: no release means available at once, no deadline means
      * open indefinitely, no grace period means the deadline is sharp.
+     *
+     * @param id          the class
+     * @param worksheetId the worksheet assigned to the class
+     * @param request     the release time, deadline and grace period
+     * @return 204 No Content
      */
     @PutMapping("/{id}/worksheets/{worksheetId}/schedule")
     public ResponseEntity<?> setWorksheetSchedule(
@@ -272,6 +286,10 @@ public class ClassController {
      *
      * A newly assigned worksheet is hidden until this is called or its release date arrives, so students never meet one
      * that is still being prepared.
+     *
+     * @param id          the class
+     * @param worksheetId the worksheet assigned to the class
+     * @return 204 No Content
      */
     @PostMapping("/{id}/worksheets/{worksheetId}/publish")
     public ResponseEntity<?> publishWorksheet(@PathVariable UUID id, @PathVariable UUID worksheetId) {
@@ -279,7 +297,13 @@ public class ClassController {
         return ResponseEntity.noContent().build();
     }
 
-    /** Takes an assignment back out of sight, e.g. one published by mistake. */
+    /**
+     * Takes an assignment back out of sight, e.g. one published by mistake.
+     *
+     * @param id          the class
+     * @param worksheetId the worksheet assigned to the class
+     * @return 204 No Content
+     */
     @PostMapping("/{id}/worksheets/{worksheetId}/unpublish")
     public ResponseEntity<?> unpublishWorksheet(@PathVariable UUID id, @PathVariable UUID worksheetId) {
         classService.setWorksheetPublished(id, worksheetId, false);
@@ -289,6 +313,10 @@ public class ClassController {
     /**
      * Ends an assignment now: the deadline becomes this moment, so students may still read the tasks but no longer work
      * on them.
+     *
+     * @param id          the class
+     * @param worksheetId the worksheet assigned to the class
+     * @return 204 No Content
      */
     @PostMapping("/{id}/worksheets/{worksheetId}/close")
     public ResponseEntity<?> closeWorksheet(@PathVariable UUID id, @PathVariable UUID worksheetId) {
@@ -316,7 +344,7 @@ public class ClassController {
         classService.setTrackingEnabled(id, enabled);
         return ResponseEntity.ok(
             Map.of(
-                "message", enabled ? "Tracking aktiviert." : "Tracking deaktiviert.",
+                MESSAGE_KEY, enabled ? "Tracking aktiviert." : "Tracking deaktiviert.",
                 "trackingEnabled", enabled
             )
         );
@@ -340,6 +368,7 @@ public class ClassController {
      *
      * @param classId   the UUID of the class
      * @param studentId the UUID of the student
+     * @return the student's progress across the class's worksheets
      */
     @GetMapping("/{classId}/students/{studentId}/progress")
     public ResponseEntity<StudentProgressDetailDTO> getStudentProgressDetail(
@@ -360,6 +389,7 @@ public class ClassController {
      * @param classId   the UUID of the class
      * @param studentId the UUID of the student
      * @param taskId    the UUID of the task, which must belong to this class's worksheets
+     * @return the student's last arrangement for the task, with the solution beside it
      */
     @GetMapping("/{classId}/students/{studentId}/tasks/{taskId}/state")
     public ResponseEntity<StudentTaskStateDTO> getStudentTaskState(

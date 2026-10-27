@@ -214,6 +214,9 @@ public class WorksheetCloneService {
      * than a worksheet copy would be the same silent data loss this class was written to end, arriving through a second
      * door.
      *
+     * @param targetWorksheet  the worksheet to link the copy to
+     * @param sourceSequenceId the sequence to copy
+     * @param newOwnerId       the owner of the copy
      * @return the id of the new sequence
      */
     @Transactional

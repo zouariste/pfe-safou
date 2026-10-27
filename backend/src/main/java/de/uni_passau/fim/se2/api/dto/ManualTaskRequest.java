@@ -21,7 +21,10 @@ package de.uni_passau.fim.se2.api.dto;
 import java.util.List;
 
 import de.uni_passau.fim.se2.domain.entities.SplitPlan;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * Request body for POST /tasks/manual — creating a task sequence without LLM.

@@ -75,6 +75,7 @@ class StudentTaskStateTest {
     private TaskSubmissionService taskSubmissionService;
     private ClassService service;
 
+    @SuppressWarnings("checkstyle:MethodLength")
     @BeforeEach
     void setUp() {
         ClassRepository classRepository = mock(ClassRepository.class);

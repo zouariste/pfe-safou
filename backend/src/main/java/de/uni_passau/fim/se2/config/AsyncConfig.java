@@ -40,10 +40,12 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @EnableAsync
 public class AsyncConfig implements AsyncConfigurer {
 
-    private static final Logger logger = LoggerFactory.getLogger(AsyncConfig.class);
+    private static final Logger log = LoggerFactory.getLogger(AsyncConfig.class);
 
     /**
      * Dedicated executor for tag-related background work. Referenced by {@code @Async("taggingExecutor")}.
+     *
+     * @return an executor that runs each task on a new virtual thread
      */
     @Bean(name = "taggingExecutor")
     public Executor taggingExecutor() {
@@ -62,6 +64,6 @@ public class AsyncConfig implements AsyncConfigurer {
      */
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
-        return (ex, method, params) -> logger.warn("Async {} threw: {}", method.getName(), ex.getMessage(), ex);
+        return (ex, method, params) -> log.warn("Async {} threw: {}", method.getName(), ex.getMessage(), ex);
     }
 }

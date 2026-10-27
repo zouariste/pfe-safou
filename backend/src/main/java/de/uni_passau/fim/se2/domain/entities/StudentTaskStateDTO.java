@@ -48,9 +48,9 @@ public record StudentTaskStateDTO(
     UUID taskId,
     String statement,
     String programmingLanguage,
-    /** The expected solution, with its line annotations intact; the client strips for display. */
+    // The expected solution, with its line annotations intact; the client strips for display.
     String solution,
-    /** False when this student has never arranged anything for this task. */
+    // False when this student has never arranged anything for this task.
     boolean hasState,
     List<String> blockOrder,
     List<Integer> indentLevels,

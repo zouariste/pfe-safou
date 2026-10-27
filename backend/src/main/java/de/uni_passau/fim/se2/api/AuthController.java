@@ -18,14 +18,22 @@
  */
 package de.uni_passau.fim.se2.api;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-import org.springframework.http.*;
-import org.springframework.security.core.annotation.*;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import de.uni_passau.fim.se2.api.dto.*;
 import de.uni_passau.fim.se2.api.dto.AuthResponse;
+import de.uni_passau.fim.se2.api.dto.FimLoginRequest;
 import de.uni_passau.fim.se2.api.dto.LoginRequest;
 import de.uni_passau.fim.se2.api.dto.PasswordResetConfirmRequest;
 import de.uni_passau.fim.se2.api.dto.PasswordResetRequest;
@@ -34,17 +42,14 @@ import de.uni_passau.fim.se2.api.dto.StudentOnboardingRequest;
 import de.uni_passau.fim.se2.api.dto.UpdateEmailRequest;
 import de.uni_passau.fim.se2.api.dto.UpdatePasswordRequest;
 import de.uni_passau.fim.se2.api.dto.UpdateProfileRequest;
-import de.uni_passau.fim.se2.application.service.*;
 import de.uni_passau.fim.se2.application.service.AuthService;
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.UserDTO;
-import de.uni_passau.fim.se2.domain.exceptions.*;
 import de.uni_passau.fim.se2.domain.exceptions.AuthenticationException;
-import de.uni_passau.fim.se2.domain.interfaces.*;
+import de.uni_passau.fim.se2.domain.exceptions.DirectoryUnavailableException;
 import de.uni_passau.fim.se2.domain.interfaces.ClassRepository;
-import jakarta.validation.*;
-import lombok.*;
-import lombok.extern.slf4j.*;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
@@ -52,11 +57,17 @@ import lombok.extern.slf4j.*;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private static final String NOT_LOGGED_IN = "Nicht eingeloggt.";
+    private static final String MESSAGE_KEY = "message";
+
     private final AuthService authService;
     private final ClassRepository classRepository;
 
     /**
      * Handles teacher registration requests.
+     *
+     * @param request the new teacher's name, email address and password
+     * @return a confirmation asking the teacher to verify their email address
      */
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
@@ -68,13 +79,16 @@ public class AuthController {
         );
         return ResponseEntity.ok(
             Map.of(
-                "message", "Registrierung erfolgreich. Bitte bestätige deine Email-Adresse."
+                MESSAGE_KEY, "Registrierung erfolgreich. Bitte bestätige deine Email-Adresse."
             )
         );
     }
 
     /**
      * Handles login requests for authentication.
+     *
+     * @param request the email address and password
+     * @return the JWT and the user's profile
      */
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
@@ -84,6 +98,9 @@ public class AuthController {
 
     /**
      * Handles login requests with a FIM-Account (checked against the FIM LDAP server).
+     *
+     * @param request the FIM username and password
+     * @return the JWT and the user's profile
      */
     @PostMapping("/login/fim")
     public ResponseEntity<AuthResponse> loginWithFimAccount(@Valid @RequestBody FimLoginRequest request) {
@@ -114,37 +131,49 @@ public class AuthController {
 
     /**
      * Verifies the email address using a provided token.
+     *
+     * @param body the request body carrying the verification {@code token}
+     * @return a confirmation that the address is verified
      */
     @PostMapping("/verify-email")
     public ResponseEntity<?> verifyEmail(@RequestBody Map<String, String> body) {
         authService.verifyEmail(body.get("token"));
-        return ResponseEntity.ok(Map.of("message", "Email erfolgreich bestätigt."));
+        return ResponseEntity.ok(Map.of(MESSAGE_KEY, "Email erfolgreich bestätigt."));
     }
 
     /**
      * Initiates the password reset process for the user.
+     *
+     * @param request the email address to send the reset link to
+     * @return the same confirmation whether or not the address has an account
      */
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody PasswordResetRequest request) {
         authService.requestPasswordReset(request.getEmail());
         return ResponseEntity.ok(
             Map.of(
-                "message", "Falls ein Account mit dieser Email existiert, wurde eine Reset-Mail gesendet."
+                MESSAGE_KEY, "Falls ein Account mit dieser Email existiert, wurde eine Reset-Mail gesendet."
             )
         );
     }
 
     /**
      * Resets the password using the provided token and new password.
+     *
+     * @param request the reset token and the new password
+     * @return a confirmation that the password was changed
      */
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@Valid @RequestBody PasswordResetConfirmRequest request) {
         authService.resetPassword(request.getToken(), request.getNewPassword());
-        return ResponseEntity.ok(Map.of("message", "Passwort erfolgreich zurückgesetzt."));
+        return ResponseEntity.ok(Map.of(MESSAGE_KEY, "Passwort erfolgreich zurückgesetzt."));
     }
 
     /**
      * Validates a token for student registration or actions.
+     *
+     * @param body the request body carrying the onboarding {@code token}
+     * @return the student's first name, last name and user ID
      */
     @PostMapping("/validate-token")
     public ResponseEntity<?> validateStudentToken(@RequestBody Map<String, String> body) {
@@ -160,6 +189,9 @@ public class AuthController {
 
     /**
      * Completes student onboarding by setting up their account.
+     *
+     * @param request the onboarding token and the email address and password the student chose
+     * @return a confirmation asking the student to verify their email address
      */
     @PostMapping("/student-onboarding")
     public ResponseEntity<?> completeStudentOnboarding(@Valid @RequestBody StudentOnboardingRequest request) {
@@ -170,18 +202,21 @@ public class AuthController {
         );
         return ResponseEntity.ok(
             Map.of(
-                "message", "Account eingerichtet. Bitte bestätige deine Email-Adresse."
+                MESSAGE_KEY, "Account eingerichtet. Bitte bestätige deine Email-Adresse."
             )
         );
     }
 
     /**
      * Retrieves the current user's profile information.
+     *
+     * @param userId the authenticated user
+     * @return the user's profile, without a token
      */
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> getCurrentUser(@AuthenticationPrincipal UUID userId) {
         if (userId == null) {
-            throw new AuthenticationException("Nicht eingeloggt.");
+            throw new AuthenticationException(NOT_LOGGED_IN);
         }
         UserDTO user = authService.getUserById(userId);
         return ResponseEntity.ok(
@@ -199,6 +234,10 @@ public class AuthController {
 
     /**
      * Updates the user's profile information.
+     *
+     * @param userId  the authenticated user
+     * @param request the new first and last name
+     * @return a confirmation
      */
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(
@@ -206,12 +245,12 @@ public class AuthController {
         @Valid @RequestBody UpdateProfileRequest request
     ) {
         if (userId == null) {
-            throw new AuthenticationException("Nicht eingeloggt.");
+            throw new AuthenticationException(NOT_LOGGED_IN);
         }
         UserDTO updated = authService.updateProfile(userId, request.getFirstName(), request.getLastName());
         return ResponseEntity.ok(
             Map.of(
-                "message", "Profil aktualisiert.",
+                MESSAGE_KEY, "Profil aktualisiert.",
                 "firstName", updated.getFirstName(),
                 "lastName", updated.getLastName()
             )
@@ -220,6 +259,10 @@ public class AuthController {
 
     /**
      * Updates the user's email address.
+     *
+     * @param userId  the authenticated user
+     * @param request the new email address
+     * @return a confirmation asking to verify the new address
      */
     @PutMapping("/profile/email")
     public ResponseEntity<?> updateEmail(
@@ -227,18 +270,22 @@ public class AuthController {
         @Valid @RequestBody UpdateEmailRequest request
     ) {
         if (userId == null) {
-            throw new AuthenticationException("Nicht eingeloggt.");
+            throw new AuthenticationException(NOT_LOGGED_IN);
         }
         authService.updateEmail(userId, request.getNewEmail());
         return ResponseEntity.ok(
             Map.of(
-                "message", "Email geändert. Bitte bestätige die neue Email-Adresse."
+                MESSAGE_KEY, "Email geändert. Bitte bestätige die neue Email-Adresse."
             )
         );
     }
 
     /**
      * Updates the user's password.
+     *
+     * @param userId  the authenticated user
+     * @param request the current and the new password
+     * @return a confirmation
      */
     @PutMapping("/profile/password")
     public ResponseEntity<?> updatePassword(
@@ -246,15 +293,19 @@ public class AuthController {
         @Valid @RequestBody UpdatePasswordRequest request
     ) {
         if (userId == null) {
-            throw new AuthenticationException("Nicht eingeloggt.");
+            throw new AuthenticationException(NOT_LOGGED_IN);
         }
         authService.updatePassword(userId, request.getCurrentPassword(), request.getNewPassword());
-        return ResponseEntity.ok(Map.of("message", "Passwort erfolgreich geändert."));
+        return ResponseEntity.ok(Map.of(MESSAGE_KEY, "Passwort erfolgreich geändert."));
     }
 
     /**
      * Changes a temporary password set by a teacher. Does not require the old password. Only works when
      * mustChangePassword = true.
+     *
+     * @param userId the authenticated user
+     * @param body   the request body carrying the {@code newPassword}
+     * @return a confirmation, or 400 if the new password is blank
      */
     @PostMapping("/change-temp-password")
     public ResponseEntity<?> changeTempPassword(
@@ -262,18 +313,21 @@ public class AuthController {
         @RequestBody Map<String, String> body
     ) {
         if (userId == null) {
-            throw new AuthenticationException("Nicht eingeloggt.");
+            throw new AuthenticationException(NOT_LOGGED_IN);
         }
         String newPassword = body.get("newPassword");
         if (newPassword == null || newPassword.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Neues Passwort darf nicht leer sein."));
         }
         authService.changeTempPassword(userId, newPassword);
-        return ResponseEntity.ok(Map.of("message", "Passwort erfolgreich geändert."));
+        return ResponseEntity.ok(Map.of(MESSAGE_KEY, "Passwort erfolgreich geändert."));
     }
 
     /**
      * Handles authentication exceptions and returns an appropriate response.
+     *
+     * @param e the exception raised by the authentication code
+     * @return 401 with the exception's message
      */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<?> handleAuthException(AuthenticationException e) {
@@ -282,6 +336,9 @@ public class AuthController {
 
     /**
      * Handles an unreachable FIM LDAP server during FIM-Account login.
+     *
+     * @param e the exception raised when the LDAP server could not be reached
+     * @return 503 with a message saying the FIM login is unavailable
      */
     @ExceptionHandler(DirectoryUnavailableException.class)
     public ResponseEntity<?> handleDirectoryUnavailable(DirectoryUnavailableException e) {

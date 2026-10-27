@@ -29,7 +29,12 @@ public interface AuthTokenRepository {
 
     Optional<AuthTokenDTO> findByTokenValue(String tokenValue);
 
-    /** Atomically marks token as used. Returns true if the update succeeded (token was not already used). */
+    /**
+     * Atomically marks token as used. Returns true if the update succeeded (token was not already used).
+     *
+     * @param tokenId the token to mark
+     * @return true if the token was unused and is now marked; false if it was already used
+     */
     boolean markUsed(UUID tokenId);
 
     void deleteExpiredTokens();

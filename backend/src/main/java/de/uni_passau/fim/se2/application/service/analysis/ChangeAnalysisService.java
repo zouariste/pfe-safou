@@ -19,7 +19,14 @@
 package de.uni_passau.fim.se2.application.service.analysis;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -46,7 +53,7 @@ import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
 @Service
 public class ChangeAnalysisService {
 
-    private static final Logger logger = LoggerFactory.getLogger(ChangeAnalysisService.class);
+    private static final Logger log = LoggerFactory.getLogger(ChangeAnalysisService.class);
 
     private final SyntacticAnalyzer syntacticAnalyzer;
     private final CodeAnalyzer codeAnalyzer;
@@ -82,9 +89,10 @@ public class ChangeAnalysisService {
      * @return the populated TaskChangeAnalysisDTO
      * @throws IllegalArgumentException if the task or its original cannot be found
      */
+    @SuppressWarnings("checkstyle:MethodLength")
     @Transactional
     public TaskChangeAnalysisDTO analyzeTask(UUID taskId) {
-        logger.info("Starting change analysis for task {}", taskId);
+        log.info("Starting change analysis for task {}", taskId);
 
         // 1. Load original
         TaskOriginalDTO original = taskOriginalRepo.findByTaskId(taskId)
@@ -177,7 +185,7 @@ public class ChangeAnalysisService {
 
         // 10. Persist
         analysisRepo.save(analysis);
-        logger.info(
+        log.info(
             "Change analysis complete for task {}: category={}, score={}",
             taskId, category, round(overallScore)
         );
@@ -192,7 +200,7 @@ public class ChangeAnalysisService {
      */
     @Transactional
     public List<TaskChangeAnalysisDTO> batchAnalyze() {
-        logger.info("Starting batch change analysis");
+        log.info("Starting batch change analysis");
         List<TaskChangeAnalysisDTO> results = new ArrayList<>();
 
         Set<UUID> alreadyAnalyzed = analysisRepo.findAll().stream()
@@ -204,14 +212,14 @@ public class ChangeAnalysisService {
             .filter(id -> !alreadyAnalyzed.contains(id))
             .toList();
 
-        logger.info("Batch analysis: {} already done, {} to analyze", alreadyAnalyzed.size(), toAnalyze.size());
+        log.info("Batch analysis: {} already done, {} to analyze", alreadyAnalyzed.size(), toAnalyze.size());
 
         for (UUID taskId : toAnalyze) {
             try {
                 results.add(analyzeTask(taskId));
             }
             catch (Exception e) {
-                logger.warn("Batch analysis failed for task {}: {}", taskId, e.getMessage());
+                log.warn("Batch analysis failed for task {}: {}", taskId, e.getMessage());
             }
         }
 
@@ -279,6 +287,9 @@ public class ChangeAnalysisService {
 
     /**
      * Returns the analysis for a specific task, if one exists.
+     *
+     * @param taskId the task
+     * @return the task's analysis, or empty if it has none
      */
     public Optional<TaskChangeAnalysisDTO> getByTaskId(UUID taskId) {
         return analysisRepo.findByTaskId(taskId);
@@ -286,6 +297,8 @@ public class ChangeAnalysisService {
 
     /**
      * Returns all analyses (for export).
+     *
+     * @return every stored analysis
      */
     public List<TaskChangeAnalysisDTO> findAll() {
         return analysisRepo.findAll();
@@ -302,7 +315,7 @@ public class ChangeAnalysisService {
             return objectMapper.writeValueAsString(obj);
         }
         catch (JsonProcessingException e) {
-            logger.warn("Failed to serialize to JSON: {}", e.getMessage());
+            log.warn("Failed to serialize to JSON: {}", e.getMessage());
             return "{}";
         }
     }

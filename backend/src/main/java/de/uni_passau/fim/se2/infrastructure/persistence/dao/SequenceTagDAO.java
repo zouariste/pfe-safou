@@ -23,7 +23,13 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
@@ -65,8 +71,9 @@ public class SequenceTagDAO implements SequenceTagRepository {
 
     @Override
     public Map<UUID, List<SequenceTagDTO>> findBySequenceIds(List<UUID> sequenceIds) {
-        if (sequenceIds == null || sequenceIds.isEmpty())
+        if (sequenceIds == null || sequenceIds.isEmpty()) {
             return Map.of();
+        }
 
         String placeholders = String.join(",", Collections.nCopies(sequenceIds.size(), "?"));
         List<SequenceTagDTO> rows = jdbc.query(
@@ -82,19 +89,22 @@ public class SequenceTagDAO implements SequenceTagRepository {
     @Override
     @Transactional
     public void upsertAll(List<SequenceTagDTO> tags) {
-        if (tags == null || tags.isEmpty())
+        if (tags == null || tags.isEmpty()) {
             return;
+        }
 
         // De-duplicate by composite key (sequence_id, tag_name) to avoid ON CONFLICT double-hits within batch.
         Map<String, SequenceTagDTO> unique = new LinkedHashMap<>();
         for (SequenceTagDTO t : tags) {
-            if (t.getSequenceId() == null || t.getTagName() == null || t.getTagName().isBlank())
+            if (t.getSequenceId() == null || t.getTagName() == null || t.getTagName().isBlank()) {
                 continue;
+            }
             unique.putIfAbsent(t.getSequenceId() + "|" + t.getTagName().trim().toLowerCase(Locale.ROOT), t);
         }
         List<SequenceTagDTO> deduped = List.copyOf(unique.values());
-        if (deduped.isEmpty())
+        if (deduped.isEmpty()) {
             return;
+        }
 
         jdbc.batchUpdate(
             "INSERT INTO sequence_tags (sequence_id, tag_name, source, confidence) "
@@ -107,10 +117,12 @@ public class SequenceTagDAO implements SequenceTagRepository {
                     ps.setObject(1, t.getSequenceId());
                     ps.setString(2, t.getTagName().trim().toLowerCase(Locale.ROOT));
                     ps.setString(3, t.getSource() != null ? t.getSource() : "manual");
-                    if (t.getConfidence() != null)
+                    if (t.getConfidence() != null) {
                         ps.setFloat(4, t.getConfidence());
-                    else
+                    }
+                    else {
                         ps.setNull(4, Types.REAL);
+                    }
                 }
 
                 @Override
@@ -124,8 +136,9 @@ public class SequenceTagDAO implements SequenceTagRepository {
     @Override
     @Transactional
     public void replaceForSource(UUID sequenceId, String source, List<SequenceTagDTO> newTags) {
-        if (sequenceId == null || source == null)
+        if (sequenceId == null || source == null) {
             return;
+        }
         jdbc.update("DELETE FROM sequence_tags WHERE sequence_id = ? AND source = ?", sequenceId, source);
         if (newTags != null && !newTags.isEmpty()) {
             upsertAll(newTags);
@@ -135,8 +148,9 @@ public class SequenceTagDAO implements SequenceTagRepository {
     @Override
     @Transactional
     public void delete(UUID sequenceId, String tagName) {
-        if (sequenceId == null || tagName == null)
+        if (sequenceId == null || tagName == null) {
             return;
+        }
         jdbc.update(
             "DELETE FROM sequence_tags WHERE sequence_id = ? AND tag_name = ?",
             sequenceId, tagName.trim().toLowerCase(Locale.ROOT)
@@ -153,8 +167,9 @@ public class SequenceTagDAO implements SequenceTagRepository {
 
     @Override
     public List<String> findTagsByPrefix(String prefix, int limit) {
-        if (prefix == null)
+        if (prefix == null) {
             prefix = "";
+        }
         String normalized = prefix.trim().toLowerCase(Locale.ROOT) + "%";
         int cap = Math.max(1, Math.min(limit, 50));
         // Also match the English label, so teachers typing in English find the canonical
@@ -170,8 +185,9 @@ public class SequenceTagDAO implements SequenceTagRepository {
 
     @Override
     public List<NewTopic> findNewTopicsSince(Instant cutoff, int limit) {
-        if (cutoff == null)
+        if (cutoff == null) {
             return List.of();
+        }
         int cap = Math.max(1, Math.min(limit, 200));
         // GROUP BY tag_name so we see each tag once with its earliest appearance. HAVING filters
         // to "genuinely new" (first appearance after the cutoff) rather than "touched recently".
@@ -194,12 +210,14 @@ public class SequenceTagDAO implements SequenceTagRepository {
     @Override
     @Transactional
     public int mergeTags(String fromTagName, String toTagName) {
-        if (fromTagName == null || toTagName == null)
+        if (fromTagName == null || toTagName == null) {
             return 0;
+        }
         String from = fromTagName.trim().toLowerCase(Locale.ROOT);
         String to = toTagName.trim().toLowerCase(Locale.ROOT);
-        if (from.isEmpty() || to.isEmpty() || from.equals(to))
+        if (from.isEmpty() || to.isEmpty() || from.equals(to)) {
             return 0;
+        }
 
         // Two-step merge:
         // 1) DELETE the `from` rows on sequences that ALREADY have `to` (would collide with the
@@ -231,19 +249,22 @@ public class SequenceTagDAO implements SequenceTagRepository {
     @Override
     @Transactional
     public void upsertTranslations(Map<String, String> translations) {
-        if (translations == null || translations.isEmpty())
+        if (translations == null || translations.isEmpty()) {
             return;
+        }
 
         List<Map.Entry<String, String>> rows = new ArrayList<>();
         for (Map.Entry<String, String> e : translations.entrySet()) {
-            if (e.getKey() == null || e.getKey().isBlank() || e.getValue() == null || e.getValue().isBlank())
+            if (e.getKey() == null || e.getKey().isBlank() || e.getValue() == null || e.getValue().isBlank()) {
                 continue;
+            }
             rows.add(
                 Map.entry(e.getKey().trim().toLowerCase(Locale.ROOT), e.getValue().trim().toLowerCase(Locale.ROOT))
             );
         }
-        if (rows.isEmpty())
+        if (rows.isEmpty()) {
             return;
+        }
 
         jdbc.batchUpdate(
             "INSERT INTO topic_translations (tag_name, label_en) VALUES (?, ?) "

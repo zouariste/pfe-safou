@@ -40,7 +40,8 @@ public record SequenceGeneratedEvent(
 ) {
 
     public SequenceGeneratedEvent {
-        if (sequenceId == null)
+        if (sequenceId == null) {
             throw new IllegalArgumentException("sequenceId must not be null");
+        }
     }
 }

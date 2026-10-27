@@ -18,12 +18,17 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -39,7 +44,9 @@ import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
 @Service
 public class ContextAnnotator {
 
-    private static final Logger logger = LoggerFactory.getLogger(ContextAnnotator.class);
+    private static final String NEWLINE = "\n";
+
+    private static final Logger log = LoggerFactory.getLogger(ContextAnnotator.class);
     private final AiModelClient aiModelClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -114,7 +121,7 @@ public class ContextAnnotator {
             .filter(l -> !l.trim().isEmpty())
             .count();
         if (nonEmptyLines <= MAX_PUZZLE_LINES) {
-            logger.debug(
+            log.debug(
                 "Solution has {} non-empty lines (<= {}), no context annotation needed",
                 nonEmptyLines, MAX_PUZZLE_LINES
             );
@@ -125,17 +132,17 @@ public class ContextAnnotator {
             String userPrompt = String.format(USER_PROMPT_TEMPLATE, language, solution);
 
             String response = aiModelClient.generateTaskDescription(solution, SYSTEM_PROMPT, userPrompt);
-            logger.debug("ContextAnnotator LLM response: {}", response);
+            log.debug("ContextAnnotator LLM response: {}", response);
 
             List<Integer> contextLines = parseContextLines(response);
 
             if (contextLines.isEmpty()) {
-                logger.info("No context lines identified for solution");
+                log.info("No context lines identified for solution");
                 return new ContextResult(solution, null, null);
             }
 
             // Validate: puzzle portion must be <= MAX_PUZZLE_LINES
-            String[] lines = solution.split("\n", -1);
+            String[] lines = solution.split(NEWLINE, -1);
             Set<Integer> contextSet = new HashSet<>(contextLines);
             long puzzleLineCount = 0;
             for (int i = 0; i < lines.length; i++) {
@@ -145,7 +152,7 @@ public class ContextAnnotator {
             }
 
             if (puzzleLineCount > MAX_PUZZLE_LINES) {
-                logger.warn(
+                log.warn(
                     "Puzzle portion has {} lines (> {}), skipping context annotation",
                     puzzleLineCount, MAX_PUZZLE_LINES
                 );
@@ -156,7 +163,7 @@ public class ContextAnnotator {
 
         }
         catch (Exception e) {
-            logger.warn("ContextAnnotator failed, returning original solution: {}", e.getMessage());
+            log.warn("ContextAnnotator failed, returning original solution: {}", e.getMessage());
             return new ContextResult(solution, null, null);
         }
     }
@@ -184,8 +191,8 @@ public class ContextAnnotator {
             return result;
 
         }
-        catch (Exception e) {
-            logger.warn("Failed to parse context lines JSON: {}", e.getMessage());
+        catch (JsonProcessingException | RuntimeException e) {
+            log.warn("Failed to parse context lines JSON: {}", e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -195,7 +202,7 @@ public class ContextAnnotator {
      * start and/or end. Lines with #swap/#group/#distractor markers are never treated as context.
      */
     private ContextResult separateContext(String solution, Set<Integer> contextLineNumbers) {
-        String[] lines = solution.split("\n", -1);
+        String[] lines = solution.split(NEWLINE, -1);
         List<String> beforeLines = new ArrayList<>();
         List<String> puzzleLines = new ArrayList<>();
         List<String> afterLines = new ArrayList<>();
@@ -205,8 +212,7 @@ public class ContextAnnotator {
             String line = lines[i];
             boolean isContext = contextLineNumbers.contains(i + 1)
                 && !line.trim().isEmpty()
-                && !line.contains("#swap:") && !line.contains("#group:")
-                && !line.contains("#distractor");
+                && !hasPuzzleMarker(line);
 
             if (isContext) {
                 if (!puzzleStarted) {
@@ -217,21 +223,27 @@ public class ContextAnnotator {
                 }
             }
             else {
-                if (!line.trim().isEmpty())
+                if (!line.trim().isEmpty()) {
                     puzzleStarted = true;
+                }
                 puzzleLines.add(line);
             }
         }
 
-        String ctxBefore = beforeLines.isEmpty() ? null : String.join("\n", beforeLines);
-        String ctxAfter = afterLines.isEmpty() ? null : String.join("\n", afterLines);
-        String puzzle = String.join("\n", puzzleLines);
+        String ctxBefore = beforeLines.isEmpty() ? null : String.join(NEWLINE, beforeLines);
+        String ctxAfter = afterLines.isEmpty() ? null : String.join(NEWLINE, afterLines);
+        String puzzle = String.join(NEWLINE, puzzleLines);
 
-        logger.debug(
+        log.debug(
             "Context separation: before={} lines, puzzle={} lines, after={} lines",
             beforeLines.size(), puzzleLines.size(), afterLines.size()
         );
 
         return new ContextResult(puzzle, ctxBefore, ctxAfter);
+    }
+
+    /** Swap/group/distractor markers belong to puzzle lines, so such a line is never context. */
+    private static boolean hasPuzzleMarker(String line) {
+        return line.contains("#swap:") || line.contains("#group:") || line.contains("#distractor");
     }
 }

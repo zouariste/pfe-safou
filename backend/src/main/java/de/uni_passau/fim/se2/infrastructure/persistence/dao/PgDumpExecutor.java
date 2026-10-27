@@ -67,6 +67,7 @@ public class PgDumpExecutor implements DatabaseDumpExecutor {
         );
     }
 
+    @SuppressWarnings({ "checkstyle:LambdaBodyLength", "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     @Override
     public long dump(OutputStream output) throws DumpException {
         ProcessBuilder pb = new ProcessBuilder(
@@ -97,13 +98,16 @@ public class PgDumpExecutor implements DatabaseDumpExecutor {
                 byte[] buf = new byte[4096];
                 StringBuilder sb = new StringBuilder();
                 int n;
-                while ((n = err.read(buf)) != -1)
+                while ((n = err.read(buf)) != -1) {
                     sb.append(new String(buf, 0, n));
+                }
                 String stderr = sb.toString().trim();
-                if (!stderr.isEmpty())
+                if (!stderr.isEmpty()) {
                     log.warn("pg_dump stderr: {}", stderr);
+                }
             }
             catch (IOException ignored) {
+                // The stream closes when pg_dump exits; nothing left to log.
             }
         });
         stderrLogger.setDaemon(true);

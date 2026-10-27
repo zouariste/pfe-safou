@@ -40,8 +40,9 @@ public class CurriculumCodeExampleRowMapper implements RowMapper<CurriculumCodeE
         dto.setDifficulty(rs.getString("difficulty"));
         dto.setNotes(rs.getString("notes"));
         var ts = rs.getTimestamp("created_at");
-        if (ts != null)
+        if (ts != null) {
             dto.setCreatedAt(ts.toLocalDateTime());
+        }
         return dto;
     }
 }

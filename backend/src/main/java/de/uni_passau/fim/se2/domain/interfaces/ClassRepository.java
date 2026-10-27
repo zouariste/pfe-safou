@@ -30,12 +30,21 @@ public interface ClassRepository {
 
     Optional<ClassDTO> findById(UUID id);
 
-    /** Load class with students and worksheets */
+    /**
+     * Load class with students and worksheets
+     *
+     * @param id the class to load
+     * @return the class with its students and worksheets, or empty if it does not exist
+     */
     Optional<ClassDTO> findByIdWithDetails(UUID id);
 
     List<ClassDTO> findByOwnerId(UUID ownerId);
 
-    /** Admin: find all classes */
+    /**
+     * Admin: find all classes
+     *
+     * @return every class
+     */
     List<ClassDTO> findAll();
 
     void update(ClassDTO classDTO);
@@ -53,20 +62,43 @@ public interface ClassRepository {
     /**
      * Points one class's assignment at a different worksheet, keeping its schedule and published state.
      *
+     * @param classId        the class
+     * @param oldWorksheetId the worksheet currently assigned
+     * @param newWorksheetId the worksheet to assign instead
      * @throws de.uni_passau.fim.se2.domain.exceptions.DomainValidationException if the old worksheet is not assigned to
      *                                                                           the class
      */
     void replaceWorksheet(UUID classId, UUID oldWorksheetId, UUID newWorksheetId);
 
-    /** Find classes a student belongs to */
+    /**
+     * Find classes a student belongs to
+     *
+     * @param studentId the student
+     * @return the classes the student belongs to
+     */
     List<ClassDTO> findByStudentId(UUID studentId);
 
-    /** Update tracking_enabled flag */
+    /**
+     * Update tracking_enabled flag
+     *
+     * @param classId the class
+     * @param enabled whether to track progress
+     */
     void updateTrackingEnabled(UUID classId, boolean enabled);
 
-    /** Check if tracking is enabled for a class */
+    /**
+     * Check if tracking is enabled for a class
+     *
+     * @param classId the class
+     * @return true if progress tracking is enabled
+     */
     boolean isTrackingEnabled(UUID classId);
 
-    /** Find the class ID for a student (first class found) */
+    /**
+     * Find the class ID for a student (first class found)
+     *
+     * @param studentId the student
+     * @return the ID of a class the student belongs to, or null if none
+     */
     UUID findClassIdForStudent(UUID studentId);
 }

@@ -21,6 +21,7 @@ package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -152,7 +153,7 @@ public class PostgreUserDao implements UserRepository {
         String safeDir = "desc".equalsIgnoreCase(sortDir) ? "DESC" : "ASC";
 
         if (search != null && !search.isBlank()) {
-            String pattern = "%" + search.toLowerCase() + "%";
+            String pattern = "%" + search.toLowerCase(Locale.ROOT) + "%";
             return jdbc.query(
                 "SELECT * FROM users WHERE LOWER(email) LIKE ? OR LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ? ORDER BY "
                     + safeSort + " " + safeDir + " LIMIT ? OFFSET ?",
@@ -176,7 +177,7 @@ public class PostgreUserDao implements UserRepository {
     @Override
     public long countAll(String search) {
         if (search != null && !search.isBlank()) {
-            String pattern = "%" + search.toLowerCase() + "%";
+            String pattern = "%" + search.toLowerCase(Locale.ROOT) + "%";
             Long count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM users WHERE LOWER(email) LIKE ? OR LOWER(first_name) LIKE ? OR LOWER(last_name) LIKE ?",
                 Long.class, pattern, pattern, pattern

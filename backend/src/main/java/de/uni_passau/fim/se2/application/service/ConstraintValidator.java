@@ -18,7 +18,10 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
@@ -39,7 +42,7 @@ import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 @Service
 public class ConstraintValidator {
 
-    private static final Logger logger = LoggerFactory.getLogger(ConstraintValidator.class);
+    private static final Logger log = LoggerFactory.getLogger(ConstraintValidator.class);
 
     /**
      * Mapping of common construct keywords to regex patterns that detect them in code. Covers the most common
@@ -74,19 +77,27 @@ public class ConstraintValidator {
     /**
      * Validates all tasks in a sequence against the given constraints. Returns a list of violation descriptions (empty
      * if all pass).
+     *
+     * @param sequence    the sequence whose tasks to check
+     * @param constraints the constraints to check against, or null for none
+     * @return a description of each violation; empty if all tasks pass
      */
+    @SuppressWarnings("checkstyle:NPathComplexity")
     public List<String> validate(TieredTaskSequenceDTO sequence, GenerationConstraints constraints) {
-        if (constraints == null || !constraints.hasAny())
+        if (constraints == null || !constraints.hasAny()) {
             return List.of();
-        if (sequence.getTasks() == null)
+        }
+        if (sequence.getTasks() == null) {
             return List.of();
+        }
 
         List<String> violations = new ArrayList<>();
 
         for (TaskDTO task : sequence.getTasks()) {
             String code = task.getSolution();
-            if (code == null || code.isBlank())
+            if (code == null || code.isBlank()) {
                 continue;
+            }
 
             // Check blacklist
             if (constraints.getBlacklist() != null) {
@@ -97,7 +108,7 @@ public class ConstraintValidator {
                             task.getTierLevel(), construct
                         );
                         violations.add(msg);
-                        logger.warn("AP20 constraint violation — {}", msg);
+                        log.warn("AP20 constraint violation — {}", msg);
                     }
                 }
             }
@@ -112,7 +123,7 @@ public class ConstraintValidator {
                             task.getTierLevel(), construct
                         );
                         violations.add(msg);
-                        logger.warn("AP20 constraint violation — {}", msg);
+                        log.warn("AP20 constraint violation — {}", msg);
                     }
                 }
             }
@@ -126,12 +137,12 @@ public class ConstraintValidator {
      * unknown constructs.
      */
     private boolean detectConstruct(String code, String construct) {
-        String key = construct.toLowerCase().trim();
+        String key = construct.toLowerCase(Locale.ROOT).trim();
         Pattern pattern = CONSTRUCT_PATTERNS.get(key);
         if (pattern != null) {
             return pattern.matcher(code).find();
         }
         // Fallback: simple keyword match
-        return code.toLowerCase().contains(key);
+        return code.toLowerCase(Locale.ROOT).contains(key);
     }
 }

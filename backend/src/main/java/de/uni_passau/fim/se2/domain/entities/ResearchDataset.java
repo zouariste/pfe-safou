@@ -93,7 +93,11 @@ public enum ResearchDataset {
         return timeColumn;
     }
 
-    /** Only learning_events has an event_type, so only it accepts that filter. */
+    /**
+     * Only learning_events has an event_type, so only it accepts that filter.
+     *
+     * @return true if the dataset can be filtered by event type
+     */
     public boolean isEventTyped() {
         return eventTyped;
     }
@@ -105,13 +109,16 @@ public enum ResearchDataset {
     /**
      * Maps the path segment the frontend uses onto a dataset.
      *
+     * @param name the dataset's name in the URL
+     * @return the dataset
      * @throws DomainValidationException on anything else, so an unknown dataset is a 400 and never reaches a query —
      *                                   the same way logEvent refuses an unknown event type.
      */
     public static ResearchDataset fromWireName(String name) {
         for (ResearchDataset d : values()) {
-            if (d.wireName.equals(name))
+            if (d.wireName.equals(name)) {
                 return d;
+            }
         }
         throw new DomainValidationException(
             "Unknown dataset: " + name + ". Allowed: events, feedback, hints, submissions"

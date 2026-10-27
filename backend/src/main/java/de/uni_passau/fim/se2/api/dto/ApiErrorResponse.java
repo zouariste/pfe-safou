@@ -18,7 +18,8 @@
  */
 package de.uni_passau.fim.se2.api.dto;
 
-import lombok.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter

@@ -58,6 +58,10 @@ public class BackupService {
      * Streams a full pg_dump to the given output stream. Acquires the single-flight lock first; throws
      * {@link BackupBusyException} after 30 s wait.
      *
+     * @param output    the stream to write the dump to
+     * @param adminId   the admin requesting the backup, recorded in the audit log
+     * @param ip        the client address, recorded in the audit log
+     * @param userAgent the client's user agent, recorded in the audit log
      * @return bytes written to output
      * @throws BackupBusyException if another backup is running and the wait timed out
      * @throws DumpException       on pg_dump failure

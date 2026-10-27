@@ -42,7 +42,11 @@ public class ConceptsController {
 
     private final ConceptQueryService conceptQueryService;
 
-    /** Every known concept name, sorted, for autocomplete. */
+    /**
+     * Every known concept name, sorted, for autocomplete.
+     *
+     * @return every concept name, sorted
+     */
     @GetMapping
     public ResponseEntity<List<String>> getCatalogue() {
         return ResponseEntity.ok(conceptQueryService.getCatalogue());

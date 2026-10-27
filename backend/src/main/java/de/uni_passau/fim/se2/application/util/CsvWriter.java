@@ -46,17 +46,26 @@ public class CsvWriter implements AutoCloseable {
     }
 
     public void writeRow(List<?> fields) {
-        for (Object f : fields)
+        for (Object f : fields) {
             writeField(f);
+        }
         endRow();
     }
 
+    /**
+     * Writes one field of the current row, quoting it if it contains a comma, quote or line break. Null is written as
+     * an empty field.
+     *
+     * @param value the field's value, or null
+     */
     public void writeField(Object value) {
-        if (!firstFieldOnLine)
+        if (!firstFieldOnLine) {
             out.print(',');
+        }
         firstFieldOnLine = false;
-        if (value == null)
+        if (value == null) {
             return; // empty field
+        }
         String s = value.toString();
         if (
             s.indexOf(',') >= 0 || s.indexOf('"') >= 0

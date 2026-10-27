@@ -33,6 +33,8 @@ public interface TaskSubmissionRepository {
 
     /**
      * Stores the student's solved arrangement, replacing any earlier one for the same student and task.
+     *
+     * @param submission the arrangement to store
      */
     void save(TaskSubmissionDTO submission);
 

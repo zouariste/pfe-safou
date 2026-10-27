@@ -26,8 +26,17 @@ import de.uni_passau.fim.se2.domain.entities.SplitPlan;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 
-public class SequenceValidator {
+public final class SequenceValidator {
 
+    private SequenceValidator() {
+    }
+
+    /**
+     * Rejects a sequence that has a task longer than the given number of lines of code.
+     *
+     * @param seq    the sequence to check
+     * @param maxLoc the maximum lines of code per task
+     */
     public static void validateLocLimit(TieredTaskSequenceDTO seq, int maxLoc) {
         boolean tooLarge = seq.getTasks().stream()
             .anyMatch(t -> t.getLinesOfCode() > maxLoc);
@@ -47,7 +56,11 @@ public class SequenceValidator {
      * <li>reconstruct its line exactly: {@code prefix + join("", fragments) + suffix == line}.</li>
      * </ul>
      * A {@code null}/empty plan is valid (no splits). Throws {@link DomainValidationException} on the first violation.
+     *
+     * @param plan     the split plan to check
+     * @param solution the solution the plan refers to
      */
+    @SuppressWarnings("checkstyle:NPathComplexity")
     public static void validateSplitPlan(SplitPlan plan, String solution) {
         if (plan == null || plan.getSplits() == null || plan.getSplits().isEmpty()) {
             return;
@@ -89,7 +102,13 @@ public class SequenceValidator {
         }
     }
 
-    /** Non-throwing variant used by the (fail-open) generation path. */
+    /**
+     * Non-throwing variant used by the (fail-open) generation path.
+     *
+     * @param plan     the split plan to check
+     * @param solution the solution the plan refers to
+     * @return true if the plan is valid
+     */
     public static boolean isValidSplitPlan(SplitPlan plan, String solution) {
         try {
             validateSplitPlan(plan, solution);

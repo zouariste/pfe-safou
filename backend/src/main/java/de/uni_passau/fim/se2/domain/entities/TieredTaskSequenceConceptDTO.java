@@ -18,9 +18,9 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import java.util.*;
+import java.util.UUID;
 
-import lombok.*;
+import lombok.Data;
 
 /**
  * Represents a data transfer object that associates a programming concept with a specific tiered task sequence.

@@ -101,8 +101,9 @@ public record WorksheetSearchQuery(
     }
 
     private static String normaliseSort(String sort) {
-        if (sort == null)
+        if (sort == null) {
             return SORT_RECENT;
+        }
         return switch (sort.trim().toLowerCase(Locale.ROOT)) {
             case SORT_RELEVANCE -> SORT_RELEVANCE;
             case SORT_POPULARITY -> SORT_POPULARITY;
@@ -122,8 +123,9 @@ public record WorksheetSearchQuery(
     }
 
     private static String blankToNull(String value) {
-        if (value == null)
+        if (value == null) {
             return null;
+        }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }

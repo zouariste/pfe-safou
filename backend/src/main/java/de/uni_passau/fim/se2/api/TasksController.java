@@ -82,6 +82,9 @@ public class TasksController {
 
     /**
      * Generate a new task sequence. Allowed: Teacher, Admin Denied: Anonymous and Students (enforced in SecurityConfig)
+     *
+     * @param request the inputs and options for the generation
+     * @return 201 with the generated sequence
      */
     @PostMapping("/tasks/generate")
     public ResponseEntity<TieredTaskSequenceDTO> generateTaskSequence(
@@ -93,8 +96,9 @@ public class TasksController {
         UUID currentUserId = ownershipService.getCurrentUserId();
 
         String targetLang = request.getTargetLanguage();
-        if (targetLang == null || targetLang.isBlank())
+        if (targetLang == null || targetLang.isBlank()) {
             targetLang = "de";
+        }
 
         boolean distractors = request.isDistractorsEnabled();
         boolean contextMode = request.isContextModeEnabled();
@@ -110,8 +114,9 @@ public class TasksController {
 
         // AP21: Validate and default tierCount
         int tierCount = request.getTierCount();
-        if (tierCount != 3 && tierCount != 5)
+        if (tierCount != 3 && tierCount != 5) {
             tierCount = 3;
+        }
 
         var seq = taskGeneratorService.generate(
             request.getProblemStatement(),
@@ -132,12 +137,13 @@ public class TasksController {
 
     /**
      * Get a sequence by ID. Public endpoint (anyone can view via link).
+     *
+     * @param id the sequence to load
+     * @return the sequence
      */
     @GetMapping("/sequence/{id}")
     public ResponseEntity<TieredTaskSequenceDTO> getTaskSequence(@PathVariable UUID id) {
         TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(id);
-        if (seq == null)
-            return ResponseEntity.notFound().build();
 
         if (seq.getTasks() != null) {
             seq.setTasks(
@@ -154,6 +160,10 @@ public class TasksController {
     /**
      * Replace a sequence's concepts. The teacher view on the sequence page edits them as a set, so this is a PUT of the
      * whole list rather than add/remove endpoints. Allowed: the sequence's owner, and admins.
+     *
+     * @param id      the sequence to update
+     * @param request the complete new set of concepts
+     * @return the concepts as stored
      */
     @PutMapping("/sequence/{id}/concepts")
     public ResponseEntity<List<String>> updateSequenceConcepts(
@@ -162,9 +172,6 @@ public class TasksController {
     ) {
 
         TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(id);
-        if (seq == null) {
-            return ResponseEntity.notFound().build();
-        }
         ownershipService.checkOwnership(seq.getOwnerId(), "sequence concepts");
 
         return ResponseEntity.ok(
@@ -175,12 +182,13 @@ public class TasksController {
     /**
      * Get a single task by ID. Public endpoint. AP15: If distractorsEnabled=false and requester is not the owner/admin,
      * distractors are stripped from the response (kept in DB, not delivered).
+     *
+     * @param taskId the task to load
+     * @return the task, without its distractors if they are disabled and the caller is not the owner
      */
     @GetMapping("/tasks/{taskId}")
     public ResponseEntity<TaskDTO> getTaskById(@PathVariable UUID taskId) {
         TaskDTO task = taskPersistenceService.loadTaskById(taskId);
-        if (task == null)
-            return ResponseEntity.notFound().build();
         stripDisabledDistractors(task);
         return ResponseEntity.ok(task);
     }
@@ -188,6 +196,10 @@ public class TasksController {
     /**
      * Edit a task's problem statement and code (AP9). On the first edit the original version is archived and an
      * adjustment rating is required. Allowed: Owner of the parent sequence, Admin
+     *
+     * @param taskId  the task to edit
+     * @param request the new statement and code, and the adjustment rating on a first edit
+     * @return the updated task
      */
     @PutMapping("/tasks/{taskId}")
     public ResponseEntity<TaskDTO> editTask(
@@ -201,6 +213,10 @@ public class TasksController {
     /**
      * Add a teacher-written tier to a sequence, at the given tier level (or at the end). Tiers at or above that level
      * move up by one. Allowed: Owner of the sequence, Admin
+     *
+     * @param id      the sequence to add the tier to
+     * @param request the new tier's statement, code and level
+     * @return 201 with the created tier
      */
     @PostMapping("/sequence/{id}/tasks")
     public ResponseEntity<TaskDTO> addTier(
@@ -215,6 +231,9 @@ public class TasksController {
     /**
      * Delete a tier from its sequence. A soft delete: the tier leaves the sequence, but what students did on it is
      * kept. Tiers above it move down by one. Allowed: Owner of the parent sequence, Admin
+     *
+     * @param taskId the tier to delete
+     * @return 204 No Content
      */
     @DeleteMapping("/tasks/{taskId}")
     public ResponseEntity<Void> deleteTier(@PathVariable UUID taskId) {
@@ -225,6 +244,9 @@ public class TasksController {
     /**
      * Create a task sequence manually — no LLM involved (AP23). The teacher provides code + problem statements
      * directly. Allowed: Teacher, Admin Denied: Students, Anonymous
+     *
+     * @param request the code and problem statements for each tier
+     * @return 201 with the created sequence, or 401 if not logged in
      */
     @PostMapping("/tasks/manual")
     public ResponseEntity<TieredTaskSequenceDTO> createManualSequence(
@@ -247,6 +269,9 @@ public class TasksController {
      *
      * Drives the solve page's read-only mode. Not the enforcement point: the services that record solving re-check it,
      * so a client that ignores this still cannot write.
+     *
+     * @param taskId the task to check
+     * @return whether the current user may still solve the task
      */
     @GetMapping("/tasks/{taskId}/access")
     public ResponseEntity<Map<String, Object>> getTaskAccess(@PathVariable UUID taskId) {
@@ -258,6 +283,9 @@ public class TasksController {
      * puzzle.
      *
      * 204 when there is nothing stored — including for anonymous visitors, who have nobody to store work against.
+     *
+     * @param taskId the task whose arrangement to load
+     * @return the stored arrangement, or 204 if there is none
      */
     @GetMapping("/tasks/{taskId}/submission")
     public ResponseEntity<TaskSubmissionDTO> getMySubmission(@PathVariable UUID taskId) {
@@ -272,6 +300,10 @@ public class TasksController {
      *
      * Replaces any earlier one for the same student and task. Anonymous solves are accepted and quietly ignored, so a
      * shared-link visitor is not shown an error for something that is not their problem.
+     *
+     * @param taskId  the solved task
+     * @param request the block order and indent levels of the solution
+     * @return 204 No Content
      */
     @PutMapping("/tasks/{taskId}/submission")
     public ResponseEntity<Void> saveMySubmission(
@@ -288,6 +320,10 @@ public class TasksController {
      *
      * Called repeatedly while a student works, so it is deliberately cheap and forgiving: an empty arrangement is
      * valid, and anonymous callers are ignored rather than rejected.
+     *
+     * @param taskId  the task being worked on
+     * @param request the current block order and indent levels
+     * @return 204 No Content
      */
     @PutMapping("/tasks/{taskId}/submission/progress")
     public ResponseEntity<Void> saveMyProgress(
@@ -304,6 +340,9 @@ public class TasksController {
      *
      * What the "start over" control calls, so the next visit deals a fresh puzzle instead of restoring work the student
      * has chosen to abandon.
+     *
+     * @param taskId the task whose arrangement to discard
+     * @return 204 No Content
      */
     @DeleteMapping("/tasks/{taskId}/submission")
     public ResponseEntity<Void> discardMySubmission(@PathVariable UUID taskId) {
@@ -318,18 +357,24 @@ public class TasksController {
 
     /**
      * Get all sequences owned by the current user.
+     *
+     * @return the current user's sequences, or 401 if not logged in
      */
     @GetMapping("/sequences/my")
     public ResponseEntity<List<TieredTaskSequenceDTO>> getMySequences() {
         UUID userId = ownershipService.getCurrentUserId();
-        if (userId == null)
+        if (userId == null) {
             return ResponseEntity.status(401).build();
+        }
         return ResponseEntity.ok(taskPersistenceService.findSequencesByOwnerId(userId));
     }
 
     /**
      * Delete one of your own sequences. It leaves the library and your list, but stays in any worksheet that already
      * contains it, so work in progress is not disrupted. Allowed: Owner, Admin.
+     *
+     * @param seqId the sequence to delete
+     * @return 204 No Content
      */
     @DeleteMapping("/sequence/{seqId}")
     public ResponseEntity<Void> deleteSequence(@PathVariable UUID seqId) {
@@ -340,12 +385,13 @@ public class TasksController {
 
     /**
      * AP15b: Generate distractors on-demand for a single existing task. Allowed: Owner of parent sequence, Admin.
+     *
+     * @param taskId the task to generate distractors for
+     * @return the task with its new distractors, or 400 if it has no solution
      */
     @PostMapping("/tasks/{taskId}/generate-distractors")
     public ResponseEntity<TaskDTO> generateDistractorsForTask(@PathVariable UUID taskId) {
         TaskDTO task = taskPersistenceService.loadTaskById(taskId);
-        if (task == null)
-            return ResponseEntity.notFound().build();
 
         // Ownership check via sequence
         requireSequenceOwnerOrAdmin(task.getSequenceId());
@@ -356,7 +402,7 @@ public class TasksController {
 
         // Determine language from sequence
         TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(task.getSequenceId());
-        String lang = seq != null ? seq.getProgrammingLanguage() : "python";
+        String lang = seq.getProgrammingLanguage();
         // AP30: resolve $$blank:…$$ gap markers to real code before generating distractors
         String solutionCode = GapMarkers.strip(task.getSolution());
         int loc = (int) solutionCode.lines().count();
@@ -377,24 +423,26 @@ public class TasksController {
     /**
      * AP15b: Batch-generate distractors for all tasks in a sequence that don't have them yet. Allowed: Owner of parent
      * sequence, Admin.
+     *
+     * @param seqId the sequence whose tasks to complete
+     * @return the reloaded sequence
      */
     @PostMapping("/sequence/{seqId}/generate-distractors")
     public ResponseEntity<TieredTaskSequenceDTO> generateDistractorsForSequence(@PathVariable UUID seqId) {
         requireSequenceOwnerOrAdmin(seqId);
 
         TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(seqId);
-        if (seq == null)
-            return ResponseEntity.notFound().build();
 
         String lang = seq.getProgrammingLanguage() != null ? seq.getProgrammingLanguage() : "python";
-        int generated = 0;
 
         if (seq.getTasks() != null) {
             for (TaskDTO task : seq.getTasks()) {
-                if (task.getDistractors() != null && !task.getDistractors().isBlank())
+                if (task.getDistractors() != null && !task.getDistractors().isBlank()) {
                     continue;
-                if (task.getSolution() == null || task.getSolution().isBlank())
+                }
+                if (task.getSolution() == null || task.getSolution().isBlank()) {
                     continue;
+                }
 
                 // AP30: resolve gap markers before generating distractors
                 String solutionCode = GapMarkers.strip(task.getSolution());
@@ -407,7 +455,6 @@ public class TasksController {
                 if (distractors != null) {
                     taskPersistenceService.updateDistractors(task.getId(), distractors);
                     task.setDistractors(distractors);
-                    generated++;
                 }
             }
         }
@@ -419,6 +466,10 @@ public class TasksController {
 
     /**
      * Replace a sequence's task description. A blank one clears it. Allowed: the sequence's owner, and admins.
+     *
+     * @param id   the sequence to update
+     * @param body the request body carrying the new {@code taskDescription}
+     * @return the description as stored
      */
     @PutMapping("/sequence/{id}/task-description")
     public ResponseEntity<Map<String, String>> updateSequenceTaskDescription(
@@ -427,9 +478,6 @@ public class TasksController {
     ) {
 
         TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(id);
-        if (seq == null) {
-            return ResponseEntity.notFound().build();
-        }
         ownershipService.checkOwnership(seq.getOwnerId(), "sequence task description");
 
         String stored = taskPersistenceService.updateTaskDescription(id, body.get("taskDescription"));
@@ -442,6 +490,10 @@ public class TasksController {
     /**
      * Rename a sequence. Body: {@code {"title": "..."}}; a blank or missing title restores the default heading.
      * Allowed: the sequence's owner, and admins.
+     *
+     * @param id   the sequence to rename
+     * @param body the request body carrying the new {@code title}
+     * @return the title as stored
      */
     @PatchMapping("/sequence/{id}/title")
     public ResponseEntity<Map<String, String>> renameSequence(
@@ -450,9 +502,6 @@ public class TasksController {
     ) {
 
         TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(id);
-        if (seq == null) {
-            return ResponseEntity.notFound().build();
-        }
         ownershipService.checkOwnership(seq.getOwnerId(), "sequence title");
 
         String stored = taskPersistenceService.updateSequenceTitle(id, body.get("title"));
@@ -505,6 +554,9 @@ public class TasksController {
     /**
      * Check if an original version exists for a task (AP9). Used by the frontend to determine if isFirstEdit should be
      * true.
+     *
+     * @param taskId the task to check
+     * @return whether an original version is stored for the task
      */
     @GetMapping("/tasks/{taskId}/has-original")
     public ResponseEntity<Map<String, Boolean>> hasOriginal(@PathVariable UUID taskId) {
@@ -525,6 +577,10 @@ public class TasksController {
     /**
      * AP15: Toggle distractors enabled/disabled for a task. Distractors are kept in DB but not delivered to students
      * when disabled. Allowed: Owner of parent sequence, Admin.
+     *
+     * @param taskId the task to update
+     * @param body   the request body carrying {@code enabled}; missing means true
+     * @return the updated task
      */
     @PatchMapping("/tasks/{taskId}/distractors-enabled")
     public ResponseEntity<TaskDTO> toggleDistractorsEnabled(
@@ -532,8 +588,6 @@ public class TasksController {
         @RequestBody Map<String, Boolean> body
     ) {
         TaskDTO task = taskPersistenceService.loadTaskById(taskId);
-        if (task == null)
-            return ResponseEntity.notFound().build();
 
         requireSequenceOwnerOrAdmin(task.getSequenceId());
 
@@ -546,6 +600,10 @@ public class TasksController {
     /**
      * Rename a task. Body: {@code {"title": "..."}}; a blank or missing title restores the numbered default. Allowed:
      * Owner of parent sequence, Admin.
+     *
+     * @param taskId the task to rename
+     * @param body   the request body carrying the new {@code title}
+     * @return the updated task
      */
     @PatchMapping("/tasks/{taskId}/title")
     public ResponseEntity<TaskDTO> renameTask(
@@ -553,8 +611,6 @@ public class TasksController {
         @RequestBody Map<String, String> body
     ) {
         TaskDTO task = taskPersistenceService.loadTaskById(taskId);
-        if (task == null)
-            return ResponseEntity.notFound().build();
 
         requireSequenceOwnerOrAdmin(task.getSequenceId());
 
@@ -580,19 +636,22 @@ public class TasksController {
      * Single-task variant: loads the parent sequence once to check ownership.
      */
     private void stripDisabledDistractors(TaskDTO task) {
-        if (task == null || task.getDistractors() == null)
+        if (task == null || task.getDistractors() == null) {
             return;
-        if (task.isDistractorsEnabled())
+        }
+        if (task.isDistractorsEnabled()) {
             return;
+        }
 
         // Check if current user is owner or admin — if so, keep distractors visible
         try {
             TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(task.getSequenceId());
-            if (seq != null && ownershipService.isOwnerOrAdmin(seq.getOwnerId())) {
+            if (ownershipService.isOwnerOrAdmin(seq.getOwnerId())) {
                 return; // Teacher/admin sees everything
             }
         }
         catch (Exception ignored) {
+            // Treat a failed ownership lookup like a non-owner: hide the distractors.
         }
 
         // Non-owner: strip distractors
@@ -605,19 +664,23 @@ public class TasksController {
      * where the single-task overload would reload the sequence per task.
      */
     private void stripDisabledDistractors(TieredTaskSequenceDTO seq) {
-        if (seq == null || seq.getTasks() == null)
+        if (seq == null || seq.getTasks() == null) {
             return;
+        }
 
         // Resolve owner check once — avoids N DB calls for a sequence with N tasks
         boolean isOwnerOrAdmin = ownershipService.isOwnerOrAdmin(seq.getOwnerId());
 
         for (TaskDTO task : seq.getTasks()) {
-            if (task.getDistractors() == null)
+            if (task.getDistractors() == null) {
                 continue;
-            if (task.isDistractorsEnabled())
+            }
+            if (task.isDistractorsEnabled()) {
                 continue;
-            if (isOwnerOrAdmin)
+            }
+            if (isOwnerOrAdmin) {
                 continue; // owner/admin always sees distractors
+            }
             task.setDistractors(null);
             task.setDistractorPlan(null);
         }

@@ -68,10 +68,13 @@ public class SequenceTierService {
     /**
      * Inserts a teacher-written tier at the requested level.
      *
+     * @param sequenceId the sequence to add the tier to
+     * @param request    the new tier's statement, code and level
      * @return the new tier, as stored
      * @throws DomainValidationException if the statement or code is blank, the sequence already has {@value #MAX_TIERS}
      *                                   tiers, the level is out of range, or a split is invalid
      */
+    @SuppressWarnings("checkstyle:NPathComplexity")
     @Transactional
     public TaskDTO addTier(UUID sequenceId, TierCreateRequest request) {
         if (request == null || request.getProblemStatement() == null || request.getProblemStatement().isBlank()) {
@@ -132,6 +135,7 @@ public class SequenceTierService {
     /**
      * Takes a tier out of its sequence and renumbers the ones above it.
      *
+     * @param taskId the tier to delete
      * @throws DomainValidationException if the tier is not a current tier of its sequence (for instance, already
      *                                   deleted) or is the only one left
      */

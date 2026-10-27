@@ -47,7 +47,7 @@ public final class TreeSitterNatives implements NativeLibraryLookup {
     public static final String DIR_PROPERTY = "codeowl.treesitter.nativeDir";
     public static final String DIR_ENV = "TREESITTER_NATIVE_DIR";
 
-    private static final Logger logger = LoggerFactory.getLogger(TreeSitterNatives.class);
+    private static final Logger log = LoggerFactory.getLogger(TreeSitterNatives.class);
 
     private static volatile Boolean available;
 
@@ -66,18 +66,28 @@ public final class TreeSitterNatives implements NativeLibraryLookup {
         return SymbolLookup.libraryLookup(library, arena);
     }
 
+    /**
+     * The directory the native libraries are loaded from: the {@value #DIR_PROPERTY} system property, else the
+     * {@value #DIR_ENV} environment variable, else {@code native} in the working directory.
+     *
+     * @return the absolute directory path
+     */
     public static Path nativeDir() {
         String dir = System.getProperty(DIR_PROPERTY);
-        if (dir == null || dir.isBlank())
+        if (dir == null || dir.isBlank()) {
             dir = System.getenv(DIR_ENV);
-        if (dir == null || dir.isBlank())
+        }
+        if (dir == null || dir.isBlank()) {
             dir = "native";
+        }
         return Path.of(dir).toAbsolutePath();
     }
 
     /**
      * Whether the tree-sitter runtime can be loaded. Checked once; if it fails, jtreesitter's classes cannot be
      * initialised again in this JVM anyway.
+     *
+     * @return true if the runtime library could be loaded
      */
     public static boolean isAvailable() {
         if (available == null) {
@@ -95,7 +105,7 @@ public final class TreeSitterNatives implements NativeLibraryLookup {
             return true;
         }
         catch (Throwable e) {
-            logger.warn(
+            log.warn(
                 "tree-sitter runtime not found in {} or on the library path ({}). "
                     + "Code metrics fall back to heuristics; run backend/scripts/build-treesitter-natives.sh "
                     + "or set {} to enable them.",
@@ -108,6 +118,9 @@ public final class TreeSitterNatives implements NativeLibraryLookup {
     /**
      * Loads a grammar by its tree-sitter id, e.g. {@code c_sharp} from {@code tree-sitter-c-sharp} via the symbol
      * {@code tree_sitter_c_sharp}.
+     *
+     * @param grammarId the grammar's tree-sitter id
+     * @return the loaded grammar
      */
     public static Language loadLanguage(String grammarId) {
         String libraryName = System.mapLibraryName("tree-sitter-" + grammarId.replace('_', '-'));

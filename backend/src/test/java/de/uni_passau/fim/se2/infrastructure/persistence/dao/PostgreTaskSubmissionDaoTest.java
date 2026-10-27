@@ -100,8 +100,9 @@ class PostgreTaskSubmissionDaoTest {
 
     @AfterAll
     static void cleanup() {
-        if (jdbc == null)
+        if (jdbc == null) {
             return; // connect() aborted: there was no test database
+        }
         jdbc.update("DELETE FROM tasks WHERE id = ?", taskId);
         jdbc.update("DELETE FROM tiered_task_sequences WHERE version_id = ?", versionId);
         jdbc.update("DELETE FROM users WHERE user_id = ?", userId);

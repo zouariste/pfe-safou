@@ -62,7 +62,7 @@ import de.uni_passau.fim.se2.infrastructure.ai.tagging.LlmSemanticTagger.Semanti
 @Service
 public class BulkRetagService {
 
-    private static final Logger logger = LoggerFactory.getLogger(BulkRetagService.class);
+    private static final Logger log = LoggerFactory.getLogger(BulkRetagService.class);
 
     /** Hard cap on candidates per job — protects LLM budget on an accidental "all sequences" call. */
     private static final int MAX_CANDIDATES_PER_JOB = 5_000;
@@ -101,6 +101,9 @@ public class BulkRetagService {
     /**
      * Queue a new retag job. Returns a snapshot with {@code status = QUEUED/RUNNING} and the generated {@code jobId};
      * the work itself happens on a background virtual thread.
+     *
+     * @param request the job options, or null for the defaults
+     * @return a snapshot of the new job
      */
     public BulkRetagJobStatus submit(BulkRetagRequest request) {
         BulkRetagRequest req = request == null ? new BulkRetagRequest() : request;
@@ -113,7 +116,7 @@ public class BulkRetagService {
         jobs.put(jobId, state);
         pruneJobs();
 
-        logger.info(
+        log.info(
             "Bulk retag job {} queued: filter='{}', total={}",
             jobId, state.filter, state.total
         );
@@ -130,17 +133,27 @@ public class BulkRetagService {
         return state.snapshot();
     }
 
-    /** Live snapshot of a single job, or {@code null} if unknown / evicted. */
+    /**
+     * Live snapshot of a single job, or {@code null} if unknown / evicted.
+     *
+     * @param jobId the job to report on
+     * @return a snapshot of the job, or null if it is unknown
+     */
     public BulkRetagJobStatus status(UUID jobId) {
         JobState s = jobs.get(jobId);
         return s == null ? null : s.snapshot();
     }
 
-    /** All jobs currently in memory, most recently started first. */
+    /**
+     * All jobs currently in memory, most recently started first.
+     *
+     * @return snapshots of all jobs in memory, newest first
+     */
     public List<BulkRetagJobStatus> listRecent() {
         List<BulkRetagJobStatus> out = new ArrayList<>();
-        for (JobState s : jobs.values())
+        for (JobState s : jobs.values()) {
             out.add(s.snapshot());
+        }
         out.sort(Comparator.comparing(BulkRetagJobStatus::startedAt).reversed());
         return out;
     }
@@ -156,7 +169,7 @@ public class BulkRetagService {
             return sequenceRepo.findRetagCandidates(missingOnly, ids, MAX_CANDIDATES_PER_JOB);
         }
         catch (Exception e) {
-            logger.warn(
+            log.warn(
                 "Failed to load retag candidates for filter '{}': {}",
                 req.effectiveFilterLabel(), e.getMessage()
             );
@@ -171,21 +184,21 @@ public class BulkRetagService {
     private void runJob(JobState state, List<RetagCandidate> candidates) {
         MDC.put("bulkRetagJobId", state.jobId.toString());
         state.markRunning();
-        logger.info("Bulk retag job {} started, processing {} sequences", state.jobId, candidates.size());
+        log.info("Bulk retag job {} started, processing {} sequences", state.jobId, candidates.size());
 
         try {
             for (RetagCandidate c : candidates) {
                 processOne(c, state);
             }
             state.markDone();
-            logger.info(
+            log.info(
                 "Bulk retag job {} finished: succeeded={}, failed={}, total={}",
                 state.jobId, state.succeeded.get(), state.failed.get(), state.total
             );
         }
         catch (Exception e) {
             state.markFailed(e.getMessage());
-            logger.error("Bulk retag job {} aborted: {}", state.jobId, e.getMessage(), e);
+            log.error("Bulk retag job {} aborted: {}", state.jobId, e.getMessage(), e);
         }
         finally {
             MDC.remove("bulkRetagJobId");
@@ -215,7 +228,7 @@ public class BulkRetagService {
                     sequenceRepo.updateSemanticSummary(c.sequenceId(), result.shortDescription());
                 }
                 catch (Exception e) {
-                    logger.warn(
+                    log.warn(
                         "Summary update failed for sequence {} in job {}: {}",
                         c.sequenceId(), state.jobId, e.getMessage()
                     );
@@ -226,7 +239,7 @@ public class BulkRetagService {
         }
         catch (Exception e) {
             state.failed.incrementAndGet();
-            logger.warn(
+            log.warn(
                 "Retag failed for sequence {} in job {}: {}",
                 c.sequenceId(), state.jobId, e.getMessage()
             );
@@ -239,8 +252,9 @@ public class BulkRetagService {
 
     /** Evict oldest finished jobs so the in-memory map doesn't grow unbounded. */
     private void pruneJobs() {
-        if (jobs.size() <= MAX_JOBS)
+        if (jobs.size() <= MAX_JOBS) {
             return;
+        }
         List<JobState> finished = jobs.values().stream()
             .filter(s -> BulkRetagJobStatus.DONE.equals(s.status) || BulkRetagJobStatus.FAILED.equals(s.status))
             .sorted(Comparator.comparing((JobState s) -> s.startedAt))
@@ -307,12 +321,15 @@ public class BulkRetagService {
         }
 
         String effectiveFilterLabel() {
-            if (sequenceIds != null && !sequenceIds.isEmpty())
+            if (sequenceIds != null && !sequenceIds.isEmpty()) {
                 return "specific(" + sequenceIds.size() + ")";
-            if (isMissingLlmTags())
+            }
+            if (isMissingLlmTags()) {
                 return "missing-llm-tags";
-            if ("all".equalsIgnoreCase(filter))
+            }
+            if ("all".equalsIgnoreCase(filter)) {
                 return "all";
+            }
             return filter == null ? "missing-llm-tags" : filter;
         }
     }

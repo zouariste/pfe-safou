@@ -65,6 +65,8 @@ public final class TestDatabase {
     /**
      * Whether there is a database to test against at all — an injected one, or a Docker daemon to start one with. False
      * on a developer machine with Docker down, where the database tests abort rather than fail.
+     *
+     * @return true if there is a database to test against
      */
     public static synchronized boolean isAvailable() {
         return dataSource() != null;
@@ -73,6 +75,8 @@ public final class TestDatabase {
     /**
      * A {@link JdbcTemplate} on the migrated database. Call only after {@link #isAvailable()} has confirmed there is
      * one.
+     *
+     * @return a template on the migrated database
      */
     public static synchronized JdbcTemplate jdbc() {
         DataSource ds = dataSource();

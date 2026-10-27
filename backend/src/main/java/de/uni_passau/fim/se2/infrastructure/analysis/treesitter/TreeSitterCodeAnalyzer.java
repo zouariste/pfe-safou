@@ -18,7 +18,14 @@
  */
 package de.uni_passau.fim.se2.infrastructure.analysis.treesitter;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +51,9 @@ import io.github.treesitter.jtreesitter.Tree;
 )
 public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
 
-    private static final Logger logger = LoggerFactory.getLogger(TreeSitterCodeAnalyzer.class);
+    private static final String TOTAL_NODES = "totalNodes";
+
+    private static final Logger log = LoggerFactory.getLogger(TreeSitterCodeAnalyzer.class);
 
     private final boolean nativesAvailable;
 
@@ -67,13 +76,14 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
 
     @Override
     public ComplexityResult computeComplexity(String code, String language) {
-        if (code == null || code.isBlank() || !nativesAvailable)
+        if (code == null || code.isBlank() || !nativesAvailable) {
             return ComplexityResult.zero();
+        }
 
         Language tsLang = LanguageRegistry.resolve(language).orElse(null);
         LanguageRegistry.LanguageConfig config = LanguageRegistry.getConfig(language);
         if (tsLang == null || config == null) {
-            logger.debug("Unsupported language '{}', returning zero complexity", language);
+            log.debug("Unsupported language '{}', returning zero complexity", language);
             return ComplexityResult.zero();
         }
 
@@ -89,25 +99,28 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
             int dic = countDistinctIdentifiers(root, config.identifierTypes());
             return new ComplexityResult(loc, cc, mnd, mcc, dic);
         }
-        catch (Exception e) {
-            logger.warn("tree-sitter complexity analysis failed for '{}': {}", language, e.getMessage());
+        catch (RuntimeException e) {
+            log.warn("tree-sitter complexity analysis failed for '{}': {}", language, e.getMessage());
             return ComplexityResult.zero();
         }
     }
 
     @Override
     public AstAnalysisResult analyzeChanges(String originalCode, String editedCode, String language) {
-        if (originalCode == null)
+        if (originalCode == null) {
             originalCode = "";
-        if (editedCode == null)
+        }
+        if (editedCode == null) {
             editedCode = "";
-        if (!nativesAvailable)
+        }
+        if (!nativesAvailable) {
             return heuristicAnalysis(originalCode, editedCode);
+        }
 
         Language tsLang = LanguageRegistry.resolve(language).orElse(null);
         LanguageRegistry.LanguageConfig config = LanguageRegistry.getConfig(language);
         if (tsLang == null || config == null) {
-            logger.debug("Unsupported language '{}', falling back to line-based heuristic", language);
+            log.debug("Unsupported language '{}', falling back to line-based heuristic", language);
             return heuristicAnalysis(originalCode, editedCode);
         }
 
@@ -117,7 +130,7 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
             return compareProfiles(origProfile, editProfile);
         }
         catch (Exception e) {
-            logger.warn("tree-sitter change analysis failed for '{}': {}", language, e.getMessage());
+            log.warn("tree-sitter change analysis failed for '{}': {}", language, e.getMessage());
             return heuristicAnalysis(originalCode, editedCode);
         }
     }
@@ -199,7 +212,7 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
     ) {
         Map<String, Integer> profile = new LinkedHashMap<>();
         if (code.isBlank()) {
-            profile.put("totalNodes", 0);
+            profile.put(TOTAL_NODES, 0);
             return profile;
         }
 
@@ -214,7 +227,7 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
             profile.put("conditionals", countNodeTypes(root, config.conditionalTypes()));
             profile.put("calls", countNodeTypes(root, config.callTypes()));
             profile.put("identifiers", countDistinctIdentifiers(root, config.identifierTypes()));
-            profile.put("totalNodes", countAllNodes(root));
+            profile.put(TOTAL_NODES, countAllNodes(root));
         }
         return profile;
     }
@@ -243,7 +256,7 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
         Set<String> allKeys = new LinkedHashSet<>();
         allKeys.addAll(origProfile.keySet());
         allKeys.addAll(editProfile.keySet());
-        allKeys.remove("totalNodes");
+        allKeys.remove(TOTAL_NODES);
 
         for (String key : allKeys) {
             int origCount = origProfile.getOrDefault(key, 0);
@@ -252,16 +265,16 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
 
             if (delta > 0) {
                 nodesAdded += delta;
-                changeTypes.add("ADD_" + key.toUpperCase());
+                changeTypes.add("ADD_" + key.toUpperCase(Locale.ROOT));
             }
             else if (delta < 0) {
                 nodesRemoved += Math.abs(delta);
-                changeTypes.add("REMOVE_" + key.toUpperCase());
+                changeTypes.add("REMOVE_" + key.toUpperCase(Locale.ROOT));
             }
         }
 
-        int origTotal = origProfile.getOrDefault("totalNodes", 0);
-        int editTotal = editProfile.getOrDefault("totalNodes", 0);
+        int origTotal = origProfile.getOrDefault(TOTAL_NODES, 0);
+        int editTotal = editProfile.getOrDefault(TOTAL_NODES, 0);
 
         if (nodesAdded == 0 && nodesRemoved == 0 && origTotal > 0 && editTotal > 0) {
             nodesModified = 1;
@@ -302,8 +315,8 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
         int origLines = original.isBlank() ? 0 : (int) original.lines().count();
         int editLines = edited.isBlank() ? 0 : (int) edited.lines().count();
 
-        Map<String, Integer> origProfile = Map.of("totalNodes", origLines);
-        Map<String, Integer> editProfile = Map.of("totalNodes", editLines);
+        Map<String, Integer> origProfile = Map.of(TOTAL_NODES, origLines);
+        Map<String, Integer> editProfile = Map.of(TOTAL_NODES, editLines);
         return compareProfiles(origProfile, editProfile);
     }
 }

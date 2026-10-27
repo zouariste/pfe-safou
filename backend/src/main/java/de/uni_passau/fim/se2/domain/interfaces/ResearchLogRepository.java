@@ -34,13 +34,31 @@ import de.uni_passau.fim.se2.domain.entities.ResearchLog;
  */
 public interface ResearchLogRepository {
 
-    /** One page of rows, ordered newest first. */
+    /**
+     * One page of rows, ordered newest first.
+     *
+     * @param dataset the dataset to read
+     * @param filter  the filter and paging to apply
+     * @return the rows of the requested page
+     */
     List<Map<String, Object>> findPage(ResearchDataset dataset, ResearchLog.Filter filter);
 
-    /** How many rows the filter matches in total, for the pager. */
+    /**
+     * How many rows the filter matches in total, for the pager.
+     *
+     * @param dataset the dataset to count
+     * @param filter  the filter to apply
+     * @return the number of matching rows
+     */
     long countMatching(ResearchDataset dataset, ResearchLog.Filter filter);
 
-    /** Aggregates for the stats strip, computed in SQL rather than over a loaded list. */
+    /**
+     * Aggregates for the stats strip, computed in SQL rather than over a loaded list.
+     *
+     * @param dataset the dataset to summarise
+     * @param filter  the filter to apply
+     * @return the aggregates for the matching rows
+     */
     ResearchLog.Summary summarize(ResearchDataset dataset, ResearchLog.Filter filter);
 
     /**
@@ -49,6 +67,10 @@ public interface ResearchLogRepository {
      * <p>
      * For the CSV and ZIP downloads, which must not be capped at a page and must not materialise the whole result
      * either.
+     *
+     * @param dataset  the dataset to read
+     * @param filter   the filter to apply
+     * @param consumer receives each matching row
      */
     void forEachMatching(
         ResearchDataset dataset, ResearchLog.Filter filter,

@@ -32,6 +32,10 @@ public class CodeAssembler {
     /**
      * Assembles block order into complete code with proper indentation. Each block gets prefixed with spaces based on
      * its indent level.
+     *
+     * @param blockOrder   the text of each block, in the student's order
+     * @param indentLevels the indent level of each block
+     * @return the assembled code with the block each line came from
      */
     public CodeAssembly assemble(List<String> blockOrder, List<Integer> indentLevels) {
         StringBuilder code = new StringBuilder();

@@ -18,10 +18,16 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -41,8 +47,8 @@ import lombok.extern.slf4j.Slf4j;
  * Builds a ZIP file containing CSVs of all research-relevant tables. Streams directly to the provided OutputStream
  * (HTTP response).
  *
- * The result is a fully PII-stripped, UUID-pseudonymized data dump. TODO GDPR: define formal data retention/deletion
- * policy before publication.
+ * The result is a fully PII-stripped, UUID-pseudonymized data dump. A formal GDPR data retention/deletion policy is
+ * still to be defined before publication.
  */
 @Service
 @RequiredArgsConstructor
@@ -56,9 +62,11 @@ public class ResearchExportService {
     /**
      * Streams a ZIP of CSV exports + a metadata file to the given output.
      *
+     * @param output       the stream to write the ZIP to
+     * @param adminIdShort the shortened ID of the admin exporting, recorded in the metadata
      * @return total number of rows written across all tables
      */
-    public long streamExport(OutputStream output, String adminIdShort) throws Exception {
+    public long streamExport(OutputStream output, String adminIdShort) throws IOException {
         long totalRows = 0;
         Map<String, Long> rowCounts = new LinkedHashMap<>();
 
@@ -126,13 +134,18 @@ public class ResearchExportService {
      * Read-only transaction for the same reason {@code ResearchLogService.streamCsv} is one: the row-by-row reads
      * underneath only stream if the driver is not in autocommit.
      *
+     * @param output       the stream to write the ZIP to
+     * @param classId      the class to export
+     * @param className    the class's name, recorded in the metadata
+     * @param filter       the event type and date range to include
+     * @param adminIdShort the shortened ID of the admin exporting, recorded in the metadata
      * @return total number of rows written across all tables
      */
     @Transactional(readOnly = true)
     public long streamClassExport(
         OutputStream output, UUID classId, String className,
         ResearchLog.Filter filter, String adminIdShort
-    ) throws Exception {
+    ) throws IOException {
         long totalRows = 0;
         Map<String, Long> rowCounts = new LinkedHashMap<>();
 
@@ -187,7 +200,7 @@ public class ResearchExportService {
     private long writeTable(
         ZipOutputStream zip, String filename, List<Map<String, Object>> rows,
         Map<String, Long> rowCounts
-    ) throws Exception {
+    ) throws IOException {
         zip.putNextEntry(new ZipEntry(filename));
         try {
             CsvWriter csv = new CsvWriter(zip);
@@ -201,8 +214,9 @@ public class ResearchExportService {
             csv.writeRow(columns);
             for (Map<String, Object> row : rows) {
                 List<Object> values = new ArrayList<>(columns.size());
-                for (String col : columns)
+                for (String col : columns) {
                     values.add(stringify(row.get(col)));
+                }
                 csv.writeRow(values);
             }
             csv.flush();
@@ -219,14 +233,18 @@ public class ResearchExportService {
      * Timestamps → ISO string.
      */
     private String stringify(Object value) {
-        if (value == null)
+        if (value == null) {
             return null;
-        if (value instanceof byte[] bytes)
+        }
+        if (value instanceof byte[] bytes) {
             return Base64.getEncoder().encodeToString(bytes);
-        if (value instanceof java.sql.Timestamp ts)
+        }
+        if (value instanceof java.sql.Timestamp ts) {
             return ts.toLocalDateTime().toString();
-        if (value instanceof java.sql.Date d)
+        }
+        if (value instanceof java.sql.Date d) {
             return d.toLocalDate().toString();
+        }
         // PGobject (jsonb) and other DB-specific types expose their value via toString()
         return value.toString();
     }

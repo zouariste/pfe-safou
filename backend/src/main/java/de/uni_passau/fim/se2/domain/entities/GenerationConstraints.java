@@ -20,7 +20,10 @@ package de.uni_passau.fim.se2.domain.entities;
 
 import java.util.List;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * AP20: Constraints that control what programming constructs are allowed/forbidden in generated task sequences. Stored
@@ -54,12 +57,19 @@ public class GenerationConstraints {
     private String additionalContext;
 
     /**
-     * Returns true if any constraint is actually set.
+     * Returns whether any constraint is actually set.
+     *
+     * @return true if at least one list is non-empty or one text field is non-blank
      */
     public boolean hasAny() {
-        return (blacklist != null && !blacklist.isEmpty())
-            || (whitelist != null && !whitelist.isEmpty())
-            || (difficultySlope != null && !difficultySlope.isBlank())
-            || (additionalContext != null && !additionalContext.isBlank());
+        return isSet(blacklist) || isSet(whitelist) || isSet(difficultySlope) || isSet(additionalContext);
+    }
+
+    private static boolean isSet(List<String> values) {
+        return values != null && !values.isEmpty();
+    }
+
+    private static boolean isSet(String value) {
+        return value != null && !value.isBlank();
     }
 }

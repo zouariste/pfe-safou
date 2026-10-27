@@ -42,6 +42,13 @@ public class AdminService {
 
     /**
      * Returns a paginated, searchable, sortable list of users.
+     *
+     * @param search a search term to filter users by, or null for all users
+     * @param page   the zero-based page number
+     * @param size   the number of users per page
+     * @param sort   the field to sort by, as named by the frontend
+     * @param dir    the sort direction, {@code asc} or {@code desc}
+     * @return the requested page of users with the total count
      */
     public PaginatedUsersResponse getUsers(String search, int page, int size, String sort, String dir) {
         // Map frontend sort field names to DB column names
@@ -98,6 +105,13 @@ public class AdminService {
 
     /**
      * Updates a user's profile info (admin).
+     *
+     * @param userId    the user to update
+     * @param firstName the new first name
+     * @param lastName  the new last name
+     * @param email     the new email address
+     * @param role      the new role
+     * @return the updated user
      */
     public UserDTO updateUser(UUID userId, String firstName, String lastName, String email, String role) {
         UserDTO user = userRepository.findById(userId)
@@ -129,6 +143,8 @@ public class AdminService {
 
     /**
      * Deletes a user.
+     *
+     * @param userId the user to delete
      */
     public void deleteUser(UUID userId) {
         userRepository.findById(userId)
@@ -139,6 +155,9 @@ public class AdminService {
 
     /**
      * Toggles admin status for a user.
+     *
+     * @param userId the user whose role to toggle
+     * @return the updated user
      */
     public UserDTO toggleAdmin(UUID userId) {
         UserDTO user = userRepository.findById(userId)
@@ -157,6 +176,8 @@ public class AdminService {
 
     /**
      * Triggers a password reset email for the given user.
+     *
+     * @param userId the user who should receive the email
      */
     @Transactional
     public void resetPassword(UUID userId) {

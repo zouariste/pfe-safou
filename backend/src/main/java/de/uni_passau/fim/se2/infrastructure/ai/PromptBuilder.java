@@ -18,15 +18,20 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai;
 
-import java.util.*;
+import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
-import org.springframework.stereotype.*;
+import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.databind.*;
-import com.fasterxml.jackson.databind.node.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
+import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
+import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
+import de.uni_passau.fim.se2.domain.entities.SolveContract;
 import de.uni_passau.fim.se2.domain.model.SupportedLanguage;
 
 /**
@@ -35,6 +40,41 @@ import de.uni_passau.fim.se2.domain.model.SupportedLanguage;
  */
 @Component
 public class PromptBuilder {
+
+    private static final String LIST_SEPARATOR = ", ";
+    private static final String ROLE_USER = "user";
+    private static final String ROLE_SYSTEM = "system";
+    private static final String ROLE = "role";
+    private static final String CONTENT = "content";
+    private static final String MESSAGES = "messages";
+    private static final String RESPONSE_FORMAT = "response_format";
+    private static final String JSON_SCHEMA = "json_schema";
+    private static final String TYPE = "type";
+    private static final String NAME = "name";
+    private static final String STRICT = "strict";
+    private static final String OBJECT = "object";
+    private static final String ARRAY = "array";
+    private static final String MIN_ITEMS = "minItems";
+    private static final String MAX_ITEMS = "maxItems";
+    private static final String TIER = "tier";
+    private static final String STATEMENT = "statement";
+    private static final String LANGUAGE = "language";
+    private static final String TASK_STATEMENT = "taskStatement";
+    private static final String FUNCTION_SIGNATURE = "functionSignature";
+    private static final String PURPOSE_BEHAVIOR = "purposeBehavior";
+    private static final String PRE_POST_CONDITIONS = "prePostConditions";
+    private static final String INPUT = "input";
+    private static final String OUTPUT = "output";
+    private static final String PROPERTIES = "properties";
+    private static final String REQUIRED = "required";
+    private static final String ADDITIONAL_PROPERTIES = "additionalProperties";
+    private static final String ITEMS = "items";
+    private static final String EXAMPLES = "examples";
+    private static final String CONTRACT = "contract";
+    private static final String TASKS = "tasks";
+    private static final String SCHEMA = "schema";
+    private static final String STRING = "string";
+    private static final String ENGLISH = "en";
 
     /**
      * Object mapper used for constructing prompts.
@@ -74,6 +114,17 @@ public class PromptBuilder {
         return buildSequenceRequest(taskDescription, concepts, codeSnippet, language, null);
     }
 
+    /**
+     * Builds the request for a tiered task sequence, with the problem statements in the given language.
+     *
+     * @param taskDescription the teacher's sample task description, or null
+     * @param concepts        the concepts the sequence should cover
+     * @param codeSnippet     the teacher's code snippet, or null
+     * @param language        the programming language of the tasks
+     * @param targetLanguage  the human language of the problem statements, or null for the default
+     * @return the chat completions request
+     */
+    @SuppressWarnings("checkstyle:MethodLength")
     public ObjectNode buildSequenceRequest(
         final String taskDescription, final List<String> concepts,
         final String codeSnippet, final String language,
@@ -84,13 +135,13 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "system")
-                .put("content", identityLoader.load("Sequence"))
+                .put(ROLE, ROLE_SYSTEM)
+                .put(CONTENT, identityLoader.load("Sequence"))
         );
 
         // Resolve human language label for the prompt instruction
         String langLabel;
-        if ("en".equalsIgnoreCase(targetLanguage)) {
+        if (ENGLISH.equalsIgnoreCase(targetLanguage)) {
             langLabel = "English";
         }
         else {
@@ -129,23 +180,32 @@ public class PromptBuilder {
             Use the reference snippet only as conceptual context, not as a structural template.
             The generated tasks’ intended solutions must consist of a single function only, not full programs.
             %s""".formatted(
-            taskDescription, language, String.join(", ", concepts), codeSnippet,
+            taskDescription, language, String.join(LIST_SEPARATOR, concepts), codeSnippet,
             targetLanguageInstruction
         );
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "user")
-                .put("content", prompt)
+                .put(ROLE, ROLE_USER)
+                .put(CONTENT, prompt)
         );
 
-        json.set("messages", messages);
-        json.set("response_format", responseFormatTieredContracts());
+        json.set(MESSAGES, messages);
+        json.set(RESPONSE_FORMAT, responseFormatTieredContracts());
         return json;
     }
 
     /**
      * AP20: Builds a sequence request with generation constraints injected into the prompt (3-tier).
+     *
+     * @param taskDescription    the teacher's sample task description, or null
+     * @param concepts           the concepts the sequence should cover
+     * @param codeSnippet        the teacher's code snippet, or null
+     * @param language           the programming language of the tasks
+     * @param targetLanguage     the human language of the problem statements
+     * @param distractorsEnabled whether to plan distractors
+     * @param constraints        the teacher's generation constraints, or null
+     * @return the chat completions request
      */
     public ObjectNode buildSequenceRequest(
         final String taskDescription, final List<String> concepts,
@@ -162,7 +222,18 @@ public class PromptBuilder {
     /**
      * AP21: Full overload — tier-count-aware sequence request with constraints + distractors. This is the terminal
      * overload that all other overloads ultimately delegate to for 5-tier.
+     *
+     * @param taskDescription    the teacher's sample task description, or null
+     * @param concepts           the concepts the sequence should cover
+     * @param codeSnippet        the teacher's code snippet, or null
+     * @param language           the programming language of the tasks
+     * @param targetLanguage     the human language of the problem statements
+     * @param distractorsEnabled whether to plan distractors
+     * @param constraints        the teacher's generation constraints, or null
+     * @param tierCount          the number of tiers
+     * @return the chat completions request
      */
+    @SuppressWarnings("checkstyle:MethodLength")
     public ObjectNode buildSequenceRequest(
         final String taskDescription, final List<String> concepts,
         final String codeSnippet, final String language,
@@ -177,9 +248,9 @@ public class PromptBuilder {
             );
             String constraintSection = buildConstraintSection(constraints, 3);
             if (!constraintSection.isEmpty()) {
-                var messages = (ArrayNode) json.get("messages");
+                var messages = (ArrayNode) json.get(MESSAGES);
                 var userMsg = (ObjectNode) messages.get(messages.size() - 1);
-                userMsg.put("content", userMsg.get("content").asText() + constraintSection);
+                userMsg.put(CONTENT, userMsg.get(CONTENT).asText() + constraintSection);
             }
             return json;
         }
@@ -191,11 +262,11 @@ public class PromptBuilder {
         // System: dedicated 5-tier identity prompt
         messages.add(
             mapper.createObjectNode()
-                .put("role", "system")
-                .put("content", identityLoader.load("Sequence5Tier"))
+                .put(ROLE, ROLE_SYSTEM)
+                .put(CONTENT, identityLoader.load("Sequence5Tier"))
         );
 
-        String langLabel = "en".equalsIgnoreCase(targetLanguage) ? "English" : "German";
+        String langLabel = ENGLISH.equalsIgnoreCase(targetLanguage) ? "English" : "German";
 
         String targetLanguageInstruction = """
 
@@ -250,7 +321,7 @@ public class PromptBuilder {
             The generated tasks' intended solutions must consist of a single function only, not full programs.
             %s%s""".formatted(
             tierCount, tierCount,
-            taskDescription, language, String.join(", ", concepts), codeSnippet,
+            taskDescription, language, String.join(LIST_SEPARATOR, concepts), codeSnippet,
             targetLanguageInstruction, distractorInstruction
         );
 
@@ -260,13 +331,13 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "user")
-                .put("content", finalPrompt)
+                .put(ROLE, ROLE_USER)
+                .put(CONTENT, finalPrompt)
         );
 
-        json.set("messages", messages);
+        json.set(MESSAGES, messages);
         json.set(
-            "response_format", distractorsEnabled
+            RESPONSE_FORMAT, distractorsEnabled
                 ? responseFormatTieredContractsWithDistractors(tierCount)
                 : responseFormatTieredContracts(tierCount)
         );
@@ -283,9 +354,11 @@ public class PromptBuilder {
     /**
      * AP20+AP21: Builds the constraint section, tier-count-aware for correct difficulty slope text.
      */
+    @SuppressWarnings("checkstyle:NPathComplexity")
     String buildConstraintSection(final GenerationConstraints constraints, final int tierCount) {
-        if (constraints == null || !constraints.hasAny())
+        if (constraints == null || !constraints.hasAny()) {
             return "";
+        }
 
         StringBuilder sb = new StringBuilder();
         sb.append("\n\n    GENERATION CONSTRAINTS (AP20):\n");
@@ -295,7 +368,7 @@ public class PromptBuilder {
             sb.append("    ").append(
                 constraints.getBlacklist().stream()
                     .map(c -> "\"" + c + "\"")
-                    .collect(Collectors.joining(", "))
+                    .collect(Collectors.joining(LIST_SEPARATOR))
             );
             sb.append("\n    If any blacklisted construct appears in the solution, the task is INVALID.\n");
         }
@@ -305,7 +378,7 @@ public class PromptBuilder {
             sb.append("    ").append(
                 constraints.getWhitelist().stream()
                     .map(c -> "\"" + c + "\"")
-                    .collect(Collectors.joining(", "))
+                    .collect(Collectors.joining(LIST_SEPARATOR))
             );
             sb.append("\n    No other programming constructs beyond basic syntax are allowed.\n");
         }
@@ -313,7 +386,7 @@ public class PromptBuilder {
         if (constraints.getDifficultySlope() != null && !constraints.getDifficultySlope().isBlank()) {
             sb.append("    DIFFICULTY SLOPE: ").append(constraints.getDifficultySlope()).append("\n");
             if (tierCount == 5) {
-                switch (constraints.getDifficultySlope().toLowerCase()) {
+                switch (constraints.getDifficultySlope().toLowerCase(Locale.ROOT)) {
                     case "gentle" -> sb.append(
                         "    → Tiers 1–5 should progress very gently. Even Tier 5 should be approachable for students.\n"
                     );
@@ -323,7 +396,7 @@ public class PromptBuilder {
                 }
             }
             else {
-                switch (constraints.getDifficultySlope().toLowerCase()) {
+                switch (constraints.getDifficultySlope().toLowerCase(Locale.ROOT)) {
                     case "gentle" -> sb.append(
                         "    → Tiers 1-3 should have very gradual complexity increase. Tier 3 should still be approachable.\n"
                     );
@@ -341,6 +414,18 @@ public class PromptBuilder {
         return sb.toString();
     }
 
+    /**
+     * Builds the request for a tiered task sequence, optionally asking for a distractor plan per task.
+     *
+     * @param taskDescription    the teacher's sample task description, or null
+     * @param concepts           the concepts the sequence should cover
+     * @param codeSnippet        the teacher's code snippet, or null
+     * @param language           the programming language of the tasks
+     * @param targetLanguage     the human language of the problem statements
+     * @param distractorsEnabled whether to plan distractors
+     * @return the chat completions request
+     */
+    @SuppressWarnings("checkstyle:MethodLength")
     public ObjectNode buildSequenceRequest(
         final String taskDescription, final List<String> concepts,
         final String codeSnippet, final String language,
@@ -351,12 +436,12 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "system")
-                .put("content", identityLoader.load("Sequence"))
+                .put(ROLE, ROLE_SYSTEM)
+                .put(CONTENT, identityLoader.load("Sequence"))
         );
 
         String langLabel;
-        if ("en".equalsIgnoreCase(targetLanguage)) {
+        if (ENGLISH.equalsIgnoreCase(targetLanguage)) {
             langLabel = "English";
         }
         else {
@@ -407,19 +492,19 @@ public class PromptBuilder {
             Use the reference snippet only as conceptual context, not as a structural template.
             The generated tasks' intended solutions must consist of a single function only, not full programs.
             %s%s""".formatted(
-            taskDescription, language, String.join(", ", concepts), codeSnippet,
+            taskDescription, language, String.join(LIST_SEPARATOR, concepts), codeSnippet,
             targetLanguageInstruction, distractorInstruction
         );
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "user")
-                .put("content", prompt)
+                .put(ROLE, ROLE_USER)
+                .put(CONTENT, prompt)
         );
 
-        json.set("messages", messages);
+        json.set(MESSAGES, messages);
         json.set(
-            "response_format",
+            RESPONSE_FORMAT,
             distractorsEnabled ? responseFormatTieredContractsWithDistractors() : responseFormatTieredContracts()
         );
         return json;
@@ -427,278 +512,283 @@ public class PromptBuilder {
 
     // AP21: Tier-count-aware overloads
     private ObjectNode responseFormatTieredContracts(int tierCount) {
-        if (tierCount <= 3)
+        if (tierCount <= 3) {
             return responseFormatTieredContracts();
+        }
         return buildTieredContractSchema(tierCount, false);
     }
 
     private ObjectNode responseFormatTieredContractsWithDistractors(int tierCount) {
-        if (tierCount <= 3)
+        if (tierCount <= 3) {
             return responseFormatTieredContractsWithDistractors();
+        }
         return buildTieredContractSchema(tierCount, true);
     }
 
     /**
      * AP21: Builds a dynamic JSON response schema for N tiers, with optional distractor plan.
      */
+    @SuppressWarnings("checkstyle:MethodLength")
     private ObjectNode buildTieredContractSchema(int tierCount, boolean withDistractors) {
-        ObjectNode rf = mapper.createObjectNode().put("type", "json_schema");
+        ObjectNode rf = mapper.createObjectNode().put(TYPE, JSON_SCHEMA);
         ObjectNode js = mapper.createObjectNode();
         js.put(
-            "name", withDistractors
+            NAME, withDistractors
                 ? "tiered_contracts_with_distractors_response"
                 : "tiered_contracts_response"
         );
-        js.put("strict", true);
+        js.put(STRICT, true);
 
-        ObjectNode schema = mapper.createObjectNode().put("type", "object");
+        ObjectNode schema = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode props = mapper.createObjectNode();
 
         ObjectNode tasks = mapper.createObjectNode();
-        tasks.put("type", "array");
-        tasks.put("minItems", tierCount);
-        tasks.put("maxItems", tierCount);
+        tasks.put(TYPE, ARRAY);
+        tasks.put(MIN_ITEMS, tierCount);
+        tasks.put(MAX_ITEMS, tierCount);
 
-        ObjectNode taskItem = mapper.createObjectNode().put("type", "object");
+        ObjectNode taskItem = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode taskProps = mapper.createObjectNode();
 
         ObjectNode tier = mapper.createObjectNode();
-        tier.put("type", "integer");
+        tier.put(TYPE, "integer");
         tier.put("minimum", 1);
         tier.put("maximum", tierCount);
-        taskProps.set("tier", tier);
-        taskProps.set("statement", str());
+        taskProps.set(TIER, tier);
+        taskProps.set(STATEMENT, str());
 
         // contract
-        ObjectNode contract = mapper.createObjectNode().put("type", "object");
+        ObjectNode contract = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode cProps = mapper.createObjectNode();
-        cProps.set("language", str());
-        cProps.set("taskStatement", str());
-        cProps.set("functionSignature", str());
-        cProps.set("purposeBehavior", str());
-        cProps.set("prePostConditions", str());
+        cProps.set(LANGUAGE, str());
+        cProps.set(TASK_STATEMENT, str());
+        cProps.set(FUNCTION_SIGNATURE, str());
+        cProps.set(PURPOSE_BEHAVIOR, str());
+        cProps.set(PRE_POST_CONDITIONS, str());
         ObjectNode examples = mapper.createObjectNode();
-        examples.put("type", "array");
-        examples.put("minItems", 1);
-        examples.put("maxItems", 2);
-        ObjectNode exItem = mapper.createObjectNode().put("type", "object");
+        examples.put(TYPE, ARRAY);
+        examples.put(MIN_ITEMS, 1);
+        examples.put(MAX_ITEMS, 2);
+        ObjectNode exItem = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode exProps = mapper.createObjectNode();
-        exProps.set("input", str());
-        exProps.set("output", str());
-        exItem.set("properties", exProps);
-        exItem.putArray("required").add("input").add("output");
-        exItem.put("additionalProperties", false);
-        examples.set("items", exItem);
-        cProps.set("examples", examples);
-        contract.set("properties", cProps);
-        contract.putArray("required")
-            .add("language").add("taskStatement").add("functionSignature")
-            .add("purposeBehavior").add("prePostConditions").add("examples");
-        contract.put("additionalProperties", false);
-        taskProps.set("contract", contract);
+        exProps.set(INPUT, str());
+        exProps.set(OUTPUT, str());
+        exItem.set(PROPERTIES, exProps);
+        exItem.putArray(REQUIRED).add(INPUT).add(OUTPUT);
+        exItem.put(ADDITIONAL_PROPERTIES, false);
+        examples.set(ITEMS, exItem);
+        cProps.set(EXAMPLES, examples);
+        contract.set(PROPERTIES, cProps);
+        contract.putArray(REQUIRED)
+            .add(LANGUAGE).add(TASK_STATEMENT).add(FUNCTION_SIGNATURE)
+            .add(PURPOSE_BEHAVIOR).add(PRE_POST_CONDITIONS).add(EXAMPLES);
+        contract.put(ADDITIONAL_PROPERTIES, false);
+        taskProps.set(CONTRACT, contract);
 
-        ArrayNode required = taskItem.putArray("required");
-        required.add("tier").add("statement").add("contract");
+        ArrayNode required = taskItem.putArray(REQUIRED);
+        required.add(TIER).add(STATEMENT).add(CONTRACT);
 
         if (withDistractors) {
-            ObjectNode distractorPlan = mapper.createObjectNode().put("type", "object");
+            ObjectNode distractorPlan = mapper.createObjectNode().put(TYPE, OBJECT);
             ObjectNode dpProps = mapper.createObjectNode();
-            dpProps.set("type", str());
+            dpProps.set(TYPE, str());
             dpProps.set("rationale", str());
-            distractorPlan.set("properties", dpProps);
-            distractorPlan.putArray("required").add("type").add("rationale");
-            distractorPlan.put("additionalProperties", false);
+            distractorPlan.set(PROPERTIES, dpProps);
+            distractorPlan.putArray(REQUIRED).add(TYPE).add("rationale");
+            distractorPlan.put(ADDITIONAL_PROPERTIES, false);
             taskProps.set("distractorPlan", distractorPlan);
             required.add("distractorPlan");
         }
 
-        taskItem.set("properties", taskProps);
-        taskItem.put("additionalProperties", false);
-        tasks.set("items", taskItem);
-        props.set("tasks", tasks);
+        taskItem.set(PROPERTIES, taskProps);
+        taskItem.put(ADDITIONAL_PROPERTIES, false);
+        tasks.set(ITEMS, taskItem);
+        props.set(TASKS, tasks);
 
-        schema.set("properties", props);
-        schema.putArray("required").add("tasks");
-        schema.put("additionalProperties", false);
-        js.set("schema", schema);
-        rf.set("json_schema", js);
+        schema.set(PROPERTIES, props);
+        schema.putArray(REQUIRED).add(TASKS);
+        schema.put(ADDITIONAL_PROPERTIES, false);
+        js.set(SCHEMA, schema);
+        rf.set(JSON_SCHEMA, js);
         return rf;
     }
 
+    @SuppressWarnings("checkstyle:MethodLength")
     private ObjectNode responseFormatTieredContracts() {
-        ObjectNode rf = mapper.createObjectNode().put("type", "json_schema");
+        ObjectNode rf = mapper.createObjectNode().put(TYPE, JSON_SCHEMA);
         ObjectNode js = mapper.createObjectNode();
-        js.put("name", "tiered_contracts_response");
-        js.put("strict", true);
+        js.put(NAME, "tiered_contracts_response");
+        js.put(STRICT, true);
 
-        ObjectNode schema = mapper.createObjectNode().put("type", "object");
+        ObjectNode schema = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode props = mapper.createObjectNode();
 
         // tasks: array[3] of task objects
         ObjectNode tasks = mapper.createObjectNode();
-        tasks.put("type", "array");
-        tasks.put("minItems", 3);
-        tasks.put("maxItems", 3);
+        tasks.put(TYPE, ARRAY);
+        tasks.put(MIN_ITEMS, 3);
+        tasks.put(MAX_ITEMS, 3);
 
         // task item
-        ObjectNode taskItem = mapper.createObjectNode().put("type", "object");
+        ObjectNode taskItem = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode taskProps = mapper.createObjectNode();
 
         // tier
         ObjectNode tier = mapper.createObjectNode();
-        tier.put("type", "integer");
+        tier.put(TYPE, "integer");
         tier.put("minimum", 1);
         tier.put("maximum", 3);
-        taskProps.set("tier", tier);
+        taskProps.set(TIER, tier);
 
         // statement (should equal contract.taskStatement)
-        ObjectNode statement = mapper.createObjectNode().put("type", "string");
-        taskProps.set("statement", statement);
+        ObjectNode statement = mapper.createObjectNode().put(TYPE, STRING);
+        taskProps.set(STATEMENT, statement);
 
         // contract
-        ObjectNode contract = mapper.createObjectNode().put("type", "object");
+        ObjectNode contract = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode cProps = mapper.createObjectNode();
-        cProps.set("language", str());
-        cProps.set("taskStatement", str());
-        cProps.set("functionSignature", str());
-        cProps.set("purposeBehavior", str());
-        cProps.set("prePostConditions", str());
+        cProps.set(LANGUAGE, str());
+        cProps.set(TASK_STATEMENT, str());
+        cProps.set(FUNCTION_SIGNATURE, str());
+        cProps.set(PURPOSE_BEHAVIOR, str());
+        cProps.set(PRE_POST_CONDITIONS, str());
 
         // examples: array of 1..2 {input, output}
         ObjectNode examples = mapper.createObjectNode();
-        examples.put("type", "array");
-        examples.put("minItems", 1);
-        examples.put("maxItems", 2);
+        examples.put(TYPE, ARRAY);
+        examples.put(MIN_ITEMS, 1);
+        examples.put(MAX_ITEMS, 2);
 
-        ObjectNode exItem = mapper.createObjectNode().put("type", "object");
+        ObjectNode exItem = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode exProps = mapper.createObjectNode();
-        exProps.set("input", str());
-        exProps.set("output", str());
-        exItem.set("properties", exProps);
-        exItem.putArray("required").add("input").add("output");
-        exItem.put("additionalProperties", false);
+        exProps.set(INPUT, str());
+        exProps.set(OUTPUT, str());
+        exItem.set(PROPERTIES, exProps);
+        exItem.putArray(REQUIRED).add(INPUT).add(OUTPUT);
+        exItem.put(ADDITIONAL_PROPERTIES, false);
 
-        examples.set("items", exItem);
-        cProps.set("examples", examples);
+        examples.set(ITEMS, exItem);
+        cProps.set(EXAMPLES, examples);
 
-        contract.set("properties", cProps);
-        contract.putArray("required")
-            .add("language")
-            .add("taskStatement")
-            .add("functionSignature")
-            .add("purposeBehavior")
-            .add("prePostConditions")
-            .add("examples");
-        contract.put("additionalProperties", false);
+        contract.set(PROPERTIES, cProps);
+        contract.putArray(REQUIRED)
+            .add(LANGUAGE)
+            .add(TASK_STATEMENT)
+            .add(FUNCTION_SIGNATURE)
+            .add(PURPOSE_BEHAVIOR)
+            .add(PRE_POST_CONDITIONS)
+            .add(EXAMPLES);
+        contract.put(ADDITIONAL_PROPERTIES, false);
 
-        taskProps.set("contract", contract);
+        taskProps.set(CONTRACT, contract);
 
-        taskItem.set("properties", taskProps);
-        taskItem.putArray("required").add("tier").add("statement").add("contract");
-        taskItem.put("additionalProperties", false);
+        taskItem.set(PROPERTIES, taskProps);
+        taskItem.putArray(REQUIRED).add(TIER).add(STATEMENT).add(CONTRACT);
+        taskItem.put(ADDITIONAL_PROPERTIES, false);
 
-        tasks.set("items", taskItem);
-        props.set("tasks", tasks);
+        tasks.set(ITEMS, taskItem);
+        props.set(TASKS, tasks);
 
-        schema.set("properties", props);
-        schema.putArray("required").add("tasks");
-        schema.put("additionalProperties", false);
+        schema.set(PROPERTIES, props);
+        schema.putArray(REQUIRED).add(TASKS);
+        schema.put(ADDITIONAL_PROPERTIES, false);
 
-        js.set("schema", schema);
-        rf.set("json_schema", js);
+        js.set(SCHEMA, schema);
+        rf.set(JSON_SCHEMA, js);
         return rf;
     }
 
+    @SuppressWarnings("checkstyle:MethodLength")
     private ObjectNode responseFormatTieredContractsWithDistractors() {
-        ObjectNode rf = mapper.createObjectNode().put("type", "json_schema");
+        ObjectNode rf = mapper.createObjectNode().put(TYPE, JSON_SCHEMA);
         ObjectNode js = mapper.createObjectNode();
-        js.put("name", "tiered_contracts_with_distractors_response");
-        js.put("strict", true);
+        js.put(NAME, "tiered_contracts_with_distractors_response");
+        js.put(STRICT, true);
 
-        ObjectNode schema = mapper.createObjectNode().put("type", "object");
+        ObjectNode schema = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode props = mapper.createObjectNode();
 
         ObjectNode tasks = mapper.createObjectNode();
-        tasks.put("type", "array");
-        tasks.put("minItems", 3);
-        tasks.put("maxItems", 3);
+        tasks.put(TYPE, ARRAY);
+        tasks.put(MIN_ITEMS, 3);
+        tasks.put(MAX_ITEMS, 3);
 
-        ObjectNode taskItem = mapper.createObjectNode().put("type", "object");
+        ObjectNode taskItem = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode taskProps = mapper.createObjectNode();
 
         ObjectNode tier = mapper.createObjectNode();
-        tier.put("type", "integer");
+        tier.put(TYPE, "integer");
         tier.put("minimum", 1);
         tier.put("maximum", 3);
-        taskProps.set("tier", tier);
+        taskProps.set(TIER, tier);
 
-        taskProps.set("statement", str());
+        taskProps.set(STATEMENT, str());
 
         // contract (same as original)
-        ObjectNode contract = mapper.createObjectNode().put("type", "object");
+        ObjectNode contract = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode cProps = mapper.createObjectNode();
-        cProps.set("language", str());
-        cProps.set("taskStatement", str());
-        cProps.set("functionSignature", str());
-        cProps.set("purposeBehavior", str());
-        cProps.set("prePostConditions", str());
+        cProps.set(LANGUAGE, str());
+        cProps.set(TASK_STATEMENT, str());
+        cProps.set(FUNCTION_SIGNATURE, str());
+        cProps.set(PURPOSE_BEHAVIOR, str());
+        cProps.set(PRE_POST_CONDITIONS, str());
 
         ObjectNode examples = mapper.createObjectNode();
-        examples.put("type", "array");
-        examples.put("minItems", 1);
-        examples.put("maxItems", 2);
+        examples.put(TYPE, ARRAY);
+        examples.put(MIN_ITEMS, 1);
+        examples.put(MAX_ITEMS, 2);
 
-        ObjectNode exItem = mapper.createObjectNode().put("type", "object");
+        ObjectNode exItem = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode exProps = mapper.createObjectNode();
-        exProps.set("input", str());
-        exProps.set("output", str());
-        exItem.set("properties", exProps);
-        exItem.putArray("required").add("input").add("output");
-        exItem.put("additionalProperties", false);
+        exProps.set(INPUT, str());
+        exProps.set(OUTPUT, str());
+        exItem.set(PROPERTIES, exProps);
+        exItem.putArray(REQUIRED).add(INPUT).add(OUTPUT);
+        exItem.put(ADDITIONAL_PROPERTIES, false);
 
-        examples.set("items", exItem);
-        cProps.set("examples", examples);
+        examples.set(ITEMS, exItem);
+        cProps.set(EXAMPLES, examples);
 
-        contract.set("properties", cProps);
-        contract.putArray("required")
-            .add("language")
-            .add("taskStatement")
-            .add("functionSignature")
-            .add("purposeBehavior")
-            .add("prePostConditions")
-            .add("examples");
-        contract.put("additionalProperties", false);
+        contract.set(PROPERTIES, cProps);
+        contract.putArray(REQUIRED)
+            .add(LANGUAGE)
+            .add(TASK_STATEMENT)
+            .add(FUNCTION_SIGNATURE)
+            .add(PURPOSE_BEHAVIOR)
+            .add(PRE_POST_CONDITIONS)
+            .add(EXAMPLES);
+        contract.put(ADDITIONAL_PROPERTIES, false);
 
-        taskProps.set("contract", contract);
+        taskProps.set(CONTRACT, contract);
 
         // distractorPlan
-        ObjectNode distractorPlan = mapper.createObjectNode().put("type", "object");
+        ObjectNode distractorPlan = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode dpProps = mapper.createObjectNode();
-        dpProps.set("type", str());
+        dpProps.set(TYPE, str());
         dpProps.set("rationale", str());
-        distractorPlan.set("properties", dpProps);
-        distractorPlan.putArray("required").add("type").add("rationale");
-        distractorPlan.put("additionalProperties", false);
+        distractorPlan.set(PROPERTIES, dpProps);
+        distractorPlan.putArray(REQUIRED).add(TYPE).add("rationale");
+        distractorPlan.put(ADDITIONAL_PROPERTIES, false);
         taskProps.set("distractorPlan", distractorPlan);
 
-        taskItem.set("properties", taskProps);
-        taskItem.putArray("required").add("tier").add("statement").add("contract").add("distractorPlan");
-        taskItem.put("additionalProperties", false);
+        taskItem.set(PROPERTIES, taskProps);
+        taskItem.putArray(REQUIRED).add(TIER).add(STATEMENT).add(CONTRACT).add("distractorPlan");
+        taskItem.put(ADDITIONAL_PROPERTIES, false);
 
-        tasks.set("items", taskItem);
-        props.set("tasks", tasks);
+        tasks.set(ITEMS, taskItem);
+        props.set(TASKS, tasks);
 
-        schema.set("properties", props);
-        schema.putArray("required").add("tasks");
-        schema.put("additionalProperties", false);
+        schema.set(PROPERTIES, props);
+        schema.putArray(REQUIRED).add(TASKS);
+        schema.put(ADDITIONAL_PROPERTIES, false);
 
-        js.set("schema", schema);
-        rf.set("json_schema", js);
+        js.set(SCHEMA, schema);
+        rf.set(JSON_SCHEMA, js);
         return rf;
     }
 
     private ObjectNode str() {
-        return mapper.createObjectNode().put("type", "string");
+        return mapper.createObjectNode().put(TYPE, STRING);
     }
 
     /**
@@ -725,21 +815,21 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "system")
-                .put("content", systemPrompt)
+                .put(ROLE, ROLE_SYSTEM)
+                .put(CONTENT, systemPrompt)
         );
 
         // USER: CONTRACT wie gehabt
         messages.add(
             mapper.createObjectNode()
-                .put("role", "user")
-                .put("content", composeContract(contract))
+                .put(ROLE, ROLE_USER)
+                .put(CONTENT, composeContract(contract))
         );
 
-        json.set("messages", messages);
+        json.set(MESSAGES, messages);
 
         // WICHTIG: wieder JSON-Schema für {"code": "..."} erzwingen
-        json.set("response_format", responseFormatSolverResponse());  // <— statt "text"
+        json.set(RESPONSE_FORMAT, responseFormatSolverResponse());  // <— statt "text"
 
         return json;
     }
@@ -796,15 +886,15 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "system")
-                .put("content", identityLoader.load("ConceptExtraction"))
+                .put(ROLE, ROLE_SYSTEM)
+                .put(CONTENT, identityLoader.load("ConceptExtraction"))
         );
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "user")
+                .put(ROLE, ROLE_USER)
                 .put(
-                    "content",
+                    CONTENT,
                     """
                         Programming language: %s
 
@@ -833,8 +923,8 @@ public class PromptBuilder {
                 )
         );
 
-        json.set("messages", messages);
-        json.set("response_format", responseFormatConceptList());
+        json.set(MESSAGES, messages);
+        json.set(RESPONSE_FORMAT, responseFormatConceptList());
         return json;
     }
 
@@ -843,6 +933,11 @@ public class PromptBuilder {
      * contains the token "{{CODE}}", it will be replaced with the given codeSnippet. If "{{CODE}}" is absent, the code
      * will be appended as a "Code:" block at the end. The response is constrained to a JSON object with a single "task"
      * field via response_format.
+     *
+     * @param codeSnippet    the code to describe
+     * @param systemPrompt   the system prompt to send
+     * @param userPromptBody the user prompt to send with the code
+     * @return the chat completions request
      */
     public ObjectNode buildTaskDescriptionRequest(
         final String codeSnippet,
@@ -857,8 +952,8 @@ public class PromptBuilder {
         if (systemPrompt != null && !systemPrompt.isBlank()) {
             messages.add(
                 mapper.createObjectNode()
-                    .put("role", "system")
-                    .put("content", systemPrompt)
+                    .put(ROLE, ROLE_SYSTEM)
+                    .put(CONTENT, systemPrompt)
             );
         }
 
@@ -874,12 +969,12 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "user")
-                .put("content", resolvedBody)
+                .put(ROLE, ROLE_USER)
+                .put(CONTENT, resolvedBody)
         );
 
-        json.set("messages", messages);
-        json.set("response_format", responseFormatTask()); // enforce {"task": "..."}
+        json.set(MESSAGES, messages);
+        json.set(RESPONSE_FORMAT, responseFormatTask()); // enforce {"task": "..."}
         return json;
     }
 
@@ -895,23 +990,23 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "system")
-                .put("content", identityLoader.load("TaskDescription"))
+                .put(ROLE, ROLE_SYSTEM)
+                .put(CONTENT, identityLoader.load("TaskDescription"))
         );
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "user")
+                .put(ROLE, ROLE_USER)
                 .put(
-                    "content", "Given the following code, generate"
+                    CONTENT, "Given the following code, generate"
                         + " a concise and clear problem statement for it. "
                         + "Respond in JSON format only.\nCode:\n"
                         + codeSnippet
                 )
         );
 
-        json.set("messages", messages);
-        json.set("response_format", responseFormatTask());
+        json.set(MESSAGES, messages);
+        json.set(RESPONSE_FORMAT, responseFormatTask());
         return json;
     }
 
@@ -931,28 +1026,28 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "system")
+                .put(ROLE, ROLE_SYSTEM)
                 .put(
-                    "content", "You are an expert in designing"
+                    CONTENT, "You are an expert in designing"
                         + " programming exercises for students."
                 )
         );
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "user")
+                .put(ROLE, ROLE_USER)
                 .put(
-                    "content", "Generate a single concise"
+                    CONTENT, "Generate a single concise"
                         + " programming task written in " + language
                         + " that emphasizes the following concepts: "
-                        + String.join(", ", concepts)
+                        + String.join(LIST_SEPARATOR, concepts)
                         + ".\nRespond with only a JSON object like: "
                         + "{\"task\": \"...\"}"
                 )
         );
 
-        json.set("messages", messages);
-        json.set("response_format", responseFormatTask());
+        json.set(MESSAGES, messages);
+        json.set(RESPONSE_FORMAT, responseFormatTask());
         return json;
     }
 
@@ -968,56 +1063,34 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "system")
-                .put("content", identityLoader.load("LanguageDetection"))
+                .put(ROLE, ROLE_SYSTEM)
+                .put(CONTENT, identityLoader.load("LanguageDetection"))
         );
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "user")
+                .put(ROLE, ROLE_USER)
                 .put(
-                    "content", "Detect the programming language"
+                    CONTENT, "Detect the programming language"
                         + " used in the following code. Respond only in JSON "
                         + "format.\nCode:\n" + codeSnippet
                 )
         );
 
-        json.set("messages", messages);
-        json.set("response_format", responseFormatLanguage());
+        json.set(MESSAGES, messages);
+        json.set(RESPONSE_FORMAT, responseFormatLanguage());
         return json;
     }
 
     // === Response Format Helpers ===
 
-    private ObjectNode responseFormatTieredResponse() {
-        ObjectNode responseFormat = mapper.createObjectNode();
-        responseFormat.put("type", "json_schema");
-
-        ObjectNode jsonSchema = mapper.createObjectNode();
-        jsonSchema.put("name", "problem_statements_response");
-        jsonSchema.put("strict", true);
-
-        ObjectNode schema = mapper.createObjectNode();
-        schema.put("type", "object");
-
-        ObjectNode properties = mapper.createObjectNode();
-        ObjectNode problemStatements = mapper.createObjectNode();
-        problemStatements.put("type", "array");
-
-        ObjectNode items = mapper.createObjectNode();
-        items.put("type", "string");
-        problemStatements.set("items", items);
-
-        properties.set("problem_statements", problemStatements);
-        schema.set("properties", properties);
-        schema.putArray("required").add("problem_statements");
-        schema.put("additionalProperties", false);
-
-        jsonSchema.set("schema", schema);
-        responseFormat.set("json_schema", jsonSchema);
-        return responseFormat;
-    }
-
+    /**
+     * Builds the request that solves a problem statement, answered as code only.
+     *
+     * @param taskDescription the problem statement to solve
+     * @param language        the programming language of the solution
+     * @return the chat completions request
+     */
     public ObjectNode buildSimpleSolveRequest(final String taskDescription, final String language) {
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
@@ -1035,18 +1108,18 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "system")
-                .put("content", systemPrompt)
+                .put(ROLE, ROLE_SYSTEM)
+                .put(CONTENT, systemPrompt)
         );
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "user")
-                .put("content", composeSimpleSolveContract(taskDescription, language))
+                .put(ROLE, ROLE_USER)
+                .put(CONTENT, composeSimpleSolveContract(taskDescription, language))
         );
 
-        json.set("messages", messages);
-        json.set("response_format", responseFormatSolverResponse()); // erzwinge {"code": "..."}
+        json.set(MESSAGES, messages);
+        json.set(RESPONSE_FORMAT, responseFormatSolverResponse()); // erzwinge {"code": "..."}
         return json;
     }
 
@@ -1062,6 +1135,7 @@ public class PromptBuilder {
      * @param count          number of distractors to generate
      * @return GPT-compliant JSON request object
      */
+    @SuppressWarnings("checkstyle:MethodLength")
     public ObjectNode buildDistractorRequest(
         final String solutionCode,
         final String language,
@@ -1100,8 +1174,8 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "system")
-                .put("content", systemPrompt)
+                .put(ROLE, ROLE_SYSTEM)
+                .put(CONTENT, systemPrompt)
         );
 
         String strategySection = "";
@@ -1130,79 +1204,83 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "user")
-                .put("content", userPrompt)
+                .put(ROLE, ROLE_USER)
+                .put(CONTENT, userPrompt)
         );
 
-        json.set("messages", messages);
-        json.set("response_format", responseFormatDistractors());
+        json.set(MESSAGES, messages);
+        json.set(RESPONSE_FORMAT, responseFormatDistractors());
         return json;
     }
 
     /**
      * AP19 Teil A: Builds the semantic tagging request. The response is held to the tagger's own schema, so it can only
      * come back as the tag object — not as free text.
+     *
+     * @param systemPrompt the tagger's system prompt
+     * @param userPrompt   the sequence content to tag
+     * @return the chat completions request
      */
     public ObjectNode buildSemanticTagRequest(final String systemPrompt, final String userPrompt) {
         ObjectNode json = mapper.createObjectNode();
         ArrayNode messages = mapper.createArrayNode();
-        messages.add(mapper.createObjectNode().put("role", "system").put("content", systemPrompt));
-        messages.add(mapper.createObjectNode().put("role", "user").put("content", userPrompt));
-        json.set("messages", messages);
-        json.set("response_format", responseFormatSemanticTags());
+        messages.add(mapper.createObjectNode().put(ROLE, ROLE_SYSTEM).put(CONTENT, systemPrompt));
+        messages.add(mapper.createObjectNode().put(ROLE, ROLE_USER).put(CONTENT, userPrompt));
+        json.set(MESSAGES, messages);
+        json.set(RESPONSE_FORMAT, responseFormatSemanticTags());
         return json;
     }
 
     private ObjectNode responseFormatSemanticTags() {
-        ObjectNode tag = mapper.createObjectNode().put("type", "object");
+        ObjectNode tag = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode tagProps = mapper.createObjectNode();
-        tagProps.set("de", mapper.createObjectNode().put("type", "string"));
-        tagProps.set("en", mapper.createObjectNode().put("type", "string"));
-        tag.set("properties", tagProps);
-        tag.putArray("required").add("de").add("en");
-        tag.put("additionalProperties", false);
+        tagProps.set("de", mapper.createObjectNode().put(TYPE, STRING));
+        tagProps.set(ENGLISH, mapper.createObjectNode().put(TYPE, STRING));
+        tag.set(PROPERTIES, tagProps);
+        tag.putArray(REQUIRED).add("de").add(ENGLISH);
+        tag.put(ADDITIONAL_PROPERTIES, false);
 
         ObjectNode properties = mapper.createObjectNode();
-        properties.set("primary_tags", mapper.createObjectNode().put("type", "array").set("items", tag));
-        properties.set("aliases", mapper.createObjectNode().put("type", "array").set("items", tag.deepCopy()));
-        properties.set("short_description", mapper.createObjectNode().put("type", "string"));
+        properties.set("primary_tags", mapper.createObjectNode().put(TYPE, ARRAY).set(ITEMS, tag));
+        properties.set("aliases", mapper.createObjectNode().put(TYPE, ARRAY).set(ITEMS, tag.deepCopy()));
+        properties.set("short_description", mapper.createObjectNode().put(TYPE, STRING));
 
-        ObjectNode schema = mapper.createObjectNode().put("type", "object");
-        schema.set("properties", properties);
-        schema.putArray("required").add("primary_tags").add("aliases").add("short_description");
-        schema.put("additionalProperties", false);
+        ObjectNode schema = mapper.createObjectNode().put(TYPE, OBJECT);
+        schema.set(PROPERTIES, properties);
+        schema.putArray(REQUIRED).add("primary_tags").add("aliases").add("short_description");
+        schema.put(ADDITIONAL_PROPERTIES, false);
 
         ObjectNode js = mapper.createObjectNode();
-        js.put("name", "semantic_tags_response");
-        js.put("strict", true);
-        js.set("schema", schema);
+        js.put(NAME, "semantic_tags_response");
+        js.put(STRICT, true);
+        js.set(SCHEMA, schema);
 
-        ObjectNode rf = mapper.createObjectNode().put("type", "json_schema");
-        rf.set("json_schema", js);
+        ObjectNode rf = mapper.createObjectNode().put(TYPE, JSON_SCHEMA);
+        rf.set(JSON_SCHEMA, js);
         return rf;
     }
 
     private ObjectNode responseFormatDistractors() {
-        ObjectNode rf = mapper.createObjectNode().put("type", "json_schema");
+        ObjectNode rf = mapper.createObjectNode().put(TYPE, JSON_SCHEMA);
         ObjectNode js = mapper.createObjectNode();
-        js.put("name", "distractor_response");
-        js.put("strict", true);
+        js.put(NAME, "distractor_response");
+        js.put(STRICT, true);
 
-        ObjectNode schema = mapper.createObjectNode().put("type", "object");
+        ObjectNode schema = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode properties = mapper.createObjectNode();
 
         ObjectNode distractors = mapper.createObjectNode();
-        distractors.put("type", "array");
-        ObjectNode items = mapper.createObjectNode().put("type", "string");
-        distractors.set("items", items);
+        distractors.put(TYPE, ARRAY);
+        ObjectNode items = mapper.createObjectNode().put(TYPE, STRING);
+        distractors.set(ITEMS, items);
         properties.set("distractors", distractors);
 
-        schema.set("properties", properties);
-        schema.putArray("required").add("distractors");
-        schema.put("additionalProperties", false);
+        schema.set(PROPERTIES, properties);
+        schema.putArray(REQUIRED).add("distractors");
+        schema.put(ADDITIONAL_PROPERTIES, false);
 
-        js.set("schema", schema);
-        rf.set("json_schema", js);
+        js.set(SCHEMA, schema);
+        rf.set(JSON_SCHEMA, js);
         return rf;
     }
 
@@ -1211,6 +1289,12 @@ public class PromptBuilder {
      * syntactically complex line and decompose it into 2–4 draggable fragments that are EXACT contiguous substrings (so
      * prefix + concat(fragments) + suffix reconstruct the line verbatim), optionally with an OFF_BY_ONE fragment
      * distractor.
+     *
+     * @param solutionCode  the task's solution
+     * @param language      the programming language of the solution
+     * @param taskStatement the task's problem statement
+     * @param tierLevel     the task's tier
+     * @return the chat completions request
      */
     public ObjectNode buildSplitPlanRequest(
         final String solutionCode,
@@ -1238,7 +1322,7 @@ public class PromptBuilder {
                split-aware pass. Emit fragments/prefix/suffix only.
             6. Do NOT include gap markers, #distractor, #swap or #group.""";
 
-        messages.add(mapper.createObjectNode().put("role", "system").put("content", systemPrompt));
+        messages.add(mapper.createObjectNode().put(ROLE, ROLE_SYSTEM).put(CONTENT, systemPrompt));
 
         String userPrompt = """
             TASK CONTEXT:
@@ -1257,10 +1341,10 @@ public class PromptBuilder {
             language, taskStatement, tierLevel, solutionCode
         );
 
-        messages.add(mapper.createObjectNode().put("role", "user").put("content", userPrompt));
+        messages.add(mapper.createObjectNode().put(ROLE, ROLE_USER).put(CONTENT, userPrompt));
 
-        json.set("messages", messages);
-        json.set("response_format", mapper.createObjectNode().put("type", "json_object"));
+        json.set(MESSAGES, messages);
+        json.set(RESPONSE_FORMAT, mapper.createObjectNode().put(TYPE, "json_object"));
         return json;
     }
 
@@ -1268,6 +1352,14 @@ public class PromptBuilder {
      * AP31 (second pass): asks for ONE fragment-level distractor that fits a single slot of an already-decided split.
      * The model sees the exact fragments, so its wrong fragment matches one slot's shape instead of spanning the whole
      * line.
+     *
+     * @param fragments     the correct fragments of the split line, in order
+     * @param prefix        the fixed text before the fragments
+     * @param suffix        the fixed text after the fragments
+     * @param language      the programming language of the line
+     * @param taskStatement the task's problem statement
+     * @param tierLevel     the task's tier
+     * @return the chat completions request
      */
     public ObjectNode buildSplitDistractorRequest(
         final List<String> fragments,
@@ -1299,7 +1391,7 @@ public class PromptBuilder {
             3. If nothing instructive applies, decline by returning {"text": ""}.
             4. Output JSON only — no #distractor/#swap/#group, no markdown.""";
 
-        messages.add(mapper.createObjectNode().put("role", "system").put("content", systemPrompt));
+        messages.add(mapper.createObjectNode().put(ROLE, ROLE_SYSTEM).put(CONTENT, systemPrompt));
 
         StringBuilder fragList = new StringBuilder();
         for (int i = 0; i < fragments.size(); i++) {
@@ -1320,10 +1412,10 @@ public class PromptBuilder {
             prefix == null ? "" : prefix, suffix == null ? "" : suffix, fragList.toString()
         );
 
-        messages.add(mapper.createObjectNode().put("role", "user").put("content", userPrompt));
+        messages.add(mapper.createObjectNode().put(ROLE, ROLE_USER).put(CONTENT, userPrompt));
 
-        json.set("messages", messages);
-        json.set("response_format", mapper.createObjectNode().put("type", "json_object"));
+        json.set(MESSAGES, messages);
+        json.set(RESPONSE_FORMAT, mapper.createObjectNode().put(TYPE, "json_object"));
         return json;
     }
 
@@ -1338,109 +1430,109 @@ public class PromptBuilder {
 
     private ObjectNode responseFormatSolverResponse() {
         ObjectNode responseFormat = mapper.createObjectNode();
-        responseFormat.put("type", "json_schema");
+        responseFormat.put(TYPE, JSON_SCHEMA);
 
         ObjectNode jsonSchema = mapper.createObjectNode();
-        jsonSchema.put("name", "code_solution_response");
-        jsonSchema.put("strict", true);
+        jsonSchema.put(NAME, "code_solution_response");
+        jsonSchema.put(STRICT, true);
 
         ObjectNode schema = mapper.createObjectNode();
-        schema.put("type", "object");
+        schema.put(TYPE, OBJECT);
 
         ObjectNode properties = mapper.createObjectNode();
         ObjectNode code = mapper.createObjectNode();
-        code.put("type", "string");
+        code.put(TYPE, STRING);
         properties.set("code", code);
 
-        schema.set("properties", properties);
-        schema.putArray("required").add("code");
-        schema.put("additionalProperties", false);
+        schema.set(PROPERTIES, properties);
+        schema.putArray(REQUIRED).add("code");
+        schema.put(ADDITIONAL_PROPERTIES, false);
 
-        jsonSchema.set("schema", schema);
-        responseFormat.set("json_schema", jsonSchema);
+        jsonSchema.set(SCHEMA, schema);
+        responseFormat.set(JSON_SCHEMA, jsonSchema);
         return responseFormat;
     }
 
     private ObjectNode responseFormatConceptList() {
         ObjectNode responseFormat = mapper.createObjectNode();
-        responseFormat.put("type", "json_schema");
+        responseFormat.put(TYPE, JSON_SCHEMA);
 
         ObjectNode jsonSchema = mapper.createObjectNode();
-        jsonSchema.put("name", "concept_list_response");
-        jsonSchema.put("strict", true);
+        jsonSchema.put(NAME, "concept_list_response");
+        jsonSchema.put(STRICT, true);
 
         ObjectNode schema = mapper.createObjectNode();
-        schema.put("type", "object");
+        schema.put(TYPE, OBJECT);
 
         ObjectNode properties = mapper.createObjectNode();
         ObjectNode concepts = mapper.createObjectNode();
-        concepts.put("type", "array");
+        concepts.put(TYPE, ARRAY);
         ObjectNode items = mapper.createObjectNode();
-        items.put("type", "string");
-        concepts.set("items", items);
+        items.put(TYPE, STRING);
+        concepts.set(ITEMS, items);
 
         properties.set("concepts", concepts);
-        schema.set("properties", properties);
-        schema.putArray("required").add("concepts");
-        schema.put("additionalProperties", false);
+        schema.set(PROPERTIES, properties);
+        schema.putArray(REQUIRED).add("concepts");
+        schema.put(ADDITIONAL_PROPERTIES, false);
 
-        jsonSchema.set("schema", schema);
-        responseFormat.set("json_schema", jsonSchema);
+        jsonSchema.set(SCHEMA, schema);
+        responseFormat.set(JSON_SCHEMA, jsonSchema);
         return responseFormat;
     }
 
     private ObjectNode responseFormatTask() {
         ObjectNode responseFormat = mapper.createObjectNode();
-        responseFormat.put("type", "json_schema");
+        responseFormat.put(TYPE, JSON_SCHEMA);
 
         ObjectNode jsonSchema = mapper.createObjectNode();
-        jsonSchema.put("name", "sample_task_response");
-        jsonSchema.put("strict", true);
+        jsonSchema.put(NAME, "sample_task_response");
+        jsonSchema.put(STRICT, true);
 
         ObjectNode schema = mapper.createObjectNode();
-        schema.put("type", "object");
+        schema.put(TYPE, OBJECT);
 
         ObjectNode properties = mapper.createObjectNode();
         ObjectNode task = mapper.createObjectNode();
-        task.put("type", "string");
+        task.put(TYPE, STRING);
         properties.set("task", task);
 
-        schema.set("properties", properties);
-        schema.putArray("required").add("task");
-        schema.put("additionalProperties", false);
+        schema.set(PROPERTIES, properties);
+        schema.putArray(REQUIRED).add("task");
+        schema.put(ADDITIONAL_PROPERTIES, false);
 
-        jsonSchema.set("schema", schema);
-        responseFormat.set("json_schema", jsonSchema);
+        jsonSchema.set(SCHEMA, schema);
+        responseFormat.set(JSON_SCHEMA, jsonSchema);
         return responseFormat;
     }
 
     private ObjectNode responseFormatLanguage() {
         ObjectNode responseFormat = mapper.createObjectNode();
-        responseFormat.put("type", "json_schema");
+        responseFormat.put(TYPE, JSON_SCHEMA);
 
         ObjectNode jsonSchema = mapper.createObjectNode();
-        jsonSchema.put("name", "language_detection_response");
-        jsonSchema.put("strict", true);
+        jsonSchema.put(NAME, "language_detection_response");
+        jsonSchema.put(STRICT, true);
 
         ObjectNode schema = mapper.createObjectNode();
-        schema.put("type", "object");
+        schema.put(TYPE, OBJECT);
 
         ObjectNode properties = mapper.createObjectNode();
         ObjectNode language = mapper.createObjectNode();
-        language.put("type", "string");
+        language.put(TYPE, STRING);
         // A closed set, not a free string. Structured output enforces this, so a typo like
         // "Pyhton" -- which once reached the database and silently cost six sequences their
         // static analysis -- is no longer a value the model is able to return.
         ArrayNode allowed = language.putArray("enum");
         SupportedLanguage.detectionChoices().forEach(allowed::add);
-        properties.set("language", language);
+        properties.set(LANGUAGE, language);
 
-        schema.set("properties", properties);
-        schema.putArray("required").add("language");
-        schema.put("additionalProperties", false);
+        schema.set(PROPERTIES, properties);
+        schema.putArray(REQUIRED).add(LANGUAGE);
+        schema.put(ADDITIONAL_PROPERTIES, false);
 
-        jsonSchema.set("schema", schema);
-        responseFormat.set("json_schema", jsonSchema);
+        jsonSchema.set(SCHEMA, schema);
+        responseFormat.set(JSON_SCHEMA, jsonSchema);
         return responseFormat;
     }
 
@@ -1459,7 +1551,9 @@ public class PromptBuilder {
      * @param tierCount          3 or 5
      * @param distractorsEnabled whether to include distractor plans
      * @param constraints        optional AP20 constraints
+     * @return the chat completions request
      */
+    @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     public ObjectNode buildCurriculumSequenceRequest(
         final CurriculumTopicDTO topic,
         final List<CurriculumCodeExampleDTO> examples,
@@ -1477,8 +1571,8 @@ public class PromptBuilder {
         // System prompt: dedicated curriculum identity
         messages.add(
             mapper.createObjectNode()
-                .put("role", "system")
-                .put("content", identityLoader.load("SequenceCurriculum"))
+                .put(ROLE, ROLE_SYSTEM)
+                .put(CONTENT, identityLoader.load("SequenceCurriculum"))
         );
 
         // Build seed examples block (AP32: few-shot). A topic without curated examples is
@@ -1501,7 +1595,7 @@ public class PromptBuilder {
             seedBlock.append("\n");
         }
 
-        String langLabel = "en".equalsIgnoreCase(targetLanguage) ? "English" : "German";
+        String langLabel = ENGLISH.equalsIgnoreCase(targetLanguage) ? "English" : "German";
 
         // The curriculum tree holds school Jahrgangsstufen and university
         // modules. Describing a module as "Jahrgangsstufe 9, Track NTG" — which
@@ -1554,7 +1648,7 @@ public class PromptBuilder {
                 tierCount,
                 context.toString().stripTrailing(),
                 language,
-                String.join(", ", concepts),
+                String.join(LIST_SEPARATOR, concepts),
                 langLabel,
                 seedBlock.toString(),
                 buildConstraintSection(constraints, tierCount),
@@ -1564,13 +1658,13 @@ public class PromptBuilder {
 
         messages.add(
             mapper.createObjectNode()
-                .put("role", "user")
-                .put("content", prompt)
+                .put(ROLE, ROLE_USER)
+                .put(CONTENT, prompt)
         );
 
-        json.set("messages", messages);
+        json.set(MESSAGES, messages);
         json.set(
-            "response_format", distractorsEnabled
+            RESPONSE_FORMAT, distractorsEnabled
                 ? responseFormatTieredContractsWithDistractors(tierCount)
                 : responseFormatTieredContracts(tierCount)
         );

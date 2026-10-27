@@ -43,6 +43,10 @@ public interface TaskGenerationStrategy {
     /**
      * Generates a Tiered Task Sequence with optional distractor planning (AP15). Default delegates to the original
      * method (ignoring the flag).
+     *
+     * @param client             the client to call the model with
+     * @param distractorsEnabled whether to plan distractors
+     * @return the generated sequence, still without solutions
      */
     default TieredTaskSequenceDTO generate(OpenAiClient client, boolean distractorsEnabled)
         throws IOException, InterruptedException {
@@ -52,6 +56,11 @@ public interface TaskGenerationStrategy {
     /**
      * AP20: Generates a Tiered Task Sequence with constraints + distractors. Default delegates to the distractor-aware
      * overload (ignoring constraints).
+     *
+     * @param client             the client to call the model with
+     * @param distractorsEnabled whether to plan distractors
+     * @param constraints        the teacher's generation constraints, or null
+     * @return the generated sequence, still without solutions
      */
     default TieredTaskSequenceDTO generate(
         OpenAiClient client, boolean distractorsEnabled,
@@ -64,6 +73,12 @@ public interface TaskGenerationStrategy {
     /**
      * AP21: Generates a Tiered Task Sequence with constraints + distractors + tierCount. Default delegates to the
      * constraint-aware overload (ignoring tierCount).
+     *
+     * @param client             the client to call the model with
+     * @param distractorsEnabled whether to plan distractors
+     * @param constraints        the teacher's generation constraints, or null
+     * @param tierCount          the number of tiers
+     * @return the generated sequence, still without solutions
      */
     default TieredTaskSequenceDTO generate(
         OpenAiClient client, boolean distractorsEnabled,

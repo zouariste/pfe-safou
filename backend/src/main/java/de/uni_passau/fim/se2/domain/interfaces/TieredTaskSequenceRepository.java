@@ -18,12 +18,12 @@
  */
 package de.uni_passau.fim.se2.domain.interfaces;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceConceptDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
-import de.uni_passau.fim.se2.domain.exceptions.*;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 
 /**
@@ -74,6 +74,7 @@ public interface TieredTaskSequenceRepository {
      * already contain it keep working, because a worksheet loads its sequences by id and the row (with its tasks and
      * submissions) still exists.
      *
+     * @param sequenceId the sequence to hide
      * @return whether this call is what deleted it; false for an unknown or already-deleted id
      */
     boolean softDeleteById(UUID sequenceId);
@@ -112,13 +113,15 @@ public interface TieredTaskSequenceRepository {
      * searched by the library.
      *
      * @param taskDescription the new text, or {@code null} to clear it
+     * @param sequenceId      the sequence
      */
     void updateTaskDescription(UUID sequenceId, String taskDescription);
 
     /**
      * Sets or clears the owner-given name of a sequence.
      *
-     * @param title the new name, or {@code null} to fall back to the default heading
+     * @param title      the new name, or {@code null} to fall back to the default heading
+     * @param sequenceId the sequence
      */
     void updateTitle(UUID sequenceId, String title);
 
@@ -149,12 +152,18 @@ public interface TieredTaskSequenceRepository {
 
     /**
      * Finds all sequences owned by the specified user.
+     *
+     * @param ownerId the owner
+     * @return the owner's sequences
      */
     List<TieredTaskSequenceDTO> findByOwnerId(UUID ownerId);
 
     /**
      * Finds the owner_id of the sequence that contains the given task (AP9). Returns null if the task or sequence
      * doesn't exist or has no owner.
+     *
+     * @param taskId the task
+     * @return the owner's ID, or null
      */
     UUID findOwnerIdByTaskId(UUID taskId);
 
@@ -169,6 +178,7 @@ public interface TieredTaskSequenceRepository {
      * <p>
      * No-op for an unknown id, an original, or a copy already marked.
      *
+     * @param sequenceId the sequence
      * @return whether this call is what marked it
      */
     boolean markDiverged(UUID sequenceId);
@@ -181,6 +191,7 @@ public interface TieredTaskSequenceRepository {
      * statement, solution or distractors, not a sequence-level field. A single statement rather than a lookup followed
      * by a mark, so the task's parent is resolved and stamped atomically.
      *
+     * @param taskId a task of the sequence
      * @return whether this call is what marked it
      */
     boolean markDivergedByTaskId(UUID taskId);
@@ -188,12 +199,18 @@ public interface TieredTaskSequenceRepository {
     /**
      * Rewrites the stored tier count after a tier was added or deleted, so the library's tier-count filter and facet
      * keep matching what the sequence actually has.
+     *
+     * @param sequenceId the sequence
+     * @param tierCount  the new number of tiers
      */
     void updateTierCount(UUID sequenceId, int tierCount);
 
     /**
      * AP19 Teil A: Updates the semantic_summary column with an LLM-generated one-line description. No-op if the
      * sequence doesn't exist.
+     *
+     * @param sequenceId the sequence
+     * @param summary    the one-line description
      */
     void updateSemanticSummary(UUID sequenceId, String summary);
 

@@ -18,9 +18,15 @@
  */
 package de.uni_passau.fim.se2.domain.entities;
 
-import java.util.*;
+import java.util.UUID;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * Represents a task with a statement, solution, and tier level.

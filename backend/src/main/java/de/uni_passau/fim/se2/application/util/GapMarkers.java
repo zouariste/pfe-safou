@@ -59,7 +59,12 @@ public final class GapMarkers {
         return sb.toString();
     }
 
-    /** True if the code contains at least one gap marker. */
+    /**
+     * True if the code contains at least one gap marker.
+     *
+     * @param code the code to check, or null
+     * @return true if the code contains a gap marker
+     */
     public static boolean hasGaps(final String code) {
         return code != null && BLANK.matcher(code).find();
     }
@@ -72,7 +77,7 @@ public final class GapMarkers {
         int sep = inner.lastIndexOf('|');
         if (sep >= 0) {
             String mode = inner.substring(sep + 1);
-            if (mode.equals("exact") || mode.equals("trim") || mode.equals("ci")) {
+            if ("exact".equals(mode) || "trim".equals(mode) || "ci".equals(mode)) {
                 return inner.substring(0, sep);
             }
         }

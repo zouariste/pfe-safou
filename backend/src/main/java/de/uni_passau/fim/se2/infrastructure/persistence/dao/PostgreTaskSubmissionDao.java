@@ -18,6 +18,7 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
@@ -47,17 +48,22 @@ public class PostgreTaskSubmissionDao implements TaskSubmissionRepository {
         this.jdbc = jdbc;
     }
 
-    private final RowMapper<TaskSubmissionDTO> rowMapper = (rs, rowNum) -> TaskSubmissionDTO.builder()
-        .userId(rs.getObject("user_id", UUID.class))
-        .taskId(rs.getObject("task_id", UUID.class))
-        .blockOrder(readList(rs.getString("block_order"), new TypeReference<List<String>>() {
-        }))
-        .indentLevels(readList(rs.getString("indent_levels"), new TypeReference<List<Integer>>() {
-        }))
-        .solved(rs.getBoolean("solved"))
-        .solvedAt(rs.getTimestamp("solved_at") != null ? rs.getTimestamp("solved_at").toLocalDateTime() : null)
-        .updatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null)
-        .build();
+    private final RowMapper<TaskSubmissionDTO> rowMapper = this::mapRow;
+
+    private TaskSubmissionDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
+
+        return TaskSubmissionDTO.builder()
+            .userId(rs.getObject("user_id", UUID.class))
+            .taskId(rs.getObject("task_id", UUID.class))
+            .blockOrder(readList(rs.getString("block_order"), new TypeReference<List<String>>() {
+            }))
+            .indentLevels(readList(rs.getString("indent_levels"), new TypeReference<List<Integer>>() {
+            }))
+            .solved(rs.getBoolean("solved"))
+            .solvedAt(rs.getTimestamp("solved_at") != null ? rs.getTimestamp("solved_at").toLocalDateTime() : null)
+            .updatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null)
+            .build();
+    }
 
     @Override
     public void save(TaskSubmissionDTO submission) {
@@ -112,8 +118,9 @@ public class PostgreTaskSubmissionDao implements TaskSubmissionRepository {
 
     @Override
     public Optional<TaskSubmissionDTO> find(UUID userId, UUID taskId) {
-        if (userId == null || taskId == null)
+        if (userId == null || taskId == null) {
             return Optional.empty();
+        }
 
         String sql = """
             SELECT user_id, task_id, block_order, indent_levels, solved, solved_at, updated_at
@@ -126,8 +133,9 @@ public class PostgreTaskSubmissionDao implements TaskSubmissionRepository {
 
     @Override
     public void delete(UUID userId, UUID taskId) {
-        if (userId == null || taskId == null)
+        if (userId == null || taskId == null) {
             return;
+        }
 
         int removed = jdbc.update(
             "DELETE FROM task_submissions WHERE user_id = ? AND task_id = ?", userId, taskId
@@ -154,8 +162,9 @@ public class PostgreTaskSubmissionDao implements TaskSubmissionRepository {
 
     /** A row written by an older or broken client must not break loading the page. */
     private <T> List<T> readList(String json, TypeReference<List<T>> type) {
-        if (json == null || json.isBlank())
+        if (json == null || json.isBlank()) {
             return List.of();
+        }
         try {
             return objectMapper.readValue(json, type);
         }

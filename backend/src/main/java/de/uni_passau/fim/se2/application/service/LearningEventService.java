@@ -18,10 +18,17 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import de.uni_passau.fim.se2.domain.entities.LearningEventDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
@@ -97,7 +104,11 @@ public class LearningEventService {
         "arrangement_changed"
     );
 
-    /** The allowlist above, for callers that validate against it rather than write through it. */
+    /**
+     * The allowlist above, for callers that validate against it rather than write through it.
+     *
+     * @return the event types that may be logged
+     */
     public static Set<String> allowedEventTypes() {
         return ALLOWED_EVENT_TYPES;
     }
@@ -105,6 +116,13 @@ public class LearningEventService {
     /**
      * Logs a learning event. If tracking is not enabled for the student's class, the userId is set to null
      * (anonymized).
+     *
+     * @param userId     the student, or null if anonymous
+     * @param taskId     the task the event belongs to
+     * @param sequenceId the sequence the task belongs to, or null
+     * @param tierLevel  the task's tier, or null
+     * @param eventType  the kind of event; must be on the allowlist
+     * @param eventData  the event's details as JSON, or null
      */
     public void logEvent(
         UUID userId, UUID taskId, UUID sequenceId,
@@ -163,7 +181,11 @@ public class LearningEventService {
     /**
      * Returns aggregated summary stats for a sequence, including completionRate, averageAttempts, and averageTimeMs
      * (AP11).
+     *
+     * @param sequenceId the sequence
+     * @return the summary statistics, keyed by name
      */
+    @SuppressWarnings("checkstyle:MethodLength")
     public Map<String, Object> getSequenceSummary(UUID sequenceId) {
         List<LearningEventDTO> events = learningEventRepository.findBySequenceId(sequenceId);
 
@@ -218,7 +240,7 @@ public class LearningEventService {
                         timeCount++;
                     }
                 }
-                catch (Exception e) {
+                catch (JsonProcessingException | RuntimeException e) {
                     log.debug("Failed to parse eventData for summary: {}", e.getMessage());
                 }
             }

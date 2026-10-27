@@ -18,35 +18,36 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai.openai;
 
-import java.io.*;
-import java.net.*;
-import java.net.http.*;
-import java.util.*;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
-import org.slf4j.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 
-import com.fasterxml.jackson.databind.*;
-import com.fasterxml.jackson.databind.node.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import de.uni_passau.fim.se2.application.service.*;
 import de.uni_passau.fim.se2.application.service.CodeSanitizerService;
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
 import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
 import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
 import de.uni_passau.fim.se2.domain.entities.OpenAiModel;
 import de.uni_passau.fim.se2.domain.entities.SolveContract;
 import de.uni_passau.fim.se2.domain.exceptions.UnsupportedLanguageException;
-import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.model.ConceptCatalog;
 import de.uni_passau.fim.se2.domain.model.SupportedLanguage;
-import de.uni_passau.fim.se2.infrastructure.ai.*;
 import de.uni_passau.fim.se2.infrastructure.ai.AbstractAiClient;
 import de.uni_passau.fim.se2.infrastructure.ai.AiProps;
 import de.uni_passau.fim.se2.infrastructure.ai.AiTransport;
 import de.uni_passau.fim.se2.infrastructure.ai.PromptBuilder;
-import lombok.*;
+import lombok.NonNull;
 
 /**
  * The {@code ChatGPTClient} class is responsible for generating and solving programming-related prompts by interacting
@@ -71,6 +72,9 @@ import lombok.*;
  * @version 1.0
  */
 public class OpenAiClient extends AbstractAiClient {
+
+    private static final String CODE = "code";
+    private static final String TASKS = "tasks";
 
     /**
      * String representing the API address to OpenAIs API.
@@ -119,7 +123,7 @@ public class OpenAiClient extends AbstractAiClient {
      */
     private final OpenAiModel defaultModel;
 
-    private static final Logger logger = LoggerFactory.getLogger(OpenAiClient.class);
+    private static final Logger log = LoggerFactory.getLogger(OpenAiClient.class);
 
     /**
      * Primary constructor used by Spring.
@@ -151,7 +155,7 @@ public class OpenAiClient extends AbstractAiClient {
      * The prompt strictly instructs GPT to return only properly formatted code, without any explanation, comments, or
      * extra output.
      *
-     * @param contract TODO
+     * @param contract the task statement, signature, behaviour, conditions and examples the solution must satisfy
      * @return a {@link JsonNode} containing one field "code" with the solution
      * @throws IOException          if API communication fails
      * @throws InterruptedException if the thread is interrupted during the request
@@ -168,33 +172,48 @@ public class OpenAiClient extends AbstractAiClient {
         return solveProblemSimple(taskDescription, language, defaultModel);
     }
 
+    /**
+     * Solves a problem statement with the given model.
+     *
+     * @param taskDescription the problem statement to solve
+     * @param language        the programming language of the solution
+     * @param model           the model to use
+     * @return the response's {@code code} field
+     */
     public JsonNode solveProblemSimple(final String taskDescription, final String language, final OpenAiModel model)
         throws IOException, InterruptedException {
-        logger.trace("Simple solve: task='{}', lang='{}' (model={})", taskDescription, language, model);
+        log.trace("Simple solve: task='{}', lang='{}' (model={})", taskDescription, language, model);
         ObjectNode json = promptBuilder.buildSimpleSolveRequest(taskDescription, language);
         attachModel(json, model);
         // optional: attachSampling(json, DEFAULT_TEMPERATURE, DEFAULT_TOP_P);
         HttpResponse<String> response = sendRequest(json);
         JsonNode parsed = parseResponse(response);
-        JsonNode codeNode = validateAndGetField(parsed, "code");
-        validateTextField(codeNode, "code");
+        JsonNode codeNode = validateAndGetField(parsed, CODE);
+        validateTextField(codeNode, CODE);
         return codeNode;
     }
 
+    /**
+     * Solves a task contract with the given model.
+     *
+     * @param contract the task statement, signature, behaviour, conditions and examples the solution must satisfy
+     * @param model    the model to use
+     * @return the response's {@code code} field
+     */
     public JsonNode solveProblem(@NonNull final SolveContract contract, final OpenAiModel model)
         throws IOException, InterruptedException {
-        logger.trace("Solving contract: {} (model={})", contract, model);
+        log.trace("Solving contract: {} (model={})", contract, model);
         ObjectNode json = promptBuilder.buildSolveRequest(contract);
         attachModel(json, model);
         HttpResponse<String> response = sendRequest(json);
         JsonNode parsed = parseResponse(response);
-        JsonNode codeNode = validateAndGetField(parsed, "code");
-        validateTextField(codeNode, "code");
+        JsonNode codeNode = validateAndGetField(parsed, CODE);
+        validateTextField(codeNode, CODE);
 
         String cleanCode = sanitize(codeNode.asText(), contract.language());
         if (parsed.isObject()) {
-            ((ObjectNode) parsed).put("code", cleanCode);
-            codeNode = parsed.get("code");
+            ((ObjectNode) parsed).put(CODE, cleanCode);
+            codeNode = parsed.get(CODE);
         }
 
         return codeNode;
@@ -228,11 +247,11 @@ public class OpenAiClient extends AbstractAiClient {
         while (true) {
             attempt++;
             try {
-                logger.trace("Sending request (attempt {}): {}", attempt, requestBody);
+                log.trace("Sending request (attempt {}): {}", attempt, requestBody);
                 HttpResponse<String> response = transport.sendRequest(request);
 
                 if (response.statusCode() >= STATUS_CODE_200 && response.statusCode() < STATUS_CODE_300) {
-                    logger.trace("Response: {}", response.body());
+                    log.trace("Response: {}", response.body());
                     return response;
                 }
 
@@ -240,7 +259,7 @@ public class OpenAiClient extends AbstractAiClient {
                 // when many parallel enrichment threads (OPT-1) all hit 429/503 together.
                 if ((response.statusCode() == 503 || response.statusCode() == 429) && attempt < maxRetries) {
                     long delay = backoffDelayMs(attempt);
-                    logger.warn(
+                    log.warn(
                         "OpenAI API returned {} – retrying in {}ms (attempt {}/{})",
                         response.statusCode(), delay, attempt, maxRetries
                     );
@@ -256,11 +275,11 @@ public class OpenAiClient extends AbstractAiClient {
             }
             catch (IOException e) {
                 if (attempt >= maxRetries) {
-                    logger.error("Request failed after {} attempts: {}", attempt, e.getMessage());
+                    log.error("Request failed after {} attempts: {}", attempt, e.getMessage());
                     throw e;
                 }
                 long delay = backoffDelayMs(attempt);
-                logger.warn(
+                log.warn(
                     "IOException during request (attempt {}/{}): {}, retrying in {}ms",
                     attempt, maxRetries, e.getMessage(), delay
                 );
@@ -293,22 +312,15 @@ public class OpenAiClient extends AbstractAiClient {
      */
     JsonNode parseResponse(final HttpResponse<String> response)
         throws IOException {
-        logger.trace("Parsing response: {}", response.body());
-        try {
-            return mapper.readTree(
-                mapper.readTree(response.body())
-                    .get("choices").get(0)
-                    .get("message").get("content").asText()
-            );
+        log.trace("Parsing response: {}", response.body());
+        JsonNode content = mapper.readTree(response.body())
+            .path("choices").path(0)
+            .path("message").path("content");
+        if (content.isMissingNode()) {
+            log.error("GPT response missing required message structure");
+            throw new IOException("GPT response missing required message structure");
         }
-        catch (NullPointerException e) {
-            logger.error("GPT response missing required message{}", String.valueOf(e));
-            throw new IOException(
-                "GPT response missing required message "
-                    + "structure",
-                e
-            );
-        }
+        return mapper.readTree(content.asText());
     }
 
     /**
@@ -323,14 +335,14 @@ public class OpenAiClient extends AbstractAiClient {
     JsonNode validateAndGetField(final JsonNode parsed, final String fieldName)
         throws IOException {
         if (parsed == null) {
-            logger.error("GPT response is null, cannot extract field: {}", fieldName);
+            log.error("GPT response is null, cannot extract field: {}", fieldName);
             throw new IOException(
                 "GPT response is null – "
                     + "cannot extract field: '" + fieldName + "'"
             );
         }
         if (!parsed.has(fieldName)) {
-            logger.error("GPT response missing required field: {}", fieldName);
+            log.error("GPT response missing required field: {}", fieldName);
             throw new IOException(
                 "GPT response missing required field: '"
                     + fieldName + "'"
@@ -352,7 +364,7 @@ public class OpenAiClient extends AbstractAiClient {
             node.isNull() || !node.isTextual()
                 || node.asText().trim().isEmpty()
         ) {
-            logger.error("GPT response invalid or empty text field:" + fieldName);
+            log.error("GPT response invalid or empty text field:" + fieldName);
             throw new IOException(
                 "GPT response invalid or empty string field:"
                     + " '" + fieldName + "'"
@@ -371,7 +383,7 @@ public class OpenAiClient extends AbstractAiClient {
         throws IOException {
 
         if (node.isNull() || !node.isArray() || node.isEmpty()) {
-            logger.error("GPT response invalid or empty array field:" + fieldName);
+            log.error("GPT response invalid or empty array field:" + fieldName);
             throw new IOException(
                 "GPT response invalid or empty array field:"
                     + " '" + fieldName + "'"
@@ -408,6 +420,17 @@ public class OpenAiClient extends AbstractAiClient {
         );
     }
 
+    /**
+     * Generates a tiered task sequence with the given model.
+     *
+     * @param taskDescription the teacher's sample task description, or null
+     * @param concepts        the concepts the sequence should cover
+     * @param codeSnippet     the teacher's code snippet, or null
+     * @param language        the programming language of the tasks
+     * @param targetLanguage  the human language of the problem statements
+     * @param model           the model to use
+     * @return the parsed response
+     */
     public JsonNode generateTieredTaskSequence(
         String taskDescription, List<String> concepts, String codeSnippet,
         String language, String targetLanguage, OpenAiModel model
@@ -418,8 +441,8 @@ public class OpenAiClient extends AbstractAiClient {
         attachModel(json, model);
         HttpResponse<String> response = sendRequest(json);
         JsonNode parsed = parseResponse(response);
-        if (parsed.has("tasks")) {
-            validateArrayField(parsed.get("tasks"), "tasks"); // must be an array (your mapper checks size==3 later)
+        if (parsed.has(TASKS)) {
+            validateArrayField(parsed.get(TASKS), TASKS); // must be an array (your mapper checks size==3 later)
         }
         else if (parsed.has("problem_statements")) {
             validateArrayField(parsed.get("problem_statements"), "problem_statements");
@@ -428,7 +451,7 @@ public class OpenAiClient extends AbstractAiClient {
             throw new IOException("GPT response missing required field: 'tasks' or 'problem_statements'");
         }
 
-        logger.debug(parsed.toString());
+        log.debug(parsed.toString());
         return parsed;
     }
 
@@ -444,6 +467,18 @@ public class OpenAiClient extends AbstractAiClient {
         );
     }
 
+    /**
+     * Generates a tiered task sequence with the given model, optionally planning distractors.
+     *
+     * @param taskDescription    the teacher's sample task description, or null
+     * @param concepts           the concepts the sequence should cover
+     * @param codeSnippet        the teacher's code snippet, or null
+     * @param language           the programming language of the tasks
+     * @param targetLanguage     the human language of the problem statements
+     * @param distractorsEnabled whether to plan distractors
+     * @param model              the model to use
+     * @return the parsed response
+     */
     public JsonNode generateTieredTaskSequence(
         String taskDescription, List<String> concepts, String codeSnippet,
         String language, String targetLanguage, boolean distractorsEnabled,
@@ -460,13 +495,13 @@ public class OpenAiClient extends AbstractAiClient {
         attachModel(json, model);
         HttpResponse<String> response = sendRequest(json);
         JsonNode parsed = parseResponse(response);
-        if (parsed.has("tasks")) {
-            validateArrayField(parsed.get("tasks"), "tasks");
+        if (parsed.has(TASKS)) {
+            validateArrayField(parsed.get(TASKS), TASKS);
         }
         else {
             throw new IOException("GPT response missing required field: 'tasks'");
         }
-        logger.debug(parsed.toString());
+        log.debug(parsed.toString());
         return parsed;
     }
 
@@ -485,6 +520,19 @@ public class OpenAiClient extends AbstractAiClient {
         );
     }
 
+    /**
+     * Generates a tiered task sequence with the given model, honouring the teacher's constraints.
+     *
+     * @param taskDescription    the teacher's sample task description, or null
+     * @param concepts           the concepts the sequence should cover
+     * @param codeSnippet        the teacher's code snippet, or null
+     * @param language           the programming language of the tasks
+     * @param targetLanguage     the human language of the problem statements
+     * @param distractorsEnabled whether to plan distractors
+     * @param constraints        the teacher's generation constraints, or null
+     * @param model              the model to use
+     * @return the parsed response
+     */
     public JsonNode generateTieredTaskSequence(
         String taskDescription, List<String> concepts, String codeSnippet,
         String language, String targetLanguage, boolean distractorsEnabled,
@@ -504,13 +552,13 @@ public class OpenAiClient extends AbstractAiClient {
         attachModel(json, model);
         HttpResponse<String> response = sendRequest(json);
         JsonNode parsed = parseResponse(response);
-        if (parsed.has("tasks")) {
-            validateArrayField(parsed.get("tasks"), "tasks");
+        if (parsed.has(TASKS)) {
+            validateArrayField(parsed.get(TASKS), TASKS);
         }
         else {
             throw new IOException("GPT response missing required field: 'tasks'");
         }
-        logger.debug(parsed.toString());
+        log.debug(parsed.toString());
         return parsed;
     }
 
@@ -529,6 +577,20 @@ public class OpenAiClient extends AbstractAiClient {
         );
     }
 
+    /**
+     * Generates a tiered task sequence with the given model and number of tiers.
+     *
+     * @param taskDescription    the teacher's sample task description, or null
+     * @param concepts           the concepts the sequence should cover
+     * @param codeSnippet        the teacher's code snippet, or null
+     * @param language           the programming language of the tasks
+     * @param targetLanguage     the human language of the problem statements
+     * @param distractorsEnabled whether to plan distractors
+     * @param constraints        the teacher's generation constraints, or null
+     * @param tierCount          the number of tiers
+     * @param model              the model to use
+     * @return the parsed response
+     */
     public JsonNode generateTieredTaskSequence(
         String taskDescription, List<String> concepts, String codeSnippet,
         String language, String targetLanguage, boolean distractorsEnabled,
@@ -549,13 +611,13 @@ public class OpenAiClient extends AbstractAiClient {
         attachModel(json, model);
         HttpResponse<String> response = sendRequest(json);
         JsonNode parsed = parseResponse(response);
-        if (parsed.has("tasks")) {
-            validateArrayField(parsed.get("tasks"), "tasks");
+        if (parsed.has(TASKS)) {
+            validateArrayField(parsed.get(TASKS), TASKS);
         }
         else {
             throw new IOException("GPT response missing required field: 'tasks'");
         }
-        logger.debug(parsed.toString());
+        log.debug(parsed.toString());
         return parsed;
     }
 
@@ -566,7 +628,7 @@ public class OpenAiClient extends AbstractAiClient {
         String distractorPlan, int count
     )
         throws IOException, InterruptedException {
-        logger.debug("Generating {} distractors for tier {} task", count, tierLevel);
+        log.debug("Generating {} distractors for tier {} task", count, tierLevel);
         ObjectNode json = promptBuilder.buildDistractorRequest(
             solutionCode, language, taskStatement,
             tierLevel, distractorPlan, count
@@ -601,7 +663,7 @@ public class OpenAiClient extends AbstractAiClient {
         String taskStatement, int tierLevel
     )
         throws IOException, InterruptedException {
-        logger.debug("Generating split plan for tier {} task", tierLevel);
+        log.debug("Generating split plan for tier {} task", tierLevel);
         ObjectNode json = promptBuilder.buildSplitPlanRequest(solutionCode, language, taskStatement, tierLevel);
         attachModel(json, defaultModel);
         HttpResponse<String> response = sendRequest(json);
@@ -638,7 +700,7 @@ public class OpenAiClient extends AbstractAiClient {
         if (fragments == null || fragments.size() < 2) {
             return null;
         }
-        logger.debug("Generating split distractor for tier {} task ({} fragments)", tierLevel, fragments.size());
+        log.debug("Generating split distractor for tier {} task ({} fragments)", tierLevel, fragments.size());
         ObjectNode json = promptBuilder.buildSplitDistractorRequest(
             fragments, prefix, suffix, language, taskStatement, tierLevel
         );
@@ -683,7 +745,7 @@ public class OpenAiClient extends AbstractAiClient {
      */
     public String getProgrammingLanguage(final String codeSnippet, final OpenAiModel model)
         throws IOException, InterruptedException {
-        logger.trace("Getting programming language for code snippet: {} (model={})", codeSnippet, model);
+        log.trace("Getting programming language for code snippet: {} (model={})", codeSnippet, model);
         ObjectNode json = promptBuilder.buildLanguageDetectionRequest(codeSnippet);
         attachModel(json, model);
         HttpResponse<String> response = sendRequest(json);
@@ -698,20 +760,22 @@ public class OpenAiClient extends AbstractAiClient {
         // as hints that are quietly worse.
         return SupportedLanguage.fromString(detected)
             .map(SupportedLanguage::canonicalName)
-            .orElseThrow(() -> {
-                logger.warn("Language detection returned unusable language: '{}'", detected);
-                // UnsupportedLanguageException rather than IOException on purpose: an
-                // IOException here falls through to the catch-all handler and reaches the
-                // teacher as "unexpected error, please try again", which is both wrong and
-                // unactionable -- the same snippet fails the same way every time.
-                return new UnsupportedLanguageException(
-                    SupportedLanguage.UNSUPPORTED.equals(detected)
-                        ? "The code snippet is neither Python nor Java; CodeOwl can "
-                            + "only generate task sequences for languages it can analyse."
-                        : "Language detection returned '" + detected + "', which is "
-                            + "not a supported language"
-                );
-            });
+            .orElseThrow(() -> unusableLanguage(detected));
+    }
+
+    private static UnsupportedLanguageException unusableLanguage(String detected) {
+        log.warn("Language detection returned unusable language: '{}'", detected);
+        // UnsupportedLanguageException rather than IOException on purpose: an
+        // IOException here falls through to the catch-all handler and reaches the
+        // teacher as "unexpected error, please try again", which is both wrong and
+        // unactionable -- the same snippet fails the same way every time.
+        return new UnsupportedLanguageException(
+            SupportedLanguage.UNSUPPORTED.equals(detected)
+                ? "The code snippet is neither Python nor Java; CodeOwl can "
+                    + "only generate task sequences for languages it can analyse."
+                : "Language detection returned '" + detected + "', which is "
+                    + "not a supported language"
+        );
     }
 
     /**
@@ -753,7 +817,7 @@ public class OpenAiClient extends AbstractAiClient {
         final OpenAiModel model
     )
         throws IOException, InterruptedException {
-        logger.trace("Generating task description for concepts: {} (model={})", concepts, model);
+        log.trace("Generating task description for concepts: {} (model={})", concepts, model);
         ObjectNode json = promptBuilder.buildTaskDescriptionRequest(concepts, language);
         attachModel(json, model);
         return prepareRequest(json);
@@ -792,7 +856,7 @@ public class OpenAiClient extends AbstractAiClient {
         final OpenAiModel model
     )
         throws IOException, InterruptedException {
-        logger.trace("Generating task description for code snippet: {} (model={})", codeSnippet, model);
+        log.trace("Generating task description for code snippet: {} (model={})", codeSnippet, model);
         ObjectNode json = promptBuilder.buildTaskDescriptionRequest(codeSnippet);
         attachModel(json, model);
         return prepareRequest(json);
@@ -804,10 +868,12 @@ public class OpenAiClient extends AbstractAiClient {
         final Double temperature,
         final Double topP
     ) {
-        if (temperature != null)
+        if (temperature != null) {
             json.put("temperature", temperature);
-        if (topP != null)
+        }
+        if (topP != null) {
             json.put("top_p", topP);
+        }
     }
 
     // --- Overloads used by the runner (system + user prompt from DB) -----------
@@ -844,7 +910,7 @@ public class OpenAiClient extends AbstractAiClient {
         JsonNode parsed = parseResponse(response);
         JsonNode taskNode = validateAndGetField(parsed, "task");
         validateTextField(taskNode, "task");
-        logger.trace("Task description: {}", taskNode.asText());
+        log.trace("Task description: {}", taskNode.asText());
         return taskNode.asText();
     }
 
@@ -866,12 +932,17 @@ public class OpenAiClient extends AbstractAiClient {
 
     /**
      * Generates concepts with a specific model override.
+     *
+     * @param codeSnippet the code to find concepts in
+     * @param language    the programming language of the code
+     * @param model       the model to use
+     * @return the concepts found, normalised and without duplicates
      */
     public List<String> generateConcepts(final String codeSnippet, final String language, final OpenAiModel model)
         throws IOException, InterruptedException {
 
         String catalogPrompt = conceptCatalog.getCatalogForPrompt(language);
-        logger.debug(
+        log.debug(
             "Generating concepts for language={} (model={}, catalog entries={})",
             language, model, catalogPrompt.lines().count()
         );
@@ -892,7 +963,7 @@ public class OpenAiClient extends AbstractAiClient {
                 normalized.add(slug.get());
             }
             else {
-                logger.debug("Discarding non-catalog concept from LLM: '{}'", raw);
+                log.debug("Discarding non-catalog concept from LLM: '{}'", raw);
             }
         }
         return normalized.stream().distinct().toList();
@@ -911,8 +982,9 @@ public class OpenAiClient extends AbstractAiClient {
      * @throws IllegalArgumentException if the provided model is not supported
      */
     private static String toApiModel(OpenAiModel m) {
-        if (m == null)
+        if (m == null) {
             throw new IllegalArgumentException("model must not be null");
+        }
         return switch (m) {
             case GPT_5 -> "gpt-5";
             case GPT_5_MINI -> "gpt-5-mini";
@@ -934,7 +1006,7 @@ public class OpenAiClient extends AbstractAiClient {
      */
     private void attachModel(ObjectNode json, OpenAiModel model) {
         String modelString = toApiModel(model);
-        logger.trace("Attaching model: {}", modelString);
+        log.trace("Attaching model: {}", modelString);
         json.put("model", modelString);
     }
 
@@ -942,6 +1014,16 @@ public class OpenAiClient extends AbstractAiClient {
 
     /**
      * Generates a tiered task sequence using curriculum context and seed code examples.
+     *
+     * @param topic              the curriculum topic
+     * @param examples           the topic's seed code examples
+     * @param concepts           the concepts mapped to the topic
+     * @param language           the programming language of the tasks
+     * @param targetLanguage     the human language of the problem statements
+     * @param tierCount          the number of tiers
+     * @param distractorsEnabled whether to plan distractors
+     * @param constraints        the teacher's generation constraints, or null
+     * @return the parsed response
      */
     public JsonNode generateCurriculumSequence(
         CurriculumTopicDTO topic,
@@ -962,13 +1044,13 @@ public class OpenAiClient extends AbstractAiClient {
         attachModel(json, defaultModel);
         HttpResponse<String> response = sendRequest(json);
         JsonNode parsed = parseResponse(response);
-        if (parsed.has("tasks")) {
-            validateArrayField(parsed.get("tasks"), "tasks");
+        if (parsed.has(TASKS)) {
+            validateArrayField(parsed.get(TASKS), TASKS);
         }
         else {
             throw new IOException("GPT response missing required field: 'tasks'");
         }
-        logger.debug(parsed.toString());
+        log.debug(parsed.toString());
         return parsed;
     }
 

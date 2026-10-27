@@ -32,7 +32,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class ChangeScoreCalculator {
 
-    private static final Logger logger = LoggerFactory.getLogger(ChangeScoreCalculator.class);
+    private static final Logger log = LoggerFactory.getLogger(ChangeScoreCalculator.class);
 
     /** Weight for text-level Levenshtein ratio. */
     private static final double W_TEXT = 0.25;

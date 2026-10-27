@@ -27,21 +27,31 @@ public interface FeedbackLogRepository {
 
     /**
      * Persists a feedback log entry.
+     *
+     * @param log the entry to save
      */
     void save(FeedbackLogDTO log);
 
     /**
      * Retrieves all feedback logs for a specific task.
+     *
+     * @param taskId the task
+     * @return the task's feedback logs
      */
     List<FeedbackLogDTO> findByTaskId(UUID taskId);
 
     /**
      * Deletes all feedback logs for a given task (e.g., cleanup on cascade).
+     *
+     * @param taskId the task
      */
     void deleteByTaskId(UUID taskId);
 
     /**
      * Retrieves all feedback logs for a specific class.
+     *
+     * @param classId the class
+     * @return the class's feedback logs
      */
     List<FeedbackLogDTO> findByClassId(UUID classId);
 }

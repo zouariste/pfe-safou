@@ -66,6 +66,7 @@ public final class SequenceCuratorPolicy {
      * @param viewerId {@code null} when not logged in
      * @param role     {@code null} when not logged in
      * @param curator  whether the viewer owns a worksheet containing this sequence
+     * @return true if the viewer may see the teacher view
      */
     public static boolean canInspect(UUID ownerId, UUID viewerId, UserRole role, boolean curator) {
         if (viewerId == null || role == null) {
@@ -79,7 +80,14 @@ public final class SequenceCuratorPolicy {
         return isOwnerOrAdmin(ownerId, viewerId, role) || curator;
     }
 
-    /** Whether edits land on this sequence directly. Owners and admins only. */
+    /**
+     * Whether edits land on this sequence directly. Owners and admins only.
+     *
+     * @param ownerId  the sequence's owner, or null for seed material
+     * @param viewerId the viewer, or null if anonymous
+     * @param role     the viewer's role, or null if anonymous
+     * @return true if the viewer's edits apply to this sequence
+     */
     public static boolean canEditInPlace(UUID ownerId, UUID viewerId, UserRole role) {
         return viewerId != null && role != null
             && role != UserRole.STUDENT
@@ -93,6 +101,12 @@ public final class SequenceCuratorPolicy {
      * True exactly for the curator of someone else's sequence. Deliberately not true for anyone else: a teacher with no
      * claim on the sequence gets no fork offer, because forking writes to their worksheet and they have none to write
      * to.
+     *
+     * @param ownerId  the sequence's owner, or null for seed material
+     * @param viewerId the viewer, or null if anonymous
+     * @param role     the viewer's role, or null if anonymous
+     * @param curator  whether the viewer has the sequence on one of their worksheets
+     * @return true if the viewer must take a copy before editing
      */
     public static boolean mustForkToEdit(UUID ownerId, UUID viewerId, UserRole role, boolean curator) {
         return canInspect(ownerId, viewerId, role, curator)

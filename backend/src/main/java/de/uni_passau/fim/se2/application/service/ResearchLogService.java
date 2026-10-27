@@ -64,9 +64,17 @@ public class ResearchLogService {
      * Paging is clamped rather than rejected — a hand-edited {@code size=100000} is a request for everything, and the
      * answer to that is the CSV download, not an OOM.
      *
-     * @param from inclusive; {@code to} is made exclusive by adding a day, so picking the same date for both still
-     *             selects that whole day rather than nothing
+     * @param from      inclusive; {@code to} is made exclusive by adding a day, so picking the same date for both still
+     *                  selects that whole day rather than nothing
+     * @param dataset   the dataset the filter applies to
+     * @param classId   only rows from this class, or all classes if null
+     * @param eventType only events of this type, or all types if null
+     * @param to        the last day to include, or unbounded if null
+     * @param page      the zero-based page number, or null for the first
+     * @param size      the number of rows per page, or null for the default
+     * @return the normalised filter
      */
+    @SuppressWarnings("checkstyle:NPathComplexity")
     public ResearchLog.Filter buildFilter(
         ResearchDataset dataset, UUID classId, String eventType,
         LocalDate from, LocalDate to, Integer page, Integer size
@@ -101,7 +109,13 @@ public class ResearchLogService {
         );
     }
 
-    /** One page of rows plus the total, for the table and its pager. */
+    /**
+     * One page of rows plus the total, for the table and its pager.
+     *
+     * @param dataset the dataset to read
+     * @param filter  the filter and paging to apply
+     * @return the requested page and the total row count
+     */
     public ResearchLog.Page page(ResearchDataset dataset, ResearchLog.Filter filter) {
         long total = researchLogRepository.countMatching(dataset, filter);
         List<Map<String, Object>> rows = researchLogRepository.findPage(dataset, filter);
@@ -112,7 +126,13 @@ public class ResearchLogService {
         );
     }
 
-    /** The stats strip over the same filter the table is showing. */
+    /**
+     * The stats strip over the same filter the table is showing.
+     *
+     * @param dataset the dataset to count
+     * @param filter  the filter to apply
+     * @return the counts for the matching rows
+     */
     public ResearchLog.Summary summary(ResearchDataset dataset, ResearchLog.Filter filter) {
         return researchLogRepository.summarize(dataset, filter);
     }
@@ -124,6 +144,9 @@ public class ResearchLogService {
      * Read-only transaction so the DAO's fetch size takes effect: without it the driver buffers the whole result before
      * the first row is written, which defeats the point of streaming an export of a table this size.
      *
+     * @param dataset the dataset to export
+     * @param filter  the filter to apply; its paging is ignored
+     * @param output  the stream to write the CSV to
      * @return rows written, for the audit entry
      */
     @Transactional(readOnly = true)

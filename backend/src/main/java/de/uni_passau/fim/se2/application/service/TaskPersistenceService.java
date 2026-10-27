@@ -30,12 +30,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import de.uni_passau.fim.se2.application.events.SequenceGeneratedEvent;
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
-import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
@@ -43,7 +41,10 @@ import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
 @Service
 public class TaskPersistenceService {
 
-    private static final Logger logger = LoggerFactory.getLogger(TaskPersistenceService.class);
+    private static final String TASK_ID_REQUIRED = "Task ID must not be null.";
+    private static final String SEQUENCE_ID_REQUIRED = "Sequence ID must not be null.";
+
+    private static final Logger log = LoggerFactory.getLogger(TaskPersistenceService.class);
 
     private final TaskRepository taskRepo;
 
@@ -73,13 +74,13 @@ public class TaskPersistenceService {
     @Transactional
     public void saveGeneratedTask(TaskDTO task) {
         try {
-            logger.debug("Saving generated task: {}", task);
+            log.debug("Saving generated task: {}", task);
             validateTask(task);
             taskRepo.save(task);
-            logger.debug("Successfully saved task with ID: {}", task.getId());
+            log.debug("Successfully saved task with ID: {}", task.getId());
         }
         catch (Exception e) {
-            logger.error("Error saving generated task: {}", task, e);
+            log.error("Error saving generated task: {}", task, e);
             throw e;
         }
     }
@@ -90,11 +91,11 @@ public class TaskPersistenceService {
      * @param tasks the list of tasks to save
      */
     private void saveAllGeneratedTasks(TieredTaskSequenceDTO sequence) {
+        if (sequence == null) {
+            throw new DomainValidationException("Sequence must not be null.");
+        }
         try {
-            logger.debug("Saving all tasks for sequence: {}", sequence.getId());
-            if (sequence == null) {
-                throw new DomainValidationException("Sequence must not be null.");
-            }
+            log.debug("Saving all tasks for sequence: {}", sequence.getId());
             List<TaskDTO> tasks = sequence.getTasks();
             if (tasks == null || tasks.isEmpty()) {
                 throw new DomainValidationException("Task list must not be null or empty.");
@@ -106,10 +107,10 @@ public class TaskPersistenceService {
             }
 
             taskRepo.saveAll(sequence);
-            logger.debug("Successfully saved {} tasks", tasks.size());
+            log.debug("Successfully saved {} tasks", tasks.size());
         }
         catch (Exception e) {
-            logger.error("Error saving tasks for sequence: {}", sequence.getId(), e);
+            log.error("Error saving tasks for sequence: {}", sequence.getId(), e);
             throw e;
         }
     }
@@ -123,9 +124,9 @@ public class TaskPersistenceService {
     @Transactional(readOnly = true)
     public TaskDTO loadTaskById(UUID id) {
         try {
-            logger.info("Loading task with ID: {}", id);
+            log.info("Loading task with ID: {}", id);
             if (id == null) {
-                throw new DomainValidationException("Task ID must not be null.");
+                throw new DomainValidationException(TASK_ID_REQUIRED);
             }
 
             TaskDTO task = new TaskDTO();
@@ -135,11 +136,11 @@ public class TaskPersistenceService {
             sequenceDTO.setId(task.getSequenceId());
             sequenceRepo.loadById(sequenceDTO);
             task.setProgrammingLanguage(sequenceDTO.getProgrammingLanguage());
-            logger.debug("Successfully loaded task: {}", task);
+            log.debug("Successfully loaded task: {}", task);
             return task;
         }
         catch (Exception e) {
-            logger.error("Error loading task with ID: {}", id, e);
+            log.error("Error loading task with ID: {}", id, e);
             throw e;
         }
     }
@@ -152,27 +153,33 @@ public class TaskPersistenceService {
     @Transactional
     public void deleteTask(UUID id) {
         try {
-            logger.debug("Deleting task with ID: {}", id);
+            log.debug("Deleting task with ID: {}", id);
             if (id == null) {
-                throw new DomainValidationException("Task ID must not be null.");
+                throw new DomainValidationException(TASK_ID_REQUIRED);
             }
 
             TaskDTO task = new TaskDTO();
             task.setId(id);
             taskRepo.deleteById(task);
-            logger.debug("Successfully deleted task with ID: {}", id);
+            log.debug("Successfully deleted task with ID: {}", id);
         }
         catch (Exception e) {
-            logger.error("Error deleting task with ID: {}", id, e);
+            log.error("Error deleting task with ID: {}", id, e);
             throw e;
         }
     }
 
+    /**
+     * Loads a sequence with its tasks.
+     *
+     * @param id the sequence to load
+     * @return the sequence with its tasks
+     */
     @Transactional
     public TieredTaskSequenceDTO loadSequenceById(UUID id) {
-        logger.info("Loading sequence with ID: {}", id);
+        log.info("Loading sequence with ID: {}", id);
         if (id == null) {
-            throw new DomainValidationException("Sequence ID must not be null.");
+            throw new DomainValidationException(SEQUENCE_ID_REQUIRED);
         }
         TieredTaskSequenceDTO sequence = new TieredTaskSequenceDTO();
         sequence.setId(id);
@@ -200,7 +207,7 @@ public class TaskPersistenceService {
     @Transactional
     public List<String> updateSequenceConcepts(UUID sequenceId, List<String> names) {
         if (sequenceId == null) {
-            throw new DomainValidationException("Sequence ID must not be null.");
+            throw new DomainValidationException(SEQUENCE_ID_REQUIRED);
         }
         List<String> cleaned = names == null ? List.of()
             : names.stream()
@@ -236,12 +243,14 @@ public class TaskPersistenceService {
     /**
      * Replaces a sequence's task description. A blank one clears it.
      *
+     * @param sequenceId      the sequence to update
+     * @param taskDescription the new description; blank clears it
      * @return the stored description, trimmed, or {@code null} when cleared
      */
     @Transactional
     public String updateTaskDescription(UUID sequenceId, String taskDescription) {
         if (sequenceId == null) {
-            throw new DomainValidationException("Sequence ID must not be null.");
+            throw new DomainValidationException(SEQUENCE_ID_REQUIRED);
         }
         String normalized = (taskDescription == null || taskDescription.isBlank()) ? null : taskDescription.strip();
         if (normalized != null && normalized.length() > MAX_TASK_DESCRIPTION_LENGTH) {
@@ -260,12 +269,14 @@ public class TaskPersistenceService {
     /**
      * Renames a sequence. A blank name clears it, so the sequence shows its default heading again.
      *
+     * @param sequenceId the sequence to rename
+     * @param title      the new name; blank clears it
      * @return the stored name, trimmed, or {@code null} when cleared
      */
     @Transactional
     public String updateSequenceTitle(UUID sequenceId, String title) {
         if (sequenceId == null) {
-            throw new DomainValidationException("Sequence ID must not be null.");
+            throw new DomainValidationException(SEQUENCE_ID_REQUIRED);
         }
         String normalized = (title == null || title.isBlank()) ? null : title.strip();
         if (normalized != null && normalized.length() > MAX_SEQUENCE_TITLE_LENGTH) {
@@ -282,34 +293,33 @@ public class TaskPersistenceService {
      * Loads all tasks for the given sequence.
      *
      * @param sequence the task sequence
-     * @return the list of associated tasks
      */
     @Transactional(readOnly = true)
     public void getTasksForSequence(TieredTaskSequenceDTO sequence) {
+        if (sequence == null || sequence.getId() == null) {
+            throw new DomainValidationException(SEQUENCE_ID_REQUIRED);
+        }
         try {
-            logger.info("Loading tasks for sequence: {}", sequence.getId());
-            if (sequence == null || sequence.getId() == null) {
-                throw new DomainValidationException("Sequence ID must not be null.");
-            }
+            log.info("Loading tasks for sequence: {}", sequence.getId());
 
             List<TaskDTO> tasks = taskRepo.loadTasksBySequenceId(sequence);
             for (TaskDTO task : tasks) {
-                logger.debug("Loaded task: {}", task);
-                logger.debug("Setting programming language for task: {}", sequence.getProgrammingLanguage());
+                log.debug("Loaded task: {}", task);
+                log.debug("Setting programming language for task: {}", sequence.getProgrammingLanguage());
                 task.setProgrammingLanguage(sequence.getProgrammingLanguage());
             }
-            logger.debug("Loaded {} tasks for sequence {}", tasks.size(), sequence.getId());
+            log.debug("Loaded {} tasks for sequence {}", tasks.size(), sequence.getId());
             sequence.setTasks(tasks);
         }
         catch (Exception e) {
-            logger.error("Error loading tasks for sequence: {}", sequence.getId(), e);
+            log.error("Error loading tasks for sequence: {}", sequence.getId(), e);
             throw e;
         }
     }
 
     private void validateTask(TaskDTO task) {
         try {
-            logger.trace("Validating task: {}", task);
+            log.trace("Validating task: {}", task);
             if (task == null) {
                 throw new DomainValidationException("Task must not be null.");
             }
@@ -329,10 +339,10 @@ public class TaskPersistenceService {
             if (task.getCyclomaticComplexity() < 0) {
                 throw new DomainValidationException("Cyclomatic complexity must not be negative.");
             }
-            logger.trace("Task validation successful");
+            log.trace("Task validation successful");
         }
         catch (Exception e) {
-            logger.error("Error validating task: {}", task, e);
+            log.error("Error validating task: {}", task, e);
             throw e;
         }
     }
@@ -341,14 +351,20 @@ public class TaskPersistenceService {
         return s == null || s.trim().isEmpty();
     }
 
+    /**
+     * Saves a generated sequence with its tasks and concepts, then publishes a {@link SequenceGeneratedEvent} so it is
+     * tagged in the background.
+     *
+     * @param sequence the sequence to save; its ID is set on return
+     */
     @Transactional
     public void persistSequence(TieredTaskSequenceDTO sequence) {
         try {
-            logger.debug("Persisting sequence: {}", sequence);
+            log.debug("Persisting sequence: {}", sequence);
             saveSequence(sequence);
             saveAllGeneratedTasks(sequence);
             linkConcepts(sequence);
-            logger.debug("Successfully persisted sequence with ID: {}", sequence.getId());
+            log.debug("Successfully persisted sequence with ID: {}", sequence.getId());
 
             // AP19 Teil A: fire event for async LLM semantic tagging (3–10s background work).
             try {
@@ -356,14 +372,14 @@ public class TaskPersistenceService {
             }
             catch (Exception evtEx) {
                 // Event publish should never fail the caller, but defend just in case.
-                logger.warn(
+                log.warn(
                     "Failed to publish SequenceGeneratedEvent for {}: {}",
                     sequence.getId(), evtEx.getMessage()
                 );
             }
         }
         catch (Exception e) {
-            logger.error("Error persisting sequence: {}", sequence.getId(), e);
+            log.error("Error persisting sequence: {}", sequence.getId(), e);
             throw e;
         }
     }
@@ -397,7 +413,7 @@ public class TaskPersistenceService {
      */
     private void linkConcepts(TieredTaskSequenceDTO sequence) {
         try {
-            logger.debug("Linking concepts for sequence: {}", sequence.getId());
+            log.debug("Linking concepts for sequence: {}", sequence.getId());
             List<String> conceptNames = sequence.getConcepts();
             if (conceptNames == null || conceptNames.isEmpty()) {
                 throw new DomainValidationException("Sequence concepts must not be empty.");
@@ -415,30 +431,30 @@ public class TaskPersistenceService {
             List<UUID> conceptIds = conceptRepo.saveAll(dtos);
             sequenceRepo.linkConceptsBatch(sequence.getId(), conceptIds);
 
-            logger.debug("Successfully linked {} concepts (batched)", conceptIds.size());
+            log.debug("Successfully linked {} concepts (batched)", conceptIds.size());
         }
         catch (Exception e) {
-            logger.error("Error linking concepts for sequence: {}", sequence.getId(), e);
+            log.error("Error linking concepts for sequence: {}", sequence.getId(), e);
             throw e;
         }
     }
 
     private void saveSequence(TieredTaskSequenceDTO sequence) {
         try {
-            logger.debug("Saving sequence: {}", sequence);
+            log.debug("Saving sequence: {}", sequence);
             validateSequence(sequence);
             sequenceRepo.save(sequence);
-            logger.debug("Successfully saved sequence with ID: {}", sequence.getId());
+            log.debug("Successfully saved sequence with ID: {}", sequence.getId());
         }
         catch (Exception e) {
-            logger.error("Error saving sequence: {}", sequence.getId(), e);
+            log.error("Error saving sequence: {}", sequence.getId(), e);
             throw e;
         }
     }
 
     private void validateSequence(TieredTaskSequenceDTO sequence) {
         try {
-            logger.trace("Validating sequence: {}", sequence);
+            log.trace("Validating sequence: {}", sequence);
             if (sequence == null) {
                 throw new DomainValidationException("Sequence must not be null.");
             }
@@ -457,21 +473,25 @@ public class TaskPersistenceService {
             if (sequence.getVersionId() == null) {
                 throw new DomainValidationException("Sequence version must not be null.");
             }
-            logger.trace("Sequence validation successful");
+            log.trace("Sequence validation successful");
         }
         catch (Exception e) {
-            logger.error("Error validating sequence: {}", sequence, e);
+            log.error("Error validating sequence: {}", sequence, e);
             throw e;
         }
     }
 
     /**
      * AP15b: Update only the distractors column for an existing task.
+     *
+     * @param taskId      the task to update
+     * @param distractors the new distractor lines
      */
     @Transactional
     public void updateDistractors(UUID taskId, String distractors) {
-        if (taskId == null)
-            throw new DomainValidationException("Task ID must not be null.");
+        if (taskId == null) {
+            throw new DomainValidationException(TASK_ID_REQUIRED);
+        }
         taskRepo.updateDistractors(taskId, distractors);
         sequenceRepo.markDivergedByTaskId(taskId);
     }
@@ -482,12 +502,15 @@ public class TaskPersistenceService {
     /**
      * Renames a task. A blank name clears it, so the task shows its numbered default again.
      *
+     * @param taskId the task to rename
+     * @param title  the new name; blank clears it
      * @return the stored name, trimmed, or {@code null} when cleared
      */
     @Transactional
     public String updateTitle(UUID taskId, String title) {
-        if (taskId == null)
-            throw new DomainValidationException("Task ID must not be null.");
+        if (taskId == null) {
+            throw new DomainValidationException(TASK_ID_REQUIRED);
+        }
         String normalized = (title == null || title.isBlank()) ? null : title.strip();
         if (normalized != null && normalized.length() > MAX_TITLE_LENGTH) {
             throw new DomainValidationException(
@@ -501,11 +524,15 @@ public class TaskPersistenceService {
 
     /**
      * AP15: Toggle distractors enabled/disabled for a task.
+     *
+     * @param taskId  the task to update
+     * @param enabled whether students should get the distractors
      */
     @Transactional
     public void updateDistractorsEnabled(UUID taskId, boolean enabled) {
-        if (taskId == null)
-            throw new DomainValidationException("Task ID must not be null.");
+        if (taskId == null) {
+            throw new DomainValidationException(TASK_ID_REQUIRED);
+        }
         taskRepo.updateDistractorsEnabled(taskId, enabled);
         sequenceRepo.markDivergedByTaskId(taskId);
     }
@@ -516,13 +543,21 @@ public class TaskPersistenceService {
 
     /**
      * Finds all sequences owned by a specific user.
+     *
+     * @param ownerId the owner
+     * @return the owner's sequences
      */
     @Transactional(readOnly = true)
     public List<TieredTaskSequenceDTO> findSequencesByOwnerId(UUID ownerId) {
         return sequenceRepo.findByOwnerId(ownerId);
     }
 
-    /** Removes a sequence from the library and the owner's list; worksheets keep it. */
+    /**
+     * Removes a sequence from the library and the owner's list; worksheets keep it.
+     *
+     * @param sequenceId the sequence to remove
+     * @return true if a sequence was removed
+     */
     @Transactional
     public boolean deleteSequence(UUID sequenceId) {
         return sequenceRepo.softDeleteById(sequenceId);

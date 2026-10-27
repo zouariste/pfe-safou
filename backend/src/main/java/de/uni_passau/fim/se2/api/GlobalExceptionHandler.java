@@ -48,6 +48,9 @@ public class GlobalExceptionHandler {
     /**
      * Handle domain validation errors with a 400 response. If the message indicates an unsupported language, the title
      * is specialized.
+     *
+     * @param ex the validation failure
+     * @return 400 with the error details
      */
     @ExceptionHandler(DomainValidationException.class)
     public ResponseEntity<ApiErrorResponse> handleDomainValidationException(DomainValidationException ex) {
@@ -64,6 +67,9 @@ public class GlobalExceptionHandler {
     /**
      * Turn JavaParser parse problems into a concise 400 response. Collects up to 5 problem messages (with location if
      * available).
+     *
+     * @param ex the parse failure reported by JavaParser
+     * @return 400 with up to five parse problems
      */
     @ExceptionHandler(ParseProblemException.class)
     public ResponseEntity<ApiErrorResponse> handleParseProblem(ParseProblemException ex) {
@@ -77,6 +83,9 @@ public class GlobalExceptionHandler {
     /**
      * Handle task/code generation failures from upstream services/models. Defaults to 502 (Bad Gateway); uses 504 for
      * timeouts and 503 for transient I/O-like issues.
+     *
+     * @param ex the generation failure
+     * @return 502, 503 or 504 with the error details, depending on the cause
      */
     @ExceptionHandler(GenerationException.class)
     public ResponseEntity<ApiErrorResponse> handleGenerationException(GenerationException ex) {
@@ -101,6 +110,9 @@ public class GlobalExceptionHandler {
 
     /**
      * Handle access denied (ownership / role violations) -> 403.
+     *
+     * @param ex the access violation
+     * @return 403 with the error details
      */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex) {
@@ -114,6 +126,9 @@ public class GlobalExceptionHandler {
 
     /**
      * Another backup is already running — 503 Service Unavailable.
+     *
+     * @param e the exception raised because a backup is already running
+     * @return 503 with an explanatory message
      */
     @ExceptionHandler(BackupService.BackupBusyException.class)
     public ResponseEntity<Map<String, String>> handleBackupBusy(BackupService.BackupBusyException e) {
@@ -123,6 +138,9 @@ public class GlobalExceptionHandler {
 
     /**
      * pg_dump failure — 500 Internal Server Error.
+     *
+     * @param e the exception raised when pg_dump failed
+     * @return 500 with an explanatory message
      */
     @ExceptionHandler(DatabaseDumpExecutor.DumpException.class)
     public ResponseEntity<Map<String, String>> handleDumpException(DatabaseDumpExecutor.DumpException e) {
@@ -133,6 +151,9 @@ public class GlobalExceptionHandler {
 
     /**
      * Catch-all for unexpected errors -> 500.
+     *
+     * @param ex the unexpected exception
+     * @return 500 with a generic error
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleAny(Exception ex) {

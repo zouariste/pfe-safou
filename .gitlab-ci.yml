@@ -19,6 +19,7 @@
 stages:          # List of stages for jobs, and their order of execution
   - build
   - test
+  - lint
   - deploy
 
 frontend-build:  # tsc -b (typechecks src and tests) + vite production bundle.
@@ -140,8 +141,15 @@ backend-test:    # Runs the JUnit suite in backend/, database tests included.
     reports:
       junit: backend/target/surefire-reports/TEST-*.xml
 
+################################################################################
+# lint
+#
+# Laid out like litterbox-web's lint stage. needs: [] starts every job at once instead of waiting for build and
+# test, and the jobs share no state, so a formatting slip and a SpotBugs finding are reported in the same pipeline.
+
 frontend-lint:   # ESLint over frontend/; errors fail the job, warnings are only reported.
-  stage: test
+  stage: lint
+  needs: []
   image: node:24
   cache:
     key:
@@ -155,8 +163,9 @@ frontend-lint:   # ESLint over frontend/; errors fail the job, warnings are only
   script:
     - npm run lint
 
-backend-lint:    # The GPL header check; bound to verify, so package and test never run it.
-  stage: test
+.java-lint:      # Shared by the backend lint jobs below; configuration lives in config/ at the repository root.
+  stage: lint
+  needs: []
   image: eclipse-temurin:25-jdk   # Matches java.version in backend/pom.xml.
   cache:
     key:
@@ -164,11 +173,41 @@ backend-lint:    # The GPL header check; bound to verify, so package and test ne
         - backend/pom.xml
     paths:
       - backend/.m2/repository/
+  variables:
+    MAVEN_CLI_OPTS: "-B -ntp -Dmaven.repo.local=.m2/repository"
   before_script:
     - cd backend
     - chmod +x mvnw   # See backend-build: the executable bit is easily lost from Windows.
+
+check-licence-headers:   # The GPL header; bound to verify, so package and test never run it.
+  extends: .java-lint
   script:
-    - ./mvnw -B -ntp -Dmaven.repo.local=.m2/repository license:check
+    - ./mvnw $MAVEN_CLI_OPTS license:check
+
+check-formatting:        # Eclipse formatter and import order; `./mvnw spotless:apply` fixes what this reports.
+  extends: .java-lint
+  script:
+    - ./mvnw $MAVEN_CLI_OPTS spotless:check
+
+checkstyle:
+  extends: .java-lint
+  script:
+    - ./mvnw $MAVEN_CLI_OPTS checkstyle:check
+  artifacts:
+    when: always
+    paths:
+      - backend/target/checkstyle-result.xml
+    expire_in: 1 week
+
+spotbugs:                # Deliberate findings are listed, with reasons, in config/spotbugs/exclude.xml.
+  extends: .java-lint
+  script:
+    - ./mvnw $MAVEN_CLI_OPTS -Pstatic-analysis compile spotbugs:check
+  artifacts:
+    when: always
+    paths:
+      - backend/target/spotbugsXml.xml
+    expire_in: 1 week
 
 deploy-job:      # This job runs in the deploy stage.
   stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.

@@ -18,6 +18,7 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -203,15 +204,7 @@ public class PostgreResearchLogDao implements ResearchLogRepository {
         // fetch size only takes effect inside a transaction with autocommit off, which is why
         // the calling service is @Transactional(readOnly = true).
         RowCallbackHandler emitRow = rs -> consumer.accept(toRow(dataset, rs));
-        jdbc.query(con -> {
-            PreparedStatement ps = con.prepareStatement(sql);
-            ps.setFetchSize(EXPORT_FETCH_SIZE);
-            List<Object> args = where.args();
-            for (int i = 0; i < args.size(); i++) {
-                ps.setObject(i + 1, args.get(i));
-            }
-            return ps;
-        }, emitRow);
+        jdbc.query(con -> prepareExport(con, sql, where.args()), emitRow);
     }
 
     /**
@@ -231,14 +224,33 @@ public class PostgreResearchLogDao implements ResearchLogRepository {
     }
 
     private Object toWireValue(Object value) {
-        if (value == null)
+        if (value == null) {
             return null;
-        if (value instanceof Timestamp ts)
+        }
+        if (value instanceof Timestamp ts) {
             return ts.toLocalDateTime().toString();
-        if (value instanceof java.sql.Date d)
+        }
+        if (value instanceof java.sql.Date d) {
             return d.toLocalDate().toString();
-        if (value instanceof PGobject pg)
+        }
+        if (value instanceof PGobject pg) {
             return pg.getValue();
+        }
         return value;
+    }
+
+    private static PreparedStatement prepareExport(Connection con, String sql, List<Object> args) throws SQLException {
+        PreparedStatement ps = con.prepareStatement(sql);
+        try {
+            ps.setFetchSize(EXPORT_FETCH_SIZE);
+            for (int i = 0; i < args.size(); i++) {
+                ps.setObject(i + 1, args.get(i));
+            }
+            return ps;
+        }
+        catch (SQLException | RuntimeException e) {
+            ps.close();
+            throw e;
+        }
     }
 }

@@ -20,16 +20,21 @@ package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 
-import org.springframework.jdbc.core.*;
-import org.springframework.stereotype.*;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.ConceptDTO;
-import de.uni_passau.fim.se2.domain.interfaces.*;
 import de.uni_passau.fim.se2.domain.interfaces.ConceptRepository;
-import de.uni_passau.fim.se2.infrastructure.persistence.mapper.*;
 import de.uni_passau.fim.se2.infrastructure.persistence.mapper.ConceptRowMapper;
 
 @Repository
@@ -126,18 +131,14 @@ public class PostgreConceptDAO implements ConceptRepository {
      */
     @Override
     public List<UUID> saveAll(List<ConceptDTO> concepts) {
-        if (concepts == null || concepts.isEmpty())
+        if (concepts == null || concepts.isEmpty()) {
             return List.of();
-
-        // Deduplicate by name while preserving order, since unique constraint is on name.
-        LinkedHashMap<String, ConceptDTO> uniqueByName = new LinkedHashMap<>();
-        for (ConceptDTO c : concepts) {
-            if (c != null && c.getName() != null && !c.getName().isBlank()) {
-                uniqueByName.putIfAbsent(normalizeName(c.getName()), c);
-            }
         }
-        if (uniqueByName.isEmpty())
+
+        LinkedHashMap<String, ConceptDTO> uniqueByName = uniqueByNormalizedName(concepts);
+        if (uniqueByName.isEmpty()) {
             return List.of();
+        }
 
         final String insertSql = """
                 INSERT INTO concepts (id, name, description, generated)
@@ -176,11 +177,13 @@ public class PostgreConceptDAO implements ConceptRepository {
 
         List<UUID> result = new ArrayList<>(concepts.size());
         for (ConceptDTO c : concepts) {
-            if (c == null || c.getName() == null)
+            if (c == null || c.getName() == null) {
                 continue;
+            }
             UUID id = byName.get(normalizeName(c.getName()));
-            if (id != null)
+            if (id != null) {
                 result.add(id);
+            }
         }
         return result;
     }
@@ -194,5 +197,16 @@ public class PostgreConceptDAO implements ConceptRepository {
     @Override
     public void delete(ConceptDTO concept) {
 
+    }
+
+    /** Deduplicates by normalised name, keeping input order, since the unique constraint is on name. */
+    private static LinkedHashMap<String, ConceptDTO> uniqueByNormalizedName(List<ConceptDTO> concepts) {
+        LinkedHashMap<String, ConceptDTO> uniqueByName = new LinkedHashMap<>();
+        for (ConceptDTO c : concepts) {
+            if (c != null && c.getName() != null && !c.getName().isBlank()) {
+                uniqueByName.putIfAbsent(normalizeName(c.getName()), c);
+            }
+        }
+        return uniqueByName;
     }
 }

@@ -18,7 +18,14 @@
  */
 package de.uni_passau.fim.se2.application.service.analysis;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +38,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class SyntacticAnalyzer {
 
-    private static final Logger logger = LoggerFactory.getLogger(SyntacticAnalyzer.class);
+    private static final Logger log = LoggerFactory.getLogger(SyntacticAnalyzer.class);
 
     // ── Inner result records ──
 
@@ -48,18 +55,26 @@ public class SyntacticAnalyzer {
     /**
      * Normalized Levenshtein distance: editDistance / max(|a|, |b|). Returns 0.0 when both strings are identical, 1.0
      * when completely different.
+     *
+     * @param a the first text, or null
+     * @param b the second text, or null
+     * @return the normalised edit distance, from 0.0 to 1.0
      */
     public double levenshteinRatio(String a, String b) {
-        if (a == null)
+        if (a == null) {
             a = "";
-        if (b == null)
+        }
+        if (b == null) {
             b = "";
-        if (a.equals(b))
+        }
+        if (a.equals(b)) {
             return 0.0;
+        }
 
         int maxLen = Math.max(a.length(), b.length());
-        if (maxLen == 0)
+        if (maxLen == 0) {
             return 0.0;
+        }
 
         int dist = levenshteinDistance(a, b);
         return (double) dist / maxLen;
@@ -67,20 +82,28 @@ public class SyntacticAnalyzer {
 
     /**
      * Word-level Jaccard index: |intersection| / |union|. Returns 1.0 when identical, 0.0 when no overlap.
+     *
+     * @param a the first text, or null
+     * @param b the second text, or null
+     * @return the Jaccard index of the two word sets, from 0.0 to 1.0
      */
     public double jaccardSimilarity(String a, String b) {
-        if (a == null)
+        if (a == null) {
             a = "";
-        if (b == null)
+        }
+        if (b == null) {
             b = "";
+        }
 
         Set<String> setA = tokenize(a);
         Set<String> setB = tokenize(b);
 
-        if (setA.isEmpty() && setB.isEmpty())
+        if (setA.isEmpty() && setB.isEmpty()) {
             return 1.0;
-        if (setA.isEmpty() || setB.isEmpty())
+        }
+        if (setA.isEmpty() || setB.isEmpty()) {
             return 0.0;
+        }
 
         Set<String> intersection = new HashSet<>(setA);
         intersection.retainAll(setB);
@@ -93,19 +116,25 @@ public class SyntacticAnalyzer {
 
     /**
      * Computes word-level diff statistics between two texts.
+     *
+     * @param a the original text, or null
+     * @param b the changed text, or null
+     * @return the words added, removed and modified, and the length change
      */
+    @SuppressWarnings("checkstyle:MethodLength")
     public WordDiffResult wordDiff(String a, String b) {
-        if (a == null)
+        if (a == null) {
             a = "";
-        if (b == null)
+        }
+        if (b == null) {
             b = "";
+        }
 
         String[] wordsA = splitWords(a);
         String[] wordsB = splitWords(b);
 
         int[][] lcs = lcsTable(wordsA, wordsB);
         List<String> common = extractLcs(wordsA, wordsB, lcs);
-        Set<String> commonSet = new HashSet<>(common);
 
         // Count words in B not in common => added
         // Count words in A not in common => removed
@@ -166,12 +195,18 @@ public class SyntacticAnalyzer {
 
     /**
      * Computes line-level diff statistics between two texts.
+     *
+     * @param a the original text, or null
+     * @param b the changed text, or null
+     * @return the lines added, removed, modified and reordered
      */
     public LineDiffResult lineDiff(String a, String b) {
-        if (a == null)
+        if (a == null) {
             a = "";
-        if (b == null)
+        }
+        if (b == null) {
             b = "";
+        }
 
         String[] linesA = splitLines(a);
         String[] linesB = splitLines(b);
@@ -197,25 +232,33 @@ public class SyntacticAnalyzer {
 
     /**
      * Whitespace-normalized token-level change ratio. Returns 0.0 when identical, 1.0 when completely different.
+     *
+     * @param a the original text, or null
+     * @param b the changed text, or null
+     * @return the share of changed tokens, from 0.0 to 1.0
      */
     public double tokenChangeRatio(String a, String b) {
-        if (a == null)
+        if (a == null) {
             a = "";
-        if (b == null)
+        }
+        if (b == null) {
             b = "";
+        }
 
         String[] tokensA = normalizeAndTokenize(a);
         String[] tokensB = normalizeAndTokenize(b);
 
-        if (tokensA.length == 0 && tokensB.length == 0)
+        if (tokensA.length == 0 && tokensB.length == 0) {
             return 0.0;
+        }
 
         int[][] lcs = lcsTable(tokensA, tokensB);
         int lcsLen = lcs[tokensA.length][tokensB.length];
 
         int totalTokens = Math.max(tokensA.length, tokensB.length);
-        if (totalTokens == 0)
+        if (totalTokens == 0) {
             return 0.0;
+        }
 
         int changedTokens = totalTokens - lcsLen;
         return (double) changedTokens / totalTokens;
@@ -345,21 +388,24 @@ public class SyntacticAnalyzer {
     }
 
     private String[] splitWords(String text) {
-        if (text.isBlank())
+        if (text.isBlank()) {
             return new String[0];
+        }
         return text.split("\\s+");
     }
 
     private String[] splitLines(String text) {
-        if (text.isBlank())
+        if (text.isBlank()) {
             return new String[0];
+        }
         return text.split("\\r?\\n", -1);
     }
 
     private String[] normalizeAndTokenize(String text) {
         String normalized = text.replaceAll("\\s+", " ").trim();
-        if (normalized.isEmpty())
+        if (normalized.isEmpty()) {
             return new String[0];
+        }
         return normalized.split(" ");
     }
 

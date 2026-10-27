@@ -182,10 +182,12 @@ class CloneCompletenessTest {
     private static List<Field> copyableFields(Class<?> type) {
         List<Field> fields = new ArrayList<>();
         for (Field field : type.getDeclaredFields()) {
-            if (field.isSynthetic())
+            if (field.isSynthetic()) {
                 continue;
-            if (Modifier.isStatic(field.getModifiers()))
+            }
+            if (Modifier.isStatic(field.getModifiers())) {
                 continue;
+            }
             fields.add(field);
         }
         return fields;
@@ -209,27 +211,37 @@ class CloneCompletenessTest {
         }
     }
 
+    @SuppressWarnings("checkstyle:NPathComplexity")
     private static Object distinctValue(Class<?> type, String fieldName, int seed) {
-        if (type == String.class)
+        if (type == String.class) {
             return "value-of-" + fieldName;
-        if (type == UUID.class)
+        }
+        if (type == UUID.class) {
             return UUID.randomUUID();
-        if (type == int.class || type == Integer.class)
+        }
+        if (type == int.class || type == Integer.class) {
             return 40 + seed;
-        if (type == long.class || type == Long.class)
+        }
+        if (type == long.class || type == Long.class) {
             return 40L + seed;
-        if (type == float.class || type == Float.class)
+        }
+        if (type == float.class || type == Float.class) {
             return 0.5f + seed;
-        if (type == double.class || type == Double.class)
+        }
+        if (type == double.class || type == Double.class) {
             return 0.5d + seed;
+        }
         // false, not true: the @Builder.Default on distractorsEnabled is true, so only false
         // can prove the flag was actually carried over rather than re-defaulted.
-        if (type == boolean.class || type == Boolean.class)
+        if (type == boolean.class || type == Boolean.class) {
             return Boolean.FALSE;
-        if (type == LocalDateTime.class)
+        }
+        if (type == LocalDateTime.class) {
             return LocalDateTime.of(2026, 1, 2, 3, 4, 5);
-        if (List.class.isAssignableFrom(type))
+        }
+        if (List.class.isAssignableFrom(type)) {
             return new ArrayList<>(List.of("element-" + fieldName));
+        }
         return instantiate(type, fieldName);
     }
 

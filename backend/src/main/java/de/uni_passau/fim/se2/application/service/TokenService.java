@@ -40,6 +40,9 @@ public class TokenService {
 
     /**
      * Creates a short student invite token (e.g. "ABC-123-XYZ").
+     *
+     * @param userId the student the invite is for
+     * @return the stored token
      */
     public AuthTokenDTO createStudentInviteToken(UUID userId) {
         String tokenValue = generateShortToken();
@@ -48,6 +51,9 @@ public class TokenService {
 
     /**
      * Creates an email verification token.
+     *
+     * @param userId the user whose address to verify
+     * @return the stored token
      */
     public AuthTokenDTO createEmailVerificationToken(UUID userId) {
         // Delete old verification tokens for this user
@@ -58,6 +64,9 @@ public class TokenService {
 
     /**
      * Creates a password reset token.
+     *
+     * @param userId the user whose password to reset
+     * @return the stored token
      */
     public AuthTokenDTO createPasswordResetToken(UUID userId) {
         // Delete old reset tokens for this user
@@ -68,6 +77,10 @@ public class TokenService {
 
     /**
      * Validates and consumes a token.
+     *
+     * @param tokenValue   the token as the user sent it
+     * @param expectedType the purpose the token must have been issued for
+     * @return the token, now marked as used
      */
     public AuthTokenDTO validateAndConsume(String tokenValue, AuthTokenDTO.TokenType expectedType) {
         AuthTokenDTO token = tokenRepository.findByTokenValue(tokenValue)
@@ -92,6 +105,10 @@ public class TokenService {
 
     /**
      * Validates a token without consuming it (for multi-step flows like student onboarding).
+     *
+     * @param tokenValue   the token as the user sent it
+     * @param expectedType the purpose the token must have been issued for
+     * @return the token, still usable
      */
     public AuthTokenDTO validateWithoutConsuming(String tokenValue, AuthTokenDTO.TokenType expectedType) {
         AuthTokenDTO token = tokenRepository.findByTokenValue(tokenValue)
@@ -126,8 +143,9 @@ public class TokenService {
     private String generateShortToken() {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 9; i++) {
-            if (i == 3 || i == 6)
+            if (i == 3 || i == 6) {
                 sb.append('-');
+            }
             sb.append(CHARS.charAt(secureRandom.nextInt(CHARS.length())));
         }
         return sb.toString();

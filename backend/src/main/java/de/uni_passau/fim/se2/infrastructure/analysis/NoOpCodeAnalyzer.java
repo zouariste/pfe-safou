@@ -36,10 +36,10 @@ import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
 @ConditionalOnMissingBean(name = "treeSitterCodeAnalyzer")
 public class NoOpCodeAnalyzer implements CodeAnalyzer {
 
-    private static final Logger logger = LoggerFactory.getLogger(NoOpCodeAnalyzer.class);
+    private static final Logger log = LoggerFactory.getLogger(NoOpCodeAnalyzer.class);
 
     public NoOpCodeAnalyzer() {
-        logger.warn("Tree-sitter disabled — using NoOpCodeAnalyzer (all metrics will be zero)");
+        log.warn("Tree-sitter disabled — using NoOpCodeAnalyzer (all metrics will be zero)");
     }
 
     @Override

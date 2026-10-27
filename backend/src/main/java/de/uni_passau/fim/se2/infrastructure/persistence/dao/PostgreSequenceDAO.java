@@ -18,25 +18,37 @@
  */
 package de.uni_passau.fim.se2.infrastructure.persistence.dao;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 
 import org.postgresql.util.PGobject;
-import org.springframework.dao.*;
-import org.springframework.jdbc.core.*;
-import org.springframework.stereotype.*;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import de.uni_passau.fim.se2.domain.entities.*;
-import de.uni_passau.fim.se2.domain.exceptions.*;
-import de.uni_passau.fim.se2.domain.interfaces.*;
-import de.uni_passau.fim.se2.infrastructure.persistence.mapper.*;
+import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceConceptDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
+import de.uni_passau.fim.se2.infrastructure.persistence.mapper.TieredTaskSequenceRowMapper;
 
 @Repository
 public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
+
+    private static final String SEQUENCE_ID_REQUIRED = "Sequence ID cannot be null";
 
     private static final TieredTaskSequenceRowMapper SEQ_ROW_MAPPER = new TieredTaskSequenceRowMapper();
     private final JdbcTemplate jdbc;
@@ -169,8 +181,9 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
 
     @Override
     public boolean softDeleteById(UUID sequenceId) {
-        if (sequenceId == null)
+        if (sequenceId == null) {
             return false;
+        }
         return jdbc.update("""
             UPDATE tiered_task_sequences
                SET deleted_at = now()
@@ -195,10 +208,12 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
      */
     @Override
     public void linkConceptsBatch(UUID sequenceId, List<UUID> conceptIds) {
-        if (sequenceId == null)
-            throw new DomainValidationException("Sequence ID cannot be null");
-        if (conceptIds == null || conceptIds.isEmpty())
+        if (sequenceId == null) {
+            throw new DomainValidationException(SEQUENCE_ID_REQUIRED);
+        }
+        if (conceptIds == null || conceptIds.isEmpty()) {
             return;
+        }
 
         // ON CONFLICT DO NOTHING in case the PK is (sequence_id, concept_id) — makes the call idempotent.
         final String sql = """
@@ -229,8 +244,9 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
     @Override
     @Transactional
     public void replaceConcepts(UUID sequenceId, List<UUID> conceptIds) {
-        if (sequenceId == null)
-            throw new DomainValidationException("Sequence ID cannot be null");
+        if (sequenceId == null) {
+            throw new DomainValidationException(SEQUENCE_ID_REQUIRED);
+        }
 
         jdbc.update("DELETE FROM tiered_task_sequence_concepts WHERE sequence_id = ?", sequenceId);
         linkConceptsBatch(sequenceId, conceptIds);
@@ -238,8 +254,9 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
 
     @Override
     public void updateTaskDescription(UUID sequenceId, String taskDescription) {
-        if (sequenceId == null)
-            throw new DomainValidationException("Sequence ID cannot be null");
+        if (sequenceId == null) {
+            throw new DomainValidationException(SEQUENCE_ID_REQUIRED);
+        }
 
         int updated = jdbc.update(
             "UPDATE tiered_task_sequences SET task_description = ? WHERE id = ?",
@@ -252,8 +269,9 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
 
     @Override
     public void updateTitle(UUID sequenceId, String title) {
-        if (sequenceId == null)
-            throw new DomainValidationException("Sequence ID cannot be null");
+        if (sequenceId == null) {
+            throw new DomainValidationException(SEQUENCE_ID_REQUIRED);
+        }
 
         int updated = jdbc.update(
             "UPDATE tiered_task_sequences SET title = ? WHERE id = ?",
@@ -264,19 +282,24 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
         }
     }
 
+    @SuppressWarnings("checkstyle:NPathComplexity")
     @Override
     public void tagSequence(UUID sequenceId, UUID evalInputId, String mode, UUID runId) {
-        if (sequenceId == null)
+        if (sequenceId == null) {
             throw new DomainValidationException("sequenceId is required");
-        if (runId == null)
+        }
+        if (runId == null) {
             throw new DomainValidationException("runId is required");
-        if (evalInputId == null)
+        }
+        if (evalInputId == null) {
             throw new DomainValidationException("evalInputId is required");
-        if (mode == null || mode.isBlank())
+        }
+        if (mode == null || mode.isBlank()) {
             throw new DomainValidationException("input_mode is required (full|code|meta)");
+        }
 
         final String m = mode.toLowerCase(Locale.ROOT);
-        if (!m.equals("full") && !m.equals("code") && !m.equals("meta")) {
+        if (!"full".equals(m) && !"code".equals(m) && !"meta".equals(m)) {
             throw new DomainValidationException("invalid input_mode: " + mode + " (allowed: full, code, meta)");
         }
 
@@ -327,30 +350,14 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
             ORDER BY created_at DESC, id DESC
             """;
 
-        return jdbc.query(sql, (rs, rowNum) -> {
-            var ts = rs.getTimestamp("created_at");
-            return TieredTaskSequenceDTO.builder()
-                .id(rs.getObject("id", UUID.class))
-                .programmingLanguage(rs.getString("programming_language"))
-                .codeSnippet(rs.getString("code_snippet"))
-                .createdAt(ts != null ? ts.toLocalDateTime() : null)
-                .taskDescription(rs.getString("task_description"))
-                .title(rs.getString("title"))
-                .versionId(rs.getObject("version_id", UUID.class))
-                .strategyName(rs.getString("strategyname"))
-                .ownerId(rs.getObject("owner_id", UUID.class))
-                .targetLanguage(rs.getString("target_language"))
-                .constraints(fromJsonb(rs.getString("constraint_config")))
-                .tierCount(rs.getInt("tier_count") > 0 ? rs.getInt("tier_count") : 3)
-                .curriculumTopicId(rs.getObject("curriculum_topic_id", UUID.class))
-                .build();
-        }, ownerId);
+        return jdbc.query(sql, this::mapOwnedSequence, ownerId);
     }
 
     @Override
     public boolean markDiverged(UUID sequenceId) {
-        if (sequenceId == null)
+        if (sequenceId == null) {
             return false;
+        }
         // copied_from IS NOT NULL: an original is already listed, and stamping one would claim
         // it came from somewhere. diverged_at IS NULL: keep the first edit, not the latest.
         int updated = jdbc.update("""
@@ -365,8 +372,9 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
 
     @Override
     public boolean markDivergedByTaskId(UUID taskId) {
-        if (taskId == null)
+        if (taskId == null) {
             return false;
+        }
         int updated = jdbc.update("""
             UPDATE tiered_task_sequences s
                SET diverged_at = now()
@@ -382,7 +390,7 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
     @Override
     public void updateTierCount(UUID sequenceId, int tierCount) {
         if (sequenceId == null) {
-            throw new DomainValidationException("Sequence ID cannot be null");
+            throw new DomainValidationException(SEQUENCE_ID_REQUIRED);
         }
         int updated = jdbc.update(
             "UPDATE tiered_task_sequences SET tier_count = ? WHERE id = ?",
@@ -395,8 +403,9 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
 
     @Override
     public void updateSemanticSummary(UUID sequenceId, String summary) {
-        if (sequenceId == null)
+        if (sequenceId == null) {
             return;
+        }
         String trimmed = summary == null ? null : summary.substring(0, Math.min(summary.length(), 500));
         jdbc.update(
             "UPDATE tiered_task_sequences SET semantic_summary = ? WHERE id = ?",
@@ -406,8 +415,9 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
 
     @Override
     public String findSemanticSummary(UUID sequenceId) {
-        if (sequenceId == null)
+        if (sequenceId == null) {
             return null;
+        }
         // queryForList rather than queryForObject: an unknown id is an ordinary outcome for a
         // copy operation, not an exception worth unwinding a transaction for.
         List<String> rows = jdbc.queryForList(
@@ -419,8 +429,9 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
 
     @Override
     public List<UUID> findConceptIdsBySequenceId(UUID sequenceId) {
-        if (sequenceId == null)
+        if (sequenceId == null) {
             return List.of();
+        }
         return jdbc.queryForList(
             "SELECT concept_id FROM tiered_task_sequence_concepts WHERE sequence_id = ?",
             UUID.class, sequenceId
@@ -429,8 +440,9 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
 
     @Override
     public Map<UUID, List<String>> findConceptNamesBySequenceIds(List<UUID> sequenceIds) {
-        if (sequenceIds == null || sequenceIds.isEmpty())
+        if (sequenceIds == null || sequenceIds.isEmpty()) {
             return Map.of();
+        }
 
         String placeholders = String.join(",", Collections.nCopies(sequenceIds.size(), "?"));
         List<Object[]> rows = jdbc.query(
@@ -580,8 +592,9 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
     // ── AP20: JSONB helpers ──────────────────────────────────
 
     private PGobject toJsonb(GenerationConstraints constraints) {
-        if (constraints == null || !constraints.hasAny())
+        if (constraints == null || !constraints.hasAny()) {
             return null;
+        }
         try {
             PGobject pg = new PGobject();
             pg.setType("jsonb");
@@ -594,13 +607,33 @@ public class PostgreSequenceDAO implements TieredTaskSequenceRepository {
     }
 
     private GenerationConstraints fromJsonb(String json) {
-        if (json == null || json.isBlank())
+        if (json == null || json.isBlank()) {
             return null;
+        }
         try {
             return objectMapper.readValue(json, GenerationConstraints.class);
         }
         catch (JsonProcessingException e) {
             throw new DomainValidationException("Failed to deserialize constraints: " + e.getMessage());
         }
+    }
+
+    private TieredTaskSequenceDTO mapOwnedSequence(ResultSet rs, int rowNum) throws SQLException {
+        var ts = rs.getTimestamp("created_at");
+        return TieredTaskSequenceDTO.builder()
+            .id(rs.getObject("id", UUID.class))
+            .programmingLanguage(rs.getString("programming_language"))
+            .codeSnippet(rs.getString("code_snippet"))
+            .createdAt(ts != null ? ts.toLocalDateTime() : null)
+            .taskDescription(rs.getString("task_description"))
+            .title(rs.getString("title"))
+            .versionId(rs.getObject("version_id", UUID.class))
+            .strategyName(rs.getString("strategyname"))
+            .ownerId(rs.getObject("owner_id", UUID.class))
+            .targetLanguage(rs.getString("target_language"))
+            .constraints(fromJsonb(rs.getString("constraint_config")))
+            .tierCount(rs.getInt("tier_count") > 0 ? rs.getInt("tier_count") : 3)
+            .curriculumTopicId(rs.getObject("curriculum_topic_id", UUID.class))
+            .build();
     }
 }

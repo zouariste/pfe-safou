@@ -50,6 +50,12 @@ public final class WorksheetAccessPolicy {
      * <p>
      * Owners and admins always may. Beyond that a link is enough, which is how sharing has always worked —
      * {@link WorksheetVisibility#PRIVATE} is the new ability to say no.
+     *
+     * @param visibility the worksheet's visibility
+     * @param ownerId    the worksheet's owner
+     * @param viewerId   the viewer, or null if anonymous
+     * @param viewerRole the viewer's role, or null if anonymous
+     * @return true if the viewer may open the worksheet
      */
     public static boolean canView(
         WorksheetVisibility visibility, UUID ownerId,
@@ -72,6 +78,12 @@ public final class WorksheetAccessPolicy {
      * <p>
      * Copying your own worksheet is allowed and simply duplicates it. The button is hidden for that case, but the rule
      * does not forbid it; there is nothing to protect against, and an endpoint that rejected it would be surprising.
+     *
+     * @param visibility the worksheet's visibility
+     * @param ownerId    the worksheet's owner
+     * @param viewerId   the viewer, or null if anonymous
+     * @param viewerRole the viewer's role, or null if anonymous
+     * @return true if the viewer may copy the worksheet
      */
     public static boolean canCopy(
         WorksheetVisibility visibility, UUID ownerId,
@@ -90,6 +102,9 @@ public final class WorksheetAccessPolicy {
      * Only visibility decides this, deliberately. The listing is the same for everyone who can see the marketplace at
      * all, so it can be a plain {@code WHERE} clause on the search query rather than a per-row check the database
      * cannot express.
+     *
+     * @param visibility the worksheet's visibility
+     * @return true if the marketplace lists the worksheet
      */
     public static boolean canList(WorksheetVisibility visibility) {
         return visibility(visibility).listed();
@@ -105,6 +120,10 @@ public final class WorksheetAccessPolicy {
      *
      * @param isLibraryInbox whether this is the auto-created inbox; the caller decides, because recognising it means
      *                       knowing about a sentinel in the description and that is not a domain rule
+     * @param ownerId        the worksheet's owner
+     * @param actorId        the user making the change, or null if anonymous
+     * @param actorRole      that user's role, or null if anonymous
+     * @return true if the user may change the visibility
      */
     public static boolean canChangeVisibility(
         UUID ownerId, UUID actorId, UserRole actorRole,
@@ -123,6 +142,8 @@ public final class WorksheetAccessPolicy {
      * Always {@link WorksheetVisibility#PRIVATE}, whatever the source was. Copying is how you take someone else's
      * material to adapt it, and a half-adapted worksheet appearing in the marketplace under your name is not what
      * anyone meant by pressing the button. Publishing it is then a separate, deliberate act.
+     *
+     * @return {@link WorksheetVisibility#PRIVATE}
      */
     public static WorksheetVisibility visibilityForCopy() {
         return WorksheetVisibility.PRIVATE;

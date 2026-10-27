@@ -57,7 +57,7 @@ public record LibrarySearchResponse(
         List<FacetBucket> topConcepts,
         long totalConceptCount,
         Ownership ownership,
-        /** Tier counts present under the other filters, ascending; name is the count as text. */
+        // Tier counts present under the other filters, ascending; name is the count as text.
         List<FacetBucket> tierCounts
     ) {
     }

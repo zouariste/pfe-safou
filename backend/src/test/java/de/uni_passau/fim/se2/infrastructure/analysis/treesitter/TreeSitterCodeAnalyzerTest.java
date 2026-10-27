@@ -50,6 +50,7 @@ class TreeSitterCodeAnalyzerTest {
         return TreeSitterNatives.isAvailable();
     }
 
+    @SuppressWarnings("checkstyle:MethodLength")
     static Stream<Arguments> snippets() {
         return Stream.of(
             Arguments.of("java", """

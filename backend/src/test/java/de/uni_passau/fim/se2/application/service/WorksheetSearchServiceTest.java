@@ -141,10 +141,12 @@ class WorksheetSearchServiceTest {
             ) {
                 int depth = 0;
                 for (char c : clause.sql().toCharArray()) {
-                    if (c == '(')
+                    if (c == '(') {
                         depth++;
-                    if (c == ')')
+                    }
+                    if (c == ')') {
                         depth--;
+                    }
                     assertTrue(depth >= 0, "closed a parenthesis that was never opened: " + clause.sql());
                 }
                 assertEquals(0, depth, "unbalanced parentheses in: " + clause.sql());

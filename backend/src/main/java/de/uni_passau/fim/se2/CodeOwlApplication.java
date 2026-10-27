@@ -20,10 +20,11 @@ package de.uni_passau.fim.se2;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.*;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan("de.uni_passau.fim.se2")
+@SuppressWarnings("checkstyle:HideUtilityClassConstructor") // Spring instantiates it as a configuration class.
 public class CodeOwlApplication {
 
     public static void main(String[] args) {

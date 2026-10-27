@@ -50,7 +50,7 @@ import de.uni_passau.fim.se2.infrastructure.ai.tagging.LlmSemanticTagger.Semanti
 @Component
 public class SemanticTaggingListener {
 
-    private static final Logger logger = LoggerFactory.getLogger(SemanticTaggingListener.class);
+    private static final Logger log = LoggerFactory.getLogger(SemanticTaggingListener.class);
 
     private final LlmSemanticTagger tagger;
     private final SequenceTagService tagService;
@@ -66,6 +66,12 @@ public class SemanticTaggingListener {
         this.sequenceRepo = sequenceRepo;
     }
 
+    /**
+     * Tags a freshly generated sequence with semantic topics, off the request thread. A failure is logged and leaves
+     * the sequence untagged.
+     *
+     * @param event the generated sequence's ID, language, statements and code
+     */
     @Async("taggingExecutor")
     @EventListener
     public void onSequenceGenerated(SequenceGeneratedEvent event) {
@@ -79,7 +85,7 @@ public class SemanticTaggingListener {
             );
 
             if (result == null) {
-                logger.debug("Semantic tagging returned no result for sequence {}", event.sequenceId());
+                log.debug("Semantic tagging returned no result for sequence {}", event.sequenceId());
                 return;
             }
 
@@ -93,7 +99,7 @@ public class SemanticTaggingListener {
                     sequenceRepo.updateSemanticSummary(event.sequenceId(), result.shortDescription());
                 }
                 catch (Exception e) {
-                    logger.warn(
+                    log.warn(
                         "Could not update semantic_summary for sequence {}: {}",
                         event.sequenceId(), e.getMessage()
                     );
@@ -101,7 +107,7 @@ public class SemanticTaggingListener {
             }
 
             long elapsedMs = (System.nanoTime() - t0) / 1_000_000L;
-            logger.debug(
+            log.debug(
                 "Semantic tagging for sequence {} finished in {}ms ({} primary, {} alias)",
                 event.sequenceId(), elapsedMs,
                 result.primaryTags() == null ? 0 : result.primaryTags().size(),
@@ -110,7 +116,7 @@ public class SemanticTaggingListener {
 
         }
         catch (Exception e) {
-            logger.warn("Semantic tagging failed for sequence {}: {}", event.sequenceId(), e.getMessage());
+            log.warn("Semantic tagging failed for sequence {}: {}", event.sequenceId(), e.getMessage());
         }
         finally {
             MDC.remove("sequenceId");

@@ -18,14 +18,16 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import de.uni_passau.fim.se2.domain.entities.*;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.entities.UserDTO;
 import de.uni_passau.fim.se2.domain.entities.WorksheetDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
 import de.uni_passau.fim.se2.domain.interfaces.WorksheetRepository;
@@ -38,6 +40,8 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class WorksheetService {
+
+    private static final String WORKSHEET_ID_REQUIRED = "Worksheet ID must not be null.";
 
     private final WorksheetRepository worksheetRepo;
     private final WorksheetCloneService cloneService;
@@ -56,20 +60,32 @@ public class WorksheetService {
         log.debug("Updated worksheet id={}", worksheet.getId());
     }
 
+    /**
+     * Deletes a worksheet.
+     *
+     * @param id the worksheet to delete
+     */
     @Transactional
     public void deleteWorksheet(UUID id) {
         if (id == null) {
-            throw new DomainValidationException("Worksheet ID must not be null.");
+            throw new DomainValidationException(WORKSHEET_ID_REQUIRED);
         }
         WorksheetDTO worksheet = WorksheetDTO.builder().id(id).build();
         worksheetRepo.deleteWorksheet(worksheet);
         log.debug("Deleted worksheet id={}", id);
     }
 
+    /**
+     * Loads a worksheet with its sequence references. Fails if it does not exist; use {@link #findWorksheetById(UUID)}
+     * where that is a legitimate answer.
+     *
+     * @param id the worksheet to load
+     * @return the worksheet
+     */
     @Transactional(readOnly = true)
     public WorksheetDTO loadWorksheetById(UUID id) {
         if (id == null) {
-            throw new DomainValidationException("Worksheet ID must not be null.");
+            throw new DomainValidationException(WORKSHEET_ID_REQUIRED);
         }
         WorksheetDTO worksheet = WorksheetDTO.builder().id(id).build();
         worksheetRepo.getWorksheetById(worksheet);
@@ -84,6 +100,9 @@ public class WorksheetService {
      * method throws, which turns a missing worksheet into a 400 saying so — and an endpoint that answers 404 for a
      * worksheet the caller may not see then tells that caller which ids are real. An empty result lets both cases
      * answer alike.
+     *
+     * @param id the worksheet to look up
+     * @return the worksheet, or empty if it does not exist
      */
     @Transactional(readOnly = true)
     public Optional<WorksheetDTO> findWorksheetById(UUID id) {
@@ -115,6 +134,9 @@ public class WorksheetService {
      * <p>
      * The inbox is identified by a sentinel embedded in the description rather than by name, so renaming the worksheet
      * does not orphan the copy target. If a teacher deletes the inbox, the next one-click copy creates a fresh one.
+     *
+     * @param ownerId the teacher
+     * @return the teacher's Library Inbox
      */
     @Transactional
     public WorksheetDTO getOrCreateDefaultWorksheet(UUID ownerId) {
@@ -142,6 +164,12 @@ public class WorksheetService {
         return fresh;
     }
 
+    /**
+     * Adds a sequence to a worksheet.
+     *
+     * @param worksheetId the worksheet
+     * @param sequenceId  the sequence to add
+     */
     @Transactional
     public void addSequenceToWorksheet(UUID worksheetId, UUID sequenceId) {
         if (worksheetId == null || sequenceId == null) {
@@ -153,10 +181,16 @@ public class WorksheetService {
         log.debug("Linked sequence id={} to worksheet id={}", sequenceId, worksheetId);
     }
 
+    /**
+     * Adds several sequences to a worksheet in one transaction.
+     *
+     * @param worksheetId the worksheet
+     * @param sequenceIds the sequences to add; must not be empty
+     */
     @Transactional
     public void addSequencesToWorksheet(UUID worksheetId, List<UUID> sequenceIds) {
         if (worksheetId == null) {
-            throw new DomainValidationException("Worksheet ID must not be null.");
+            throw new DomainValidationException(WORKSHEET_ID_REQUIRED);
         }
         if (sequenceIds == null || sequenceIds.isEmpty()) {
             throw new DomainValidationException("Sequence list must not be null or empty.");
@@ -171,6 +205,12 @@ public class WorksheetService {
         log.debug("Linked {} sequences to worksheet id={}", sequenceIds.size(), worksheetId);
     }
 
+    /**
+     * Removes a sequence from a worksheet.
+     *
+     * @param worksheetId the worksheet
+     * @param sequenceId  the sequence to remove
+     */
     @Transactional
     public void removeSequenceFromWorksheet(UUID worksheetId, UUID sequenceId) {
         if (worksheetId == null || sequenceId == null) {
@@ -183,10 +223,16 @@ public class WorksheetService {
         log.debug("Unlinked sequence id={} from worksheet id={}", sequenceId, worksheetId);
     }
 
+    /**
+     * Puts a worksheet's sequences into the given order.
+     *
+     * @param worksheetId        the worksheet
+     * @param orderedSequenceIds every sequence on the worksheet, in the new order
+     */
     @Transactional
     public void reorderSequences(UUID worksheetId, List<UUID> orderedSequenceIds) {
         if (worksheetId == null) {
-            throw new DomainValidationException("Worksheet ID must not be null.");
+            throw new DomainValidationException(WORKSHEET_ID_REQUIRED);
         }
         if (orderedSequenceIds == null || orderedSequenceIds.isEmpty()) {
             throw new DomainValidationException("Sequence order list must not be null or empty.");
@@ -203,6 +249,10 @@ public class WorksheetService {
      * Kept as the single entry point callers already know, but the work now lives in {@link WorksheetCloneService}. It
      * used to be inline here and rebuilt sequences and tasks field by field, which meant every column added afterwards
      * quietly stopped being copied.
+     *
+     * @param sourceWorksheetId the worksheet to copy
+     * @param newOwnerId        the owner of the copy
+     * @return the copy
      */
     @Transactional
     public WorksheetDTO copyWorksheet(UUID sourceWorksheetId, UUID newOwnerId) {
@@ -261,6 +311,9 @@ public class WorksheetService {
      * <p>
      * Identified by the sentinel in the description, the same way {@link #getOrCreateDefaultWorksheet(UUID)} finds it —
      * so renaming the worksheet does not turn it into an ordinary one.
+     *
+     * @param worksheet the worksheet to check, or null
+     * @return true if the worksheet is a Library Inbox
      */
     public static boolean isLibraryInbox(WorksheetDTO worksheet) {
         return worksheet != null
@@ -281,7 +334,7 @@ public class WorksheetService {
 
     private void validateWorksheetId(WorksheetDTO worksheet) {
         if (worksheet == null || worksheet.getId() == null) {
-            throw new DomainValidationException("Worksheet ID must not be null.");
+            throw new DomainValidationException(WORKSHEET_ID_REQUIRED);
         }
     }
 

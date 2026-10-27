@@ -40,6 +40,13 @@ public class AdminAuditService {
 
     /**
      * Records a successful admin action.
+     *
+     * @param adminId   the admin who acted
+     * @param action    what they did
+     * @param ip        the client address
+     * @param userAgent the client's user agent
+     * @param bytesSent the bytes sent to the client, or null if not applicable
+     * @param rowsSent  the rows sent to the client, or null if not applicable
      */
     public void logSuccess(
         UUID adminId, String action, String ip, String userAgent,
@@ -50,6 +57,12 @@ public class AdminAuditService {
 
     /**
      * Records a failed admin action with an error message.
+     *
+     * @param adminId   the admin who acted
+     * @param action    what they tried to do
+     * @param ip        the client address
+     * @param userAgent the client's user agent
+     * @param errorMsg  why the action failed
      */
     public void logFailure(
         UUID adminId, String action, String ip, String userAgent,

@@ -56,7 +56,7 @@ import de.uni_passau.fim.se2.domain.model.ConceptCatalog;
 @Service
 public class SequenceTagService {
 
-    private static final Logger logger = LoggerFactory.getLogger(SequenceTagService.class);
+    private static final Logger log = LoggerFactory.getLogger(SequenceTagService.class);
 
     private final SequenceTagRepository tagRepo;
     private final ConceptCatalog conceptCatalog;
@@ -79,13 +79,18 @@ public class SequenceTagService {
      * to emit them, this makes sure, so topics and concepts stay disjoint.
      *
      * @param translations canonical (German) tag name → English slug; may be null or partial
+     * @param sequenceId   the sequence to tag
+     * @param primaryTags  the main topic tags
+     * @param aliases      alternative names for the same topics
      */
+    @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     public void writeLlmTags(
         UUID sequenceId, List<String> primaryTags, List<String> aliases,
         Map<String, String> translations
     ) {
-        if (sequenceId == null)
+        if (sequenceId == null) {
             return;
+        }
 
         Map<String, String> english = translations == null ? Map.of() : translations;
         Set<String> conceptNames = conceptCatalog.getConceptNamesAsTopicSlugs();
@@ -95,30 +100,33 @@ public class SequenceTagService {
         List<SequenceTagDTO> tags = new java.util.ArrayList<>();
         if (primaryTags != null) {
             for (String p : primaryTags) {
-                if (p == null || p.isBlank())
+                if (p == null || p.isBlank()) {
                     continue;
+                }
                 tags.add(new SequenceTagDTO(sequenceId, p.trim().toLowerCase(Locale.ROOT), "llm", 0.9f));
             }
         }
         if (aliases != null) {
             for (String a : aliases) {
-                if (a == null || a.isBlank())
+                if (a == null || a.isBlank()) {
                     continue;
+                }
                 tags.add(new SequenceTagDTO(sequenceId, a.trim().toLowerCase(Locale.ROOT), "llm", 0.6f));
             }
         }
         int before = tags.size();
         tags.removeIf(t -> namesConcept.test(t.getTagName()));
         if (tags.size() < before) {
-            logger.debug("Dropped {} LLM tags naming a concept for sequence {}", before - tags.size(), sequenceId);
+            log.debug("Dropped {} LLM tags naming a concept for sequence {}", before - tags.size(), sequenceId);
         }
-        if (tags.isEmpty())
+        if (tags.isEmpty()) {
             return;
+        }
 
         try {
             // Replace previous LLM tags so a re-tag doesn't accumulate stale ones.
             tagRepo.replaceForSource(sequenceId, "llm", tags);
-            logger.debug(
+            log.debug(
                 "LLM-tagged sequence {} with {} tags ({} primary, {} alias)",
                 sequenceId, tags.size(),
                 primaryTags == null ? 0 : primaryTags.size(),
@@ -126,22 +134,23 @@ public class SequenceTagService {
             );
         }
         catch (Exception e) {
-            logger.warn("LLM tag write failed for sequence {}: {}", sequenceId, e.getMessage());
+            log.warn("LLM tag write failed for sequence {}: {}", sequenceId, e.getMessage());
             return;
         }
 
         Map<String, String> keptTranslations = new java.util.HashMap<>();
         for (SequenceTagDTO t : tags) {
             String en = english.get(t.getTagName());
-            if (en != null)
+            if (en != null) {
                 keptTranslations.put(t.getTagName(), en);
+            }
         }
         if (!keptTranslations.isEmpty()) {
             try {
                 tagRepo.upsertTranslations(keptTranslations);
             }
             catch (Exception e) {
-                logger.warn("Topic translation write failed for sequence {}: {}", sequenceId, e.getMessage());
+                log.warn("Topic translation write failed for sequence {}: {}", sequenceId, e.getMessage());
             }
         }
     }
@@ -150,10 +159,16 @@ public class SequenceTagService {
     // Manual tag CRUD (teacher-facing)
     // ─────────────────────────────────────────────────────────────────────
 
-    /** Adds a manually-set tag. Idempotent via ON CONFLICT DO NOTHING. */
+    /**
+     * Adds a manually-set tag. Idempotent via ON CONFLICT DO NOTHING.
+     *
+     * @param sequenceId the sequence to tag
+     * @param tagName    the tag to add
+     */
     public void addManualTag(UUID sequenceId, String tagName) {
-        if (sequenceId == null || tagName == null || tagName.isBlank())
+        if (sequenceId == null || tagName == null || tagName.isBlank()) {
             return;
+        }
         tagRepo.upsertAll(
             List.of(
                 new SequenceTagDTO(sequenceId, tagName.trim().toLowerCase(Locale.ROOT), "manual")
@@ -161,7 +176,12 @@ public class SequenceTagService {
         );
     }
 
-    /** Removes a tag regardless of source. The teacher is the final authority. */
+    /**
+     * Removes a tag regardless of source. The teacher is the final authority.
+     *
+     * @param sequenceId the sequence
+     * @param tagName    the tag to remove
+     */
     public void removeTag(UUID sequenceId, String tagName) {
         tagRepo.delete(sequenceId, tagName);
     }
@@ -186,7 +206,11 @@ public class SequenceTagService {
         return tagRepo.findTagsByPrefix(prefix, limit);
     }
 
-    /** Canonical tag name → English slug, for localizing topic chips in the UI. */
+    /**
+     * Canonical tag name → English slug, for localizing topic chips in the UI.
+     *
+     * @return the English slug for each canonical tag name
+     */
     public Map<String, String> getTopicTranslations() {
         return tagRepo.findAllTranslations();
     }
@@ -194,6 +218,9 @@ public class SequenceTagService {
     /**
      * Groups tags by source for a single sequence — convenient for UI rendering which typically shows manual and LLM
      * tags differently from auto ones.
+     *
+     * @param sequenceId the sequence
+     * @return the sequence's tag names, keyed by source
      */
     public Map<String, List<String>> getTagsGroupedBySource(UUID sequenceId) {
         return tagRepo.findBySequenceId(sequenceId).stream()
@@ -216,6 +243,7 @@ public class SequenceTagService {
      *
      * @param daysBack how far to look back (clamped to 1..90 days)
      * @param limit    max rows (clamped by the DAO to 1..200)
+     * @return the new tags, most used first
      */
     public List<SequenceTagRepository.NewTopic> getNewTopics(int daysBack, int limit) {
         int days = Math.max(1, Math.min(daysBack, 90));
@@ -228,11 +256,13 @@ public class SequenceTagService {
      * "recursion", "fib-folge" → "fibonacci"). Idempotent — merging a tag into itself or into a non-existent source is
      * a safe no-op.
      *
+     * @param fromTagName the tag to merge away
+     * @param toTagName   the tag to merge it into
      * @return total rows affected (duplicates dropped + renames)
      */
     public int mergeTags(String fromTagName, String toTagName) {
         int affected = tagRepo.mergeTags(fromTagName, toTagName);
-        logger.info("Merged tag '{}' into '{}' (rows affected: {})", fromTagName, toTagName, affected);
+        log.info("Merged tag '{}' into '{}' (rows affected: {})", fromTagName, toTagName, affected);
         return affected;
     }
 }

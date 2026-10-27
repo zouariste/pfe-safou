@@ -18,11 +18,14 @@
  */
 package de.uni_passau.fim.se2.application.mapper;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.JsonNode;
 
-import de.uni_passau.fim.se2.domain.entities.*;
+import de.uni_passau.fim.se2.domain.entities.SolveContract;
+import de.uni_passau.fim.se2.domain.entities.TaskDTO;
+import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -30,6 +33,8 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public final class TaskSequenceMapper {
+
+    private static final String TASKS_INDEX_PREFIX = "tasks[";
 
     /**
      * Number of tasks expected in a sequence.
@@ -101,6 +106,14 @@ public final class TaskSequenceMapper {
 
     /**
      * AP21: Tier-count-aware overload for 5-tier mode.
+     *
+     * @param json                the model's response
+     * @param concepts            the concepts the sequence covers
+     * @param programmingLanguage the programming language of the tasks
+     * @param codeSnippet         the teacher's code snippet, or null
+     * @param taskDescription     the teacher's task description, or null
+     * @param tierCount           the number of tiers to expect
+     * @return the sequence with its tasks, still without solutions
      */
     public static TieredTaskSequenceDTO mapToIncompleteSequence(
         final JsonNode json,
@@ -127,16 +140,7 @@ public final class TaskSequenceMapper {
         }
     }
 
-    private static TieredTaskSequenceDTO mapFromContracts(
-        final JsonNode json,
-        final List<String> concepts,
-        final String programmingLanguage,
-        final String codeSnippet,
-        final String taskDescription
-    ) {
-        return mapFromContracts(json, concepts, programmingLanguage, codeSnippet, taskDescription, NUMBER_OF_TASKS);
-    }
-
+    @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     private static TieredTaskSequenceDTO mapFromContracts(
         final JsonNode json,
         final List<String> concepts,
@@ -160,21 +164,21 @@ public final class TaskSequenceMapper {
             JsonNode t = tasksNode.get(i);
             if (t == null || !t.isObject()) {
                 log.error("Invalid task object at index {}", i);
-                throw new IllegalArgumentException("tasks[" + i + "] must be an object.");
+                throw new IllegalArgumentException(TASKS_INDEX_PREFIX + i + "] must be an object.");
             }
 
             // tier
             int tier = t.has("tier") && t.get("tier").isInt() ? t.get("tier").asInt() : (i + 1);
             if (tier < 1 || tier > tierCount) {
                 log.error("Invalid tier {} for task {} (tierCount={})", tier, i, tierCount);
-                throw new IllegalArgumentException("tasks[" + i + "].tier must be 1.." + tierCount + ".");
+                throw new IllegalArgumentException(TASKS_INDEX_PREFIX + i + "].tier must be 1.." + tierCount + ".");
             }
 
             // statement
             JsonNode statementNode = t.get("statement");
             if (statementNode == null || !statementNode.isTextual() || statementNode.asText().isBlank()) {
                 log.error("Invalid statement for task {}", i);
-                throw new IllegalArgumentException("tasks[" + i + "].statement must be a non-empty string.");
+                throw new IllegalArgumentException(TASKS_INDEX_PREFIX + i + "].statement must be a non-empty string.");
             }
             String statement = statementNode.asText().trim();
 
@@ -182,7 +186,7 @@ public final class TaskSequenceMapper {
             JsonNode c = t.get("contract");
             if (c == null || !c.isObject()) {
                 log.error("Invalid contract for task {}", i);
-                throw new IllegalArgumentException("tasks[" + i + "].contract must be an object.");
+                throw new IllegalArgumentException(TASKS_INDEX_PREFIX + i + "].contract must be an object.");
             }
 
             String cLanguage = requireText(c, "language", i);
@@ -194,14 +198,16 @@ public final class TaskSequenceMapper {
             // statement == contract.taskStatement
             if (!statement.equals(cTaskStatement)) {
                 log.error("Statement mismatch for task {}", i);
-                throw new IllegalArgumentException("tasks[" + i + "]: statement must equal contract.taskStatement.");
+                throw new IllegalArgumentException(
+                    TASKS_INDEX_PREFIX + i + "]: statement must equal contract.taskStatement."
+                );
             }
 
             // examples
             JsonNode exArr = c.get("examples");
             if (exArr == null || !exArr.isArray() || exArr.size() < 1 || exArr.size() > 2) {
                 log.error("Invalid examples for task {}", i);
-                throw new IllegalArgumentException("tasks[" + i + "].contract.examples must have 1–2 items.");
+                throw new IllegalArgumentException(TASKS_INDEX_PREFIX + i + "].contract.examples must have 1–2 items.");
             }
             List<SolveContract.ExamplePair> examples = new ArrayList<>(exArr.size());
             for (int j = 0; j < exArr.size(); j++) {
@@ -209,7 +215,7 @@ public final class TaskSequenceMapper {
                 if (ex == null || !ex.isObject()) {
                     log.error("Invalid example object for task {} example {}", i, j);
                     throw new IllegalArgumentException(
-                        "tasks[" + i + "].contract.examples[" + j + "] must be an object."
+                        TASKS_INDEX_PREFIX + i + "].contract.examples[" + j + "] must be an object."
                     );
                 }
                 String in = requireText(ex, "input", i, j);
@@ -319,12 +325,16 @@ public final class TaskSequenceMapper {
         JsonNode n = obj.get(field);
         if (n == null || !n.isTextual()) {
             log.error("Missing or invalid field {} for task {}", field, taskIdx);
-            throw new IllegalArgumentException("tasks[" + taskIdx + "].contract." + field + " must be a string.");
+            throw new IllegalArgumentException(
+                TASKS_INDEX_PREFIX + taskIdx + "].contract." + field + " must be a string."
+            );
         }
         String s = n.asText().trim();
         if (s.isEmpty()) {
             log.error("Empty field {} for task {}", field, taskIdx);
-            throw new IllegalArgumentException("tasks[" + taskIdx + "].contract." + field + " must not be blank.");
+            throw new IllegalArgumentException(
+                TASKS_INDEX_PREFIX + taskIdx + "].contract." + field + " must not be blank."
+            );
         }
         return s;
     }
@@ -334,7 +344,7 @@ public final class TaskSequenceMapper {
         if (n == null || !n.isTextual()) {
             log.error("Missing or invalid field {} for task {} example {}", field, taskIdx, exIdx);
             throw new IllegalArgumentException(
-                "tasks[" + taskIdx + "].contract.examples[" + exIdx + "]." + field + " must be a string."
+                TASKS_INDEX_PREFIX + taskIdx + "].contract.examples[" + exIdx + "]." + field + " must be a string."
             );
         }
         String s = n.asText().trim();

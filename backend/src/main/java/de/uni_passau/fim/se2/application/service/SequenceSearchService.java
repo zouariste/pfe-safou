@@ -18,7 +18,13 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
@@ -58,7 +64,10 @@ import de.uni_passau.fim.se2.domain.interfaces.TieredTaskSequenceRepository;
 @Service
 public class SequenceSearchService {
 
-    private static final Logger logger = LoggerFactory.getLogger(SequenceSearchService.class);
+    private static final String MATCH_ANY = "any";
+    private static final String MATCH_ALL = "all";
+
+    private static final Logger log = LoggerFactory.getLogger(SequenceSearchService.class);
 
     /** Safety cap: never return more than this many rows per page. */
     private static final int MAX_PAGE_SIZE = 100;
@@ -117,7 +126,9 @@ public class SequenceSearchService {
      *
      * @param rawQuery      filters from the REST layer (may contain unsafe input — normalized here)
      * @param currentUserId the authenticated user (for {@code owner=me}); nullable for anonymous
+     * @return the matching items, the facet counts and a spelling suggestion
      */
+    @SuppressWarnings("checkstyle:NPathComplexity")
     public LibrarySearchResponse search(SearchQuery rawQuery, UUID currentUserId) {
         SearchQuery q = rawQuery == null ? new SearchQuery() : rawQuery.normalized();
         int page = Math.max(0, q.page());
@@ -162,6 +173,7 @@ public class SequenceSearchService {
      * skip the filter they're counting (so "languages" facet ignores the language filter, "topTags" facet ignores the
      * tag filter). We model that with {@link #rebuild(boolean, boolean)}.
      */
+    @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     private WhereClause buildWhere(SearchQuery q, UUID currentUserId) {
         StringBuilder sb = new StringBuilder(" WHERE 1=1 ");
         List<Object> params = new ArrayList<>();
@@ -304,6 +316,7 @@ public class SequenceSearchService {
         return total == null ? 0L : total;
     }
 
+    @SuppressWarnings({ "checkstyle:LambdaBodyLength", "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     private List<LibraryItemDTO> fetchPage(SearchQuery q, WhereClause w, int page, int size, UUID currentUserId) {
         StringBuilder sql = new StringBuilder();
 
@@ -408,8 +421,9 @@ public class SequenceSearchService {
         // 5. (optional) TSQUERY_EXPR × 2, × 2 — ORDER BY relevance (sequence vector, task vector)
         // 6. size, offset — LIMIT / OFFSET
         List<Object> params = new ArrayList<>();
-        if (hasUser)
+        if (hasUser) {
             params.add(currentUserId);
+        }
         if (hasQuery) {
             addHighlightTsqueryParams(params, q.q().trim()); // ts_headline query param
             params.add(headlineOptions());                   // ts_headline options param
@@ -425,8 +439,9 @@ public class SequenceSearchService {
         List<LibraryItemDTO> rows = jdbc.query(sql.toString(), (rs, n) -> {
             UUID seqId = rs.getObject("id", UUID.class);
             int tier = rs.getInt("tier_count");
-            if (rs.wasNull() || tier <= 0)
+            if (rs.wasNull() || tier <= 0) {
                 tier = 3;
+            }
             return new LibraryItemDTO(
                 seqId,
                 rs.getString("title"),
@@ -445,8 +460,9 @@ public class SequenceSearchService {
         }, params.toArray());
 
         // Attach tags and concepts in one shot each via their batch lookups.
-        if (rows.isEmpty())
+        if (rows.isEmpty()) {
             return rows;
+        }
         List<UUID> ids = rows.stream().map(LibraryItemDTO::sequenceId).toList();
         Map<UUID, List<SequenceTagDTO>> tagMap = tagRepo.findBySequenceIds(ids);
         Map<UUID, List<String>> conceptMap = sequenceRepo.findConceptNamesBySequenceIds(ids);
@@ -491,7 +507,9 @@ public class SequenceSearchService {
      * @param sourceSequenceId the sequence to find neighbours for; excluded from the result
      * @param limit            max results (clamped to [1, 10])
      * @param currentUserId    for the {@code alreadyInMyWorksheet} badge on each card; nullable
+     * @return up to {@code limit} similar sequences, best match first
      */
+    @SuppressWarnings({ "checkstyle:LambdaBodyLength", "checkstyle:MethodLength" })
     public List<LibraryItemDTO> findSimilar(UUID sourceSequenceId, int limit, UUID currentUserId) {
         int capped = clamp(limit <= 0 ? 3 : limit, 1, 10);
         boolean hasUser = currentUserId != null;
@@ -556,16 +574,18 @@ public class SequenceSearchService {
         List<Object> params = new ArrayList<>();
         params.add(sourceSequenceId);
         params.add(sourceSequenceId);
-        if (hasUser)
+        if (hasUser) {
             params.add(currentUserId);
+        }
         params.add(sourceSequenceId);
         params.add(capped);
 
         List<LibraryItemDTO> rows = jdbc.query(sql.toString(), (rs, n) -> {
             UUID seqId = rs.getObject("id", UUID.class);
             int tier = rs.getInt("tier_count");
-            if (rs.wasNull() || tier <= 0)
+            if (rs.wasNull() || tier <= 0) {
                 tier = 3;
+            }
             return new LibraryItemDTO(
                 seqId,
                 rs.getString("title"),
@@ -583,8 +603,9 @@ public class SequenceSearchService {
             );
         }, params.toArray());
 
-        if (rows.isEmpty())
+        if (rows.isEmpty()) {
             return rows;
+        }
         List<UUID> ids = rows.stream().map(LibraryItemDTO::sequenceId).toList();
         Map<UUID, List<SequenceTagDTO>> tagMap = tagRepo.findBySequenceIds(ids);
         List<LibraryItemDTO> enriched = new ArrayList<>(rows.size());
@@ -761,8 +782,9 @@ public class SequenceSearchService {
      */
     private List<String> fetchSuggestions(String query) {
         String normalized = query.trim().toLowerCase(Locale.ROOT);
-        if (normalized.isEmpty())
+        if (normalized.isEmpty()) {
             return List.of();
+        }
 
         try {
             return jdbc.query(
@@ -779,7 +801,7 @@ public class SequenceSearchService {
         }
         catch (Exception e) {
             // pg_trgm might not be installed in every env (dev-sqlite etc). Never fail the response.
-            logger.debug("Trigram suggestions failed: {}", e.getMessage());
+            log.debug("Trigram suggestions failed: {}", e.getMessage());
             return List.of();
         }
     }
@@ -801,12 +823,14 @@ public class SequenceSearchService {
     // ─────────────────────────────────────────────────────────────────────
 
     private static String placeholders(int n) {
-        if (n == 1)
+        if (n == 1) {
             return "?";
+        }
         StringBuilder sb = new StringBuilder(n * 2 - 1);
         sb.append("?");
-        for (int i = 1; i < n; i++)
+        for (int i = 1; i < n; i++) {
             sb.append(",?");
+        }
         return sb.toString();
     }
 
@@ -816,8 +840,9 @@ public class SequenceSearchService {
 
     /** Normalize a tag to the same slug format the DAO stores. */
     static String normalizeTag(String raw) {
-        if (raw == null)
+        if (raw == null) {
             return null;
+        }
         String v = raw.trim().toLowerCase(Locale.ROOT);
         v = SLUG_BAD.matcher(v).replaceAll("-");
         v = v.replaceAll("-+", "-").replaceAll("^-|-$", "");
@@ -831,8 +856,9 @@ public class SequenceSearchService {
      * ever matching.
      */
     static String normalizeConcept(String raw) {
-        if (raw == null)
+        if (raw == null) {
             return null;
+        }
         String v = raw.trim().toLowerCase(Locale.ROOT);
         return v.isEmpty() ? null : v;
     }
@@ -885,11 +911,11 @@ public class SequenceSearchService {
 
         private String q;
         private List<String> tags;
-        private String tagMode = "any"; // "any" | "all"
+        private String tagMode = MATCH_ANY; // "any" | "all"
         private List<String> concepts;
-        private String conceptMode = "any"; // "any" | "all"
+        private String conceptMode = MATCH_ANY; // "any" | "all"
         private String lang;
-        private String owner = "any";   // "any" | "me"
+        private String owner = MATCH_ANY;   // "any" | "me"
         private Integer tierCount;
         private String sort = "recent"; // "recent" | "relevance" | "popularity"
         private int page = 0;
@@ -910,7 +936,7 @@ public class SequenceSearchService {
         }
 
         public boolean tagModeAll() {
-            return "all".equalsIgnoreCase(tagMode);
+            return MATCH_ALL.equalsIgnoreCase(tagMode);
         }
 
         public List<String> concepts() {
@@ -918,7 +944,7 @@ public class SequenceSearchService {
         }
 
         public boolean conceptModeAll() {
-            return "all".equalsIgnoreCase(conceptMode);
+            return MATCH_ALL.equalsIgnoreCase(conceptMode);
         }
 
         public String lang() {
@@ -1023,13 +1049,14 @@ public class SequenceSearchService {
          * Returns a cleaned-up copy: tag slugs and concept names normalized, sort/tagMode /conceptMode/owner coerced to
          * the whitelist.
          */
+        @SuppressWarnings("checkstyle:NPathComplexity")
         SearchQuery normalized() {
             SearchQuery n = new SearchQuery()
                 .q(q == null ? null : q.trim())
                 .lang(lang == null ? null : lang.trim())
-                .owner("me".equalsIgnoreCase(owner) ? "me" : "any")
-                .tagMode("all".equalsIgnoreCase(tagMode) ? "all" : "any")
-                .conceptMode("all".equalsIgnoreCase(conceptMode) ? "all" : "any")
+                .owner("me".equalsIgnoreCase(owner) ? "me" : MATCH_ANY)
+                .tagMode(MATCH_ALL.equalsIgnoreCase(tagMode) ? MATCH_ALL : MATCH_ANY)
+                .conceptMode(MATCH_ALL.equalsIgnoreCase(conceptMode) ? MATCH_ALL : MATCH_ANY)
                 .sort(switch (sort == null ? "recent" : sort.toLowerCase(Locale.ROOT)) {
                     case "relevance", "popularity" -> sort.toLowerCase(Locale.ROOT);
                     default -> "recent";
@@ -1044,8 +1071,9 @@ public class SequenceSearchService {
                 Set<String> clean = new LinkedHashSet<>();
                 for (String t : tags) {
                     String slug = normalizeTag(t);
-                    if (slug != null)
+                    if (slug != null) {
                         clean.add(slug);
+                    }
                 }
                 n.tags(clean.isEmpty() ? null : new ArrayList<>(clean));
             }
@@ -1054,8 +1082,9 @@ public class SequenceSearchService {
                 Set<String> clean = new LinkedHashSet<>();
                 for (String c : concepts) {
                     String name = normalizeConcept(c);
-                    if (name != null)
+                    if (name != null) {
                         clean.add(name);
+                    }
                 }
                 n.concepts(clean.isEmpty() ? null : new ArrayList<>(clean));
             }
