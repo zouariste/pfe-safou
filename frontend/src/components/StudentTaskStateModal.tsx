@@ -4,6 +4,7 @@ import { api, apiErrorMessage } from "../lib/api.ts";
 import { renderGapLine } from "../lib/gapMarkers.tsx";
 import { toDisplayLines } from "../lib/solutionLines.ts";
 import type { StudentTaskState } from "../types/models.ts";
+import TaskStatement from "./TaskStatement.tsx";
 
 /** Pixels of margin per indent level — the widget's x_indent default, see lib/readArrangement.ts. */
 const INDENT_PX = 50;
@@ -93,7 +94,7 @@ export default function StudentTaskStateModal({
 
                             {!loading && !error && state && (
                                 <>
-                                    <p className="text-muted small">{state.statement}</p>
+                                    <TaskStatement className="text-muted small mb-3" statement={state.statement} />
 
                                     <div className="row g-3">
                                         <div className="col-md-6">

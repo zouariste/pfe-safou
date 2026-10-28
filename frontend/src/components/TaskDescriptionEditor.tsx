@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, apiErrorMessage } from "../lib/api";
+import TaskStatement from "./TaskStatement";
 
 /** Mirrors TaskPersistenceService.MAX_TASK_DESCRIPTION_LENGTH on the backend. */
 const MAX_TASK_DESCRIPTION_LENGTH = 5000;
@@ -83,7 +84,7 @@ export default function TaskDescriptionEditor({ sequenceId, taskDescription, can
                     {error && <div className="text-danger small mt-1">{error}</div>}
                 </form>
             ) : (
-                taskDescription && <p style={{ whiteSpace: "pre-wrap" }}>{taskDescription}</p>
+                taskDescription && <TaskStatement statement={taskDescription} className="mb-3" />
             )}
         </div>
     );

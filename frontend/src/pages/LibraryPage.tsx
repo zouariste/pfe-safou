@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { renderHighlight } from "../lib/highlight";
 import { sequenceOptionTitle } from "../lib/sequencePicker";
+import TaskStatement from "../components/TaskStatement";
 import { useAuth } from "../context/AuthContext";
 import { useLibraryFilters } from "../hooks/useLibraryFilters";
 import TagChip from "../components/TagChip";
@@ -1148,6 +1149,8 @@ function LibrarySequenceCard({
     // A named sequence would otherwise lose its task description, which is the title of an
     // unnamed one; it moves under the name instead.
     const subtitle = item.title?.trim() ? item.taskDescription?.trim() : undefined;
+    // The task description is Markdown wherever it shows up, including as an unnamed card's title.
+    const descriptionIsTitle = !item.title?.trim() && !!item.taskDescription?.trim();
 
     // A15c: visual affordance for select mode. A selected card gets a primary-border ring so the
     // user can scan their picks at a glance while scrolling a large grid.
@@ -1215,11 +1218,21 @@ function LibrarySequenceCard({
                     )}
                 </div>
 
-                <h5 className="card-title mb-1" style={{ fontSize: "1rem" }}>
-                    {title}
-                </h5>
+                {descriptionIsTitle ? (
+                    <TaskStatement
+                        statement={title}
+                        className="card-title mb-1 fw-medium task-statement-compact"
+                    />
+                ) : (
+                    <h5 className="card-title mb-1" style={{ fontSize: "1rem" }}>
+                        {title}
+                    </h5>
+                )}
                 {subtitle && !item.highlight && (
-                    <p className="card-text small text-muted mb-2">{subtitle}</p>
+                    <TaskStatement
+                        statement={subtitle}
+                        className="card-text small text-muted mb-2 task-statement-compact"
+                    />
                 )}
 
                 {/* The sequence's semanticSummary is deliberately NOT rendered here. It is an

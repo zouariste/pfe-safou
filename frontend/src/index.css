@@ -104,3 +104,20 @@
         transform: none !important;
     }
 }
+
+/* Markdown task statements (TaskStatement): no stray gap under the last paragraph or list. */
+.task-statement > :last-child {
+    margin-bottom: 0;
+}
+
+/* Task statements in small spaces such as Library cards: Markdown headings and paragraph gaps
+   would dwarf the rest of the card, so they keep the surrounding text size and tight spacing. */
+.task-statement-compact :is(h1, h2, h3, h4, h5, h6) {
+    font-size: inherit;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.task-statement-compact :is(p, ul, ol, pre, blockquote, table) {
+    margin-bottom: 0.25rem;
+}

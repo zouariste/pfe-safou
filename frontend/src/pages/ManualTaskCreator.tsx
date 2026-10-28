@@ -9,6 +9,7 @@ import CodeSolutionEditor from "../components/CodeSolutionEditor";
 import type { SplitEntry } from "../types/models";
 import "bootstrap/dist/css/bootstrap.min.css";
 import ConceptPicker from "../components/ConceptPicker";
+import TaskStatement from "../components/TaskStatement";
 import { useConceptCatalogue } from "../hooks/useConceptCatalogue";
 
 /* ────────────────────────────────────────────────────────────── */
@@ -478,9 +479,10 @@ export default function ManualTaskCreator() {
                                                 <small className="text-muted d-block mb-1">
                                                     {t("manual.problemStatement")}
                                                 </small>
-                                                <div style={{ fontSize: "0.9rem" }}>
-                                                    {currentTier.statement}
-                                                </div>
+                                                <TaskStatement
+                                                    statement={currentTier.statement}
+                                                    style={{ fontSize: "0.9rem" }}
+                                                />
                                             </div>
                                         )}
                                     </div>
