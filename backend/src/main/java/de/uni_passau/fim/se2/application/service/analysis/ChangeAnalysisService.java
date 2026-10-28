@@ -42,6 +42,7 @@ import de.uni_passau.fim.se2.domain.entities.TaskChangeAnalysisDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskOriginalDTO;
 import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
+import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer.ComplexityResult;
 import de.uni_passau.fim.se2.domain.interfaces.TaskChangeAnalysisRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TaskOriginalRepository;
 import de.uni_passau.fim.se2.domain.interfaces.TaskRepository;
@@ -145,9 +146,9 @@ public class ChangeAnalysisService {
             overallScore, codeLevenshtein, astResult.changeTypes()
         );
 
-        // 8. Complexity delta
-        int complexityDelta = current.getCyclomaticComplexity();
-        // If original had complexity info we would subtract it; for now we store current value
+        // 8. Complexity delta: measure both versions with the same analyzer rather than reusing
+        // the task's stored metric, so the difference reflects the edit alone.
+        Integer complexityDelta = complexityDelta(origCode, currCode, lang);
 
         // 9. Build DTO
         TaskChangeAnalysisDTO analysis = TaskChangeAnalysisDTO.builder()
@@ -305,6 +306,24 @@ public class ChangeAnalysisService {
     }
 
     // ── Helpers ──
+
+    /**
+     * Cyclomatic complexity of the edited code minus that of the original, or {@code null} when either version could
+     * not be measured. The analyzer reports zero lines for code it cannot parse (unsupported language, native parser
+     * unavailable), and a delta built from that would be a misleading 0.
+     */
+    private Integer complexityDelta(String origCode, String currCode, String lang) {
+        ComplexityResult before = codeAnalyzer.computeComplexity(origCode, lang);
+        ComplexityResult after = codeAnalyzer.computeComplexity(currCode, lang);
+        if (notMeasured(origCode, before) || notMeasured(currCode, after)) {
+            return null;
+        }
+        return after.cyclomaticComplexity() - before.cyclomaticComplexity();
+    }
+
+    private boolean notMeasured(String code, ComplexityResult result) {
+        return !code.isBlank() && result.linesOfCode() == 0;
+    }
 
     private String safe(String s) {
         return s == null ? "" : s;
