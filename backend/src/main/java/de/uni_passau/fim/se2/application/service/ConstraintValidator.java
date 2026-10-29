@@ -22,7 +22,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,6 +77,35 @@ public class ConstraintValidator {
     );
 
     /**
+     * Concept-catalogue slugs (what the blacklist/whitelist pickers suggest) mapped to the construct key that detects
+     * them. Slugs that already are a key ({@code for-loop}, {@code recursion}, {@code try-catch}, …) need no entry.
+     */
+    private static final Map<String, String> CONSTRUCT_ALIASES = Map.ofEntries(
+        Map.entry("lambda-expression", "lambda"),
+        Map.entry("ternary-operator", "ternary"),
+        Map.entry("switch-case", "switch"),
+        Map.entry("nested-loops", "nested-loop"),
+        Map.entry("stream-api", "stream"),
+        Map.entry("console-output", "print"),
+        Map.entry("throw", "exception"),
+        Map.entry("custom-exception", "exception"),
+        Map.entry("class-definition", "class"),
+        Map.entry("hashmap", "map"),
+        Map.entry("dictionary", "map"),
+        Map.entry("2d-array", "array")
+    );
+
+    /**
+     * Keys whose patterns detect the same construct, more or less strictly. Whitelisting either one allows both;
+     * otherwise a whitelisted {@code for-loop} would still be reported as a forbidden {@code for}.
+     */
+    private static final Map<String, String> CONSTRUCT_FAMILIES = Map.of(
+        "for-loop", "for",
+        "while-loop", "while",
+        "if-else", "if"
+    );
+
+    /**
      * Validates all tasks in a sequence against the given constraints. Returns a list of violation descriptions (empty
      * if all pass).
      *
@@ -115,9 +146,12 @@ public class ConstraintValidator {
 
             // Check whitelist (every construct in code must be in the whitelist)
             if (constraints.getWhitelist() != null && !constraints.getWhitelist().isEmpty()) {
+                Set<String> allowed = constraints.getWhitelist().stream()
+                    .map(name -> family(canonical(name)))
+                    .collect(Collectors.toSet());
                 for (Map.Entry<String, Pattern> entry : CONSTRUCT_PATTERNS.entrySet()) {
                     String construct = entry.getKey();
-                    if (!constraints.getWhitelist().contains(construct) && detectConstruct(code, construct)) {
+                    if (!allowed.contains(family(construct)) && detectConstruct(code, construct)) {
                         String msg = String.format(
                             "Tier %d: Construct '%s' found but not in whitelist",
                             task.getTierLevel(), construct
@@ -137,12 +171,23 @@ public class ConstraintValidator {
      * unknown constructs.
      */
     private boolean detectConstruct(String code, String construct) {
-        String key = construct.toLowerCase(Locale.ROOT).trim();
+        String key = canonical(construct);
         Pattern pattern = CONSTRUCT_PATTERNS.get(key);
         if (pattern != null) {
             return pattern.matcher(code).find();
         }
         // Fallback: simple keyword match
         return code.toLowerCase(Locale.ROOT).contains(key);
+    }
+
+    /** The construct key for a name as entered: lowercased and trimmed, with catalogue slugs resolved. */
+    private static String canonical(String name) {
+        String key = name.toLowerCase(Locale.ROOT).trim();
+        return CONSTRUCT_ALIASES.getOrDefault(key, key);
+    }
+
+    /** The family a construct key belongs to, for the whitelist; a key outside any family is its own. */
+    private static String family(String key) {
+        return CONSTRUCT_FAMILIES.getOrDefault(key, key);
     }
 }
