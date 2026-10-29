@@ -64,5 +64,9 @@ public class ManualTaskRequest {
          * line (prefix + join(fragments) + suffix).
          */
         private List<SplitPlan.SplitEntry> splits;
+        /** AP22: optional read-only code shown above the puzzle (context mode). */
+        private String contextBefore;
+        /** AP22: optional read-only code shown below the puzzle (context mode). */
+        private String contextAfter;
     }
 }

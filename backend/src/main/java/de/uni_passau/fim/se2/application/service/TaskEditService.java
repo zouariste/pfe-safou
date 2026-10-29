@@ -30,6 +30,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import de.uni_passau.fim.se2.api.dto.TaskEditRequest;
 import de.uni_passau.fim.se2.application.service.analysis.ChangeAnalysisService;
+import de.uni_passau.fim.se2.application.util.ContextBlocks;
 import de.uni_passau.fim.se2.domain.entities.SplitPlan;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskOriginalDTO;
@@ -147,6 +148,19 @@ public class TaskEditService {
         if (request.getSplits() != null) {
             String splitPlanJson = buildSplitPlanJson(request.getSplits(), request.getCode());
             taskRepo.updateSplitPlan(taskId, splitPlanJson);
+        }
+
+        // AP22: Update the context blocks when either is provided; a null side keeps its value.
+        if (request.getContextBefore() != null || request.getContextAfter() != null) {
+            taskRepo.updateContext(
+                taskId,
+                ContextBlocks.normalize(
+                    request.getContextBefore() != null ? request.getContextBefore() : task.getContextBefore()
+                ),
+                ContextBlocks.normalize(
+                    request.getContextAfter() != null ? request.getContextAfter() : task.getContextAfter()
+                )
+            );
         }
 
         log.info("Updated task {} (firstEdit={})", taskId, isFirstEdit);

@@ -101,7 +101,8 @@ public class SequenceTierService {
         // the sequence exactly as it was even without relying on the rollback.
         TaskDTO tier = manualTaskService.buildTask(
             request.getProblemStatement(), request.getCode(),
-            level, request.getSplits(), sequence.getProgrammingLanguage(), sequenceId
+            level, request.getSplits(), sequence.getProgrammingLanguage(), sequenceId,
+            request.getContextBefore(), request.getContextAfter()
         );
         if (request.getDistractors() != null && !request.getDistractors().isBlank()) {
             tier.setDistractors(request.getDistractors());

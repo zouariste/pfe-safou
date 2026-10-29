@@ -18,16 +18,19 @@ export function toDisplayLines(solution: string | null | undefined): string[] {
 
     return solution
         .split("\n")
-        .map((line) =>
-            line
-                // Order matters only in that #distractor may follow a #swap/#group marker;
-                // parsons.js strips the group markers first for the same reason.
-                .replace(/#group:\S+\s*$/, "")
-                .replace(/#swap:\S+\s*$/, "")
-                .replace(/#distractor\s*$/, "")
-                .trimEnd(),
-        )
+        .map(stripLineAnnotations)
         // A solution's blank lines are layout, not blocks: the widget never deals one, so a
         // student's arrangement can never contain one either.
         .filter((line) => line.trim() !== "");
+}
+
+/** Removes the `#swap:`/`#group:`/`#distractor` annotations js-parsons hides from a line. */
+export function stripLineAnnotations(line: string): string {
+    return line
+        // Order matters only in that #distractor may follow a #swap/#group marker;
+        // parsons.js strips the group markers first for the same reason.
+        .replace(/#group:\S+\s*$/, "")
+        .replace(/#swap:\S+\s*$/, "")
+        .replace(/#distractor\s*$/, "")
+        .trimEnd();
 }

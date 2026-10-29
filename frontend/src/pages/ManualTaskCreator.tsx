@@ -6,6 +6,8 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import { useHomePath } from "../hooks/useHomePath.ts";
 import { renderGapLine } from "../lib/gapMarkers";
 import CodeSolutionEditor from "../components/CodeSolutionEditor";
+import ContextBlock from "../components/ContextBlock";
+import { CONTEXT_STYLE, normalizeContext } from "../lib/contextLines";
 import type { SplitEntry } from "../types/models";
 import "bootstrap/dist/css/bootstrap.min.css";
 import ConceptPicker from "../components/ConceptPicker";
@@ -22,6 +24,9 @@ interface TierEntry {
     solution: string;
     /** AP31: inline-split entries for this tier (one per split line). */
     splits: SplitEntry[];
+    /** AP22: read-only code shown above / below the puzzle (context mode). */
+    contextBefore: string;
+    contextAfter: string;
 }
 
 const EMPTY_TIER = (level: number): TierEntry => ({
@@ -29,7 +34,10 @@ const EMPTY_TIER = (level: number): TierEntry => ({
     statement: "",
     solution: "",
     splits: [],
+    contextBefore: "",
+    contextAfter: "",
 });
+
 
 /* ────────────────────────────────────────────────────────────── */
 /*  Component                                                    */
@@ -56,6 +64,7 @@ export default function ManualTaskCreator() {
     const [submitting, setSubmitting] = useState(false);
     const [generatingDistractors, setGeneratingDistractors] = useState(false);
     const [generateDistractors, setGenerateDistractors] = useState(false);
+    const [contextMode, setContextMode] = useState(false); // AP22
     const [error, setError] = useState<string | null>(null);
     const [previewLines, setPreviewLines] = useState<string[]>([]);
 
@@ -143,6 +152,9 @@ export default function ManualTaskCreator() {
                         const lines = t.solution.trim().split("\n");
                         return s.lineIndex >= 0 && s.lineIndex < lines.length;
                     }),
+                    // AP22: text typed while context mode was on is ignored once it is off
+                    contextBefore: contextMode ? normalizeContext(t.contextBefore) : null,
+                    contextAfter: contextMode ? normalizeContext(t.contextAfter) : null,
                 })),
             };
 
@@ -241,6 +253,22 @@ export default function ManualTaskCreator() {
                                     catalogue={conceptCatalogue}
                                     onChange={setConcepts}
                                 />
+
+                                {/* AP22: context mode — read-only code around the puzzle */}
+                                <div className="form-check form-switch mt-3">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id="manualContextModeToggle"
+                                        checked={contextMode}
+                                        disabled={submitting}
+                                        onChange={(e) => setContextMode(e.target.checked)}
+                                    />
+                                    <label className="form-check-label" htmlFor="manualContextModeToggle">
+                                        {t("manual.contextMode")}
+                                    </label>
+                                    <div className="form-text">{t("manual.contextModeHelp")}</div>
+                                </div>
                             </div>
                         </div>
 
@@ -339,6 +367,29 @@ export default function ManualTaskCreator() {
                                     </div>
                                 </div>
 
+                                {/* AP22: context before the puzzle */}
+                                {contextMode && (
+                                    <div className="mb-3">
+                                        <label className="form-label fw-semibold" htmlFor="manualContextBefore">
+                                            <i className="bi bi-lock me-1"></i>
+                                            {t("manual.contextBefore")}
+                                        </label>
+                                        <textarea
+                                            id="manualContextBefore"
+                                            className="form-control"
+                                            rows={4}
+                                            spellCheck={false}
+                                            style={CONTEXT_STYLE}
+                                            value={currentTier.contextBefore}
+                                            onChange={(e) =>
+                                                updateTier(activeTier, "contextBefore", e.target.value)
+                                            }
+                                            placeholder={t("manual.contextBeforePlaceholder")}
+                                        />
+                                        <div className="form-text">{t("manual.contextHelper")}</div>
+                                    </div>
+                                )}
+
                                 {/* Code solution */}
                                 <div className="mb-3">
                                     <label className="form-label fw-semibold">
@@ -357,6 +408,29 @@ export default function ManualTaskCreator() {
                                         placeholder={t("manual.codePlaceholder")}
                                     />
                                 </div>
+
+                                {/* AP22: context after the puzzle */}
+                                {contextMode && (
+                                    <div className="mb-3">
+                                        <label className="form-label fw-semibold" htmlFor="manualContextAfter">
+                                            <i className="bi bi-lock me-1"></i>
+                                            {t("manual.contextAfter")}
+                                        </label>
+                                        <textarea
+                                            id="manualContextAfter"
+                                            className="form-control"
+                                            rows={4}
+                                            spellCheck={false}
+                                            style={CONTEXT_STYLE}
+                                            value={currentTier.contextAfter}
+                                            onChange={(e) =>
+                                                updateTier(activeTier, "contextAfter", e.target.value)
+                                            }
+                                            placeholder={t("manual.contextAfterPlaceholder")}
+                                        />
+                                        <div className="form-text">{t("manual.contextHelper")}</div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -446,6 +520,9 @@ export default function ManualTaskCreator() {
                                             <small className="text-muted d-block mb-2">
                                                 {t("manual.blocksCount", { count: previewLines.length })}
                                             </small>
+                                            {contextMode && normalizeContext(currentTier.contextBefore) && (
+                                                <ContextBlock code={normalizeContext(currentTier.contextBefore)!} />
+                                            )}
                                             {currentTier.solution
                                                 .split("\n")
                                                 .filter((l) => l.trim().length > 0)
@@ -471,6 +548,9 @@ export default function ManualTaskCreator() {
                                                         </div>
                                                     );
                                                 })}
+                                            {contextMode && normalizeContext(currentTier.contextAfter) && (
+                                                <ContextBlock code={normalizeContext(currentTier.contextAfter)!} />
+                                            )}
                                         </div>
 
                                         {/* Statement preview */}
@@ -530,6 +610,18 @@ export default function ManualTaskCreator() {
                                                     {tier.solution
                                                         .split("\n")
                                                         .filter((l) => l.trim()).length || 0}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {contextMode && tiers.map((tier) => (
+                                            <tr key={`context-${tier.tierLevel}`}>
+                                                <td className="text-muted">
+                                                    {t("manual.contextLines", { level: tier.tierLevel })}
+                                                </td>
+                                                <td>
+                                                    {[tier.contextBefore, tier.contextAfter]
+                                                        .map((c) => normalizeContext(c)?.split("\n").length ?? 0)
+                                                        .join(" / ")}
                                                 </td>
                                             </tr>
                                         ))}

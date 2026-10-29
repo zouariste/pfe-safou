@@ -98,6 +98,15 @@ public interface TaskRepository {
     void updateDistractors(UUID taskId, String distractors);
 
     /**
+     * Updates only the context columns of an existing task (AP22).
+     *
+     * @param taskId        the task
+     * @param contextBefore the read-only code above the puzzle, or null for none
+     * @param contextAfter  the read-only code below the puzzle, or null for none
+     */
+    void updateContext(UUID taskId, String contextBefore, String contextAfter);
+
+    /**
      * Enables or disables distractors for an existing task (AP15). When disabled, distractors are kept in DB but not
      * delivered to students.
      *

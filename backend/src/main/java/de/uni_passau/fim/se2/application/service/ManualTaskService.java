@@ -32,6 +32,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import de.uni_passau.fim.se2.api.dto.ManualTaskRequest;
+import de.uni_passau.fim.se2.application.util.ContextBlocks;
 import de.uni_passau.fim.se2.application.util.GapMarkers;
 import de.uni_passau.fim.se2.domain.entities.SplitPlan;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
@@ -92,7 +93,8 @@ public class ManualTaskService {
             tasks.add(
                 buildTask(
                     tier.getStatement(), tier.getSolution(), tier.getTierLevel(),
-                    tier.getSplits(), language, sequenceId
+                    tier.getSplits(), language, sequenceId,
+                    tier.getContextBefore(), tier.getContextAfter()
                 )
             );
         }
@@ -135,18 +137,21 @@ public class ManualTaskService {
      * Public because adding a tier to an existing sequence ({@link SequenceTierService}) must produce exactly what
      * manual creation produces; a second copy of this would drift the way the old worksheet copy did.
      *
-     * @param statement  the problem statement
-     * @param solution   the solution code
-     * @param tierLevel  the tier the task belongs to
-     * @param splits     the inline-split entries, or null for none
-     * @param language   the programming language of the solution
-     * @param sequenceId the sequence the task belongs to
+     * @param statement     the problem statement
+     * @param solution      the solution code
+     * @param tierLevel     the tier the task belongs to
+     * @param splits        the inline-split entries, or null for none
+     * @param language      the programming language of the solution
+     * @param sequenceId    the sequence the task belongs to
+     * @param contextBefore AP22: read-only code shown above the puzzle, or null for none
+     * @param contextAfter  AP22: read-only code shown below the puzzle, or null for none
      * @return the task with its metrics computed
      * @throws DomainValidationException if a split fails the reconstruction check
      */
     public TaskDTO buildTask(
         String statement, String solution, int tierLevel,
-        List<SplitPlan.SplitEntry> splits, String language, UUID sequenceId
+        List<SplitPlan.SplitEntry> splits, String language, UUID sequenceId,
+        String contextBefore, String contextAfter
     ) {
         // No comment-sanitizing — in manual mode the teacher decides what stays
         String code = solution.trim();
@@ -175,6 +180,8 @@ public class ManualTaskService {
             .distinctIdentifierCount(metrics.distinctIdentifierCount())
             .sequenceId(sequenceId)
             .splitPlan(splitPlanJson)
+            .contextBefore(ContextBlocks.normalize(contextBefore))
+            .contextAfter(ContextBlocks.normalize(contextAfter))
             .build();
     }
 
