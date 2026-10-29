@@ -99,7 +99,7 @@ class SequenceTierServiceTest {
         tiers = new ArrayList<>(List.of(tier(1), tier(2), tier(3)));
         when(taskRepo.loadTasksBySequenceId(any())).thenAnswer(invocation -> tiers);
 
-        when(manualTaskService.buildTask(anyString(), anyString(), anyInt(), any(), anyString(), any()))
+        when(manualTaskService.buildTask(anyString(), anyString(), anyInt(), any(), anyString(), any(), any(), any()))
             .thenAnswer(
                 invocation -> TaskDTO.builder()
                     .statement(invocation.getArgument(0))
@@ -152,7 +152,23 @@ class SequenceTierServiceTest {
             service.addTier(SEQUENCE, request(null));
 
             verify(taskRepo).shiftTierLevels(SEQUENCE, 4, +1);
-            verify(manualTaskService).buildTask(anyString(), anyString(), eq(4), any(), eq("java"), eq(SEQUENCE));
+            verify(manualTaskService)
+                .buildTask(anyString(), anyString(), eq(4), any(), eq("java"), eq(SEQUENCE), any(), any());
+        }
+
+        @Test
+        @DisplayName("passes the context blocks on to the task builder")
+        void passesContext() {
+            TierCreateRequest request = request(null);
+            request.setContextBefore("public class Sum {");
+            request.setContextAfter("}");
+
+            service.addTier(SEQUENCE, request);
+
+            verify(manualTaskService).buildTask(
+                anyString(), anyString(), anyInt(), any(), anyString(), any(),
+                eq("public class Sum {"), eq("}")
+            );
         }
 
         @Test

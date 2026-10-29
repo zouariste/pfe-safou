@@ -301,6 +301,18 @@ public class PostgreTaskDao implements TaskRepository {
     }
 
     @Override
+    public void updateContext(UUID taskId, String contextBefore, String contextAfter) {
+        if (taskId == null) {
+            throw new DomainValidationException(TASK_ID_REQUIRED);
+        }
+        String sql = "UPDATE tasks SET context_before = ?, context_after = ? WHERE id = ?";
+        int updated = jdbc.update(sql, contextBefore, contextAfter, taskId);
+        if (updated != 1) {
+            throw new DomainValidationException(TASK_NOT_FOUND + taskId);
+        }
+    }
+
+    @Override
     public void updateDistractorsEnabled(UUID taskId, boolean enabled) {
         if (taskId == null) {
             throw new DomainValidationException(TASK_ID_REQUIRED);

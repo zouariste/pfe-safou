@@ -256,6 +256,7 @@
   },
 
   "sequence": {
+    "contextSummary": "Kontextmodus: {{contextLines}} Kontextzeilen, {{puzzleLines}} Puzzlezeilen",
     "curatorNoticeTitle": "Diese Sequenz gehört jemand anderem.",
     "curatorNoticeBody": "Du siehst sie, weil sie in einem deiner Arbeitsblätter liegt. Änderungen würden sie auch in den Arbeitsblättern anderer verändern — erstelle dafür eine eigene Kopie.",
     "forkToEdit": "Eigene Kopie zum Bearbeiten",
@@ -1051,10 +1052,26 @@
     "conceptRequired": "Mindestens ein Konzept ist erforderlich.",
     "statementRequired": "Stufe {{level}}: Aufgabenstellung ist erforderlich.",
     "solutionRequired": "Stufe {{level}}: Code-Lösung ist erforderlich.",
-    "errorCreating": "Fehler beim Erstellen der manuellen Aufgabe."
+    "errorCreating": "Fehler beim Erstellen der manuellen Aufgabe.",
+    "contextMode": "Kontextmodus (schreibgeschützter Code um das Puzzle)",
+    "contextModeHelp": "Fügt festen Code über und unter dem Puzzle hinzu, z. B. Imports, eine Klassendeklaration oder eine main-Methode. Lernende sehen ihn, können ihn aber nicht verschieben.",
+    "contextBefore": "Kontext vor dem Puzzle",
+    "contextAfter": "Kontext nach dem Puzzle",
+    "contextBeforePlaceholder": "z. B.\npublic class Calculator {",
+    "contextAfterPlaceholder": "z. B.\n}",
+    "contextHelper": "Für Lernende schreibgeschützt. Leer lassen, wenn nicht benötigt.",
+    "contextLines": "T{{level}} Kontextzeilen"
   },
 
   "taskEdit": {
+    "contextMode": "Kontextmodus (schreibgeschützter Code um das Puzzle)",
+    "contextBefore": "Kontext vor dem Puzzle",
+    "contextAfter": "Kontext nach dem Puzzle",
+    "beforeToPuzzle": "Letzte Kontextzeile ins Puzzle",
+    "puzzleToBefore": "Erste Puzzlezeile in den Kontext",
+    "puzzleToAfter": "Letzte Puzzlezeile in den Kontext",
+    "afterToPuzzle": "Erste Kontextzeile ins Puzzle",
+    "contextHelp": "Lernende sehen den Kontext, können ihn aber nicht verschieben. Zeilen, die in den Kontext wandern, verlieren ihre #swap/#group-Markierungen, Lücken und Splits.",
     "distractors": "Distraktoren",
     "distractorsPlaceholder": "Ein Distraktor pro Zeile, jeweils mit #distractor am Ende",
     "distractorsHelp": "Jede Zeile muss mit #distractor enden. Verwende #swap oder #group nicht in Distraktor-Zeilen.",

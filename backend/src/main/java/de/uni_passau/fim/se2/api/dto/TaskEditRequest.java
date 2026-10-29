@@ -48,4 +48,10 @@ public class TaskEditRequest {
      * (prefix + join(fragments) + suffix).
      */
     private List<SplitPlan.SplitEntry> splits;
+
+    /** AP22: Optional read-only code above the puzzle. Null leaves it untouched; blank clears it. */
+    private String contextBefore;
+
+    /** AP22: Optional read-only code below the puzzle. Null leaves it untouched; blank clears it. */
+    private String contextAfter;
 }

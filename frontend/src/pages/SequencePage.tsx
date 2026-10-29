@@ -10,6 +10,7 @@ import { useLocation } from "react-router-dom";
 import { useSequenceAccess } from "../hooks/useSequenceAccess.ts";
 import { useAuth } from "../context/AuthContext.tsx";
 import TaskEditModal from "../components/TaskEditModal.tsx";
+import ContextBlock from "../components/ContextBlock.tsx";
 import TaskTitleEditor from "../components/TaskTitleEditor.tsx";
 import TaskDescriptionEditor from "../components/TaskDescriptionEditor.tsx";
 import SequenceTitleEditor from "../components/SequenceTitleEditor.tsx";
@@ -928,9 +929,12 @@ export default function SequencePage() {
                                                     <strong>{t("sequence.taskDescription")}:</strong>
                                                     <TaskStatement statement={task.statement} />
                                                 </div>
+                                                {/* AP22: context around the puzzle, as students see it */}
+                                                {task.contextBefore && <ContextBlock code={task.contextBefore} />}
                                                 <pre style={{ overflowX: "auto" }}>
                                                     <code>{task.solution}</code>
                                                 </pre>
+                                                {task.contextAfter && <ContextBlock code={task.contextAfter} />}
                                                 {/* AP22: Context mode indicator in teacher view */}
                                                 {(task.contextBefore || task.contextAfter) && (() => {
                                                     const ctxBeforeCount = task.contextBefore ? task.contextBefore.split("\n").length : 0;
@@ -941,7 +945,7 @@ export default function SequencePage() {
                                                         <div className="mt-2 mb-2">
                                                             <small className="text-info d-flex align-items-center gap-1">
                                                                 <span>&#x1F4D6;</span>
-                                                                Context-Modus: {contextCount} Kontext-Zeilen, {puzzleCount} Puzzle-Zeilen
+                                                                {t("sequence.contextSummary", { contextLines: contextCount, puzzleLines: puzzleCount })}
                                                             </small>
                                                         </div>
                                                     );
@@ -1111,6 +1115,8 @@ export default function SequencePage() {
                     initialDistractors={editingTask.distractors}
                     distractorPlan={editingTask.distractorPlan}
                     initialSplitPlan={editingTask.splitPlan}
+                    initialContextBefore={editingTask.contextBefore}
+                    initialContextAfter={editingTask.contextAfter}
                     isFirstEdit={editIsFirstEdit}
                     onSave={handleEditSave}
                     onClose={() => setEditingTask(null)}

@@ -256,6 +256,7 @@
   },
 
   "sequence": {
+    "contextSummary": "Context mode: {{contextLines}} context lines, {{puzzleLines}} puzzle lines",
     "curatorNoticeTitle": "This sequence belongs to someone else.",
     "curatorNoticeBody": "You can see it because it is in one of your worksheets. Editing it would change it in other teachers' worksheets too, so make your own copy first.",
     "forkToEdit": "Make my own copy",
@@ -1051,10 +1052,26 @@
     "conceptRequired": "At least one concept is required.",
     "statementRequired": "Tier {{level}}: Problem statement is required.",
     "solutionRequired": "Tier {{level}}: Code solution is required.",
-    "errorCreating": "Error creating manual task."
+    "errorCreating": "Error creating manual task.",
+    "contextMode": "Context mode (read-only code around the puzzle)",
+    "contextModeHelp": "Adds fixed code above and below the puzzle, e.g. imports, a class declaration or a main method. Students see it but cannot move it.",
+    "contextBefore": "Context before the puzzle",
+    "contextAfter": "Context after the puzzle",
+    "contextBeforePlaceholder": "e.g.\npublic class Calculator {",
+    "contextAfterPlaceholder": "e.g.\n}",
+    "contextHelper": "Read-only for students. Leave empty if not needed.",
+    "contextLines": "T{{level}} context lines"
   },
 
   "taskEdit": {
+    "contextMode": "Context mode (read-only code around the puzzle)",
+    "contextBefore": "Context before the puzzle",
+    "contextAfter": "Context after the puzzle",
+    "beforeToPuzzle": "Last context line into the puzzle",
+    "puzzleToBefore": "First puzzle line into the context",
+    "puzzleToAfter": "Last puzzle line into the context",
+    "afterToPuzzle": "First context line into the puzzle",
+    "contextHelp": "Students see the context but cannot move it. Lines moved into the context lose their #swap/#group markers, gaps and splits.",
     "distractors": "Distractors",
     "distractorsPlaceholder": "One distractor per line, each ending with #distractor",
     "distractorsHelp": "Each line must end with #distractor. Do not use #swap or #group on distractor lines.",

@@ -44,6 +44,12 @@ public class TierCreateRequest {
     /** Optional inline-split entries; each must reconstruct its {@code code} line. */
     private List<SplitPlan.SplitEntry> splits;
 
+    /** AP22: Optional read-only code above the puzzle. */
+    private String contextBefore;
+
+    /** AP22: Optional read-only code below the puzzle. */
+    private String contextAfter;
+
     /**
      * The tier level the new tier takes, from 1 to one past the current last tier. Tiers at or above it move up by one.
      * Null appends it at the end.
