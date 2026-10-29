@@ -59,8 +59,8 @@ export default function CurriculumPage() {
     const [contextModeEnabled, setContextModeEnabled] = useState(false); // AP22
     const [splitEnabled, setSplitEnabled] = useState(false); // AP31
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [blacklist, setBlacklist] = useState("");
-    const [whitelist, setWhitelist] = useState("");
+    const [blacklist, setBlacklist] = useState<string[]>([]);
+    const [whitelist, setWhitelist] = useState<string[]>([]);
     const [difficultySlope, setDifficultySlope] = useState("");
     const [additionalContext, setAdditionalContext] = useState("");
 
@@ -390,8 +390,8 @@ export default function CurriculumPage() {
                 contextModeEnabled, // AP22
                 splitEnabled,       // AP31
             };
-            if (blacklist.trim()) payload.blacklist = blacklist.split(",").map(s => s.trim()).filter(Boolean);
-            if (whitelist.trim()) payload.whitelist = whitelist.split(",").map(s => s.trim()).filter(Boolean);
+            if (blacklist.length) payload.blacklist = blacklist;
+            if (whitelist.length) payload.whitelist = whitelist;
             if (difficultySlope) payload.difficultySlope = difficultySlope;
             if (additionalContext.trim()) payload.additionalContext = additionalContext.trim();
 
@@ -1027,21 +1027,27 @@ export default function CurriculumPage() {
                                 {showAdvanced && (
                                     <div className="border rounded p-3 mb-3 bg-light">
                                         <div className="mb-2">
-                                            <label className="form-label small fw-semibold">{t("home.blacklist")}</label>
-                                            <input
-                                                className="form-control form-control-sm"
+                                            <label htmlFor="curriculumBlacklist" className="form-label small fw-semibold">{t("home.blacklist")}</label>
+                                            <ConceptPicker
+                                                inputId="curriculumBlacklist"
                                                 value={blacklist}
-                                                onChange={e => setBlacklist(e.target.value)}
+                                                catalogue={conceptCatalogue}
+                                                onChange={setBlacklist}
+                                                exclude={whitelist}
                                                 placeholder={t("home.blacklistPlaceholder")}
+                                                newHint={name => t("home.constraintNew", { name })}
                                             />
                                         </div>
                                         <div className="mb-2">
-                                            <label className="form-label small fw-semibold">{t("home.whitelist")}</label>
-                                            <input
-                                                className="form-control form-control-sm"
+                                            <label htmlFor="curriculumWhitelist" className="form-label small fw-semibold">{t("home.whitelist")}</label>
+                                            <ConceptPicker
+                                                inputId="curriculumWhitelist"
                                                 value={whitelist}
-                                                onChange={e => setWhitelist(e.target.value)}
+                                                catalogue={conceptCatalogue}
+                                                onChange={setWhitelist}
+                                                exclude={blacklist}
                                                 placeholder={t("home.whitelistPlaceholder")}
+                                                newHint={name => t("home.constraintNew", { name })}
                                             />
                                         </div>
                                         <div className="mb-2">

@@ -24,8 +24,8 @@ export default function HomePage() {
     const [splitEnabled, setSplitEnabled] = useState(false); // AP31
     // AP20: Generation Constraints
     const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-    const [blacklist, setBlacklist] = useState("");
-    const [whitelist, setWhitelist] = useState("");
+    const [blacklist, setBlacklist] = useState<string[]>([]);
+    const [whitelist, setWhitelist] = useState<string[]>([]);
     const [difficultySlope, setDifficultySlope] = useState("moderate");
     const [additionalContext, setAdditionalContext] = useState("");
     // AP21: Five-Tier Mode
@@ -103,10 +103,8 @@ export default function HomePage() {
         payload.splitEnabled = splitEnabled; // AP31
 
         // AP20: Attach constraints if any are set
-        const blTokens = blacklist.split(",").map(s => s.trim()).filter(Boolean);
-        const wlTokens = whitelist.split(",").map(s => s.trim()).filter(Boolean);
-        if (blTokens.length) payload.blacklist = blTokens;
-        if (wlTokens.length) payload.whitelist = wlTokens;
+        if (blacklist.length) payload.blacklist = blacklist;
+        if (whitelist.length) payload.whitelist = whitelist;
         if (difficultySlope && difficultySlope !== "moderate") payload.difficultySlope = difficultySlope;
         if (additionalContext.trim()) payload.additionalContext = additionalContext.trim();
         // AP21: Five-Tier Mode
@@ -147,8 +145,8 @@ export default function HomePage() {
         setConcepts([]);
         setDistractorsEnabled(false);
         setContextModeEnabled(false);
-        setBlacklist("");
-        setWhitelist("");
+        setBlacklist([]);
+        setWhitelist([]);
         setDifficultySlope("moderate");
         setAdditionalContext("");
         setShowAdvancedOptions(false);
@@ -327,32 +325,38 @@ export default function HomePage() {
                                         <div className="border rounded-3 p-3 mt-2" style={{ background: "#f8f9fa" }}>
                                             {/* Blacklist */}
                                             <div className="mb-3">
-                                                <label className="form-label fw-semibold text-danger-emphasis" style={{ fontSize: "0.85rem" }}>
+                                                <label htmlFor="homeBlacklist" className="form-label fw-semibold text-danger-emphasis" style={{ fontSize: "0.85rem" }}>
                                                     🚫 {t("home.blacklist", "Blacklist (forbidden constructs)")}
                                                 </label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control form-control-sm"
+                                                {/* Suggests from the concept catalogue; a name the AI should
+                                                    avoid may also be typed in full. */}
+                                                <ConceptPicker
+                                                    inputId="homeBlacklist"
                                                     value={blacklist}
-                                                    onChange={(e) => setBlacklist(e.target.value)}
-                                                    placeholder={t("home.blacklistPlaceholder", "e.g. recursion, lambda, ternary")}
+                                                    catalogue={conceptCatalogue}
+                                                    onChange={setBlacklist}
+                                                    exclude={whitelist}
+                                                    placeholder={t("home.blacklistPlaceholder")}
+                                                    newHint={(name) => t("home.constraintNew", { name })}
                                                 />
-                                                <div className="form-text">{t("home.blacklistHint", "Comma-separated. These constructs will NOT appear in generated code.")}</div>
+                                                <div className="form-text">{t("home.blacklistHint")}</div>
                                             </div>
 
                                             {/* Whitelist */}
                                             <div className="mb-3">
-                                                <label className="form-label fw-semibold text-success-emphasis" style={{ fontSize: "0.85rem" }}>
+                                                <label htmlFor="homeWhitelist" className="form-label fw-semibold text-success-emphasis" style={{ fontSize: "0.85rem" }}>
                                                     ✅ {t("home.whitelist", "Whitelist (allowed constructs only)")}
                                                 </label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control form-control-sm"
+                                                <ConceptPicker
+                                                    inputId="homeWhitelist"
                                                     value={whitelist}
-                                                    onChange={(e) => setWhitelist(e.target.value)}
-                                                    placeholder={t("home.whitelistPlaceholder", "e.g. if, for, while, print")}
+                                                    catalogue={conceptCatalogue}
+                                                    onChange={setWhitelist}
+                                                    exclude={blacklist}
+                                                    placeholder={t("home.whitelistPlaceholder")}
+                                                    newHint={(name) => t("home.constraintNew", { name })}
                                                 />
-                                                <div className="form-text">{t("home.whitelistHint", "Comma-separated. If set, ONLY these constructs may appear.")}</div>
+                                                <div className="form-text">{t("home.whitelistHint")}</div>
                                             </div>
 
                                             {/* Difficulty Slope */}

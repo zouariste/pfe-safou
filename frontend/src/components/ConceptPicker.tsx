@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
     addConcept,
@@ -29,6 +29,15 @@ export interface ConceptPickerProps {
     /** Every known concept name; may be empty while it is still loading. */
     catalogue: string[];
     inputId?: string;
+    /** Input placeholder; defaults to the concept wording. */
+    placeholder?: string;
+    /**
+     * The hint shown while typing a name the catalogue does not have; defaults
+     * to "will be created", which is only true for concepts.
+     */
+    newHint?: (name: string) => string;
+    /** Names to leave out of the suggestions, e.g. those already in a sibling list. */
+    exclude?: string[];
 }
 
 /**
@@ -43,8 +52,19 @@ const SUGGESTION_LIMIT = 500;
 /** Roughly eight rows; the rest is reached by scrolling. */
 const SUGGESTION_MAX_HEIGHT = 260;
 
-export default function ConceptPicker({ value, onChange, catalogue, inputId }: ConceptPickerProps) {
+export default function ConceptPicker({
+    value,
+    onChange,
+    catalogue,
+    inputId,
+    placeholder,
+    newHint,
+    exclude = [],
+}: ConceptPickerProps) {
     const { t } = useTranslation();
+    // Several pickers can share a page (concepts, blacklist, whitelist), so the
+    // listbox id that aria-controls points at has to be unique per instance.
+    const listboxId = useId();
 
     const [query, setQuery] = useState("");
     const [open, setOpen] = useState(false);
@@ -53,7 +73,7 @@ export default function ConceptPicker({ value, onChange, catalogue, inputId }: C
     const containerRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
-    const suggestions = suggestConcepts(catalogue, query, value, SUGGESTION_LIMIT);
+    const suggestions = suggestConcepts(catalogue, query, [...value, ...exclude], SUGGESTION_LIMIT);
 
     // Close the dropdown when the click lands outside the picker.
     useEffect(() => {
@@ -146,11 +166,11 @@ export default function ConceptPicker({ value, onChange, catalogue, inputId }: C
                 id={inputId}
                 className="form-control form-control-sm"
                 value={query}
-                placeholder={t("curriculum.conceptsPlaceholder")}
+                placeholder={placeholder ?? t("curriculum.conceptsPlaceholder")}
                 autoComplete="off"
                 role="combobox"
                 aria-expanded={open && suggestions.length > 0}
-                aria-controls="conceptPickerSuggestions"
+                aria-controls={listboxId}
                 onChange={e => { setQuery(e.target.value); setOpen(true); }}
                 onFocus={() => setOpen(true)}
                 onKeyDown={onKeyDown}
@@ -159,7 +179,7 @@ export default function ConceptPicker({ value, onChange, catalogue, inputId }: C
             {open && suggestions.length > 0 && (
                 <div
                     ref={listRef}
-                    id="conceptPickerSuggestions"
+                    id={listboxId}
                     className="list-group position-absolute w-100 shadow-sm"
                     role="listbox"
                     style={{ zIndex: 1056, maxHeight: SUGGESTION_MAX_HEIGHT, overflowY: "auto" }}
@@ -186,7 +206,9 @@ export default function ConceptPicker({ value, onChange, catalogue, inputId }: C
             )}
 
             {isNewConcept(catalogue, query) && (
-                <div className="form-text">{t("curriculum.conceptNew", { concept: query.trim() })}</div>
+                <div className="form-text">
+                    {newHint ? newHint(query.trim()) : t("curriculum.conceptNew", { concept: query.trim() })}
+                </div>
             )}
         </div>
     );

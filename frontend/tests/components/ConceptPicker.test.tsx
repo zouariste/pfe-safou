@@ -136,4 +136,45 @@ describe("ConceptPicker", () => {
         fireEvent.keyDown(input, { key: "Escape" });
         expect(screen.queryByRole("listbox")).toBeNull();
     });
+
+    describe("as a blacklist/whitelist picker", () => {
+        it("uses the given placeholder and new-name hint", () => {
+            render(
+                <ConceptPicker
+                    value={[]}
+                    catalogue={CATALOGUE}
+                    onChange={vi.fn()}
+                    placeholder="pick constructs"
+                    newHint={name => `passed on as ${name}`}
+                />,
+            );
+            const input = screen.getByPlaceholderText("pick constructs");
+
+            fireEvent.change(input, { target: { value: "goto" } });
+
+            expect(screen.getByText("passed on as goto")).toBeInTheDocument();
+        });
+
+        it("leaves excluded names out of the suggestions", () => {
+            // A construct already on the whitelist should not be offered for the blacklist.
+            render(<ConceptPicker value={[]} catalogue={CATALOGUE} onChange={vi.fn()} exclude={["recursion"]} />);
+
+            fireEvent.focus(screen.getByRole("combobox"));
+
+            expect(screen.queryByRole("option", { name: "recursion" })).toBeNull();
+            expect(screen.getByRole("option", { name: "array" })).toBeInTheDocument();
+        });
+
+        it("gives each picker on a page its own listbox", () => {
+            render(
+                <>
+                    <ConceptPicker value={[]} catalogue={CATALOGUE} onChange={vi.fn()} />
+                    <ConceptPicker value={[]} catalogue={CATALOGUE} onChange={vi.fn()} />
+                </>,
+            );
+            const [first, second] = screen.getAllByRole("combobox");
+
+            expect(first.getAttribute("aria-controls")).not.toBe(second.getAttribute("aria-controls"));
+        });
+    });
 });
