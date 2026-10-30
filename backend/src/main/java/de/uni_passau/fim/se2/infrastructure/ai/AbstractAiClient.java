@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import de.uni_passau.fim.se2.application.service.CodeSanitizerService;
 import de.uni_passau.fim.se2.domain.entities.SolveContract;
 import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
+import de.uni_passau.fim.se2.domain.model.GeneratedDistractors;
 
 public class AbstractAiClient implements AiModelClient {
 
@@ -146,13 +147,13 @@ public class AbstractAiClient implements AiModelClient {
     }
 
     @Override
-    public List<String> generateDistractors(
+    public GeneratedDistractors generateDistractors(
         String solutionCode, String language,
-        String taskStatement, int tierLevel,
+        String taskStatement, int tierLevel, int tierCount,
         String distractorPlan, int count
     )
         throws IOException, InterruptedException {
-        return List.of();
+        return GeneratedDistractors.NONE;
     }
 
     @Override

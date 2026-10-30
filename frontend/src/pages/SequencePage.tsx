@@ -856,7 +856,14 @@ export default function SequencePage() {
                                                         setSeq({
                                                             ...seq,
                                                             tasks: seq.tasks.map(t =>
-                                                                t.id === task.id ? { ...t, distractors: data.distractors ?? null } : t
+                                                                t.id === task.id
+                                                                    ? {
+                                                                          ...t,
+                                                                          distractors: data.distractors ?? null,
+                                                                          // A task without a plan gets one with its distractors.
+                                                                          distractorPlan: data.distractorPlan ?? null,
+                                                                      }
+                                                                    : t
                                                             ),
                                                         });
                                                     }

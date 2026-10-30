@@ -25,6 +25,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
 import de.uni_passau.fim.se2.domain.entities.SolveContract;
+import de.uni_passau.fim.se2.domain.model.DistractorStrategy;
+import de.uni_passau.fim.se2.domain.model.GeneratedDistractors;
 
 public interface AiModelClient {
 
@@ -171,21 +173,25 @@ public interface AiModelClient {
     /**
      * Generates distractor lines for a given solution code (AP15 Antagonist-Call).
      *
+     * Without a plan the model picks one from the types {@link DistractorStrategy#preferredTypes} names for the tier,
+     * and the result reports it.
+     *
      * @param solutionCode   the correct solution
      * @param language       programming language
      * @param taskStatement  the task description
-     * @param tierLevel      difficulty tier (1-3)
+     * @param tierLevel      difficulty tier
+     * @param tierCount      how many tiers the task's sequence has
      * @param distractorPlan JSON string with type and rationale, or null
      * @param count          number of distractors to generate
-     * @return list of distractor line strings (each ending with #distractor)
+     * @return the distractor lines (each ending with #distractor) and the plan they follow
      */
-    default List<String> generateDistractors(
+    default GeneratedDistractors generateDistractors(
         String solutionCode, String language,
-        String taskStatement, int tierLevel,
+        String taskStatement, int tierLevel, int tierCount,
         String distractorPlan, int count
     )
         throws IOException, InterruptedException {
-        return List.of();
+        return GeneratedDistractors.NONE;
     }
 
     /**

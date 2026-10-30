@@ -58,6 +58,7 @@ import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TaskSubmissionDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.interfaces.TaskOriginalRepository;
+import de.uni_passau.fim.se2.domain.model.GeneratedDistractors;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -400,24 +401,45 @@ public class TasksController {
             return ResponseEntity.badRequest().build();
         }
 
-        // Determine language from sequence
+        // Determine language and tier count from sequence
         TieredTaskSequenceDTO seq = taskPersistenceService.loadSequenceById(task.getSequenceId());
-        String lang = seq.getProgrammingLanguage();
+        fillDistractors(task, seq.getProgrammingLanguage(), tierCount(seq));
+
+        return ResponseEntity.ok(task);
+    }
+
+    /**
+     * Generates and stores distractors for one task, the way the automatic creator does: a task without a plan gets one
+     * chosen from the types preferred for its tier, and keeps it.
+     */
+    private void fillDistractors(TaskDTO task, String lang, int tierCount) {
         // AP30: resolve $$blank:…$$ gap markers to real code before generating distractors
         String solutionCode = GapMarkers.strip(task.getSolution());
         int loc = (int) solutionCode.lines().count();
 
-        String distractors = taskEnricher.generateDistractorsForTask(
+        GeneratedDistractors generated = taskEnricher.generateDistractorsForTask(
             solutionCode, lang, task.getStatement(),
-            task.getTierLevel(), task.getDistractorPlan(), loc
+            task.getTierLevel(), tierCount, task.getDistractorPlan(), loc
         );
-
-        if (distractors != null) {
-            taskPersistenceService.updateDistractors(taskId, distractors);
-            task.setDistractors(distractors);
+        if (generated.lines().isEmpty()) {
+            return;
         }
 
-        return ResponseEntity.ok(task);
+        String distractors = generated.text();
+        boolean newPlan = generated.plan() != null && !generated.plan().equals(task.getDistractorPlan());
+        if (newPlan) {
+            taskPersistenceService.updateDistractors(task.getId(), distractors, generated.plan());
+            task.setDistractorPlan(generated.plan());
+        }
+        else {
+            taskPersistenceService.updateDistractors(task.getId(), distractors);
+        }
+        task.setDistractors(distractors);
+    }
+
+    /** The sequence's current number of tiers, which picks the tier-to-strategy mapping. */
+    private static int tierCount(TieredTaskSequenceDTO seq) {
+        return seq.getTasks() != null ? seq.getTasks().size() : 0;
     }
 
     /**
@@ -436,6 +458,7 @@ public class TasksController {
         String lang = seq.getProgrammingLanguage() != null ? seq.getProgrammingLanguage() : "python";
 
         if (seq.getTasks() != null) {
+            int tierCount = tierCount(seq);
             for (TaskDTO task : seq.getTasks()) {
                 if (task.getDistractors() != null && !task.getDistractors().isBlank()) {
                     continue;
@@ -443,19 +466,7 @@ public class TasksController {
                 if (task.getSolution() == null || task.getSolution().isBlank()) {
                     continue;
                 }
-
-                // AP30: resolve gap markers before generating distractors
-                String solutionCode = GapMarkers.strip(task.getSolution());
-                int loc = (int) solutionCode.lines().count();
-                String distractors = taskEnricher.generateDistractorsForTask(
-                    solutionCode, lang, task.getStatement(),
-                    task.getTierLevel(), task.getDistractorPlan(), loc
-                );
-
-                if (distractors != null) {
-                    taskPersistenceService.updateDistractors(task.getId(), distractors);
-                    task.setDistractors(distractors);
-                }
+                fillDistractors(task, lang, tierCount);
             }
         }
 

@@ -43,6 +43,7 @@ import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
 import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
 import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
 import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer.ComplexityResult;
+import de.uni_passau.fim.se2.domain.model.GeneratedDistractors;
 
 /**
  * Enriches a TieredTaskSequence by adding code solutions and (optional) complexity metrics. New Task instances are
@@ -163,6 +164,7 @@ public final class TaskEnricher {
 
         final String lang = incompleteSequence.getProgrammingLanguage();
         final UUID sequenceId = incompleteSequence.getId();
+        final int tierCount = incompleteSequence.getTasks().size();
         final long t0 = System.nanoTime();
 
         // OPT-1: Inter-Task-Parallelisierung via virtual threads.
@@ -172,7 +174,7 @@ public final class TaskEnricher {
             .map(
                 task -> CompletableFuture.supplyAsync(
                     () -> enrichSingleTask(
-                        task, lang, sequenceId, contextModeEnabled, distractorsEnabled, splitEnabled
+                        task, lang, sequenceId, tierCount, contextModeEnabled, distractorsEnabled, splitEnabled
                     ),
                     enrichmentExecutor
                 )
@@ -225,7 +227,7 @@ public final class TaskEnricher {
      */
     @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     private TaskDTO enrichSingleTask(
-        TaskDTO task, String lang, UUID sequenceId,
+        TaskDTO task, String lang, UUID sequenceId, int tierCount,
         boolean contextModeEnabled, boolean distractorsEnabled,
         boolean splitEnabled
     ) {
@@ -280,18 +282,24 @@ public final class TaskEnricher {
 
             final String distractorSource = sanitizedCode;
             final int loc = complexity.linesOfCode();
-            CompletableFuture<String> distFut = distractorsEnabled
+            CompletableFuture<GeneratedDistractors> distFut = distractorsEnabled
                 ? CompletableFuture.supplyAsync(
                     () -> generateDistractorsForTask(
                         distractorSource, lang, task.getStatement(),
-                        task.getTierLevel(), task.getDistractorPlan(), loc
+                        task.getTierLevel(), tierCount, task.getDistractorPlan(), loc
                     ),
                     enrichmentExecutor
                 )
                 : CompletableFuture.completedFuture(null);
 
             ContextAnnotator.ContextResult ctxResult = ctxFut.join();
-            String distractors = distFut.join();
+            GeneratedDistractors generated = distFut.join();
+            String distractors = generated != null && !generated.lines().isEmpty() ? generated.text() : null;
+            // The sequence prompt normally plans every task; if it skipped this one, the
+            // distractor call chose a plan instead, and the task keeps that.
+            String distractorPlan = generated != null && generated.plan() != null
+                ? generated.plan()
+                : task.getDistractorPlan();
 
             String finalPuzzle = annotatedCode;
             String contextBefore = null;
@@ -318,8 +326,8 @@ public final class TaskEnricher {
 
             // toBuilder(), not a fresh builder() — see TaskDTO.copyFor(): naming fields by hand is
             // how distractorsEnabled's @Builder.Default silently flipped a disabled task back on
-            // before. statement/tierLevel/contract/distractorPlan are unchanged from `task` and
-            // travel across automatically; only what this pass actually computes is named below.
+            // before. statement/tierLevel/contract are unchanged from `task` and travel across
+            // automatically; only what this pass actually computes is named below.
             return task.toBuilder()
                 .id(UUID.randomUUID())
                 .solution(finalPuzzle)
@@ -329,6 +337,7 @@ public final class TaskEnricher {
                 .linesOfCode(complexity.linesOfCode())
                 .methodCallCount(complexity.methodCallCount())
                 .distractors(distractors)
+                .distractorPlan(distractorPlan)
                 .contextBefore(contextBefore)
                 .contextAfter(contextAfter)
                 .splitPlan(splitPlanJson)
@@ -355,17 +364,23 @@ public final class TaskEnricher {
      * Generates distractors for a single task via the Antagonist-Call (AP15). Applies the Mengen-Heuristik (T1: 1-2,
      * T2: 2-3, T3: 3-4) capped at 30% of LOC.
      *
+     * <p>
+     * Every path that creates distractors comes through here. A task without a plan — anything not planned by the
+     * automatic creator's sequence prompt — gets one chosen the same way, from the types preferred for its tier, and
+     * the result carries it so the caller can store it.
+     *
      * @param solutionCode   the task's solution, without gap markers
      * @param language       the programming language of the solution
      * @param taskStatement  the task's problem statement
      * @param tierLevel      the task's tier
+     * @param tierCount      how many tiers the task's sequence has
      * @param distractorPlan the distractor plan from generation, or null
      * @param linesOfCode    the number of lines in the solution
-     * @return newline-separated distractor lines (each ending with #distractor), or null on failure
+     * @return the validated distractor lines and the plan they follow; {@link GeneratedDistractors#NONE} on failure
      */
-    public String generateDistractorsForTask(
+    public GeneratedDistractors generateDistractorsForTask(
         String solutionCode, String language,
-        String taskStatement, int tierLevel,
+        String taskStatement, int tierLevel, int tierCount,
         String distractorPlan, int linesOfCode
     ) {
         try {
@@ -384,13 +399,14 @@ public final class TaskEnricher {
 
             log.debug("Generating {} distractors for tier {} task (LOC={})", count, tierLevel, linesOfCode);
 
-            List<String> distractorLines = client.generateDistractors(
-                solutionCode, language, taskStatement, tierLevel, distractorPlan, count
+            GeneratedDistractors generated = client.generateDistractors(
+                solutionCode, language, taskStatement, tierLevel, tierCount, distractorPlan, count
             );
+            List<String> distractorLines = generated != null ? generated.lines() : null;
 
             if (distractorLines == null || distractorLines.isEmpty()) {
                 log.warn("No distractors returned for task: {}", taskStatement);
-                return null;
+                return GeneratedDistractors.NONE;
             }
 
             // Ensure every line ends with #distractor and does NOT contain #swap or #group
@@ -404,12 +420,14 @@ public final class TaskEnricher {
 
             if (validated.isEmpty()) {
                 log.warn("All distractors filtered out for task: {}", taskStatement);
-                return null;
+                return GeneratedDistractors.NONE;
             }
 
-            String result = String.join(NEWLINE, validated);
-            log.debug("Generated {} validated distractors for tier {} task", validated.size(), tierLevel);
-            return result;
+            log.debug(
+                "Generated {} validated distractors for tier {} task (plan={})",
+                validated.size(), tierLevel, generated.plan()
+            );
+            return new GeneratedDistractors(validated, generated.plan());
 
         }
         catch (Exception e) {
@@ -417,7 +435,7 @@ public final class TaskEnricher {
                 "Distractor generation failed for task '{}', continuing without distractors: {}",
                 taskStatement, e.getMessage()
             );
-            return null;
+            return GeneratedDistractors.NONE;
         }
     }
 
