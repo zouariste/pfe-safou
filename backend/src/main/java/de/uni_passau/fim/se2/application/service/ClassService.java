@@ -596,6 +596,17 @@ public class ClassService {
     }
 
     /**
+     * Puts the worksheets assigned to a class into the given order. Only the owner or an admin may do this.
+     *
+     * @param classId             the class
+     * @param orderedWorksheetIds every worksheet assigned to the class, in the new order
+     */
+    public void reorderWorksheets(UUID classId, List<UUID> orderedWorksheetIds) {
+        requireClassOwner(classId);
+        classRepository.reorderWorksheets(classId, orderedWorksheetIds);
+    }
+
+    /**
      * Removes a worksheet from a class. Only the owner or an admin may do this.
      *
      * @param classId     the class

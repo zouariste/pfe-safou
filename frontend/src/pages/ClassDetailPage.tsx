@@ -8,6 +8,17 @@ import type { ClassInfo, StudentInfo, StudentProgress, Worksheet } from "../type
 import WorksheetSchedule from "../components/WorksheetSchedule.tsx";
 import WorksheetDeadline from "../components/WorksheetDeadline.tsx";
 import FimStudentAdder from "../components/FimStudentAdder.tsx";
+import SortableSequenceRow from "../components/SortableSequenceRow.tsx";
+import { ListGroup } from "react-bootstrap";
+import {
+    DndContext,
+    closestCenter,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+} from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import {
     parseStudentCsv,
     downloadInviteCsv,
@@ -254,6 +265,39 @@ export default function ClassDetailPage() {
         } catch (e) {
             setError((e as ApiError).response?.data?.error || t("classDetail.errorRemoving"));
         }
+    };
+
+    // Manual ordering of the assigned worksheets, owner/admin only. Same pattern as the sequences
+    // on a worksheet: the drag moves the row optimistically and the whole order is then saved,
+    // so a reload or the students' view shows the order the teacher left.
+    const dndSensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
+    );
+
+    const persistWorksheetOrder = async (orderedIds: string[], previous: ClassInfo["worksheets"]) => {
+        try {
+            await api.put(`/classes/${id}/worksheets/order`, orderedIds);
+        } catch (err) {
+            // Revert: a rejected reorder (a worksheet assigned or removed elsewhere meanwhile)
+            // must not leave the page showing an order the server never accepted.
+            setClassData((prev) => (prev ? { ...prev, worksheets: previous } : prev));
+            setError(apiErrorMessage(err, t("classDetail.errorReordering")));
+        }
+    };
+
+    const handleWorksheetDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!classData || !over || active.id === over.id) return;
+
+        const previous = classData.worksheets;
+        const ids = previous.map((w) => w.worksheetId);
+        const oldIndex = ids.indexOf(String(active.id));
+        const newIndex = ids.indexOf(String(over.id));
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const reordered = arrayMove(previous, oldIndex, newIndex);
+        setClassData({ ...classData, worksheets: reordered }); // optimistic
+        persistWorksheetOrder(reordered.map((w) => w.worksheetId), previous);
     };
 
     const handleResetTempPassword = async () => {
@@ -1022,76 +1066,90 @@ export default function ClassDetailPage() {
                             {t("classDetail.noWorksheets")}
                         </p>
                     ) : (
-                        <div className="list-group list-group-flush">
-                            {classData.worksheets.map((w) => (
-                                <div
-                                    key={w.worksheetId}
-                                    className="list-group-item d-flex justify-content-between align-items-center"
-                                >
-                                    <div>
-                                        <Link
-                                            to={`/worksheets/${w.worksheetId}?fromClass=${id}`}
-                                            state={{ fromClass: id }}
-                                            className="fw-semibold text-decoration-none"
+                        <DndContext
+                            sensors={dndSensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleWorksheetDragEnd}
+                        >
+                            <SortableContext
+                                items={classData.worksheets.map((w) => w.worksheetId)}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                <ListGroup variant="flush">
+                                    {classData.worksheets.map((w) => (
+                                        <SortableSequenceRow
+                                            key={w.worksheetId}
+                                            id={w.worksheetId}
+                                            draggable={!!isOwnerOrAdmin}
+                                            dragHandleLabel={t("classDetail.dragToReorder")}
+                                            multiline
                                         >
-                                            {w.name}
-                                        </Link>
-                                        {w.description && (
-                                            <small className="text-muted d-block">
-                                                {w.description}
-                                            </small>
-                                        )}
-                                        {/*
-                                          * Students get the deadline read-only;
-                                          * the editable schedule is the
-                                          * teacher's.
-                                          */}
-                                        {!isOwnerOrAdmin && <WorksheetDeadline worksheet={w} />}
-                                        {isOwnerOrAdmin && (
-                                            <WorksheetSchedule
-                                                classId={id!}
-                                                worksheet={w}
-                                                onSaved={(patch) =>
-                                                    setClassData((prev) =>
-                                                        prev
-                                                            ? {
-                                                                  ...prev,
-                                                                  worksheets: prev.worksheets.map((x) =>
-                                                                      x.worksheetId === w.worksheetId
-                                                                          ? { ...x, ...patch }
-                                                                          : x,
-                                                                  ),
-                                                              }
-                                                            : prev,
-                                                    )
-                                                }
-                                            />
-                                        )}
-                                    </div>
-                                    <div className="d-flex gap-2">
-                                        <Link
-                                            to={`/worksheets/${w.worksheetId}?fromClass=${id}`}
-                                            state={{ fromClass: id }}
-                                            className="btn btn-sm btn-outline-secondary"
-                                            title={t("classDetail.openWorksheet")}
-                                        >
-                                            <i className="bi bi-box-arrow-up-right"></i>
-                                        </Link>
-                                        {isOwnerOrAdmin && (
-                                            <button
-                                                className="btn btn-sm btn-outline-danger"
-                                                onClick={() =>
-                                                    handleRemoveWorksheet(w.worksheetId, w.name)
-                                                }
-                                                title={t("classDetail.removeAssignment")}
-                                            >
-                                                <i className="bi bi-x-lg"></i>
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                            <div>
+                                                <Link
+                                                    to={`/worksheets/${w.worksheetId}?fromClass=${id}`}
+                                                    state={{ fromClass: id }}
+                                                    className="fw-semibold text-decoration-none"
+                                                >
+                                                    {w.name}
+                                                </Link>
+                                                {w.description && (
+                                                    <small className="text-muted d-block">
+                                                        {w.description}
+                                                    </small>
+                                                )}
+                                                {/*
+                                                  * Students get the deadline read-only;
+                                                  * the editable schedule is the
+                                                  * teacher's.
+                                                  */}
+                                                {!isOwnerOrAdmin && <WorksheetDeadline worksheet={w} />}
+                                                {isOwnerOrAdmin && (
+                                                    <WorksheetSchedule
+                                                        classId={id!}
+                                                        worksheet={w}
+                                                        onSaved={(patch) =>
+                                                            setClassData((prev) =>
+                                                                prev
+                                                                    ? {
+                                                                          ...prev,
+                                                                          worksheets: prev.worksheets.map((x) =>
+                                                                              x.worksheetId === w.worksheetId
+                                                                                  ? { ...x, ...patch }
+                                                                                  : x,
+                                                                          ),
+                                                                      }
+                                                                    : prev,
+                                                            )
+                                                        }
+                                                    />
+                                                )}
+                                            </div>
+                                            <div className="d-flex gap-2">
+                                                <Link
+                                                    to={`/worksheets/${w.worksheetId}?fromClass=${id}`}
+                                                    state={{ fromClass: id }}
+                                                    className="btn btn-sm btn-outline-secondary"
+                                                    title={t("classDetail.openWorksheet")}
+                                                >
+                                                    <i className="bi bi-box-arrow-up-right"></i>
+                                                </Link>
+                                                {isOwnerOrAdmin && (
+                                                    <button
+                                                        className="btn btn-sm btn-outline-danger"
+                                                        onClick={() =>
+                                                            handleRemoveWorksheet(w.worksheetId, w.name)
+                                                        }
+                                                        title={t("classDetail.removeAssignment")}
+                                                    >
+                                                        <i className="bi bi-x-lg"></i>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </SortableSequenceRow>
+                                    ))}
+                                </ListGroup>
+                            </SortableContext>
+                        </DndContext>
                     )}
                 </div>
             </div>

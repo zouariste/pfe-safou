@@ -60,6 +60,18 @@ public interface ClassRepository {
     void removeWorksheet(UUID classId, UUID worksheetId);
 
     /**
+     * Rewrites the display order of the worksheets assigned to a class.
+     *
+     * @param classId             the class whose worksheets are being reordered
+     * @param orderedWorksheetIds every worksheet currently assigned to the class, in the order they should appear —
+     *                            must be exactly the class's current set, neither more nor fewer
+     * @throws de.uni_passau.fim.se2.domain.exceptions.DomainValidationException if the list is null/empty or the id set
+     *                                                                           does not exactly match the class's
+     *                                                                           current worksheets
+     */
+    void reorderWorksheets(UUID classId, List<UUID> orderedWorksheetIds);
+
+    /**
      * Points one class's assignment at a different worksheet, keeping its schedule and published state.
      *
      * @param classId        the class

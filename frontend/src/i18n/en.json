@@ -789,6 +789,8 @@
     "noWorksheets": "No worksheets assigned yet.",
     "openWorksheet": "Open worksheet",
     "removeAssignment": "Remove assignment",
+    "dragToReorder": "Drag to reorder",
+    "errorReordering": "Could not save the new order.",
     "removeWorksheetConfirm": "Really remove worksheet \"{{name}}\" from this class?",
     "worksheetAssigned": "Worksheet assigned.",
     "errorAssigning": "Error assigning.",

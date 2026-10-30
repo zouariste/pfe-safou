@@ -4,7 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ListGroup } from "react-bootstrap";
 
 interface SortableSequenceRowProps {
-    /** The sequence id — doubles as the dnd-kit sortable item id. */
+    /** The sequence (or, on the class page, worksheet) id — doubles as the dnd-kit sortable item id. */
     id: string;
     /**
      * Whether this row can be picked up at all. False renders a plain, static row with no
@@ -27,7 +27,8 @@ interface SortableSequenceRowProps {
 }
 
 /**
- * One row in a worksheet's sequence list, made sortable via dnd-kit.
+ * One row in a worksheet's sequence list, made sortable via dnd-kit. The class page reuses it for
+ * the worksheets assigned to a class.
  *
  * <p>The drag handle is a separate element carrying dnd-kit's listeners, deliberately not the
  * whole row: the row's own content is still a click target that navigates to the sequence, and

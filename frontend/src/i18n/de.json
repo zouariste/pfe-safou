@@ -789,6 +789,8 @@
     "noWorksheets": "Noch keine Arbeitsblätter zugewiesen.",
     "openWorksheet": "Arbeitsblatt öffnen",
     "removeAssignment": "Zuweisung entfernen",
+    "dragToReorder": "Zum Umsortieren ziehen",
+    "errorReordering": "Die neue Reihenfolge konnte nicht gespeichert werden.",
     "removeWorksheetConfirm": "Arbeitsblatt \"{{name}}\" wirklich von der Klasse entfernen?",
     "worksheetAssigned": "Arbeitsblatt zugewiesen.",
     "errorAssigning": "Fehler beim Zuweisen.",
