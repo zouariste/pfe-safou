@@ -98,6 +98,14 @@ public interface TaskRepository {
     void updateDistractors(UUID taskId, String distractors);
 
     /**
+     * Updates only the distractor plan of an existing task (AP15).
+     *
+     * @param taskId the task
+     * @param plan   the plan JSON ({@code {"type", "rationale"}})
+     */
+    void updateDistractorPlan(UUID taskId, String plan);
+
+    /**
      * Updates only the context columns of an existing task (AP22).
      *
      * @param taskId        the task

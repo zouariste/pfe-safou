@@ -503,6 +503,19 @@ public class TaskPersistenceService {
         sequenceRepo.markDivergedByTaskId(taskId);
     }
 
+    /**
+     * AP15: Stores new distractors together with the plan they were generated from, for a task that had no plan yet.
+     *
+     * @param taskId      the task to update
+     * @param distractors the new distractor lines
+     * @param plan        the plan the distractors follow
+     */
+    @Transactional
+    public void updateDistractors(UUID taskId, String distractors, String plan) {
+        updateDistractors(taskId, distractors);
+        taskRepo.updateDistractorPlan(taskId, plan);
+    }
+
     /** Longest task name accepted: room for a descriptive heading, short enough to stay one. */
     public static final int MAX_TITLE_LENGTH = 120;
 

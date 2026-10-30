@@ -42,6 +42,8 @@ import de.uni_passau.fim.se2.domain.entities.OpenAiModel;
 import de.uni_passau.fim.se2.domain.entities.SolveContract;
 import de.uni_passau.fim.se2.domain.exceptions.UnsupportedLanguageException;
 import de.uni_passau.fim.se2.domain.model.ConceptCatalog;
+import de.uni_passau.fim.se2.domain.model.DistractorStrategy;
+import de.uni_passau.fim.se2.domain.model.GeneratedDistractors;
 import de.uni_passau.fim.se2.domain.model.SupportedLanguage;
 import de.uni_passau.fim.se2.infrastructure.ai.AbstractAiClient;
 import de.uni_passau.fim.se2.infrastructure.ai.AiProps;
@@ -622,16 +624,16 @@ public class OpenAiClient extends AbstractAiClient {
     }
 
     @Override
-    public List<String> generateDistractors(
+    public GeneratedDistractors generateDistractors(
         String solutionCode, String language,
-        String taskStatement, int tierLevel,
+        String taskStatement, int tierLevel, int tierCount,
         String distractorPlan, int count
     )
         throws IOException, InterruptedException {
         log.debug("Generating {} distractors for tier {} task", count, tierLevel);
         ObjectNode json = promptBuilder.buildDistractorRequest(
             solutionCode, language, taskStatement,
-            tierLevel, distractorPlan, count
+            tierLevel, tierCount, distractorPlan, count
         );
         attachModel(json, defaultModel);
         HttpResponse<String> response = sendRequest(json);
@@ -650,7 +652,25 @@ public class OpenAiClient extends AbstractAiClient {
                 result.add(line);
             }
         }
-        return result;
+
+        boolean hasPlan = distractorPlan != null && !distractorPlan.isBlank();
+        return new GeneratedDistractors(result, hasPlan ? distractorPlan : chosenPlan(parsed.get("plan")));
+    }
+
+    /**
+     * The plan the model chose when it was given none, in the same {@code {"type", "rationale"}} form the sequence
+     * prompt produces. Null when it is missing or names a type outside the taxonomy: the distractors are still usable,
+     * they just carry no plan.
+     */
+    private String chosenPlan(JsonNode plan) {
+        if (plan == null || !plan.isObject() || !DistractorStrategy.Type.isKnown(plan.path("type").asText(null))) {
+            log.warn("Distractor response carried no usable plan: {}", plan);
+            return null;
+        }
+        ObjectNode normalized = mapper.createObjectNode()
+            .put("type", plan.get("type").asText())
+            .put("rationale", plan.path("rationale").asText(""));
+        return normalized.toString();
     }
 
     /**

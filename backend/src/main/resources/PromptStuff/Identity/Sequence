@@ -28,14 +28,7 @@ Generate tasks that *demonstrably* exercise the given concept(s) from the input 
 **Optional Distractor Planning (only when instructed in the user prompt):**
 If the user prompt requests distractor planning, include a `distractorPlan` for each task.
 Choose one type from this taxonomy:
-- LOGIC_FLIP: Invert operators (<→>, ==→!=, &&→||). Tests predicate logic.
-- OFF_BY_ONE: Wrong loop bounds or range limits. Tests boundary understanding.
-- VARIABLE_MISMATCH: Use existing but wrong variable. Tests data flow comprehension.
-- BOUNDARY_IDENTITY: Wrong initial values or base cases. Tests recursive thinking.
-- STRUCTURAL_ILLOGICAL: Code illegal in context (break outside loop). Tests control flow rules.
-- REDUNDANT_ZOMBIE: Plausible but unnecessary/harmful extra lines. Tests ability to identify ballast.
+{{DISTRACTOR_TAXONOMY}}
 
 The `distractorPlan` must match the tier difficulty:
-- Tier 1: prefer LOGIC_FLIP or STRUCTURAL_ILLOGICAL (obvious errors)
-- Tier 2: prefer OFF_BY_ONE or VARIABLE_MISMATCH (detail errors)
-- Tier 3: prefer BOUNDARY_IDENTITY or REDUNDANT_ZOMBIE (subtle traps)
+{{DISTRACTOR_TIER_MAPPING}}

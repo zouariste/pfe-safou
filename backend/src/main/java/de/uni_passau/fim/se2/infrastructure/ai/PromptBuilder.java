@@ -32,6 +32,7 @@ import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
 import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
 import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
 import de.uni_passau.fim.se2.domain.entities.SolveContract;
+import de.uni_passau.fim.se2.domain.model.DistractorStrategy;
 import de.uni_passau.fim.se2.domain.model.SupportedLanguage;
 
 /**
@@ -46,6 +47,8 @@ public class PromptBuilder {
     private static final String ROLE_SYSTEM = "system";
     private static final String ROLE = "role";
     private static final String CONTENT = "content";
+    static final String DISTRACTOR_TAXONOMY_PLACEHOLDER = "{{DISTRACTOR_TAXONOMY}}";
+    static final String DISTRACTOR_TIER_MAPPING_PLACEHOLDER = "{{DISTRACTOR_TIER_MAPPING}}";
     private static final String MESSAGES = "messages";
     private static final String RESPONSE_FORMAT = "response_format";
     private static final String JSON_SCHEMA = "json_schema";
@@ -136,7 +139,7 @@ public class PromptBuilder {
         messages.add(
             mapper.createObjectNode()
                 .put(ROLE, ROLE_SYSTEM)
-                .put(CONTENT, identityLoader.load("Sequence"))
+                .put(CONTENT, sequenceIdentity("Sequence", 3))
         );
 
         // Resolve human language label for the prompt instruction
@@ -263,7 +266,7 @@ public class PromptBuilder {
         messages.add(
             mapper.createObjectNode()
                 .put(ROLE, ROLE_SYSTEM)
-                .put(CONTENT, identityLoader.load("Sequence5Tier"))
+                .put(CONTENT, sequenceIdentity("Sequence5Tier", tierCount))
         );
 
         String langLabel = ENGLISH.equalsIgnoreCase(targetLanguage) ? "English" : "German";
@@ -276,21 +279,7 @@ public class PromptBuilder {
             Code, function signatures, variable names, and concept names remain in English.
             """.formatted(langLabel);
 
-        String distractorInstruction = "";
-        if (distractorsEnabled) {
-            distractorInstruction = """
-
-                DISTRACTOR PLANNING:
-                For each task, include a "distractorPlan" object with:
-                - "type": one of LOGIC_FLIP, OFF_BY_ONE, VARIABLE_MISMATCH, BOUNDARY_IDENTITY, STRUCTURAL_ILLOGICAL, REDUNDANT_ZOMBIE
-                - "rationale": a short sentence explaining why this error type fits the task and tier
-                Match distractor difficulty to tier level:
-                - Tier 1–2: obvious errors (LOGIC_FLIP, STRUCTURAL_ILLOGICAL)
-                - Tier 3: detail errors (OFF_BY_ONE, VARIABLE_MISMATCH)
-                - Tier 4: subtle traps (BOUNDARY_IDENTITY, REDUNDANT_ZOMBIE)
-                - Tier 5: most deceptive type for the code structure
-                """;
-        }
+        String distractorInstruction = distractorsEnabled ? distractorPlanningInstruction(tierCount) : "";
 
         String prompt = """
             Generate exactly %d tiered programming tasks (tiers 1–%d) for the inputs below.
@@ -437,7 +426,7 @@ public class PromptBuilder {
         messages.add(
             mapper.createObjectNode()
                 .put(ROLE, ROLE_SYSTEM)
-                .put(CONTENT, identityLoader.load("Sequence"))
+                .put(CONTENT, sequenceIdentity("Sequence", 3))
         );
 
         String langLabel;
@@ -456,17 +445,7 @@ public class PromptBuilder {
             Code, function signatures, variable names, and concept names remain in English.
             """.formatted(langLabel);
 
-        String distractorInstruction = "";
-        if (distractorsEnabled) {
-            distractorInstruction = """
-
-                DISTRACTOR PLANNING:
-                For each task, include a "distractorPlan" object with:
-                - "type": one of LOGIC_FLIP, OFF_BY_ONE, VARIABLE_MISMATCH, BOUNDARY_IDENTITY, STRUCTURAL_ILLOGICAL, REDUNDANT_ZOMBIE
-                - "rationale": a short sentence explaining why this error type fits the task and tier
-                Match distractor difficulty to tier level (Tier 1 = obvious, Tier 3 = subtle).
-                """;
-        }
+        String distractorInstruction = distractorsEnabled ? distractorPlanningInstruction(3) : "";
 
         String prompt = """
             Generate exactly 3 tiered programming tasks (tiers 1–3) for the inputs below.
@@ -1124,13 +1103,51 @@ public class PromptBuilder {
     }
 
     /**
+     * Loads a sequence identity and fills in its distractor placeholders from {@link DistractorStrategy}, so the
+     * taxonomy and tier mapping the sequence prompt plans with are the ones every other distractor path uses.
+     *
+     * @param name      the identity file, {@code Sequence} or {@code Sequence5Tier}
+     * @param tierCount how many tiers the sequence will have
+     * @return the identity text, with no placeholder left
+     */
+    String sequenceIdentity(final String name, final int tierCount) {
+        return identityLoader.load(name)
+            .replace(DISTRACTOR_TAXONOMY_PLACEHOLDER, DistractorStrategy.taxonomyText())
+            .replace(DISTRACTOR_TIER_MAPPING_PLACEHOLDER, DistractorStrategy.tierMappingText(tierCount));
+    }
+
+    /**
+     * The user-prompt instruction asking the sequence prompt for a {@code distractorPlan} per task.
+     *
+     * @param tierCount how many tiers the sequence will have
+     * @return the instruction, starting with a blank line
+     */
+    private static String distractorPlanningInstruction(final int tierCount) {
+        return """
+
+            DISTRACTOR PLANNING:
+            For each task, include a "distractorPlan" object with:
+            - "type": one of %s
+            - "rationale": a short sentence explaining why this error type fits the task and tier
+            Match distractor difficulty to tier level:
+            %s
+            """.formatted(DistractorStrategy.typeNames(), DistractorStrategy.tierMappingText(tierCount));
+    }
+
+    /**
      * Constructs a GPT request to generate distractor lines for a Parsons problem (AP15). The "Antagonist" prompt takes
      * a correct solution and a distractor plan, then generates plausible but incorrect code lines.
+     *
+     * <p>
+     * Without a plan the model picks one itself, the way the sequence prompt does on the automatic creator: one type
+     * from those {@link DistractorStrategy#preferredTypes} names for the tier, with a rationale. The response then
+     * carries that choice as {@code plan} next to the distractors.
      *
      * @param solutionCode   the correct solution code
      * @param language       programming language
      * @param taskStatement  the task description
-     * @param tierLevel      difficulty tier (1-3)
+     * @param tierLevel      difficulty tier
+     * @param tierCount      how many tiers the task's sequence has
      * @param distractorPlan JSON string with type and rationale, or null
      * @param count          number of distractors to generate
      * @return GPT-compliant JSON request object
@@ -1141,6 +1158,7 @@ public class PromptBuilder {
         final String language,
         final String taskStatement,
         final int tierLevel,
+        final int tierCount,
         final String distractorPlan,
         final int count
     ) {
@@ -1165,12 +1183,7 @@ public class PromptBuilder {
             8. Match the indentation level as if the distractor replaced an existing line.
 
             TAXONOMY TYPES:
-            - LOGIC_FLIP: Invert operators (<→>, ==→!=, &&→||)
-            - OFF_BY_ONE: Wrong loop bounds or range limits
-            - VARIABLE_MISMATCH: Use existing but wrong variable in expression
-            - BOUNDARY_IDENTITY: Wrong initial values or base cases
-            - STRUCTURAL_ILLOGICAL: Code illegal in context (break outside loop, etc.)
-            - REDUNDANT_ZOMBIE: Plausible but unnecessary/harmful extra lines""";
+            %s""".formatted(DistractorStrategy.taxonomyText());
 
         messages.add(
             mapper.createObjectNode()
@@ -1178,9 +1191,26 @@ public class PromptBuilder {
                 .put(CONTENT, systemPrompt)
         );
 
-        String strategySection = "";
-        if (distractorPlan != null && !distractorPlan.isBlank()) {
+        boolean hasPlan = distractorPlan != null && !distractorPlan.isBlank();
+        List<DistractorStrategy.Type> preferred = DistractorStrategy.preferredTypes(tierLevel, tierCount);
+        String strategySection;
+        if (hasPlan) {
             strategySection = "\nDISTRACTOR STRATEGY:\n" + distractorPlan + "\n";
+        }
+        else {
+            strategySection = """
+
+                DISTRACTOR STRATEGY SELECTION:
+                This is tier %d of %d. Choose ONE type from the types preferred for this tier:
+                %s
+                Pick the one that fits this code best, give a one-sentence rationale for why it fits the task \
+                and tier, and generate all distractors of that type.
+                """.formatted(
+                tierLevel, tierCount,
+                preferred.stream()
+                    .map(t -> "- " + t.name() + ": " + t.description())
+                    .collect(Collectors.joining("\n"))
+            );
         }
 
         String userPrompt = """
@@ -1197,9 +1227,10 @@ public class PromptBuilder {
             Generate %d distractors for this task.
 
             OUTPUT:
-            Return ONLY a JSON object with a "distractors" array containing the distractor strings.
+            Return ONLY a JSON object with a "distractors" array containing the distractor strings%s.
             Each string must end with " #distractor".""".formatted(
-            language, taskStatement, tierLevel, solutionCode, strategySection, count
+            language, taskStatement, tierLevel, solutionCode, strategySection, count,
+            hasPlan ? "" : " and a \"plan\" object with the chosen \"type\" and your \"rationale\""
         );
 
         messages.add(
@@ -1209,7 +1240,7 @@ public class PromptBuilder {
         );
 
         json.set(MESSAGES, messages);
-        json.set(RESPONSE_FORMAT, responseFormatDistractors());
+        json.set(RESPONSE_FORMAT, responseFormatDistractors(hasPlan ? null : preferred));
         return json;
     }
 
@@ -1260,7 +1291,13 @@ public class PromptBuilder {
         return rf;
     }
 
-    private ObjectNode responseFormatDistractors() {
+    /**
+     * The distractor response schema.
+     *
+     * @param planTypes the types the model may choose from when it has to pick a plan itself, or null when a plan was
+     *                  given and the response carries only the distractors
+     */
+    private ObjectNode responseFormatDistractors(List<DistractorStrategy.Type> planTypes) {
         ObjectNode rf = mapper.createObjectNode().put(TYPE, JSON_SCHEMA);
         ObjectNode js = mapper.createObjectNode();
         js.put(NAME, "distractor_response");
@@ -1275,8 +1312,26 @@ public class PromptBuilder {
         distractors.set(ITEMS, items);
         properties.set("distractors", distractors);
 
+        ArrayNode required = mapper.createArrayNode().add("distractors");
+        if (planTypes != null) {
+            ObjectNode type = mapper.createObjectNode().put(TYPE, STRING);
+            ArrayNode allowed = type.putArray("enum");
+            planTypes.forEach(t -> allowed.add(t.name()));
+
+            ObjectNode planProps = mapper.createObjectNode();
+            planProps.set(TYPE, type);
+            planProps.set("rationale", mapper.createObjectNode().put(TYPE, STRING));
+
+            ObjectNode plan = mapper.createObjectNode().put(TYPE, OBJECT);
+            plan.set(PROPERTIES, planProps);
+            plan.putArray(REQUIRED).add(TYPE).add("rationale");
+            plan.put(ADDITIONAL_PROPERTIES, false);
+            properties.set("plan", plan);
+            required.add("plan");
+        }
+
         schema.set(PROPERTIES, properties);
-        schema.putArray(REQUIRED).add("distractors");
+        schema.set(REQUIRED, required);
         schema.put(ADDITIONAL_PROPERTIES, false);
 
         js.set(SCHEMA, schema);
