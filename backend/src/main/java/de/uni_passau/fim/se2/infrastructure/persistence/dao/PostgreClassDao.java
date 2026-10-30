@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -62,6 +63,9 @@ public class PostgreClassDao implements ClassRepository {
         JOIN worksheets w ON w.id = cw.worksheet_id
         """;
 
+    /** The class's own order; ties (which a reorder never leaves) fall back to when the worksheet was assigned. */
+    private static final String WORKSHEET_ORDER = " ORDER BY cw.position, cw.assigned_at, cw.worksheet_id";
+
     /** One assignment row, with its availability already resolved. */
     private static ClassDTO.WorksheetInfo worksheetRow(java.sql.ResultSet rs) throws java.sql.SQLException {
         Instant releaseAt = toInstant(rs.getTimestamp("release_at"));
@@ -97,7 +101,7 @@ public class PostgreClassDao implements ClassRepository {
         Map<UUID, List<ClassDTO.WorksheetInfo>> byClass = new HashMap<>();
 
         jdbc.query(
-            WORKSHEET_SELECT + " WHERE cw.class_id IN (" + placeholders + ") ORDER BY w.name",
+            WORKSHEET_SELECT + " WHERE cw.class_id IN (" + placeholders + ")" + WORKSHEET_ORDER,
             rs -> {
                 byClass.computeIfAbsent(rs.getObject("class_id", UUID.class), k -> new ArrayList<>())
                     .add(worksheetRow(rs));
@@ -182,7 +186,7 @@ public class PostgreClassDao implements ClassRepository {
 
         // Load worksheets
         List<ClassDTO.WorksheetInfo> worksheets = jdbc.query(
-            WORKSHEET_SELECT + " WHERE cw.class_id = ? ORDER BY w.name",
+            WORKSHEET_SELECT + " WHERE cw.class_id = ?" + WORKSHEET_ORDER,
             (rs, rowNum) -> worksheetRow(rs),
             id
         );
@@ -280,14 +284,19 @@ public class PostgreClassDao implements ClassRepository {
         log.info("Removed student {} from class {}", studentId, classId);
     }
 
+    /**
+     * Assigns a worksheet at the end of the class's list. Assigning one that is already there changes nothing, its
+     * place included.
+     */
     @Override
     public void addWorksheet(UUID classId, UUID worksheetId) {
         try {
             jdbc.update("""
-                INSERT INTO class_worksheets (class_id, worksheet_id)
-                VALUES (?, ?)
+                INSERT INTO class_worksheets (class_id, worksheet_id, position)
+                SELECT ?, ?, COALESCE(MAX(position) + 1, 0)
+                FROM class_worksheets WHERE class_id = ?
                 ON CONFLICT (class_id, worksheet_id) DO NOTHING
-                """, classId, worksheetId);
+                """, classId, worksheetId, classId);
             log.info("Assigned worksheet {} to class {}", worksheetId, classId);
         }
         catch (DataAccessException e) {
@@ -305,8 +314,49 @@ public class PostgreClassDao implements ClassRepository {
     }
 
     /**
+     * Rewrites the position of every worksheet assigned to a class to match {@code orderedWorksheetIds}.
+     *
+     * <p>
+     * The caller must name exactly the worksheets already assigned — no more, no fewer — so a stale client (a tab that
+     * missed an assignment or removal elsewhere) cannot drop a worksheet's place or invent one. Checked up front so a
+     * bad request fails before any row is touched.
+     *
+     * @throws DomainValidationException if the id set does not exactly match the class's current worksheets
+     */
+    @Override
+    public void reorderWorksheets(UUID classId, List<UUID> orderedWorksheetIds) {
+        if (orderedWorksheetIds == null || orderedWorksheetIds.isEmpty()) {
+            throw new DomainValidationException("Worksheet order list cannot be null or empty");
+        }
+
+        List<UUID> current = jdbc.queryForList(
+            "SELECT worksheet_id FROM class_worksheets WHERE class_id = ?",
+            UUID.class, classId
+        );
+
+        if (
+            current.size() != orderedWorksheetIds.size()
+                || !new HashSet<>(current).equals(new HashSet<>(orderedWorksheetIds))
+        ) {
+            throw new DomainValidationException(
+                "Reordering must include exactly the worksheets already assigned to the class"
+            );
+        }
+
+        List<Object[]> batchArgs = new ArrayList<>(orderedWorksheetIds.size());
+        for (int i = 0; i < orderedWorksheetIds.size(); i++) {
+            batchArgs.add(new Object[] { i, classId, orderedWorksheetIds.get(i) });
+        }
+        jdbc.batchUpdate(
+            "UPDATE class_worksheets SET position = ? WHERE class_id = ? AND worksheet_id = ?",
+            batchArgs
+        );
+        log.info("Reordered {} worksheets in class {}", orderedWorksheetIds.size(), classId);
+    }
+
+    /**
      * Rewrites the worksheet id in place rather than removing and re-adding the row, so the release date, deadline,
-     * grace period, published flag and assigned_at all carry over.
+     * grace period, published flag, assigned_at and position all carry over.
      */
     @Override
     public void replaceWorksheet(UUID classId, UUID oldWorksheetId, UUID newWorksheetId) {

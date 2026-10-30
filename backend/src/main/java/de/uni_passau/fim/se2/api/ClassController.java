@@ -241,6 +241,25 @@ public class ClassController {
     }
 
     /**
+     * Reorders the worksheets assigned to a class.
+     *
+     * The body must list every worksheet already assigned, in the desired order — no more, no fewer. A mismatched set
+     * is rejected rather than half applied, since a stale client is the likely cause.
+     *
+     * @param id                  the class
+     * @param orderedWorksheetIds every worksheet assigned to the class, in the new order
+     * @return 204 No Content
+     */
+    @PutMapping("/{id}/worksheets/order")
+    public ResponseEntity<?> reorderWorksheets(
+        @PathVariable UUID id,
+        @RequestBody List<UUID> orderedWorksheetIds
+    ) {
+        classService.reorderWorksheets(id, orderedWorksheetIds);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * Gives the class owner their own copy of a worksheet the class uses but someone else owns, and moves this class
      * onto it. Schedule, published state and student progress carry over.
      *
