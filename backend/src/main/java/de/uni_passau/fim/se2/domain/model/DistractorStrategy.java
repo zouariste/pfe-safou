@@ -28,8 +28,8 @@ import java.util.stream.Collectors;
  * <p>
  * The single source for the distractor taxonomy and the tier mapping. The automatic creator's identity files
  * ({@code PromptStuff/Identity/Sequence}, {@code Sequence5Tier}) carry placeholders that are filled from
- * {@link #taxonomyText()} and {@link #tierMappingText(int)}, and the sequence prompt picks a {@code distractorPlan}
- * per task from them. Every other path that generates distractors — the manual creator, the on-demand buttons on the
+ * {@link #taxonomyText()} and {@link #tierMappingText(int)}, and the sequence prompt picks a {@code distractorPlan} per
+ * task from them. Every other path that generates distractors — the manual creator, the on-demand buttons on the
  * sequence page, tiers added later — has no such plan, so the distractor call picks one itself from
  * {@link #preferredTypes}.
  */
@@ -37,6 +37,7 @@ public final class DistractorStrategy {
 
     /** The distractor taxonomy, with the description the prompts use. */
     public enum Type {
+
         LOGIC_FLIP("Invert operators (<→>, ==→!=, &&→||). Tests predicate logic."),
         OFF_BY_ONE("Wrong loop bounds or range limits. Tests boundary understanding."),
         VARIABLE_MISMATCH("Use existing but wrong variable. Tests data flow comprehension."),
@@ -67,6 +68,7 @@ public final class DistractorStrategy {
 
     /** How hard a tier's distractors should be to spot. */
     private enum Level {
+
         OBVIOUS("obvious errors", List.of(Type.LOGIC_FLIP, Type.STRUCTURAL_ILLOGICAL)),
         DETAIL("detail errors", List.of(Type.OFF_BY_ONE, Type.VARIABLE_MISMATCH)),
         SUBTLE("subtle traps", List.of(Type.BOUNDARY_IDENTITY, Type.REDUNDANT_ZOMBIE)),
@@ -118,7 +120,15 @@ public final class DistractorStrategy {
 
     /** @return the taxonomy as a prompt list, one {@code - TYPE: description} line per type */
     public static String taxonomyText() {
-        return Arrays.stream(Type.values())
+        return taxonomyText(List.of(Type.values()));
+    }
+
+    /**
+     * @param types the types to list
+     * @return the given types as a prompt list, one {@code - TYPE: description} line per type
+     */
+    public static String taxonomyText(List<Type> types) {
+        return types.stream()
             .map(t -> "- " + t.name() + ": " + t.description())
             .collect(Collectors.joining("\n"));
     }

@@ -409,8 +409,8 @@ public class TasksController {
     }
 
     /**
-     * Generates and stores distractors for one task, the way the automatic creator does: a task without a plan gets
-     * one chosen from the types preferred for its tier, and keeps it.
+     * Generates and stores distractors for one task, the way the automatic creator does: a task without a plan gets one
+     * chosen from the types preferred for its tier, and keeps it.
      */
     private void fillDistractors(TaskDTO task, String lang, int tierCount) {
         // AP30: resolve $$blank:…$$ gap markers to real code before generating distractors

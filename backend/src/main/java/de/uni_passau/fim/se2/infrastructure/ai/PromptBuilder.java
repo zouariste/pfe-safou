@@ -78,6 +78,7 @@ public class PromptBuilder {
     private static final String SCHEMA = "schema";
     private static final String STRING = "string";
     private static final String ENGLISH = "en";
+    private static final String RATIONALE = "rationale";
 
     /**
      * Object mapper used for constructing prompts.
@@ -571,9 +572,9 @@ public class PromptBuilder {
             ObjectNode distractorPlan = mapper.createObjectNode().put(TYPE, OBJECT);
             ObjectNode dpProps = mapper.createObjectNode();
             dpProps.set(TYPE, str());
-            dpProps.set("rationale", str());
+            dpProps.set(RATIONALE, str());
             distractorPlan.set(PROPERTIES, dpProps);
-            distractorPlan.putArray(REQUIRED).add(TYPE).add("rationale");
+            distractorPlan.putArray(REQUIRED).add(TYPE).add(RATIONALE);
             distractorPlan.put(ADDITIONAL_PROPERTIES, false);
             taskProps.set("distractorPlan", distractorPlan);
             required.add("distractorPlan");
@@ -744,9 +745,9 @@ public class PromptBuilder {
         ObjectNode distractorPlan = mapper.createObjectNode().put(TYPE, OBJECT);
         ObjectNode dpProps = mapper.createObjectNode();
         dpProps.set(TYPE, str());
-        dpProps.set("rationale", str());
+        dpProps.set(RATIONALE, str());
         distractorPlan.set(PROPERTIES, dpProps);
-        distractorPlan.putArray(REQUIRED).add(TYPE).add("rationale");
+        distractorPlan.putArray(REQUIRED).add(TYPE).add(RATIONALE);
         distractorPlan.put(ADDITIONAL_PROPERTIES, false);
         taskProps.set("distractorPlan", distractorPlan);
 
@@ -1206,10 +1207,7 @@ public class PromptBuilder {
                 Pick the one that fits this code best, give a one-sentence rationale for why it fits the task \
                 and tier, and generate all distractors of that type.
                 """.formatted(
-                tierLevel, tierCount,
-                preferred.stream()
-                    .map(t -> "- " + t.name() + ": " + t.description())
-                    .collect(Collectors.joining("\n"))
+                tierLevel, tierCount, DistractorStrategy.taxonomyText(preferred)
             );
         }
 
@@ -1320,11 +1318,11 @@ public class PromptBuilder {
 
             ObjectNode planProps = mapper.createObjectNode();
             planProps.set(TYPE, type);
-            planProps.set("rationale", mapper.createObjectNode().put(TYPE, STRING));
+            planProps.set(RATIONALE, mapper.createObjectNode().put(TYPE, STRING));
 
             ObjectNode plan = mapper.createObjectNode().put(TYPE, OBJECT);
             plan.set(PROPERTIES, planProps);
-            plan.putArray(REQUIRED).add(TYPE).add("rationale");
+            plan.putArray(REQUIRED).add(TYPE).add(RATIONALE);
             plan.put(ADDITIONAL_PROPERTIES, false);
             properties.set("plan", plan);
             required.add("plan");
