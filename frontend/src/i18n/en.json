@@ -1047,6 +1047,7 @@
     "tipLength": "Keep solutions under ~15 lines for the best puzzle experience.",
     "tipDifficulty": "Tier 1 should be the easiest, Tier 3 the hardest.",
     "tipVariation": "You can use different code per tier or the same code with different problem statements.",
+    "tipInterchangeable": "To make parts interchangeable, end single lines with #swap:NAME and whole blocks with #group:NAME_1 and #group:NAME_2. See the help page for details.",
     "blocksCount": "{{count}} blocks (shuffled in puzzle)",
     "summary": "Sequence Summary",
     "language": "Language",
@@ -2032,6 +2033,22 @@
         "Keep solutions focused — 5 to 12 non-empty lines is the sweet spot.",
         "The line count and character count are shown below the editor.",
         "<kbd>Tab</kbd> in the code editor inserts 4 spaces (no focus-trap)."
+      ],
+      "interchangeableTitle": "Interchangeable Lines and Blocks",
+      "interchangeableBody": "Normally, only the order of your solution counts as correct. A marker at the <strong>end of a line</strong> tells CodeOwl which parts are also correct in a different order. Students don't see these markers.",
+      "swapTitle": "Single lines: #swap:NAME",
+      "swapBody": "Lines with the <strong>same name</strong> can swap places with each other freely.",
+      "swapExample": "width = 4 #swap:values\nheight = 3 #swap:values\nprint(width * height)",
+      "groupTitle": "Multi-line blocks: #group:NAME_N",
+      "groupBody": "Lines with <strong>exactly the same name</strong> form a block: they stay together and keep their order. Blocks with the <strong>same prefix and different numbers</strong> are interchangeable with each other.",
+      "groupExample": "def read_input(): #group:function_1\n    return int(input()) #group:function_1\n\ndef double(x): #group:function_2\n    return x * 2 #group:function_2",
+      "interchangeableRules": [
+        "A block needs a swap partner: <code>#group:input</code> and <code>#group:year</code> have different prefixes, so they stay at their position. The editor warns you about this. Use something like <code>#group:function_1</code> and <code>#group:function_2</code> instead.",
+        "The prefix is everything before the <strong>last underscore</strong>, so <code>input_read</code> and <code>input_check</code> also share the prefix <code>input</code>. Numbers avoid surprises here.",
+        "Lines without a marker stay at their position.",
+        "Blocks of different lengths can only swap if no fixed line sits between them.",
+        "Only mark what really works in any order, such as independent variables or functions. <code>if</code>/<code>elif</code>/<code>else</code> chains don't qualify.",
+        "Don't use <code>#swap</code> or <code>#group</code> on distractor lines."
       ],
       "tiersTitle": "Tiers",
       "tiers": [

@@ -590,6 +590,16 @@ export default function HelpPage() {
                         {p("help.manualCreate.blocksBody")}
                         {ul("help.manualCreate.blocks")}
 
+                        <h5>🔀 {t("help.manualCreate.interchangeableTitle")}</h5>
+                        {p("help.manualCreate.interchangeableBody")}
+                        <h6>{t("help.manualCreate.swapTitle")}</h6>
+                        {p("help.manualCreate.swapBody")}
+                        <pre className="border rounded p-2 small"><code>{t("help.manualCreate.swapExample")}</code></pre>
+                        <h6>{t("help.manualCreate.groupTitle")}</h6>
+                        {p("help.manualCreate.groupBody")}
+                        <pre className="border rounded p-2 small"><code>{t("help.manualCreate.groupExample")}</code></pre>
+                        {ul("help.manualCreate.interchangeableRules")}
+
                         <h5>🔢 {t("help.manualCreate.tiersTitle")}</h5>
                         {ul("help.manualCreate.tiers")}
 

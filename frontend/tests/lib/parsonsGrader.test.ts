@@ -55,6 +55,22 @@ function grade(solution: string[], order: number[]) {
     return new ParsonsWidget._graders.LineBasedGrader(widget).grade();
 }
 
+describe("LineBasedGrader with #swap lines", () => {
+    const solution = ["a = 1 #swap:init", "b = 2 #swap:init", "print('x')", "c = 3 #swap:later", "d = 4 #swap:later"];
+
+    it("accepts lines with the same name in any order", () => {
+        expect(grade(solution, [1, 0, 2, 4, 3]).success).toBe(true);
+    });
+
+    it("does not swap lines with different names", () => {
+        expect(grade(solution, [3, 1, 2, 0, 4]).success).toBe(false);
+    });
+
+    it("keeps unmarked lines position-fixed", () => {
+        expect(grade(solution, [2, 0, 1, 3, 4]).success).toBe(false);
+    });
+});
+
 describe("LineBasedGrader with #group clusters", () => {
     const distinct = [
         "def a(): #group:f_1",
@@ -117,6 +133,17 @@ describe("LineBasedGrader with #group clusters", () => {
             "        done() #group:f_2",
         ];
         expect(grade(nested, [2, 3, 4, 0, 1]).success).toBe(true);
+    });
+
+    it("swaps clusters of the same length around a fixed line", () => {
+        const solution = ["a = 1 #group:f_1", "b = 2 #group:f_1", "print('x')", "c = 3 #group:f_2", "d = 4 #group:f_2"];
+        expect(grade(solution, [3, 4, 2, 0, 1]).success).toBe(true);
+    });
+
+    it("does not swap clusters of different lengths around a fixed line", () => {
+        // A known limit the help page mentions: the slots they would take straddle the fixed line.
+        const solution = ["a = 1 #group:f_1", "b = 2 #group:f_1", "print('x')", "c = 3 #group:f_2"];
+        expect(grade(solution, [3, 2, 0, 1]).success).toBe(false);
     });
 
     it("keeps differently named groups position-fixed", () => {

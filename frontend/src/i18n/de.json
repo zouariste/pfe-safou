@@ -1047,6 +1047,7 @@
     "tipLength": "Halte Lösungen unter ~15 Zeilen für die beste Puzzle-Erfahrung.",
     "tipDifficulty": "Stufe 1 sollte am einfachsten sein, Stufe 3 am schwierigsten.",
     "tipVariation": "Du kannst verschiedenen Code pro Stufe verwenden oder denselben Code mit verschiedenen Aufgabenstellungen.",
+    "tipInterchangeable": "Austauschbar machen: #swap:NAME am Zeilenende für einzelne Zeilen, #group:NAME_1 und #group:NAME_2 für ganze Blöcke. Mehr dazu in der Hilfe.",
     "blocksCount": "{{count}} Blöcke (im Puzzle gemischt)",
     "summary": "Sequenz-Zusammenfassung",
     "language": "Sprache",
@@ -2032,6 +2033,22 @@
         "Halte die Lösungen kompakt — 5 bis 12 nicht leere Zeilen sind der ideale Bereich.",
         "Zeilen- und Zeichenzahl werden unter dem Editor angezeigt.",
         "<kbd>Tab</kbd> fügt im Code-Editor 4 Leerzeichen ein (ohne Fokus-Falle)."
+      ],
+      "interchangeableTitle": "Austauschbare Zeilen und Blöcke",
+      "interchangeableBody": "Normalerweise zählt nur die Reihenfolge deiner Lösung als richtig. Mit einer Markierung am <strong>Ende einer Zeile</strong> legst du fest, welche Teile auch in anderer Reihenfolge stimmen. Lernende sehen diese Markierungen nicht.",
+      "swapTitle": "Einzelne Zeilen: #swap:NAME",
+      "swapBody": "Zeilen mit <strong>demselben Namen</strong> dürfen ihre Plätze beliebig untereinander tauschen.",
+      "swapExample": "breite = 4 #swap:werte\nhoehe = 3 #swap:werte\nprint(breite * hoehe)",
+      "groupTitle": "Mehrzeilige Blöcke: #group:NAME_N",
+      "groupBody": "Zeilen mit <strong>genau demselben Namen</strong> bilden einen Block: Sie bleiben zusammen und behalten ihre Reihenfolge. Blöcke mit <strong>gleichem Präfix und unterschiedlicher Nummer</strong> sind untereinander tauschbar.",
+      "groupExample": "def eingabe(): #group:funktion_1\n    return int(input()) #group:funktion_1\n\ndef doppelt(x): #group:funktion_2\n    return x * 2 #group:funktion_2",
+      "interchangeableRules": [
+        "Ein Block braucht einen Tauschpartner: <code>#group:einlesen</code> und <code>#group:jahr</code> haben verschiedene Präfixe und bleiben deshalb an ihrer Position. Der Editor warnt dich in diesem Fall. Richtig wäre z. B. <code>#group:funktion_1</code> und <code>#group:funktion_2</code>.",
+        "Das Präfix ist alles vor dem <strong>letzten Unterstrich</strong>. Auch <code>eingabe_lesen</code> und <code>eingabe_pruefen</code> teilen sich also das Präfix <code>eingabe</code>. Nummern vermeiden hier Überraschungen.",
+        "Zeilen ohne Markierung bleiben an ihrer Position.",
+        "Blöcke unterschiedlicher Länge lassen sich nur tauschen, wenn keine feste Zeile zwischen ihnen steht.",
+        "Markiere nur, was wirklich in beliebiger Reihenfolge funktioniert, z. B. unabhängige Variablen oder Funktionen. <code>if</code>/<code>elif</code>/<code>else</code>-Ketten gehören nicht dazu.",
+        "Verwende <code>#swap</code> und <code>#group</code> nicht in Distraktor-Zeilen."
       ],
       "tiersTitle": "Stufen",
       "tiers": [
