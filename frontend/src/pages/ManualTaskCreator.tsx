@@ -511,6 +511,7 @@ export default function ManualTaskCreator() {
                                             <li>{t("manual.tipLength")}</li>
                                             <li>{t("manual.tipDifficulty")}</li>
                                             <li>{t("manual.tipVariation")}</li>
+                                            <li>{t("manual.tipInterchangeable")}</li>
                                         </ul>
                                     </div>
                                 ) : (
