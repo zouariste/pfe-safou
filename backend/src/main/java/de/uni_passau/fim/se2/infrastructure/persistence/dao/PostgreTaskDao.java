@@ -305,7 +305,7 @@ public class PostgreTaskDao implements TaskRepository {
         if (taskId == null) {
             throw new DomainValidationException(TASK_ID_REQUIRED);
         }
-        String sql = "UPDATE tasks SET distractor_plan = ? WHERE id = ?";
+        String sql = "UPDATE tasks SET distractor_plan = ?::jsonb WHERE id = ?";
         int updated = jdbc.update(sql, plan, taskId);
         if (updated != 1) {
             throw new DomainValidationException(TASK_NOT_FOUND + taskId);
