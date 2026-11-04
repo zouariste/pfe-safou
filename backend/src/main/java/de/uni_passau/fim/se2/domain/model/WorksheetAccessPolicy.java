@@ -139,14 +139,16 @@ public final class WorksheetAccessPolicy {
      * What a copy starts out as.
      *
      * <p>
-     * Always {@link WorksheetVisibility#PRIVATE}, whatever the source was. Copying is how you take someone else's
-     * material to adapt it, and a half-adapted worksheet appearing in the marketplace under your name is not what
-     * anyone meant by pressing the button. Publishing it is then a separate, deliberate act.
+     * Whatever the source is, except that a copy of a {@link WorksheetVisibility#PUBLIC} worksheet starts as
+     * {@link WorksheetVisibility#UNLISTED}. Its link works, so students can open it, but a half-adapted copy does not
+     * appear in the marketplace under its new owner's name until they publish it.
      *
-     * @return {@link WorksheetVisibility#PRIVATE}
+     * @param sourceVisibility the visibility of the worksheet being copied
+     * @return the visibility of the copy
      */
-    public static WorksheetVisibility visibilityForCopy() {
-        return WorksheetVisibility.PRIVATE;
+    public static WorksheetVisibility visibilityForCopy(WorksheetVisibility sourceVisibility) {
+        WorksheetVisibility inherited = visibility(sourceVisibility);
+        return inherited.listed() ? WorksheetVisibility.UNLISTED : inherited;
     }
 
     private static boolean isOwnerOrAdmin(UUID ownerId, UUID actorId, UserRole actorRole) {

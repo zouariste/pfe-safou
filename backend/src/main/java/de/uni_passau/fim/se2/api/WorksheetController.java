@@ -319,7 +319,8 @@ public class WorksheetController {
 
     /**
      * Deep-copy a worksheet (with all sequences and tasks). The copy belongs to the current authenticated user and
-     * starts out PRIVATE. Allowed: TEACHER, ADMIN, on a worksheet they are allowed to see Denied: Students, Anonymous
+     * inherits the source's visibility, except that a copy of a PUBLIC worksheet starts as UNLISTED. Allowed: TEACHER,
+     * ADMIN, on a worksheet they are allowed to see Denied: Students, Anonymous
      *
      * @param sheetId the worksheet to copy
      * @return 201 with the copy; 401 if not logged in, 404 if the worksheet does not exist
