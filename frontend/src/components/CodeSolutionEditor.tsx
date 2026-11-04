@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { makeGapMarker, renderGapLine, hasGapMarker, type GapMode } from "../lib/gapMarkers";
-import { findLoneGroups } from "../lib/groupMarkers";
+import { findLoneGroups, findSplitGroups } from "../lib/groupMarkers";
 import type { SplitEntry } from "../types/models";
 
 /* ────────────────────────────────────────────────────────────── */
@@ -148,6 +148,7 @@ export default function CodeSolutionEditor({
 
     const nonEmptyLines = code.split("\n").filter((l) => l.trim()).length;
     const loneGroups = findLoneGroups(code);
+    const splitGroups = findSplitGroups(code);
 
     return (
         <>
@@ -204,6 +205,17 @@ export default function CodeSolutionEditor({
                     <i className="bi bi-exclamation-triangle me-1"></i>
                     {t("taskEdit.loneGroupsWarning", {
                         names: loneGroups.join(", "),
+                        interpolation: { escapeValue: false },
+                    })}
+                </div>
+            )}
+
+            {/* AP16: one split-up cluster keeps every cluster of its prefix position-fixed */}
+            {splitGroups.length > 0 && (
+                <div className="alert alert-warning py-2 px-3 mt-2 mb-0 small" role="status">
+                    <i className="bi bi-exclamation-triangle me-1"></i>
+                    {t("taskEdit.splitGroupsWarning", {
+                        names: splitGroups.join(", "),
                         interpolation: { escapeValue: false },
                     })}
                 </div>

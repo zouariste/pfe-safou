@@ -1094,6 +1094,7 @@
     "swapSingle": "Einzelzeilen frei tauschbar (z.B. unabhängige Variablen).",
     "swapGroup": "Mehrzeilige Blöcke die zusammenbleiben, aber Cluster mit gleichem Präfix sind untereinander tauschbar (z. B. #group:block_1 und #group:block_2).",
     "loneGroupsWarning": "Diese Gruppen haben keinen Tauschpartner und bleiben an ihrer Position: {{names}}. Nur Gruppen mit gleichem Präfix sind untereinander tauschbar, z. B. #group:block_1 und #group:block_2.",
+    "splitGroupsWarning": "Diese Blöcke sind aufgeteilt, weil andere Zeilen zwischen ihren Zeilen stehen: {{names}}. Dadurch ist kein Block mit demselben Präfix mehr tauschbar. Schreibe die Zeilen jedes Blocks direkt untereinander.",
     "swapFixed": "Zeilen ohne Marker bleiben positionsfest.",
     "ratingQuestion": "Wie anpassungsbedürftig war der generierte Content?",
     "rating1": "Kaum Anpassung nötig",
@@ -2046,7 +2047,8 @@
         "Ein Block braucht einen Tauschpartner: <code>#group:einlesen</code> und <code>#group:jahr</code> haben verschiedene Präfixe und bleiben deshalb an ihrer Position. Der Editor warnt dich in diesem Fall. Richtig wäre z. B. <code>#group:funktion_1</code> und <code>#group:funktion_2</code>.",
         "Das Präfix ist alles vor dem <strong>letzten Unterstrich</strong>. Auch <code>eingabe_lesen</code> und <code>eingabe_pruefen</code> teilen sich also das Präfix <code>eingabe</code>. Nummern vermeiden hier Überraschungen.",
         "Zeilen ohne Markierung bleiben an ihrer Position.",
-        "Blöcke unterschiedlicher Länge lassen sich nur tauschen, wenn keine feste Zeile zwischen ihnen steht.",
+        "Eine feste Zeile zwischen Blöcken bleibt dort: Vor und nach ihr steht immer dieselbe Anzahl an Blöcken. Die Blöcke dürfen unterschiedlich lang sein.",
+        "Die Zeilen eines Blocks müssen in deiner Lösung direkt untereinander stehen, nur Leerzeilen dürfen dazwischen liegen. Steht eine andere Zeile dazwischen, ist der Block aufgeteilt: Dann ist kein Block mit diesem Präfix mehr tauschbar, und alle bleiben an ihrer Position. Der Editor warnt dich in diesem Fall.",
         "Markiere nur, was wirklich in beliebiger Reihenfolge funktioniert, z. B. unabhängige Variablen oder Funktionen. <code>if</code>/<code>elif</code>/<code>else</code>-Ketten gehören nicht dazu.",
         "Verwende <code>#swap</code> und <code>#group</code> nicht in Distraktor-Zeilen."
       ],

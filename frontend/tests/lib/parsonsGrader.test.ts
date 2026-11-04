@@ -37,17 +37,19 @@ beforeAll(() => {
  * @param solution the task's solution, with its markers
  * @param order    the solution's line numbers (from 0) in the order the student placed them, each
  *                 block at its correct indentation
+ * @param indents  the depth of each placed block, where it differs from that default
  */
-function grade(solution: string[], order: number[]) {
+function grade(solution: string[], order: number[], indents?: number[]) {
     document.body.innerHTML = `<ul id="ul-${SORTABLE_ID}"></ul>`;
     const { ParsonsWidget } = globalThis as unknown as { ParsonsWidget: WidgetClass };
-    const widget = new ParsonsWidget({ sortableId: SORTABLE_ID, max_wrong_lines: 0 });
+    // Python, as only there does a wrong indentation fail the attempt.
+    const widget = new ParsonsWidget({ sortableId: SORTABLE_ID, max_wrong_lines: 0, programmingLang: "python" });
     widget.init(solution.join("\n"));
 
     const list = document.getElementById(`ul-${SORTABLE_ID}`)!;
-    for (const lineNumber of order) {
+    for (const [placed, lineNumber] of order.entries()) {
         const block = widget.modified_lines[lineNumber];
-        block.indent = widget.model_solution[lineNumber].indent;
+        block.indent = indents?.[placed] ?? widget.model_solution[lineNumber].indent;
         const li = document.createElement("li");
         li.id = block.id;
         list.appendChild(li);
@@ -140,10 +142,107 @@ describe("LineBasedGrader with #group clusters", () => {
         expect(grade(solution, [3, 4, 2, 0, 1]).success).toBe(true);
     });
 
-    it("does not swap clusters of different lengths around a fixed line", () => {
-        // A known limit the help page mentions: the slots they would take straddle the fixed line.
+    describe("of different lengths around a fixed line", () => {
         const solution = ["a = 1 #group:f_1", "b = 2 #group:f_1", "print('x')", "c = 3 #group:f_2"];
-        expect(grade(solution, [3, 2, 0, 1]).success).toBe(false);
+
+        it("accepts the solution order", () => {
+            expect(grade(solution, [0, 1, 2, 3]).success).toBe(true);
+        });
+
+        it("accepts the swapped clusters", () => {
+            expect(grade(solution, [3, 2, 0, 1]).success).toBe(true);
+        });
+
+        it("rejects moving the fixed line past a cluster", () => {
+            expect(grade(solution, [0, 1, 3, 2]).success).toBe(false);
+            expect(grade(solution, [2, 0, 1, 3]).success).toBe(false);
+        });
+
+        it("rejects a cluster that was split up", () => {
+            expect(grade(solution, [0, 2, 1, 3]).success).toBe(false);
+        });
+
+        it("rejects a cluster whose lines were reordered", () => {
+            expect(grade(solution, [3, 2, 1, 0]).success).toBe(false);
+        });
+
+        it("keeps the number of clusters on each side of the fixed line", () => {
+            const three = ["a = 1 #group:f_1", "b = 2 #group:f_2", "print('x')", "c = 3 #group:f_3", "d = 4 #group:f_3"];
+            expect(grade(three, [3, 4, 0, 2, 1]).success).toBe(true);
+            // Two lines before the fixed one, as in the solution, but one cluster instead of two.
+            expect(grade(three, [3, 4, 2, 0, 1]).success).toBe(false);
+        });
+
+        it("checks indentation against the cluster's own lines", () => {
+            const nested = ["def a(): #group:f_1", "    x() #group:f_1", "    y() #group:f_1", "print('x')", "z() #group:f_2"];
+            expect(grade(nested, [4, 3, 0, 1, 2]).success).toBe(true);
+            expect(grade(nested, [4, 3, 0, 1, 2], [0, 0, 0, 0, 0]).success).toBe(false);
+        });
+    });
+
+    it("swaps two prefix pools of different lengths independently", () => {
+        const solution = [
+            "a = 1 #group:f_1",
+            "b = 2 #group:f_1",
+            "c = 3 #group:f_2",
+            "print('x')",
+            "d = 4 #group:g_1",
+            "e = 5 #group:g_2",
+            "f = 6 #group:g_2",
+        ];
+        expect(grade(solution, [2, 0, 1, 3, 5, 6, 4]).success).toBe(true);
+        // A cluster cannot cross into the other pool.
+        expect(grade(solution, [4, 0, 1, 3, 2, 5, 6]).success).toBe(false);
+    });
+
+    it("does not swap a cluster that is split up in the solution", () => {
+        const solution = ["a = 1 #group:f_1", "print('x')", "b = 2 #group:f_1", "c = 3 #group:f_2"];
+        expect(grade(solution, [0, 1, 2, 3]).success).toBe(true);
+        expect(grade(solution, [0, 2, 1, 3]).success).toBe(false);
+        expect(grade(solution, [3, 0, 1, 2]).success).toBe(false);
+    });
+
+    it("does not count a blank line as splitting a cluster", () => {
+        const solution = ["a = 1 #group:f_1", "", "b = 2 #group:f_1", "c = 3 #group:f_2"];
+        // Blank lines never become blocks, so the placed line numbers skip it.
+        expect(grade(solution, [2, 0, 1]).success).toBe(true);
+    });
+
+    it("keeps every cluster of a prefix fixed when one is split up in the solution", () => {
+        const solution = ["a = 1 #group:f_1", "print('x')", "b = 2 #group:f_1", "c = 3 #group:f_2", "d = 4 #group:f_3"];
+        expect(grade(solution, [0, 1, 2, 3, 4]).success).toBe(true);
+        expect(grade(solution, [0, 1, 2, 4, 3]).success).toBe(false);
+    });
+
+    describe("with a fixed line identical to a cluster line", () => {
+        const solution = ["x = 1 #group:f_1", "y = 2 #group:f_1", "print('a')", "x = 1", "z = 3 #group:f_2"];
+
+        it("accepts the solution order", () => {
+            expect(grade(solution, [0, 1, 2, 3, 4]).success).toBe(true);
+        });
+
+        it("accepts the swapped clusters, whichever identical block goes where", () => {
+            expect(grade(solution, [4, 2, 3, 0, 1]).success).toBe(true);
+            expect(grade(solution, [4, 2, 0, 3, 1]).success).toBe(true);
+        });
+
+        it("rejects the identical line where neither copy belongs", () => {
+            expect(grade(solution, [3, 4, 2, 0, 1]).success).toBe(false);
+        });
+
+        it("accepts the solution order when the fixed copy comes first", () => {
+            const fixedFirst = ["x = 1", "x = 1 #group:f_1", "y = 2 #group:f_2"];
+            expect(grade(fixedFirst, [0, 1, 2]).success).toBe(true);
+            expect(grade(fixedFirst, [0, 2, 1]).success).toBe(true);
+            expect(grade(fixedFirst, [2, 0, 1]).success).toBe(false);
+        });
+
+        it("checks each copy's indentation against the right line", () => {
+            const nested = ["if a: #group:f_1", "    x = 1 #group:f_1", "x = 1", "y = 2 #group:f_2"];
+            expect(grade(nested, [3, 2, 0, 1]).success).toBe(true);
+            // Same blocks, but the indented copy took the fixed line's place and vice versa.
+            expect(grade(nested, [3, 1, 0, 2]).success).toBe(false);
+        });
     });
 
     it("keeps differently named groups position-fixed", () => {

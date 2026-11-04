@@ -20,6 +20,13 @@ describe("CodeSolutionEditor group warning", () => {
         expect(warning).toHaveTextContent("#group:block_1");
     });
 
+    it("names the groups that are split up", () => {
+        renderEditor("a = 1 #group:f_1\nprint('x')\nb = 2 #group:f_1\nc = 3 #group:f_2");
+        const warning = screen.getByRole("status");
+        expect(warning).toHaveTextContent("f_1");
+        expect(warning).toHaveTextContent("aufgeteilt");
+    });
+
     it("stays quiet for clusters that can swap", () => {
         renderEditor("def a(): #group:f_1\ndef b(): #group:f_2");
         expect(screen.queryByRole("status")).not.toBeInTheDocument();

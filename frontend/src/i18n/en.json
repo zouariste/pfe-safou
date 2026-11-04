@@ -1094,6 +1094,7 @@
     "swapSingle": "Single lines freely swappable (e.g. independent variables).",
     "swapGroup": "Multi-line blocks that stay together, but clusters with the same prefix are interchangeable (e.g. #group:block_1 and #group:block_2).",
     "loneGroupsWarning": "These groups have no swap partner and stay at their position: {{names}}. Only groups with the same prefix are interchangeable, e.g. #group:block_1 and #group:block_2.",
+    "splitGroupsWarning": "These blocks are split up because other lines sit between their lines: {{names}}. As a result, no block with the same prefix can swap. Put each block's lines directly next to each other.",
     "swapFixed": "Lines without markers stay position-fixed.",
     "ratingQuestion": "How much adjustment was needed for the generated content?",
     "rating1": "Almost no adjustment needed",
@@ -2046,7 +2047,8 @@
         "A block needs a swap partner: <code>#group:input</code> and <code>#group:year</code> have different prefixes, so they stay at their position. The editor warns you about this. Use something like <code>#group:function_1</code> and <code>#group:function_2</code> instead.",
         "The prefix is everything before the <strong>last underscore</strong>, so <code>input_read</code> and <code>input_check</code> also share the prefix <code>input</code>. Numbers avoid surprises here.",
         "Lines without a marker stay at their position.",
-        "Blocks of different lengths can only swap if no fixed line sits between them.",
+        "A fixed line between blocks stays there: the same number of blocks always comes before and after it. The blocks can have different lengths.",
+        "A block's lines must be directly next to each other in your solution, with only blank lines allowed between them. If any other line sits between them, the block is split up: no block with that prefix can swap any more, and they all stay at their position. The editor warns you about this.",
         "Only mark what really works in any order, such as independent variables or functions. <code>if</code>/<code>elif</code>/<code>else</code> chains don't qualify.",
         "Don't use <code>#swap</code> or <code>#group</code> on distractor lines."
       ],

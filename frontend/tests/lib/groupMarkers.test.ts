@@ -1,5 +1,30 @@
 import { describe, it, expect } from "vitest";
-import { findLoneGroups } from "../../src/lib/groupMarkers.ts";
+import { findLoneGroups, findSplitGroups } from "../../src/lib/groupMarkers.ts";
+
+describe("findSplitGroups", () => {
+    it("reports a cluster with another line between its lines", () => {
+        expect(findSplitGroups("a #group:f_1\nprint('x')\nb #group:f_1\nc #group:f_2")).toEqual(["f_1"]);
+    });
+
+    it("reports clusters that are interleaved with each other", () => {
+        expect(findSplitGroups("a #group:f_1\nb #group:f_2\nc #group:f_1\nd #group:f_2")).toEqual(["f_1", "f_2"]);
+    });
+
+    it("accepts clusters on consecutive lines", () => {
+        expect(findSplitGroups("a #group:f_1\nb #group:f_1\nprint('x')\nc #group:f_2")).toEqual([]);
+    });
+
+    it("does not count lines that never become part of the solution", () => {
+        expect(findSplitGroups("a #group:f_1\n\nb #group:f_1\nc #group:f_2")).toEqual([]);
+        expect(findSplitGroups("a #group:f_1\nwrong = 1 #distractor\nb #group:f_1\nc #group:f_2")).toEqual([]);
+    });
+
+    it("leaves a lone group to findLoneGroups", () => {
+        const code = "a #group:solo\nprint('x')\nb #group:solo";
+        expect(findSplitGroups(code)).toEqual([]);
+        expect(findLoneGroups(code)).toEqual(["solo"]);
+    });
+});
 
 describe("findLoneGroups", () => {
     it("reports differently named groups, which cannot swap with each other", () => {

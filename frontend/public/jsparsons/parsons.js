@@ -713,7 +713,7 @@
         var code_line = student_code[i];
         // Find the matching model line — first try direct position match, then search
         var model_line = parson.model_solution[i];
-        // A line matched to a #group cluster knows its own solution line. errors is empty
+        // A line placed by the #group matching knows its own solution line. errors is empty
         // here, so no line was ignored for LIS and the two arrays line up.
         var model_index = lisStudentCodeLineObjects[i].modelIndex;
         if (model_index !== undefined) {
@@ -807,67 +807,139 @@
     // Clusters sharing a prefix may appear in any order, as long as each one stays whole.
     // Student lines are matched to clusters as complete blocks rather than through their
     // positions: those come from the first solution line with the same code, so a line that
-    // occurs in several clusters (`return x`, `else:`) may point at the wrong one.
-    var clusters = groups.clusters || {};
-    for (var prefix in clusters) {
-      if (!clusters.hasOwnProperty(prefix)) continue;
-      var clusterDefs = clusters[prefix]; // array of {name, indices}
-      if (clusterDefs.length < 2) continue; // need at least 2 clusters to swap
-
-      var matches = this._matchClusterBlocks(sol, studentLines, clusterDefs);
-      if (!matches) continue; // a cluster is missing, split up or reordered: wrong order
-
-      var allGroupIndices = [];
-      for (var ci = 0; ci < clusterDefs.length; ci++) {
-        allGroupIndices = allGroupIndices.concat(clusterDefs[ci].indices);
+    // occurs more than once (`return x`, `else:`) may point at the wrong one.
+    var pools = this._swappablePools(groups.clusters || {});
+    var claimed = {}; // student lines already matched to a block of an earlier pool
+    var placedAny = false;
+    for (var pi = 0; pi < pools.length; pi++) {
+      var placed = this._placePool(sol, studentLines, positions, pools, pi, claimed);
+      if (!placed) continue; // a cluster is missing, split up or reordered: wrong order
+      placedAny = true;
+      for (var at in placed) {
+        if (!placed.hasOwnProperty(at)) continue;
+        positions[at] = placed[at].position;
+        studentLines[at].modelIndex = placed[at].modelIndex;
+        if (placed[at].inBlock) claimed[at] = true;
       }
-      allGroupIndices.sort(function(a,b){return a-b;});
+    }
 
-      // Hand out the group's solution slots in the student's order, so a valid permutation
-      // is increasing for LIS. Each line also remembers its own solution line, which the
-      // indentation check needs: its slot may now belong to a different cluster.
-      var positionCursor = 0;
-      for (var mt = 0; mt < matches.length; mt++) {
-        var indices = matches[mt].cluster.indices;
-        for (var off = 0; off < indices.length; off++) {
-          var lineIdx = matches[mt].start + off;
-          positions[lineIdx] = allGroupIndices[positionCursor++];
-          studentLines[lineIdx].modelIndex = indices[off];
-        }
-      }
+    // Blocks of different lengths leave fractional positions. LIS.best_lise favours runs of
+    // consecutive integers when choosing which lines to highlight, so hand it ranks instead.
+    if (placedAny) {
+      var distinct = _.uniq(positions.slice().sort(function(a,b){return a-b;}), true);
+      positions = positions.map(function(p) { return distinct.indexOf(p); });
     }
 
     return positions;
   };
 
-  // AP16: Finds each cluster as an unbroken block in the student's lines. Returns
-  // [{start, cluster}] in student order, or null unless every cluster was found exactly once.
-  LineBasedGrader.prototype._matchClusterBlocks = function(sol, studentLines, clusterDefs) {
-    // Longest first, so a cluster that is the start of a longer one cannot take its place.
-    var candidates = clusterDefs.slice().sort(function(a,b) {
-      return b.indices.length - a.indices.length;
-    });
-    var matches = [];
-    var at = 0;
-    while (at < studentLines.length) {
-      var found = null;
-      for (var c = 0; c < candidates.length && !found; c++) {
-        var indices = candidates[c].indices;
-        var whole = at + indices.length <= studentLines.length;
-        for (var i = 0; whole && i < indices.length; i++) {
-          whole = studentLines[at + i].code === sol[indices[i]].code;
-        }
-        if (whole) found = candidates[c];
-      }
-      if (found) {
-        matches.push({start: at, cluster: found});
-        candidates.splice(candidates.indexOf(found), 1);
-        at += found.indices.length;
-      } else {
-        at++;
-      }
+  // AP16: The prefixes whose clusters can swap: at least two clusters, each on consecutive
+  // solution lines. A cluster split up in the solution has no single place another could take.
+  LineBasedGrader.prototype._swappablePools = function(clusters) {
+    var pools = [];
+    for (var prefix in clusters) {
+      if (!clusters.hasOwnProperty(prefix) || clusters[prefix].length < 2) continue;
+      var unbroken = _.every(clusters[prefix], function(cluster) {
+        return _.every(cluster.indices, function(index, i) {
+          return i === 0 || index === cluster.indices[i - 1] + 1;
+        });
+      });
+      if (unbroken) pools.push(clusters[prefix]);
     }
-    return candidates.length === 0 ? matches : null;
+    return pools;
+  };
+
+  // AP16: Every way to find all of a pool's clusters as unbroken blocks in the student's lines,
+  // each a list of {start, cluster} in student order. More than one exists only when identical
+  // lines make the blocks ambiguous, which the cap keeps from getting out of hand.
+  LineBasedGrader.prototype._findClusterMatchings = function(sol, studentLines, pool, claimed) {
+    var matchings = [];
+    var fits = function(cluster, start) {
+      return start + cluster.indices.length <= studentLines.length &&
+        _.every(cluster.indices, function(index, offset) {
+          return !claimed[start + offset] && studentLines[start + offset].code === sol[index].code;
+        });
+    };
+    var search = function(at, unused, chosen) {
+      if (matchings.length >= 200) return;
+      if (unused.length === 0) { matchings.push(chosen); return; }
+      if (at >= studentLines.length) return;
+      _.each(unused, function(cluster) {
+        if (fits(cluster, at)) {
+          search(at + cluster.indices.length, _.without(unused, cluster), chosen.concat({start: at, cluster: cluster}));
+        }
+      });
+      search(at + 1, unused, chosen);
+    };
+    search(0, pool, []);
+    return matchings;
+  };
+
+  // AP16: The positions one matching gives the student's lines, as {lineNumber: {position,
+  // modelIndex, inBlock}}. Each cluster's place in the solution is a slot, and the student's
+  // k-th block fills the k-th slot, so a fixed line keeps the same number of blocks on each
+  // side however long they are: offset / length stays below the slot's next solution line.
+  // Lines outside the blocks that look like a cluster line take the same code's solution lines
+  // outside all pools: students cannot tell a fixed `return x` from a cluster's.
+  LineBasedGrader.prototype._placeMatching = function(sol, studentLines, pool, pools, matching) {
+    var slots = _.map(pool, function(cluster) { return cluster.indices[0]; }).sort(function(a,b){return a-b;});
+    var lines = {};
+    _.each(matching, function(match, k) {
+      _.each(match.cluster.indices, function(index, offset) {
+        lines[match.start + offset] = {
+          position: slots[k] + offset / match.cluster.indices.length,
+          modelIndex: index,
+          inBlock: true
+        };
+      });
+    });
+
+    var pooled = _.flatten(_.map(pools, function(p) { return _.pluck(p, "indices"); }));
+    var codes = {};
+    _.each(_.flatten(_.pluck(pool, "indices")), function(index) { codes[sol[index].code] = true; });
+    var nextFrom = {};
+    _.each(studentLines, function(line, at) {
+      if (lines[at] || !codes[line.code]) return;
+      for (var i = nextFrom[line.code] || 0; i < sol.length; i++) {
+        if (sol[i].code === line.code && !_.contains(pooled, i)) {
+          lines[at] = {position: i, modelIndex: i, inBlock: false};
+          nextFrom[line.code] = i + 1;
+          return;
+        }
+      }
+    });
+    return lines;
+  };
+
+  // AP16: Places a pool's clusters, or returns null if they are not all there as whole blocks.
+  // Identical lines can allow several matchings. Takes the first that puts the lines in rising
+  // order, or else the first, so that a wrong answer still gets its highlights. Lines belonging
+  // to a pool not placed yet are left out of the comparison, as their positions may still change.
+  LineBasedGrader.prototype._placePool = function(sol, studentLines, positions, pools, poolIndex, claimed) {
+    var pool = pools[poolIndex];
+    var matchings = this._findClusterMatchings(sol, studentLines, pool, claimed);
+    if (matchings.length === 0) return null;
+
+    var unsettled = {};
+    _.each(pools.slice(poolIndex + 1), function(later) {
+      _.each(_.flatten(_.pluck(later, "indices")), function(index) { unsettled[sol[index].code] = true; });
+    });
+
+    var placements = [];
+    for (var m = 0; m < matchings.length; m++) {
+      var lines = this._placeMatching(sol, studentLines, pool, pools, matchings[m]);
+      placements.push(lines);
+      var rising = true;
+      var previous = -Infinity;
+      for (var i = 0; i < studentLines.length && rising; i++) {
+        if (!lines[i] && unsettled[studentLines[i].code]) continue;
+        var position = lines[i] ? lines[i].position : positions[i];
+        rising = position > previous;
+        previous = position;
+      }
+      if (rising) return lines;
+    }
+    return placements[0];
   };
 
 
