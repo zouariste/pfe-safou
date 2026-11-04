@@ -51,6 +51,10 @@ public final class WorksheetAccessPolicy {
      * Owners and admins always may. Beyond that a link is enough, which is how sharing has always worked —
      * {@link WorksheetVisibility#PRIVATE} is the new ability to say no.
      *
+     * <p>
+     * This answers from the worksheet alone. Students and teachers also reach a private worksheet through a class
+     * assignment, which takes a database lookup and so lives in {@code WorksheetAccessService}.
+     *
      * @param visibility the worksheet's visibility
      * @param ownerId    the worksheet's owner
      * @param viewerId   the viewer, or null if anonymous

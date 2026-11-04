@@ -18,6 +18,8 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -99,6 +101,72 @@ public class WorksheetAccessService {
         }
     }
 
+    /**
+     * Whether the worksheet has been released to a class the current user is a student in.
+     *
+     * Being assigned is what lets a class open a worksheet its owner keeps otherwise private. An assignment that has
+     * not been released grants nothing, because such a worksheet does not exist as far as a student is concerned; a
+     * closed one still does, because students may read it after the deadline.
+     *
+     * Unlike {@link #canSolve}, this grants access rather than guarding a write, so a failed lookup propagates instead
+     * of being read as an answer.
+     *
+     * @param worksheetId the worksheet to check
+     * @return true if the current user is a student with a released assignment of the worksheet
+     */
+    public boolean isReleasedToCurrentStudent(UUID worksheetId) {
+        if (worksheetId == null || !ownershipService.isStudent()) {
+            return false;
+        }
+
+        UUID userId = ownershipService.getCurrentUserId();
+        if (userId == null) {
+            return false;
+        }
+
+        String sql = """
+            SELECT cw.published, cw.release_at, cw.deadline_at, cw.grace_minutes
+            FROM class_worksheets cw
+            JOIN class_students cs ON cs.class_id = cw.class_id
+            WHERE cw.worksheet_id = ? AND cs.student_id = ?
+            """;
+        Instant now = Instant.now();
+        return jdbc.query(sql, WorksheetAccessService::mapSchedule, worksheetId, userId).stream()
+            .map(s -> WorksheetAvailability.of(s.published(), s.releaseAt(), s.deadlineAt(), s.graceMinutes(), now))
+            .anyMatch(WorksheetAvailability::visibleToStudents);
+    }
+
+    /**
+     * Whether the worksheet is assigned to a class the current user teaches.
+     *
+     * Its release state does not matter: teachers see every assignment of their class, including the ones students
+     * cannot see yet. This is what keeps a teacher from being locked out when the worksheet's owner later makes it
+     * private, since the page they lose is also the one offering them their own copy.
+     *
+     * @param worksheetId the worksheet to check
+     * @return true if the current user is a teacher with a class the worksheet is assigned to
+     */
+    public boolean isAssignedToCurrentTeacher(UUID worksheetId) {
+        if (worksheetId == null || !ownershipService.isTeacher()) {
+            return false;
+        }
+
+        UUID userId = ownershipService.getCurrentUserId();
+        if (userId == null) {
+            return false;
+        }
+
+        String sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM class_worksheets cw
+                JOIN classes c ON c.id = cw.class_id
+                WHERE cw.worksheet_id = ? AND c.owner_id = ?
+            )
+            """;
+        return Boolean.TRUE.equals(jdbc.queryForObject(sql, Boolean.class, worksheetId, userId));
+    }
+
     private List<Schedule> schedulesFor(UUID userId, UUID taskId) {
         // task -> sequence -> worksheet -> assignment, restricted to the classes
         // this student is actually in.
@@ -111,20 +179,22 @@ public class WorksheetAccessService {
             WHERE t.id = ? AND cs.student_id = ?
             """;
         try {
-            return jdbc.query(
-                sql, (rs, rowNum) -> new Schedule(
-                    rs.getBoolean("published"),
-                    rs.getTimestamp("release_at") != null ? rs.getTimestamp("release_at").toInstant() : null,
-                    rs.getTimestamp("deadline_at") != null ? rs.getTimestamp("deadline_at").toInstant() : null,
-                    (Integer) rs.getObject("grace_minutes")
-                ), taskId, userId
-            );
+            return jdbc.query(sql, WorksheetAccessService::mapSchedule, taskId, userId);
         }
         catch (Exception e) {
             // A lookup failure must not lock a student out of their work.
             log.warn("Could not resolve worksheet schedule for task {}: {}", taskId, e.getMessage());
             return List.of();
         }
+    }
+
+    private static Schedule mapSchedule(ResultSet rs, int rowNum) throws SQLException {
+        return new Schedule(
+            rs.getBoolean("published"),
+            rs.getTimestamp("release_at") != null ? rs.getTimestamp("release_at").toInstant() : null,
+            rs.getTimestamp("deadline_at") != null ? rs.getTimestamp("deadline_at").toInstant() : null,
+            (Integer) rs.getObject("grace_minutes")
+        );
     }
 
     private record Schedule(boolean published, Instant releaseAt, Instant deadlineAt, Integer graceMinutes) {

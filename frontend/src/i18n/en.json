@@ -486,7 +486,7 @@
       "error": "The visibility could not be changed. Please try again.",
       "PRIVATE": {
         "label": "Only me",
-        "hint": "Nobody else can open this worksheet, not even with a link."
+        "hint": "Only you and the classes it is assigned to can open this worksheet. A link alone is not enough."
       },
       "UNLISTED": {
         "label": "Anyone with the link",
@@ -1578,7 +1578,7 @@
       ],
       "visibilityTitle": "Visibility",
       "visibility": [
-        "<strong>Only me</strong> — nobody else can open this worksheet, not even with a link.",
+        "<strong>Only me</strong> — only you and the classes it is assigned to can open this worksheet. A link alone is not enough.",
         "<strong>Anyone with the link</strong> — whoever has the link can open it; it appears in no search. This was the only option worksheets used to have.",
         "<strong>In the marketplace</strong> — other teachers can find it by searching (see the <em>Marketplace</em> help page) and copy it into their own space.",
         "Your default \"inbox\" worksheet can never be published — the option is hidden for it."

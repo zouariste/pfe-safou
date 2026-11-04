@@ -37,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 import de.uni_passau.fim.se2.application.service.OwnershipService;
 import de.uni_passau.fim.se2.application.service.SequenceForkService;
 import de.uni_passau.fim.se2.application.service.TaskPersistenceService;
+import de.uni_passau.fim.se2.application.service.WorksheetAccessService;
 import de.uni_passau.fim.se2.application.service.WorksheetService;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.entities.UserDTO;
@@ -79,6 +80,7 @@ public class WorksheetController {
     private final SequenceForkService sequenceForkService;
     private final TaskPersistenceService taskPersistenceService;
     private final WorksheetRepository worksheetRepository;
+    private final WorksheetAccessService worksheetAccessService;
 
     /**
      * Get all worksheets owned by the current user.
@@ -100,7 +102,8 @@ public class WorksheetController {
      * <p>
      * Still reachable without logging in — that is how a student opens a worksheet from a link their teacher sent — but
      * no longer unconditionally. A PRIVATE worksheet answers 404 rather than 403, so the endpoint does not confirm that
-     * an id someone guessed exists.
+     * an id someone guessed exists. The exceptions are a student whose class it has been released to and the teacher of
+     * a class it is assigned to.
      *
      * @param sheetId the worksheet to load
      * @return the worksheet, or 404 if it does not exist or is not visible to the caller
@@ -110,12 +113,15 @@ public class WorksheetController {
         // Both branches answer 404 deliberately. Distinguishing "no such worksheet" from "not
         // yours to see" would hand an unauthorised caller a way to test which ids exist, which
         // is the one thing PRIVATE is meant to prevent.
+        // A class assignment reaches a private worksheet too. It is checked here and only for
+        // reading, so it does not also open the copy endpoint, which shares the policy's rule.
         return worksheetService.findWorksheetById(sheetId)
             .filter(
                 w -> WorksheetAccessPolicy.canView(
                     w.getVisibility(), w.getOwnerId(),
                     ownershipService.getCurrentUserId(), ownershipService.getCurrentUserRole()
-                )
+                ) || worksheetAccessService.isReleasedToCurrentStudent(sheetId)
+                    || worksheetAccessService.isAssignedToCurrentTeacher(sheetId)
             )
             .map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.notFound().build());

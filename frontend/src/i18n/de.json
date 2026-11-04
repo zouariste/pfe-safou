@@ -486,7 +486,7 @@
       "error": "Die Sichtbarkeit konnte nicht geändert werden. Bitte erneut versuchen.",
       "PRIVATE": {
         "label": "Nur ich",
-        "hint": "Niemand sonst kann das Arbeitsblatt öffnen — auch nicht über einen Link."
+        "hint": "Nur du und die Klassen, denen es zugewiesen ist, können das Arbeitsblatt öffnen. Ein Link allein reicht nicht."
       },
       "UNLISTED": {
         "label": "Über Link",
@@ -1578,7 +1578,7 @@
       ],
       "visibilityTitle": "Sichtbarkeit",
       "visibility": [
-        "<strong>Nur ich</strong> — niemand sonst kann das Arbeitsblatt öffnen, auch nicht über einen Link.",
+        "<strong>Nur ich</strong> — nur du und die Klassen, denen es zugewiesen ist, können das Arbeitsblatt öffnen. Ein Link allein reicht nicht.",
         "<strong>Über Link</strong> — wer den Link hat, kann es öffnen; es taucht in keiner Suche auf. So verhielten sich Arbeitsblätter bisher.",
         "<strong>Im Marktplatz</strong> — andere Lehrkräfte finden es über die Suche (siehe die Hilfeseite <em>Marktplatz</em>) und können es in ihren eigenen Bereich kopieren.",
         "Dein Standard-\"Posteingang\"-Arbeitsblatt lässt sich nie veröffentlichen — die Option ist dafür ausgeblendet."
