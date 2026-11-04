@@ -713,7 +713,12 @@
         var code_line = student_code[i];
         // Find the matching model line — first try direct position match, then search
         var model_line = parson.model_solution[i];
-        if (code_line.code !== model_line.code) {
+        // A line matched to a #group cluster knows its own solution line. errors is empty
+        // here, so no line was ignored for LIS and the two arrays line up.
+        var model_index = lisStudentCodeLineObjects[i].modelIndex;
+        if (model_index !== undefined) {
+          model_line = parson.model_solution[model_index];
+        } else if (code_line.code !== model_line.code) {
           // AP16: code doesn't match at same index → search for it in model_solution
           for (var mi = 0; mi < parson.model_solution.length; mi++) {
             if (parson.model_solution[mi].code === code_line.code) {
@@ -799,121 +804,70 @@
     }
 
     // --- Handle #group clusters ---
-    // For each group prefix: if all clusters are present and internally correct,
-    // and the clusters just appear in a different (but valid) permutation,
-    // reassign positions so LIS sees them as increasing.
+    // Clusters sharing a prefix may appear in any order, as long as each one stays whole.
+    // Student lines are matched to clusters as complete blocks rather than through their
+    // positions: those come from the first solution line with the same code, so a line that
+    // occurs in several clusters (`return x`, `else:`) may point at the wrong one.
     var clusters = groups.clusters || {};
     for (var prefix in clusters) {
       if (!clusters.hasOwnProperty(prefix)) continue;
       var clusterDefs = clusters[prefix]; // array of {name, indices}
       if (clusterDefs.length < 2) continue; // need at least 2 clusters to swap
 
-      // Collect all solution indices for this prefix group
+      var matches = this._matchClusterBlocks(sol, studentLines, clusterDefs);
+      if (!matches) continue; // a cluster is missing, split up or reordered: wrong order
+
       var allGroupIndices = [];
       for (var ci = 0; ci < clusterDefs.length; ci++) {
         allGroupIndices = allGroupIndices.concat(clusterDefs[ci].indices);
       }
       allGroupIndices.sort(function(a,b){return a-b;});
 
-      // Find the student lines that belong to this group prefix
-      // We match by code AND by checking their position is in allGroupIndices
-      var studentGroupLines = []; // {arrayIdx, position, clusterName, internalOrder}
-      for (var sj = 0; sj < studentLines.length; sj++) {
-        var pos = positions[sj];
-        var isGroupLine = false;
-        for (var gi = 0; gi < allGroupIndices.length; gi++) {
-          if (pos === allGroupIndices[gi]) { isGroupLine = true; break; }
-        }
-        if (isGroupLine) {
-          // Figure out which cluster this line belongs to by its solution position
-          var clName = null;
-          var intOrder = 0;
-          for (var cd = 0; cd < clusterDefs.length; cd++) {
-            for (var idx = 0; idx < clusterDefs[cd].indices.length; idx++) {
-              if (clusterDefs[cd].indices[idx] === pos) {
-                clName = clusterDefs[cd].name;
-                intOrder = idx;
-                break;
-              }
-            }
-            if (clName) break;
-          }
-          studentGroupLines.push({arrayIdx: sj, position: pos, clusterName: clName, internalOrder: intOrder});
-        }
-      }
-
-      if (studentGroupLines.length !== allGroupIndices.length) continue; // missing lines
-
-      // Check: are the clusters internally ordered correctly?
-      // Group the student lines by their cluster name, preserving student order
-      var studentClusters = {};
-      for (var sg = 0; sg < studentGroupLines.length; sg++) {
-        var cn = studentGroupLines[sg].clusterName;
-        if (!studentClusters[cn]) studentClusters[cn] = [];
-        studentClusters[cn].push(studentGroupLines[sg]);
-      }
-
-      // Check each cluster is internally ordered (internalOrder must be ascending)
-      var internallyCorrect = true;
-      for (var cName in studentClusters) {
-        if (!studentClusters.hasOwnProperty(cName)) continue;
-        var lines = studentClusters[cName];
-        for (var lci = 1; lci < lines.length; lci++) {
-          if (lines[lci].internalOrder <= lines[lci-1].internalOrder) {
-            internallyCorrect = false;
-            break;
-          }
-        }
-        if (!internallyCorrect) break;
-        // Also check that the cluster lines are contiguous in student code
-        // (no non-group lines interspersed)
-        for (var lci2 = 1; lci2 < lines.length; lci2++) {
-          // Check that arrayIdx values are consecutive relative to studentGroupLines
-          if (lines[lci2].arrayIdx !== lines[lci2-1].arrayIdx + 1) {
-            internallyCorrect = false;
-            break;
-          }
-        }
-        if (!internallyCorrect) break;
-      }
-
-      if (!internallyCorrect) continue;
-
-      // Check that the number of clusters found matches the definition
-      var defClusterNames = {};
-      for (var dc = 0; dc < clusterDefs.length; dc++) defClusterNames[clusterDefs[dc].name] = true;
-      var foundAllClusters = true;
-      for (var dcn in defClusterNames) {
-        if (!studentClusters[dcn] || studentClusters[dcn].length === 0) { foundAllClusters = false; break; }
-      }
-      if (!foundAllClusters) continue;
-
-      // All clusters present, internally correct, contiguous → valid permutation
-      // Reassign positions in ascending order matching the student's cluster order
-      // Get the order of clusters as they appear in student code
-      var clusterOrder = [];
-      var seenClusters = {};
-      for (var co = 0; co < studentGroupLines.length; co++) {
-        var cln = studentGroupLines[co].clusterName;
-        if (!seenClusters[cln]) {
-          clusterOrder.push(cln);
-          seenClusters[cln] = true;
-        }
-      }
-
-      // Assign positions: remap so student's cluster order produces ascending positions
-      // Use allGroupIndices sorted ascending, and assign them to clusters in student's order
+      // Hand out the group's solution slots in the student's order, so a valid permutation
+      // is increasing for LIS. Each line also remembers its own solution line, which the
+      // indentation check needs: its slot may now belong to a different cluster.
       var positionCursor = 0;
-      for (var ord = 0; ord < clusterOrder.length; ord++) {
-        var clusterLines = studentClusters[clusterOrder[ord]];
-        for (var cl = 0; cl < clusterLines.length; cl++) {
-          positions[clusterLines[cl].arrayIdx] = allGroupIndices[positionCursor];
-          positionCursor++;
+      for (var mt = 0; mt < matches.length; mt++) {
+        var indices = matches[mt].cluster.indices;
+        for (var off = 0; off < indices.length; off++) {
+          var lineIdx = matches[mt].start + off;
+          positions[lineIdx] = allGroupIndices[positionCursor++];
+          studentLines[lineIdx].modelIndex = indices[off];
         }
       }
     }
 
     return positions;
+  };
+
+  // AP16: Finds each cluster as an unbroken block in the student's lines. Returns
+  // [{start, cluster}] in student order, or null unless every cluster was found exactly once.
+  LineBasedGrader.prototype._matchClusterBlocks = function(sol, studentLines, clusterDefs) {
+    // Longest first, so a cluster that is the start of a longer one cannot take its place.
+    var candidates = clusterDefs.slice().sort(function(a,b) {
+      return b.indices.length - a.indices.length;
+    });
+    var matches = [];
+    var at = 0;
+    while (at < studentLines.length) {
+      var found = null;
+      for (var c = 0; c < candidates.length && !found; c++) {
+        var indices = candidates[c].indices;
+        var whole = at + indices.length <= studentLines.length;
+        for (var i = 0; whole && i < indices.length; i++) {
+          whole = studentLines[at + i].code === sol[indices[i]].code;
+        }
+        if (whole) found = candidates[c];
+      }
+      if (found) {
+        matches.push({start: at, cluster: found});
+        candidates.splice(candidates.indexOf(found), 1);
+        at += found.indices.length;
+      } else {
+        at++;
+      }
+    }
+    return candidates.length === 0 ? matches : null;
   };
 
 
