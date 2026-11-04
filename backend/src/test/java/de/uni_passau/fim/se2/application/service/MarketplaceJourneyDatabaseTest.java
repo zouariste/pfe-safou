@@ -301,7 +301,7 @@ class MarketplaceJourneyDatabaseTest {
 
     @Test
     @Order(6)
-    @DisplayName("6. Ben copies it and gets everything Anna built, owned by him and unpublished")
+    @DisplayName("6. Ben copies it and gets everything Anna built, owned by him and readable by link")
     void benCopiesIt() {
         WorksheetDTO copy = worksheetService.copyWorksheet(annasWorksheet, ben);
         bensCopy = copy.getId();
@@ -333,10 +333,10 @@ class MarketplaceJourneyDatabaseTest {
                 ), "and its tags, so it answers to the same searches"
             ),
 
-            // MR2: it is his, and it is not published on his behalf
+            // MR2: it is his, its link works, and it is not published on his behalf
             () -> assertEquals(ben, stored.getOwnerId()),
             () -> assertEquals(
-                WorksheetVisibility.PRIVATE, stored.getVisibility(),
+                WorksheetVisibility.UNLISTED, stored.getVisibility(),
                 "copying is how you take material to adapt; publishing is a separate act"
             ),
             () -> assertEquals(annasWorksheet, stored.getCopiedFrom()),

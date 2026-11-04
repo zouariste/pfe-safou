@@ -163,6 +163,38 @@ describe("WorksheetPage, the way back", () => {
     });
 });
 
+describe("WorksheetPage, offering a teacher a copy of someone else's worksheet", () => {
+    function serveWithVisibility(visibility: string) {
+        get.mockImplementation((url: string) =>
+            url.includes("/worksheets/")
+                ? Promise.resolve({ data: { ...WORKSHEET, visibility } })
+                : Promise.resolve({ data: [] }));
+    }
+
+    beforeEach(() => {
+        currentUser = { userId: "me" };
+        get.mockReset();
+    });
+
+    it("offers the copy when the worksheet is shared", async () => {
+        serveWithVisibility("UNLISTED");
+
+        renderPage();
+
+        expect(await screen.findByText("worksheet.copy")).toBeInTheDocument();
+    });
+
+    it("hides the copy when the teacher only sees it through a class assignment", async () => {
+        // The backend answers 404 to this copy, so the button could only ever fail.
+        serveWithVisibility("PRIVATE");
+
+        renderPage();
+
+        await screen.findByText(WORKSHEET.name);
+        expect(screen.queryByText("worksheet.copy")).not.toBeInTheDocument();
+    });
+});
+
 describe("WorksheetPage, whose material is in here", () => {
     const MINE = "me";
     const sheetWith = (sequences: { id: string; ownerId: string | null }[]) => ({

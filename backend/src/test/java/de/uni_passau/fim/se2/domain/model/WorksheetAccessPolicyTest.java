@@ -295,9 +295,20 @@ class WorksheetAccessPolicyTest {
         }
 
         @Test
-        @DisplayName("a copy starts private whatever its source was")
-        void copiesStartPrivate() {
-            assertEquals(WorksheetVisibility.PRIVATE, WorksheetAccessPolicy.visibilityForCopy());
+        @DisplayName("a copy inherits its source's visibility, except that a marketplace copy starts unlisted")
+        void copiesInheritVisibility() {
+            assertAll(
+                () -> assertEquals(
+                    WorksheetVisibility.PRIVATE, WorksheetAccessPolicy.visibilityForCopy(WorksheetVisibility.PRIVATE)
+                ),
+                () -> assertEquals(
+                    WorksheetVisibility.UNLISTED, WorksheetAccessPolicy.visibilityForCopy(WorksheetVisibility.UNLISTED)
+                ),
+                () -> assertEquals(
+                    WorksheetVisibility.UNLISTED, WorksheetAccessPolicy.visibilityForCopy(WorksheetVisibility.PUBLIC)
+                ),
+                () -> assertEquals(WorksheetVisibility.DEFAULT, WorksheetAccessPolicy.visibilityForCopy(null))
+            );
         }
 
         @Test

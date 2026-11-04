@@ -45,6 +45,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 
 import de.uni_passau.fim.se2.domain.entities.SequenceTagDTO;
@@ -176,15 +178,15 @@ class WorksheetCloneServiceTest {
         );
     }
 
-    @Test
-    @DisplayName("a copy starts private, whatever the source was")
-    void copyStartsPrivate() {
+    @ParameterizedTest
+    @CsvSource({ "PRIVATE, PRIVATE", "UNLISTED, UNLISTED", "PUBLIC, UNLISTED" })
+    @DisplayName("a copy inherits its source's visibility, except that a marketplace copy starts unlisted")
+    void copyInheritsVisibility(WorksheetVisibility source, WorksheetVisibility expected) {
+        stubWorksheetLoad(List.of(), source);
+
         service.copy(SOURCE_WORKSHEET, COPIER);
 
-        assertEquals(
-            WorksheetVisibility.PRIVATE, savedWorksheet().getVisibility(),
-            "a half-adapted copy must not inherit its source's place in the marketplace"
-        );
+        assertEquals(expected, savedWorksheet().getVisibility());
     }
 
     @Test
@@ -250,12 +252,11 @@ class WorksheetCloneServiceTest {
     @Test
     @DisplayName("adding a worksheet field forces a decision about copying it")
     void worksheetFieldsAreAccountedFor() {
-        Set<String> carriedOver = Set.of("name", "description", "hintsEnabled", "hintCreditsPerTask");
+        Set<String> carriedOver = Set.of("name", "description", "hintsEnabled", "hintCreditsPerTask", "visibility");
         Set<String> deliberatelyReset = Set.of(
             "id",             // a copy is a new row
             "ownerId",        // the copy belongs to whoever made it
             "sequenceDTOS",   // refilled with copied sequences, not the source's
-            "visibility",     // always PRIVATE; publishing a copy is a separate decision
             "createdAt",      // stamped by the database
             "copiedFrom",     // set to the source, not inherited from it
             "copiedAt"
@@ -390,14 +391,16 @@ class WorksheetCloneServiceTest {
         }
 
         @Test
-        @DisplayName("the copy is the copier's, private, and records its source")
-        void copyIsOwnedPrivateAndTraceable() {
+        @DisplayName("the copy is the copier's, stays out of the marketplace, and records its source")
+        void copyIsOwnedInheritsVisibilityAndTraceable() {
+            stubWorksheetLoad(List.of(), WorksheetVisibility.PUBLIC);
+
             service.copyShallow(SOURCE_WORKSHEET, COPIER);
 
             WorksheetDTO copy = savedWorksheet();
             assertAll(
                 () -> assertEquals(COPIER, copy.getOwnerId()),
-                () -> assertEquals(WorksheetVisibility.PRIVATE, copy.getVisibility()),
+                () -> assertEquals(WorksheetVisibility.UNLISTED, copy.getVisibility()),
                 () -> assertEquals(SOURCE_WORKSHEET, copy.getCopiedFrom()),
                 () -> assertEquals("Arrays", copy.getName()),
                 () -> assertEquals(4, copy.getHintCreditsPerTask())
@@ -545,6 +548,15 @@ class WorksheetCloneServiceTest {
     private void stubWorksheetLoad(List<UUID> sequenceIds) {
         doAnswer(invocation -> {
             fillWorksheet(invocation.getArgument(0), sequenceIds);
+            return null;
+        }).when(worksheetRepo).getWorksheetById(any());
+    }
+
+    private void stubWorksheetLoad(List<UUID> sequenceIds, WorksheetVisibility visibility) {
+        doAnswer(invocation -> {
+            WorksheetDTO target = invocation.getArgument(0);
+            fillWorksheet(target, sequenceIds);
+            target.setVisibility(visibility);
             return null;
         }).when(worksheetRepo).getWorksheetById(any());
     }

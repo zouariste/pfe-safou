@@ -60,7 +60,7 @@ class ControllerRouteMappingTest {
         StaticWebApplicationContext context = new StaticWebApplicationContext();
         context.registerBean(
             "worksheetController", WorksheetController.class,
-            () -> new WorksheetController(null, null, null, null, null)
+            () -> new WorksheetController(null, null, null, null, null, null)
         );
         context.registerBean(
             "tasksController", TasksController.class,

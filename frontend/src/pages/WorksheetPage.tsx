@@ -119,7 +119,10 @@ export default function WorksheetPage() {
 
     // Determine if current user is the owner
     const isForeignWorksheet = isLoggedIn && worksheet && user && worksheet.ownerId !== user.userId;
-    const canCopy = isLoggedIn && (isTeacher || isAdmin) && isForeignWorksheet;
+    // A teacher only sees someone else's private worksheet through a class assignment, which does
+    // not let them copy it: the backend refuses, and the class's own fork notice is their way out.
+    const canCopy = isLoggedIn && isForeignWorksheet
+        && (isAdmin || (isTeacher && worksheet.visibility !== "PRIVATE"));
     const canAssign = isLoggedIn && (isTeacher || isAdmin);
     const canEdit = teacherViewEnabled && isOwnerOrAdmin;
 

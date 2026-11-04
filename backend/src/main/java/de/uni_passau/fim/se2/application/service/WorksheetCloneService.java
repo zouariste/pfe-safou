@@ -192,10 +192,7 @@ public class WorksheetCloneService {
             .ownerId(newOwnerId)
             .hintsEnabled(source.isHintsEnabled())
             .hintCreditsPerTask(source.getHintCreditsPerTask())
-            // Never the source's visibility. Copying is how you take someone else's material
-            // to adapt it, and a half-adapted worksheet appearing in the marketplace under
-            // your name is not what pressing "copy" meant. Publishing it is a separate act.
-            .visibility(WorksheetAccessPolicy.visibilityForCopy())
+            .visibility(WorksheetAccessPolicy.visibilityForCopy(source.getVisibility()))
             .copiedFrom(source.getId())
             .copiedAt(Instant.now())
             .build();

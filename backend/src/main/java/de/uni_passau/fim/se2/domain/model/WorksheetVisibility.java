@@ -35,7 +35,10 @@ import java.util.Locale;
  */
 public enum WorksheetVisibility {
 
-    /** Owner and admins only. Not readable by link. */
+    /**
+     * Owner, admins, teachers of a class it is assigned to, and students it has been released to through a class. Not
+     * readable by link.
+     */
     PRIVATE,
 
     /**
