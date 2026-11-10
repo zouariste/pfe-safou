@@ -19,16 +19,32 @@
 package de.uni_passau.fim.se2.application.service;
 
 import java.util.Locale;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 
+import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
+
 @Service
 public class CodeSanitizerService {
 
+    private final CodeAnalyzer codeAnalyzer;
+
     /**
-     * Strips comments from code, using the comment syntax of the given language. Code in a language without known
-     * comment syntax is returned unchanged.
+     * Creates the sanitizer.
+     *
+     * @param codeAnalyzer parses code to find its comments; when it can't (no tree-sitter natives, or a language
+     *                     tree-sitter isn't set up for), a regular expression per language is used instead
+     */
+    public CodeSanitizerService(CodeAnalyzer codeAnalyzer) {
+        this.codeAnalyzer = codeAnalyzer;
+    }
+
+    /**
+     * Strips comments from code. Uses the syntax tree where possible, which leaves comment markers inside strings alone
+     * and drops lines that held only a comment; otherwise falls back to the comment syntax of the given language, which
+     * cannot tell a string from a comment. Code in a language without known comment syntax is returned unchanged.
      *
      * @param code     the code to clean, or null
      * @param language the programming language of the code
@@ -37,6 +53,15 @@ public class CodeSanitizerService {
     public String removeComments(String code, String language) {
         if (code == null) {
             return "";
+        }
+
+        if (language == null) {
+            return code;
+        }
+
+        Optional<String> parsed = codeAnalyzer.removeComments(code, language);
+        if (parsed.isPresent()) {
+            return parsed.get();
         }
 
         String regex = regexByLanguage(language);

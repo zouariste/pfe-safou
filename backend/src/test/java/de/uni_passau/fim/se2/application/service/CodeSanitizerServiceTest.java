@@ -1,0 +1,59 @@
+/*
+ * Copyright (C) 2026 CodeOwl contributors
+ *
+ * This file is part of CodeOwl.
+ *
+ * CodeOwl is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at
+ * your option) any later version.
+ *
+ * CodeOwl is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with CodeOwl. If not, see <http://www.gnu.org/licenses/>.
+ */
+package de.uni_passau.fim.se2.application.service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.Optional;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
+
+@DisplayName("comment removal")
+class CodeSanitizerServiceTest {
+
+    private final CodeAnalyzer analyzer = mock(CodeAnalyzer.class);
+    private final CodeSanitizerService sanitizer = new CodeSanitizerService(analyzer);
+
+    @Test
+    @DisplayName("uses the syntax-tree result when the analyzer can parse the language")
+    void prefersAnalyzer() {
+        when(analyzer.removeComments("x = 1  # c", "python")).thenReturn(Optional.of("x = 1"));
+
+        assertEquals("x = 1", sanitizer.removeComments("x = 1  # c", "python"));
+    }
+
+    @Test
+    @DisplayName("falls back to the regular expression when the analyzer cannot")
+    void fallsBackToRegex() {
+        when(analyzer.removeComments("int a; // c", "java")).thenReturn(Optional.empty());
+
+        assertEquals("int a;", sanitizer.removeComments("int a; // c", "java"));
+    }
+
+    @Test
+    @DisplayName("null code becomes empty")
+    void nullCode() {
+        assertEquals("", sanitizer.removeComments(null, "python"));
+    }
+}
