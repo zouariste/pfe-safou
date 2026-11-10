@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TieredTaskSequence, Task, ApiSequence } from "../types/models.ts";
-import { api, apiErrorMessage, isNotFound, type ApiError } from "../lib/api.ts";
+import { api, LLM_TIMEOUT_MS, apiErrorMessage, isNotFound, type ApiError } from "../lib/api.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useHomePath } from "../hooks/useHomePath.ts";
 import {PersistentLogger} from "../PersistentLogger.ts";
@@ -755,7 +755,7 @@ export default function SequencePage() {
                         onClick={async () => {
                             setGeneratingDistractors("batch");
                             try {
-                                const { data } = await api.post<ApiSequence>(`/sequence/${seq.id}/generate-distractors`);
+                                const { data } = await api.post<ApiSequence>(`/sequence/${seq.id}/generate-distractors`, undefined, { timeout: LLM_TIMEOUT_MS });
                                 // Reload sequence with updated tasks
                                 if (data?.tasks) {
                                     setSeq({
@@ -850,7 +850,7 @@ export default function SequencePage() {
                                             onClick={async () => {
                                                 setGeneratingDistractors(task.id);
                                                 try {
-                                                    const { data } = await api.post(`/tasks/${task.id}/generate-distractors`);
+                                                    const { data } = await api.post(`/tasks/${task.id}/generate-distractors`, undefined, { timeout: LLM_TIMEOUT_MS });
                                                     // Update task in-place
                                                     if (seq) {
                                                         setSeq({

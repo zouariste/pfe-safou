@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { api, apiErrorMessage, type ApiError } from "../lib/api.ts";
+import { api, LLM_TIMEOUT_MS, apiErrorMessage, type ApiError } from "../lib/api.ts";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { SequenceView } from "../components/SequenceView.tsx";
 import type { TieredTaskSequence } from "../types/models.ts";
@@ -111,7 +111,7 @@ export default function HomePage() {
         if (tierCount !== 3) payload.tierCount = tierCount;
 
         try {
-            const response = await api.post("/tasks/generate", payload);
+            const response = await api.post("/tasks/generate", payload, { timeout: LLM_TIMEOUT_MS });
             const seq = response.data;
             setResult(seq);
             localStorage.setItem("lastSequence", JSON.stringify(seq));
