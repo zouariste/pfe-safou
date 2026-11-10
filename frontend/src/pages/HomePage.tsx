@@ -4,6 +4,7 @@ import { api, LLM_TIMEOUT_MS, apiErrorMessage, type ApiError } from "../lib/api.
 import "bootstrap/dist/css/bootstrap.min.css";
 import { SequenceView } from "../components/SequenceView.tsx";
 import type { TieredTaskSequence } from "../types/models.ts";
+import { describeOverLongTasks, generationOutcome, MAX_GENERATION_ATTEMPTS } from "../lib/locWarning.ts";
 import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import ConceptPicker from "../components/ConceptPicker";
@@ -33,6 +34,14 @@ export default function HomePage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<TieredTaskSequence | null>(null);
+    // A generated sequence with tasks over the line limit, waiting for the teacher to try again or
+    // open it. Keeps the request so "try again" sends exactly the same inputs.
+    const [overLong, setOverLong] = useState<{
+        seq: TieredTaskSequence;
+        payload: Record<string, unknown>;
+        attempt: number;
+    } | null>(null);
+    const [discarding, setDiscarding] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [worksheetName, setWorksheetName] = useState("");
     const [worksheetDesc, setWorksheetDesc] = useState("");
@@ -88,10 +97,6 @@ export default function HomePage() {
 
     const handleSubmit = async (e?: React.FormEvent) => {
         e?.preventDefault();
-        setError(null);
-        setResult(null);
-        setLoading(true);
-
         const payload: Record<string, unknown> = {};
         if (codeSnippet.trim() !== "") payload.codeSnippet = codeSnippet;
         if (problemStatement.trim() !== "") payload.problemStatement = problemStatement;
@@ -110,12 +115,47 @@ export default function HomePage() {
         // AP21: Five-Tier Mode
         if (tierCount !== 3) payload.tierCount = tierCount;
 
+        await generate(payload, 1);
+    };
+
+    const openSequence = (seq: TieredTaskSequence) => {
+        setOverLong(null);
+        setResult(seq);
+        localStorage.setItem("lastSequence", JSON.stringify(seq));
+        // The sequence page asks whether to keep a sequence that is still over the limit.
+        navigate(`/sequence/${seq.id}`, seq.locWarning ? { state: { locWarning: seq.locWarning } } : undefined);
+    };
+
+    // Discards the over-long sequence and generates again with the same inputs.
+    const retryOverLong = async () => {
+        if (!overLong) return;
+        const { seq, payload, attempt } = overLong;
+        setDiscarding(true);
+        try {
+            await api.delete(`/sequence/${seq.id}`);
+        } catch (err) {
+            setError(apiErrorMessage(err, "Error discarding the sequence"));
+            return;
+        } finally {
+            setDiscarding(false);
+        }
+        await generate(payload, attempt + 1);
+    };
+
+    const generate = async (payload: Record<string, unknown>, attempt: number) => {
+        setError(null);
+        setResult(null);
+        setOverLong(null);
+        setLoading(true);
+
         try {
             const response = await api.post("/tasks/generate", payload, { timeout: LLM_TIMEOUT_MS });
-            const seq = response.data;
-            setResult(seq);
-            localStorage.setItem("lastSequence", JSON.stringify(seq));
-            navigate(`/sequence/${seq.id}`);
+            const seq: TieredTaskSequence = response.data;
+            if (generationOutcome(seq.locWarning, attempt) === "offerRetry") {
+                setOverLong({ seq, payload, attempt });
+                return;
+            }
+            openSequence(seq);
 
             // scroll preview into view on small screens
             setTimeout(() => {
@@ -153,6 +193,7 @@ export default function HomePage() {
         setTierCount(3);
         setError(null);
         setResult(null);
+        setOverLong(null);
     };
 
     return (
@@ -438,6 +479,40 @@ export default function HomePage() {
                                     </button>
                                 </div>
                             </form>
+
+                            {overLong?.seq.locWarning && (
+                                <div className="alert alert-warning mt-4 mb-0" role="alert">
+                                    <strong>
+                                        {t("home.locWarningTitle", { attempt: overLong.attempt, max: MAX_GENERATION_ATTEMPTS })}
+                                    </strong>
+                                    <div className="mt-1">
+                                        {t("home.locWarningBody", {
+                                            tasks: describeOverLongTasks(overLong.seq.locWarning, (tier, lines) =>
+                                                t("home.locWarningTask", { tier, lines })
+                                            ),
+                                            max: overLong.seq.locWarning.maxLoc,
+                                        })}
+                                    </div>
+                                    <div className="d-flex flex-wrap gap-2 mt-3">
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-primary"
+                                            onClick={() => void retryOverLong()}
+                                            disabled={loading || discarding}
+                                        >
+                                            {t("home.locWarningRetry")}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-outline-secondary"
+                                            onClick={() => openSequence(overLong.seq)}
+                                            disabled={loading || discarding}
+                                        >
+                                            {t("home.locWarningShow")}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             {error && (
                                 <div className="alert alert-danger d-flex align-items-start gap-2 mt-4 mb-0">

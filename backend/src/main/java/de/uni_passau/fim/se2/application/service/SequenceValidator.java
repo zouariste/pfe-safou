@@ -18,6 +18,7 @@
  */
 package de.uni_passau.fim.se2.application.service;
 
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -25,6 +26,7 @@ import java.util.Set;
 import de.uni_passau.fim.se2.domain.entities.SplitPlan;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.DomainValidationException;
+import de.uni_passau.fim.se2.domain.model.LocLimitWarning;
 
 public final class SequenceValidator {
 
@@ -38,12 +40,24 @@ public final class SequenceValidator {
      * @param maxLoc the maximum lines of code per task
      */
     public static void validateLocLimit(TieredTaskSequenceDTO seq, int maxLoc) {
-        boolean tooLarge = seq.getTasks().stream()
-            .anyMatch(t -> t.getLinesOfCode() > maxLoc);
-
-        if (tooLarge) {
+        if (!tasksOverLocLimit(seq, maxLoc).isEmpty()) {
             throw new IllegalStateException("Sequence invalid: LOC > " + maxLoc);
         }
+    }
+
+    /**
+     * Lists the tasks longer than the given number of lines of code, in tier order.
+     *
+     * @param seq    the sequence to check
+     * @param maxLoc the maximum lines of code per task
+     * @return the tasks over the limit; empty if there are none
+     */
+    public static List<LocLimitWarning.TaskLoc> tasksOverLocLimit(TieredTaskSequenceDTO seq, int maxLoc) {
+        return seq.getTasks().stream()
+            .filter(t -> t.getLinesOfCode() > maxLoc)
+            .map(t -> new LocLimitWarning.TaskLoc(t.getTierLevel(), t.getLinesOfCode()))
+            .sorted(Comparator.comparingInt(LocLimitWarning.TaskLoc::tierLevel))
+            .toList();
     }
 
     // ── AP31: Inline-Split-Blocks reconstruction check ───────────────────────

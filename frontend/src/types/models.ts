@@ -97,6 +97,14 @@ export type TieredTaskSequence = {
     tierCount?: number;
     /** AP19: Curriculum topic this sequence was generated from */
     curriculumTopicId?: string | null;
+    /** Only on a fresh generation's response: tasks longer than the line limit. */
+    locWarning?: LocWarning | null;
+};
+
+/** Tasks of a freshly generated sequence that are longer than the line limit. */
+export type LocWarning = {
+    maxLoc: number;
+    tasks: { tierLevel: number; linesOfCode: number }[];
 };
 
 /**

@@ -30,7 +30,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
+import de.uni_passau.fim.se2.domain.model.LocLimitWarning;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -169,6 +171,13 @@ public class TieredTaskSequenceDTO {
      * away.
      */
     private Instant divergedAt;
+
+    /**
+     * Set only on the response to a generation whose tasks exceed the line limit, so the teacher can decide whether to
+     * keep the sequence. Never stored, and left out of the JSON when null.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private LocLimitWarning locWarning;
 
     /**
      * Returns the task for a given tier level, if present.

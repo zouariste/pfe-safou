@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TieredTaskSequence, Task, ApiSequence } from "../types/models.ts";
 import { api, LLM_TIMEOUT_MS, apiErrorMessage, isNotFound, type ApiError } from "../lib/api.ts";
+import { describeOverLongTasks, locWarningFromState } from "../lib/locWarning.ts";
 import { usePageTitle } from "../hooks/usePageTitle.ts";
 import { useHomePath } from "../hooks/useHomePath.ts";
 import {PersistentLogger} from "../PersistentLogger.ts";
@@ -54,6 +55,33 @@ export default function SequencePage() {
         ?? null;
     // Not rendered here — only forwarded, so the worksheet still knows its class.
     const fromClass = (location.state as { fromClass?: string })?.fromClass ?? null;
+
+    // Set when the teacher opens a freshly generated sequence whose tasks are over the line limit:
+    // the banner below asks whether to keep it.
+    const locWarning = locWarningFromState(location.state);
+    const [discardingSequence, setDiscardingSequence] = useState(false);
+    const [discardError, setDiscardError] = useState("");
+
+    // Router state outlives a reload, so the decision is cleared from it rather than only hidden.
+    const keepOverLongSequence = () => {
+        navigate(`${location.pathname}${location.search}`, {
+            replace: true,
+            state: { ...(location.state as object), locWarning: undefined },
+        });
+    };
+
+    const discardOverLongSequence = async () => {
+        setDiscardingSequence(true);
+        setDiscardError("");
+        try {
+            await api.delete(`/sequence/${id}`);
+            navigate(homePath, { replace: true });
+        } catch (err) {
+            setDiscardError(apiErrorMessage(err, t("sequence.locWarningDiscardError")));
+        } finally {
+            setDiscardingSequence(false);
+        }
+    };
 
     // Clean up stale localStorage entry from previous implementation
     useEffect(() => { localStorage.removeItem("lastFromWorksheet"); }, []);
@@ -421,6 +449,39 @@ export default function SequencePage() {
             {import.meta.env.DEV && isTemplate && (
                 <div style={{ marginBottom: 12, padding: 8, border: "1px dashed #bbb", borderRadius: 6 }}>
                     🧪 <strong>{t("sequence.devTemplate")}</strong>
+                </div>
+            )}
+
+            {locWarning && (
+                <div className="alert alert-warning mb-3" role="alert">
+                    <strong>{t("sequence.locWarningTitle")}</strong>
+                    <div className="mt-1">
+                        {t("sequence.locWarningBody", {
+                            tasks: describeOverLongTasks(locWarning, (tier, lines) =>
+                                t("home.locWarningTask", { tier, lines })
+                            ),
+                            max: locWarning.maxLoc,
+                        })}
+                    </div>
+                    {discardError && <div className="text-danger small mt-2">{discardError}</div>}
+                    <div className="d-flex flex-wrap gap-2 mt-3">
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            onClick={keepOverLongSequence}
+                            disabled={discardingSequence}
+                        >
+                            {t("sequence.locWarningKeep")}
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => void discardOverLongSequence()}
+                            disabled={discardingSequence}
+                        >
+                            {t("sequence.locWarningDiscard")}
+                        </button>
+                    </div>
                 </div>
             )}
 
