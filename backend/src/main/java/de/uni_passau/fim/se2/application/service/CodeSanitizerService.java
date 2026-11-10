@@ -76,6 +76,22 @@ public class CodeSanitizerService {
             .trim();
     }
 
+    /**
+     * Reduces a generated program to the function(s) the task asks for, dropping a class wrapper, a {@code main}
+     * method, example calls and an {@code if __name__ == "__main__":} block. Code that needs none of that, or that
+     * cannot be parsed, is returned unchanged.
+     *
+     * @param code     the code
+     * @param language the programming language of the code
+     * @return the code without program scaffolding
+     */
+    public String removeScaffolding(String code, String language) {
+        if (code == null || language == null) {
+            return code;
+        }
+        return codeAnalyzer.removeScaffolding(code, language).orElse(code);
+    }
+
     private String regexByLanguage(String language) {
         String regex;
         switch (language.toLowerCase(Locale.ROOT)) {

@@ -263,8 +263,13 @@ public final class TaskEnricher {
             JsonNode codeNode = client.solveProblem(solveContract);
             String code = codeNode.asText();
 
-            // Pass 1: Sanitize (remove comments) — fast CPU.
-            String sanitizedCode = codeSanitizerService.removeComments(code, lang);
+            // Pass 1: Sanitize (remove comments) — fast CPU. Outside context mode, also drop a class
+            // wrapper, main method or example calls some models add despite the prompt: they don't
+            // belong in the puzzle and would count against the line limit.
+            String uncommented = codeSanitizerService.removeComments(code, lang);
+            String sanitizedCode = contextModeEnabled
+                ? uncommented
+                : codeSanitizerService.removeScaffolding(uncommented, lang);
 
             // Pass 2: AP16 — Annotate interchangeable lines (#group/#swap markers) (LLM).
             String annotatedCode = interchangeableAnnotator.annotate(sanitizedCode, lang);

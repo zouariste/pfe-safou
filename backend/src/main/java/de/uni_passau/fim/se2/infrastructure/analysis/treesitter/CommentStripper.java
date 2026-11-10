@@ -90,7 +90,7 @@ final class CommentStripper {
      * Cuts the ranges out line by line. Lines that lost something have trailing whitespace removed, and are dropped
      * when nothing is left; lines that were blank to begin with stay.
      */
-    private static String removeRanges(byte[] bytes, List<int[]> ranges) {
+    static String removeRanges(byte[] bytes, List<int[]> ranges) {
         ByteArrayOutputStream out = new ByteArrayOutputStream(bytes.length);
         int lineStart = 0;
         while (lineStart <= bytes.length) {

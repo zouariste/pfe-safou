@@ -111,6 +111,7 @@ class TaskEnricherDistractorPlanTest {
     private static TaskEnricher enricher(AiModelClient client) {
         CodeSanitizerService sanitizer = mock(CodeSanitizerService.class);
         when(sanitizer.removeComments(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        when(sanitizer.removeScaffolding(any(), any())).thenAnswer(inv -> inv.getArgument(0));
 
         InterchangeableAnnotator annotator = mock(InterchangeableAnnotator.class);
         when(annotator.annotate(any(), any())).thenAnswer(inv -> inv.getArgument(0));

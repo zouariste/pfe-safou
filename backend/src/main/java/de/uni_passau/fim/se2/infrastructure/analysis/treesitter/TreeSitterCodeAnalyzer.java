@@ -125,6 +125,24 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
     }
 
     @Override
+    public Optional<String> removeScaffolding(String code, String language) {
+        if (code == null || !nativesAvailable) {
+            return Optional.empty();
+        }
+        Language tsLang = LanguageRegistry.resolve(language).orElse(null);
+        if (tsLang == null) {
+            return Optional.empty();
+        }
+        try {
+            return ScaffoldingStripper.strip(code, tsLang, language.toLowerCase(Locale.ROOT));
+        }
+        catch (RuntimeException e) {
+            log.warn("tree-sitter scaffolding removal failed for '{}': {}", language, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @Override
     public AstAnalysisResult analyzeChanges(String originalCode, String editedCode, String language) {
         if (originalCode == null) {
             originalCode = "";

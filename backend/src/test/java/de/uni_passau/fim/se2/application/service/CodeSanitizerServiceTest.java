@@ -52,6 +52,16 @@ class CodeSanitizerServiceTest {
     }
 
     @Test
+    @DisplayName("scaffolding removal uses the analyzer's result, or leaves the code as it is")
+    void scaffolding() {
+        when(analyzer.removeScaffolding("class A { void f() {} }", "java")).thenReturn(Optional.of("void f() {}"));
+        when(analyzer.removeScaffolding("void g() {}", "java")).thenReturn(Optional.empty());
+
+        assertEquals("void f() {}", sanitizer.removeScaffolding("class A { void f() {} }", "java"));
+        assertEquals("void g() {}", sanitizer.removeScaffolding("void g() {}", "java"));
+    }
+
+    @Test
     @DisplayName("null code becomes empty")
     void nullCode() {
         assertEquals("", sanitizer.removeComments(null, "python"));

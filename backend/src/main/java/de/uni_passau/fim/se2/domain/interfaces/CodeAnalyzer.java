@@ -66,6 +66,19 @@ public interface CodeAnalyzer {
         return Optional.empty();
     }
 
+    /**
+     * Reduces a whole program to the function(s) it defines: in Java the members of its only class without
+     * {@code main}, in Python the code without example calls or an {@code if __name__ == "__main__":} block. Imports
+     * stay.
+     *
+     * @param code     the code
+     * @param language the programming language of the code
+     * @return the reduced code, or empty if there was nothing to remove or it could not safely be removed
+     */
+    default Optional<String> removeScaffolding(String code, String language) {
+        return Optional.empty();
+    }
+
     // ── Result records ──
 
     record ComplexityResult(

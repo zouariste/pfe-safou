@@ -788,7 +788,15 @@ public class PromptBuilder {
             + "No markdown/backticks, no extra keys, no text outside JSON.\n\n"
             + "Rules:\n"
             + "- Put the entire solution as the string value of \"code\" (escape as needed).\n"
-            + "- Single file; use only the standard library.\n"
+            // Without this rule, models other than GPT-4.1 (e.g. Qwen) answer with a whole program. Context
+            // mode asks for a complete program in the spec, hence the exception. Java solutions that need
+            // imports still tend to come back inside a class, since imports before a bare method aren't
+            // valid Java; CodeSanitizerService.removeScaffolding unwraps those.
+            + "- Write only the function or method with the given signature, preceded by the imports it needs "
+            + "(imports go before the function, never inside it). No enclosing class, no main method, "
+            + "no `if __name__ == \"__main__\":` block, and no example calls, tests or prints of results, "
+            + "unless the spec explicitly asks for a complete program.\n"
+            + "- Use only the standard library, and import only what the solution uses.\n"
             + "- No file/network I/O unless shown in the examples.\n"
             + "- Obey the specified language and any provided function signature.\n"
             + "- Implement exactly what the spec and examples require; avoid adding features.\n"
