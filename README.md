@@ -133,6 +133,9 @@ All configuration is environment-driven. The variables below are consumed by
 | Variable                | Required | Default                     | Description                                                                 |
 |-------------------------|----------|-----------------------------|-----------------------------------------------------------------------------|
 | `OPENAI_API_KEY`        | **yes**  | —                           | OpenAI API key for generation, concept detection, tagging and hints.        |
+| `OPENAI_BASE_URL`       | no       | `https://api.openai.com/v1` | Base URL of an OpenAI-compatible API, e.g. a LiteLLM proxy for local models. |
+| `OPENAI_MODEL`          | no       | *(empty)*                   | Model name sent in every request instead of the GPT model, e.g. `qwen38-27b`. |
+| `OPENAI_REASONING_EFFORT` | no     | *(empty)*                   | `reasoning_effort` for every request (`none`, `low`, `medium`, `high`); empty leaves the server default. |
 | `JWT_SECRET`            | prod     | dev fallback                | HS256 signing secret. **Must** be ≥ 256 bits; override for any deployment.  |
 | `APP_BASE_URL`          | no       | `http://localhost:5175`     | Public frontend URL; used to build links in outgoing e-mails.               |
 | `CORS_ALLOWED_ORIGINS`  | no       | `*`                         | Comma-separated allowed origins. Tighten for production.                     |

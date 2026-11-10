@@ -30,6 +30,9 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      OPENAI_REASONING_EFFORT: ${OPENAI_REASONING_EFFORT:-}
       SPRING_PROFILES_ACTIVE: dev
       JWT_SECRET: ${JWT_SECRET:-defaultDevSecretKeyThatIsAtLeast256BitsLongForHS256Algorithm!!}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5175}

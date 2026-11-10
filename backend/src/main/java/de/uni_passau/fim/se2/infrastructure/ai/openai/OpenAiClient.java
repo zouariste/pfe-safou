@@ -78,10 +78,7 @@ public class OpenAiClient extends AbstractAiClient {
     private static final String CODE = "code";
     private static final String TASKS = "tasks";
 
-    /**
-     * String representing the API address to OpenAIs API.
-     */
-    private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+    private static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
 
     private static final Double DEFAULT_TEMPERATURE = 1.0;
     private static final Double DEFAULT_TOP_P = null; // null = omit field (API default)
@@ -125,6 +122,21 @@ public class OpenAiClient extends AbstractAiClient {
      */
     private final OpenAiModel defaultModel;
 
+    /**
+     * Full chat-completions endpoint, built from the configured base URL.
+     */
+    private final URI chatCompletionsUri;
+
+    /**
+     * Model name that replaces every {@link OpenAiModel} when set, or null.
+     */
+    private final String modelOverride;
+
+    /**
+     * {@code reasoning_effort} added to every request, or null to leave it to the server.
+     */
+    private final String reasoningEffort;
+
     private static final Logger log = LoggerFactory.getLogger(OpenAiClient.class);
 
     /**
@@ -147,6 +159,17 @@ public class OpenAiClient extends AbstractAiClient {
         this.transport = transport;
         this.promptBuilder = promptBuilder;
         this.defaultModel = aiProps.getOpenai().getDefaultModel();
+        this.chatCompletionsUri = chatCompletionsUri(aiProps.getOpenai().getBaseUrl());
+        String override = aiProps.getOpenai().getModelOverride();
+        this.modelOverride = override == null || override.isBlank() ? null : override.strip();
+        String effort = aiProps.getOpenai().getReasoningEffort();
+        this.reasoningEffort = effort == null || effort.isBlank() ? null : effort.strip();
+        if (modelOverride != null || reasoningEffort != null) {
+            log.info(
+                "Using model '{}' (reasoning_effort={}) at {}",
+                modelOverride != null ? modelOverride : defaultModel, reasoningEffort, chatCompletionsUri
+            );
+        }
         this.conceptCatalog = conceptCatalog;
     }
 
@@ -235,10 +258,13 @@ public class OpenAiClient extends AbstractAiClient {
     HttpResponse<String> sendRequest(final ObjectNode json)
         throws IOException, InterruptedException {
 
+        if (reasoningEffort != null && !json.has("reasoning_effort")) {
+            json.put("reasoning_effort", reasoningEffort);
+        }
         String requestBody = mapper.writerWithDefaultPrettyPrinter()
             .writeValueAsString(json);
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(OPENAI_API_URL))
+            .uri(chatCompletionsUri)
             .header("Content-Type", "application/json")
             .header("Authorization", "Bearer " + apiKey)
             .POST(HttpRequest.BodyPublishers.ofString(requestBody))
@@ -288,6 +314,20 @@ public class OpenAiClient extends AbstractAiClient {
                 Thread.sleep(delay);
             }
         }
+    }
+
+    /**
+     * Builds the chat-completions endpoint from a base URL such as {@code https://api.openai.com/v1}.
+     *
+     * @param baseUrl the API base URL, with or without a trailing slash
+     * @return the chat-completions URI
+     */
+    static URI chatCompletionsUri(String baseUrl) {
+        String base = baseUrl == null || baseUrl.isBlank() ? "https://api.openai.com/v1" : baseUrl.strip();
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        return URI.create(base + CHAT_COMPLETIONS_PATH);
     }
 
     /**
@@ -1025,7 +1065,7 @@ public class OpenAiClient extends AbstractAiClient {
      * @param model the {@link OpenAiModel} to be attached
      */
     private void attachModel(ObjectNode json, OpenAiModel model) {
-        String modelString = toApiModel(model);
+        String modelString = modelOverride != null ? modelOverride : toApiModel(model);
         log.trace("Attaching model: {}", modelString);
         json.put("model", modelString);
     }
