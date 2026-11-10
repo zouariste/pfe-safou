@@ -324,4 +324,21 @@ public interface AiModelClient {
             taskDescription, concepts, codeSnippet, language, targetLanguage, distractorsEnabled, constraints
         );
     }
+
+    /**
+     * Sends a system and user prompt and returns the model's answer as JSON held to the given schema. For callers that
+     * need their own JSON shape back, rather than reusing a request built for another purpose.
+     *
+     * @param systemPrompt the system prompt
+     * @param userPrompt   the user prompt
+     * @param schemaName   a short name for the schema, as the API requires one
+     * @param schema       the JSON schema the answer must follow
+     * @return the answer as a JSON string
+     * @throws IOException          if the request fails
+     * @throws InterruptedException if the request is interrupted
+     */
+    default String generateJson(String systemPrompt, String userPrompt, String schemaName, JsonNode schema)
+        throws IOException, InterruptedException {
+        throw new UnsupportedOperationException("Structured JSON requests are not supported by this client");
+    }
 }

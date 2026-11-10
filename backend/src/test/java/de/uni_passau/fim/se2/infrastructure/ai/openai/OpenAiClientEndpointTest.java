@@ -106,6 +106,33 @@ class OpenAiClientEndpointTest {
         assertEquals("qwen38-27b", bodyOf(request).path("model").asText());
     }
 
+    @Test
+    @DisplayName("a JSON request is held to the caller's schema, not the task-description one")
+    @SuppressWarnings("unchecked")
+    void jsonSchemaRequest() throws Exception {
+        HttpResponse<String> response = mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(200);
+        ObjectNode body = MAPPER.createObjectNode();
+        body.putArray("choices").addObject().putObject("message").put("content", "{\"contextLines\":[1]}");
+        when(response.body()).thenReturn(body.toString());
+        AiTransport transport = mock(AiTransport.class);
+        when(transport.sendRequest(any())).thenReturn(response);
+        ObjectNode schema = MAPPER.createObjectNode().put("type", "object");
+
+        String answer = new OpenAiClient(
+            "test-key", transport, promptBuilder, new AiProps(), null, mock(CodeSanitizerService.class)
+        ).generateJson("system", "user", "context_lines", schema);
+
+        ArgumentCaptor<HttpRequest> captor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(transport).sendRequest(captor.capture());
+        var format = bodyOf(captor.getValue()).path("response_format");
+        assertEquals("json_schema", format.path("type").asText());
+        assertEquals("context_lines", format.path("json_schema").path("name").asText());
+        assertTrue(format.path("json_schema").path("strict").asBoolean());
+        assertEquals(schema, format.path("json_schema").path("schema"));
+        assertEquals("{\"contextLines\":[1]}", answer);
+    }
+
     @SuppressWarnings("unchecked")
     private HttpRequest sentRequest(AiProps props) throws Exception {
         HttpResponse<String> response = mock(HttpResponse.class);

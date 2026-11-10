@@ -50,6 +50,21 @@ public class ContextAnnotator {
     private final AiModelClient aiModelClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * {"contextLines": [int]}. Its own schema: the task-description request it used before forces {"task": "<text>"},
+     * and only some models put the context JSON inside that string.
+     */
+    static final JsonNode SCHEMA = JsonSchemas.parse("""
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contextLines"],
+          "properties": {
+            "contextLines": {"type": "array", "items": {"type": "integer"}}
+          }
+        }
+        """);
+
     private static final int MAX_PUZZLE_LINES = 20;
 
     private static final String SYSTEM_PROMPT = """
@@ -131,7 +146,7 @@ public class ContextAnnotator {
         try {
             String userPrompt = String.format(USER_PROMPT_TEMPLATE, language, solution);
 
-            String response = aiModelClient.generateTaskDescription(solution, SYSTEM_PROMPT, userPrompt);
+            String response = aiModelClient.generateJson(SYSTEM_PROMPT, userPrompt, "context_lines", SCHEMA);
             log.debug("ContextAnnotator LLM response: {}", response);
 
             List<Integer> contextLines = parseContextLines(response);

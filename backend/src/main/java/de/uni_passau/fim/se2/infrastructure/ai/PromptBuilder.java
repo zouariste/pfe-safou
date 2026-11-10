@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -1239,6 +1240,31 @@ public class PromptBuilder {
 
         json.set(MESSAGES, messages);
         json.set(RESPONSE_FORMAT, responseFormatDistractors(hasPlan ? null : preferred));
+        return json;
+    }
+
+    /**
+     * Builds a request from a system and user prompt whose answer is held to the given JSON schema.
+     *
+     * @param systemPrompt the system prompt
+     * @param userPrompt   the user prompt
+     * @param schemaName   the schema's name, as the API requires one
+     * @param schema       the JSON schema the answer must follow
+     * @return the chat completions request
+     */
+    public ObjectNode buildJsonSchemaRequest(
+        final String systemPrompt, final String userPrompt, final String schemaName, final JsonNode schema
+    ) {
+        ObjectNode json = mapper.createObjectNode();
+        ArrayNode messages = json.putArray(MESSAGES);
+        messages.addObject().put(ROLE, ROLE_SYSTEM).put(CONTENT, systemPrompt);
+        messages.addObject().put(ROLE, ROLE_USER).put(CONTENT, userPrompt);
+
+        ObjectNode jsonSchema = mapper.createObjectNode();
+        jsonSchema.put(NAME, schemaName);
+        jsonSchema.put(STRICT, true);
+        jsonSchema.set(SCHEMA, schema);
+        json.putObject(RESPONSE_FORMAT).put(TYPE, JSON_SCHEMA).set(JSON_SCHEMA, jsonSchema);
         return json;
     }
 

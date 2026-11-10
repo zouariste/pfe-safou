@@ -48,6 +48,33 @@ public class InterchangeableAnnotator {
     private final AiModelClient aiModelClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * The answer's shape. Its own schema: the task-description request this used before forces {"task": "<text>"}, and
+     * only some models put the annotation JSON inside that string.
+     */
+    static final JsonNode SCHEMA = JsonSchemas.parse("""
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["annotations"],
+          "properties": {
+            "annotations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["line", "type", "name"],
+                "properties": {
+                  "line": {"type": "integer"},
+                  "type": {"type": "string", "enum": ["swap", "group"]},
+                  "name": {"type": "string"}
+                }
+              }
+            }
+          }
+        }
+        """);
+
     private static final String SYSTEM_PROMPT = """
         You are a code analysis assistant for Parsons programming puzzles.
 
@@ -181,8 +208,7 @@ public class InterchangeableAnnotator {
         try {
             String userPrompt = String.format(USER_PROMPT_TEMPLATE, language, solution);
 
-            // Use the 3-arg generateTaskDescription: (codeSnippet, systemPrompt, userPromptBody)
-            String response = aiModelClient.generateTaskDescription(solution, SYSTEM_PROMPT, userPrompt);
+            String response = aiModelClient.generateJson(SYSTEM_PROMPT, userPrompt, "interchangeable_lines", SCHEMA);
 
             log.debug("InterchangeableAnnotator LLM response: {}", response);
 

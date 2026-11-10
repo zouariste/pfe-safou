@@ -747,6 +747,15 @@ public class OpenAiClient extends AbstractAiClient {
         return parsed == null ? null : parsed.toString();
     }
 
+    @Override
+    public String generateJson(String systemPrompt, String userPrompt, String schemaName, JsonNode schema)
+        throws IOException, InterruptedException {
+        ObjectNode json = promptBuilder.buildJsonSchemaRequest(systemPrompt, userPrompt, schemaName, schema);
+        attachModel(json, defaultModel);
+        JsonNode parsed = parseResponse(sendRequest(json));
+        return parsed == null ? null : parsed.toString();
+    }
+
     /**
      * AP31: Second pass — generates ONE split-aware fragment distractor. Returns the raw distractor JSON
      * ({@code {"fragmentIndex":..,"text":..,"type":..}}) or {@code null} if the model declines.
