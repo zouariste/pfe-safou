@@ -20,6 +20,7 @@ package de.uni_passau.fim.se2.application.service;
 
 import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
@@ -28,6 +29,10 @@ import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
 
 @Service
 public class CodeSanitizerService {
+
+    /** A line holding only a Markdown code fence, optionally naming the language. */
+    private static final Pattern MARKDOWN_FENCE = Pattern
+        .compile("^[ \\t]*```[\\w+#.-]*[ \\t]*(?:\\R|\\z)", Pattern.MULTILINE);
 
     private final CodeAnalyzer codeAnalyzer;
 
@@ -74,6 +79,32 @@ public class CodeSanitizerService {
             .matcher(code)
             .replaceAll("")
             .trim();
+    }
+
+    /**
+     * Takes the code out of a Markdown code fence. Models are told to put plain code into the answer's {@code code}
+     * field, but some (Qwen without reasoning, for one) write {@code ```python ... ```} there anyway, and the fence
+     * lines would end up as blocks of the puzzle. Anything before the first fence, such as "Here is the code:", goes
+     * with it; so does anything after its closing fence, which is where models put example usage.
+     *
+     * <p>
+     * Only a line holding nothing but a fence counts. No line of Python or Java starts with a backtick, so code without
+     * a fence is returned unchanged.
+     *
+     * @param code the code, or null
+     * @return the code inside the first fence, or the code unchanged if it has none
+     */
+    public static String unwrapMarkdownFence(String code) {
+        if (code == null) {
+            return null;
+        }
+        Matcher m = MARKDOWN_FENCE.matcher(code);
+        if (!m.find()) {
+            return code;
+        }
+        int start = m.end();
+        int end = m.find() ? m.start() : code.length();
+        return code.substring(start, end).strip();
     }
 
     /**

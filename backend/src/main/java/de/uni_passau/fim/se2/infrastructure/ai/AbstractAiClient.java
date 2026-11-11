@@ -36,9 +36,16 @@ public class AbstractAiClient implements AiModelClient {
         this.sanitizer = sanitizer;
     }
 
+    /**
+     * Cleans code a model returned: takes it out of a Markdown fence, if the model wrapped it in one, and removes its
+     * comments.
+     *
+     * @param code     the code from the model's answer
+     * @param language the programming language of the code
+     * @return the cleaned code
+     */
     protected String sanitize(String code, String language) {
-        return sanitizer.removeComments(code, language);
-
+        return sanitizer.removeComments(CodeSanitizerService.unwrapMarkdownFence(code), language);
     }
 
     /**

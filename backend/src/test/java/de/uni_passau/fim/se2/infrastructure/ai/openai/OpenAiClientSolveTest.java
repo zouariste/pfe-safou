@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import de.uni_passau.fim.se2.application.service.CodeSanitizerService;
+import de.uni_passau.fim.se2.domain.entities.SolveContract;
 import de.uni_passau.fim.se2.infrastructure.ai.AiProps;
 import de.uni_passau.fim.se2.infrastructure.ai.AiTransport;
 import de.uni_passau.fim.se2.infrastructure.ai.IdentityLoader;
@@ -57,6 +58,24 @@ class OpenAiClientSolveTest {
             .thenReturn("def f(x):\n    return x");
 
         String code = clientAnswering(program).solveProblemSimple("Return x", "python").asText();
+
+        assertEquals("def f(x):\n    return x", code);
+    }
+
+    @Test
+    @DisplayName("a solution wrapped in a Markdown fence reaches comment removal without the fence")
+    void solveUnwrapsMarkdownFence() throws Exception {
+        when(sanitizer.removeComments(any(), any())).thenAnswer(inv -> inv.getArgument(0));
+        SolveContract contract = SolveContract.builder()
+            .language("python")
+            .taskStatement("Return x")
+            .functionSignature("def f(x):")
+            .purposeBehavior("Returns x.")
+            .prePostConditions("none")
+            .example(new SolveContract.ExamplePair("f(1)", "1"))
+            .build();
+
+        String code = clientAnswering("```python\ndef f(x):\n    return x\n```").solveProblem(contract).asText();
 
         assertEquals("def f(x):\n    return x", code);
     }

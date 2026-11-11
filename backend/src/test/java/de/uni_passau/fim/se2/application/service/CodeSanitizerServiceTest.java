@@ -66,4 +66,29 @@ class CodeSanitizerServiceTest {
     void nullCode() {
         assertEquals("", sanitizer.removeComments(null, "python"));
     }
+
+    @Test
+    @DisplayName("code in a Markdown fence is taken out of it, with text before and after the fence dropped")
+    void unwrapsMarkdownFence() {
+        assertEquals(
+            "def f(x):\n    return x",
+            CodeSanitizerService.unwrapMarkdownFence("```python\ndef f(x):\n    return x\n```")
+        );
+        assertEquals(
+            "int f() {\n    return 1;\n}",
+            CodeSanitizerService.unwrapMarkdownFence(
+                "Here is the code:\n\n  ```java\nint f() {\n    return 1;\n}\n  ```\n\nUsage:\n```\nf();\n```"
+            )
+        );
+        assertEquals("x = 1", CodeSanitizerService.unwrapMarkdownFence("```\nx = 1"));
+    }
+
+    @Test
+    @DisplayName("code without a line holding only a fence is left as it is, even with backticks in it")
+    void leavesCodeWithoutFence() {
+        String code = "def f():\n    return \"```python\"\n";
+        assertEquals(code, CodeSanitizerService.unwrapMarkdownFence(code));
+        String inline = "```python x = 1";
+        assertEquals(inline, CodeSanitizerService.unwrapMarkdownFence(inline));
+    }
 }
