@@ -1184,7 +1184,7 @@ public class PromptBuilder {
 
             RULES:
             1. Generate distractors highly similar in style and variable naming to the solution.
-            2. Each distractor must be a SINGLE line or a small coherent block (max 2 lines).
+            2. Each distractor must be a SINGLE line of code, with no line breaks inside the string.
             3. Every distractor MUST end with the suffix " #distractor".
             4. Do NOT use #swap or #group markers on distractor lines.
             5. Ensure distractors are functionally incorrect for the given task.

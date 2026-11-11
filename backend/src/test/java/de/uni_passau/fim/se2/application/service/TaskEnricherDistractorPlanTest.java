@@ -90,6 +90,27 @@ class TaskEnricherDistractorPlanTest {
     }
 
     @Test
+    @DisplayName("a distractor spanning several lines becomes one marked line each, so none joins the solution")
+    void multiLineDistractorIsSplit() throws Exception {
+        AiModelClient client = stubbedClient();
+        when(client.generateDistractors(any(), any(), any(), anyInt(), anyInt(), isNull(), anyInt()))
+            .thenReturn(
+                new GeneratedDistractors(
+                    List.of("if (x > 0) {\n    x = 0; #distractor", "int y = 0;\r\nint x = 1; #distractor"), CHOSEN
+                )
+            );
+
+        GeneratedDistractors result = enricher(client)
+            .generateDistractorsForTask(SOLUTION, "Java", "Set x", 2, 3, null, 10);
+
+        // The line that is part of the solution is dropped, as a single-line one would be.
+        assertEquals(
+            List.of("if (x > 0) { #distractor", "x = 0; #distractor", "int y = 0; #distractor"), result.lines()
+        );
+        assertEquals(3, result.text().split("\n").length);
+    }
+
+    @Test
     @DisplayName("a failed call yields nothing rather than throwing")
     void failureYieldsNone() throws Exception {
         AiModelClient client = stubbedClient();

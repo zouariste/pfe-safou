@@ -414,15 +414,7 @@ public final class TaskEnricher {
                 return GeneratedDistractors.NONE;
             }
 
-            // Ensure every line ends with #distractor and does NOT contain #swap or #group
-            List<String> validated = distractorLines.stream()
-                .map(String::trim)
-                .filter(line -> !line.isBlank())
-                .filter(line -> !line.contains("#swap") && !line.contains("#group"))
-                .map(line -> line.endsWith("#distractor") ? line : line + " #distractor")
-                .filter(line -> !solutionCode.contains(line.replace(" #distractor", "").trim())) // identity check
-                .toList();
-
+            List<String> validated = validDistractorLines(distractorLines, solutionCode);
             if (validated.isEmpty()) {
                 log.warn("All distractors filtered out for task: {}", taskStatement);
                 return GeneratedDistractors.NONE;
@@ -442,6 +434,27 @@ public final class TaskEnricher {
             );
             return GeneratedDistractors.NONE;
         }
+    }
+
+    /**
+     * Turns the model's distractors into lines for the distractors column: each ends with {@code #distractor}, none
+     * carries a {@code #swap} or {@code #group} marker, and none is part of the solution.
+     *
+     * <p>
+     * An entry spanning several lines is split first. The column is read one line per block, so only the entry's last
+     * line would carry the marker, and the others would become lines the student has to place. A line of such an entry
+     * that is part of the solution, such as a closing brace, is dropped like any other.
+     */
+    private static List<String> validDistractorLines(List<String> distractors, String solutionCode) {
+        return distractors.stream()
+            .flatMap(String::lines)
+            .map(line -> line.replaceFirst("\\s*#distractor\\s*$", "").trim())
+            .filter(line -> !line.isBlank())
+            .filter(line -> !line.contains("#swap") && !line.contains("#group"))
+            .filter(line -> !solutionCode.contains(line))
+            .distinct()
+            .map(line -> line + " #distractor")
+            .toList();
     }
 
     /**
