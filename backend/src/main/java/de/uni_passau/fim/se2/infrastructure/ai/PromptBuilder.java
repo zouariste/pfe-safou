@@ -80,6 +80,7 @@ public class PromptBuilder {
     private static final String STRING = "string";
     private static final String ENGLISH = "en";
     private static final String RATIONALE = "rationale";
+    private static final String DISTRACTOR_PLAN = "distractorPlan";
 
     /**
      * Object mapper used for constructing prompts.
@@ -570,15 +571,8 @@ public class PromptBuilder {
         required.add(TIER).add(STATEMENT).add(CONTRACT);
 
         if (withDistractors) {
-            ObjectNode distractorPlan = mapper.createObjectNode().put(TYPE, OBJECT);
-            ObjectNode dpProps = mapper.createObjectNode();
-            dpProps.set(TYPE, str());
-            dpProps.set(RATIONALE, str());
-            distractorPlan.set(PROPERTIES, dpProps);
-            distractorPlan.putArray(REQUIRED).add(TYPE).add(RATIONALE);
-            distractorPlan.put(ADDITIONAL_PROPERTIES, false);
-            taskProps.set("distractorPlan", distractorPlan);
-            required.add("distractorPlan");
+            taskProps.set(DISTRACTOR_PLAN, distractorPlanSchema());
+            required.add(DISTRACTOR_PLAN);
         }
 
         taskItem.set(PROPERTIES, taskProps);
@@ -742,18 +736,10 @@ public class PromptBuilder {
 
         taskProps.set(CONTRACT, contract);
 
-        // distractorPlan
-        ObjectNode distractorPlan = mapper.createObjectNode().put(TYPE, OBJECT);
-        ObjectNode dpProps = mapper.createObjectNode();
-        dpProps.set(TYPE, str());
-        dpProps.set(RATIONALE, str());
-        distractorPlan.set(PROPERTIES, dpProps);
-        distractorPlan.putArray(REQUIRED).add(TYPE).add(RATIONALE);
-        distractorPlan.put(ADDITIONAL_PROPERTIES, false);
-        taskProps.set("distractorPlan", distractorPlan);
+        taskProps.set(DISTRACTOR_PLAN, distractorPlanSchema());
 
         taskItem.set(PROPERTIES, taskProps);
-        taskItem.putArray(REQUIRED).add(TIER).add(STATEMENT).add(CONTRACT).add("distractorPlan");
+        taskItem.putArray(REQUIRED).add(TIER).add(STATEMENT).add(CONTRACT).add(DISTRACTOR_PLAN);
         taskItem.put(ADDITIONAL_PROPERTIES, false);
 
         tasks.set(ITEMS, taskItem);
@@ -770,6 +756,26 @@ public class PromptBuilder {
 
     private ObjectNode str() {
         return mapper.createObjectNode().put(TYPE, STRING);
+    }
+
+    /**
+     * The {@code distractorPlan} of a sequence task. Its type is limited to the taxonomy, as in the distractor call's
+     * own plan: the prompt lists the types, but only GPT kept to the exact names without being held to them.
+     */
+    private ObjectNode distractorPlanSchema() {
+        ObjectNode type = str();
+        ArrayNode allowed = type.putArray("enum");
+        for (DistractorStrategy.Type t : DistractorStrategy.Type.values()) {
+            allowed.add(t.name());
+        }
+        ObjectNode props = mapper.createObjectNode();
+        props.set(TYPE, type);
+        props.set(RATIONALE, str());
+        ObjectNode plan = mapper.createObjectNode().put(TYPE, OBJECT);
+        plan.set(PROPERTIES, props);
+        plan.putArray(REQUIRED).add(TYPE).add(RATIONALE);
+        plan.put(ADDITIONAL_PROPERTIES, false);
+        return plan;
     }
 
     /**

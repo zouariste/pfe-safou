@@ -19,6 +19,7 @@
 package de.uni_passau.fim.se2.application.mapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
@@ -92,5 +93,21 @@ class TaskSequenceMapperTest {
         ObjectNode blankField = answer(task(1, "a", "a"), task(2, "b", "b"), task(3, "c", "c"));
         ((ObjectNode) blankField.get("tasks").get(2).get("contract")).put("functionSignature", " ");
         assertThrows(GenerationException.class, () -> map(blankField));
+    }
+
+    @Test
+    @DisplayName("a plan type is normalised to the taxonomy's spelling, and a plan with an unknown type is dropped")
+    void distractorPlanTypes() {
+        ObjectNode json = answer(task(1, "a", "a"), task(2, "b", "b"), task(3, "c", "c"));
+        ((ObjectNode) json.get("tasks").get(0)).putObject("distractorPlan")
+            .put("type", " off-by-one").put("rationale", "loop bound");
+        ((ObjectNode) json.get("tasks").get(1)).putObject("distractorPlan")
+            .put("type", "TYPO_ERROR").put("rationale", "?");
+
+        List<TaskDTO> tasks = map(json).getTasks();
+
+        assertEquals("{\"type\":\"OFF_BY_ONE\",\"rationale\":\"loop bound\"}", tasks.get(0).getDistractorPlan());
+        assertNull(tasks.get(1).getDistractorPlan());
+        assertNull(tasks.get(2).getDistractorPlan());
     }
 }

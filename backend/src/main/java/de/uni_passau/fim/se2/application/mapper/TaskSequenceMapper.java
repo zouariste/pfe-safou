@@ -20,13 +20,16 @@ package de.uni_passau.fim.se2.application.mapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
 import de.uni_passau.fim.se2.domain.entities.SolveContract;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
+import de.uni_passau.fim.se2.domain.model.DistractorStrategy;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -236,11 +239,7 @@ public final class TaskSequenceMapper {
                 .build();
 
             // Optional: extract distractorPlan (AP15)
-            String distractorPlanJson = null;
-            JsonNode dpNode = t.get("distractorPlan");
-            if (dpNode != null && dpNode.isObject()) {
-                distractorPlanJson = dpNode.toString();
-            }
+            String distractorPlanJson = distractorPlan(t.get("distractorPlan"), i);
 
             // TaskDTO bauen (solution & metrics werden später befüllt)
             log.debug("Building TaskDTO for task {}", i);
@@ -318,6 +317,27 @@ public final class TaskSequenceMapper {
             .codeSnippet(codeSnippet)
             .taskDescription(taskDescription)
             .build();
+    }
+
+    /**
+     * The task's distractor plan as {@code {"type", "rationale"}} JSON, or null if it has none or names no type of the
+     * taxonomy. The schema holds the type to the taxonomy, but a server that does not enforce schemas lets through
+     * spellings like "off-by-one"; those are normalised. A plan with an unknown type is dropped, so the distractor call
+     * chooses one itself rather than being handed a type it has no description for.
+     */
+    private static String distractorPlan(JsonNode plan, int taskIdx) {
+        if (plan == null || !plan.isObject()) {
+            return null;
+        }
+        String type = plan.path("type").asText("").strip().toUpperCase(Locale.ROOT).replaceAll("[\\s-]+", "_");
+        if (!DistractorStrategy.Type.isKnown(type)) {
+            log.warn("Dropping distractor plan of task {} with unknown type: {}", taskIdx, plan);
+            return null;
+        }
+        return JsonNodeFactory.instance.objectNode()
+            .put("type", type)
+            .put("rationale", plan.path("rationale").asText(""))
+            .toString();
     }
 
     // ---------- kleine Feld-Helper ----------
