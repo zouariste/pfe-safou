@@ -25,6 +25,8 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -139,6 +141,12 @@ public class OpenAiClient extends AbstractAiClient {
     private final String reasoningEffort;
 
     private static final Logger log = LoggerFactory.getLogger(OpenAiClient.class);
+
+    /** A reasoning model's thoughts in front of the answer, when the server doesn't separate them out. */
+    private static final Pattern THINK_BLOCK = Pattern.compile("^\\s*<think>.*?</think>", Pattern.DOTALL);
+
+    /** An answer wrapped in a Markdown code fence as a whole. */
+    private static final Pattern JSON_FENCE = Pattern.compile("```[\\w-]*\\s*(.*?)\\s*```", Pattern.DOTALL);
 
     /**
      * Primary constructor used by Spring.
@@ -360,14 +368,44 @@ public class OpenAiClient extends AbstractAiClient {
     JsonNode parseResponse(final HttpResponse<String> response)
         throws IOException {
         log.trace("Parsing response: {}", response.body());
-        JsonNode content = mapper.readTree(response.body())
-            .path("choices").path(0)
-            .path("message").path("content");
-        if (content.isMissingNode()) {
+        JsonNode choice = mapper.readTree(response.body()).path("choices").path(0);
+        JsonNode message = choice.path("message");
+        if (message.isMissingNode()) {
             log.error("GPT response missing required message structure");
             throw new IOException("GPT response missing required message structure");
         }
-        return mapper.readTree(content.asText());
+        String finishReason = choice.path("finish_reason").asText("");
+        // Checked before the content: a cut-off answer is usually broken JSON, and the parse
+        // error it would cause hides that the model ran out of tokens, typically by reasoning.
+        if ("length".equals(finishReason)) {
+            throw new IOException(
+                "The model's answer was cut off at its token limit"
+                    + (message.hasNonNull("reasoning_content") ? " after reasoning" : "")
+                    + " (finish_reason=length)"
+            );
+        }
+        if (message.hasNonNull("refusal")) {
+            throw new IOException("The model refused to answer: " + message.get("refusal").asText());
+        }
+        String content = message.path("content").asText("");
+        if (content.isBlank()) {
+            throw new IOException("The model's answer was empty (finish_reason=" + finishReason + ")");
+        }
+        return mapper.readTree(answerJson(content));
+    }
+
+    /**
+     * The JSON in an answer's content. With the schema enforced that is the whole content, as from OpenAI. A server
+     * that doesn't enforce it may return a reasoning model's {@code <think>} block before the JSON, or the JSON in a
+     * Markdown fence.
+     *
+     * @param content the message content
+     * @return the content without a leading think block and fence
+     */
+    static String answerJson(String content) {
+        String json = THINK_BLOCK.matcher(content).replaceFirst("").strip();
+        Matcher fence = JSON_FENCE.matcher(json);
+        return fence.matches() ? fence.group(1) : json;
     }
 
     /**
