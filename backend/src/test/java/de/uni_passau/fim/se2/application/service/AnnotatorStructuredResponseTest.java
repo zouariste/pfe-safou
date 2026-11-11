@@ -20,15 +20,20 @@ package de.uni_passau.fim.se2.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
 
@@ -70,6 +75,32 @@ class AnnotatorStructuredResponseTest {
         assertTrue(lines.get(1).contains("#group:base_1"), lines.get(1));
         assertTrue(lines.get(4).contains("#group:base_2"), lines.get(4));
         assertEquals("def fib(n):", lines.get(0));
+    }
+
+    @Test
+    @DisplayName("both annotators show the code with numbered lines, so the model need not count them")
+    void codeIsNumbered() throws Exception {
+        AiModelClient client = mock(AiModelClient.class);
+        when(client.generateJson(anyString(), anyString(), anyString(), any())).thenReturn("{}");
+        String longCode = String.join("\n", Collections.nCopies(25, "x = 1"));
+
+        new InterchangeableAnnotator(client).annotate(FIB, "python");
+        new ContextAnnotator(client).annotate(longCode, "python");
+
+        ArgumentCaptor<String> prompts = ArgumentCaptor.forClass(String.class);
+        verify(client, times(2)).generateJson(anyString(), prompts.capture(), anyString(), any());
+        String interchangeable = prompts.getAllValues().get(0);
+        String context = prompts.getAllValues().get(1);
+        assertTrue(interchangeable.contains("1 | def fib(n):\n2 |     if n == 0:"), interchangeable);
+        assertTrue(interchangeable.contains("6 |     return fib(n - 1) + fib(n - 2)"), interchangeable);
+        assertTrue(context.contains(" 1 | x = 1\n 2 | x = 1"), context);
+        assertTrue(context.contains("25 | x = 1"), context);
+    }
+
+    @Test
+    @DisplayName("numbering keeps blank lines, so the numbers match the lines the answer is applied to")
+    void numberingCountsBlankLines() {
+        assertEquals("1 | a\n2 | \n3 | b", NumberedCode.of("a\n\nb"));
     }
 
     @Test

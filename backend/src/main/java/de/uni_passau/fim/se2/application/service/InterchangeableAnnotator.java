@@ -111,6 +111,7 @@ public class InterchangeableAnnotator {
 
     private static final String USER_PROMPT_TEMPLATE = """
         Analyze this %s code and identify interchangeable lines.
+        %s
 
         CODE:
         %s
@@ -128,10 +129,10 @@ public class InterchangeableAnnotator {
 
         --- Example 1: Independent variable declarations -> #swap ---
         Code:
-        def calculate(a, b):
-            x = a * 2
-            y = b * 3
-            return x + y
+        1 | def calculate(a, b):
+        2 |     x = a * 2
+        3 |     y = b * 3
+        4 |     return x + y
 
         Response:
         {"annotations": [
@@ -142,12 +143,12 @@ public class InterchangeableAnnotator {
 
         --- Example 2: Independent if-blocks -> #group ---
         Code:
-        def fibonacci(n):
-            if n == 0:
-                return 0
-            if n == 1:
-                return 1
-            return fibonacci(n-1) + fibonacci(n-2)
+        1 | def fibonacci(n):
+        2 |     if n == 0:
+        3 |         return 0
+        4 |     if n == 1:
+        5 |         return 1
+        6 |     return fibonacci(n-1) + fibonacci(n-2)
 
         Response:
         {"annotations": [
@@ -160,10 +161,10 @@ public class InterchangeableAnnotator {
 
         --- Example 3: Dependent variables -> NO annotation ---
         Code:
-        def process(n):
-            doubled = n * 2
-            result = doubled + 1
-            return result
+        1 | def process(n):
+        2 |     doubled = n * 2
+        3 |     result = doubled + 1
+        4 |     return result
 
         Response:
         {"annotations": []}
@@ -171,13 +172,13 @@ public class InterchangeableAnnotator {
 
         --- Example 4: Mixed ---
         Code:
-        def greet_all(names):
-            greeting = "Hello"
-            separator = ", "
-            results = []
-            for name in names:
-                results.append(greeting + separator + name)
-            return results
+        1 | def greet_all(names):
+        2 |     greeting = "Hello"
+        3 |     separator = ", "
+        4 |     results = []
+        5 |     for name in names:
+        6 |         results.append(greeting + separator + name)
+        7 |     return results
 
         Response:
         {"annotations": [
@@ -206,7 +207,8 @@ public class InterchangeableAnnotator {
         }
 
         try {
-            String userPrompt = String.format(USER_PROMPT_TEMPLATE, language, solution);
+            String userPrompt = String
+                .format(USER_PROMPT_TEMPLATE, language, NumberedCode.EXPLANATION, NumberedCode.of(solution));
 
             String response = aiModelClient.generateJson(SYSTEM_PROMPT, userPrompt, "interchangeable_lines", SCHEMA);
 

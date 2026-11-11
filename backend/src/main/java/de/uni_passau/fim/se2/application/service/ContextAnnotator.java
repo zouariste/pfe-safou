@@ -95,7 +95,7 @@ public class ContextAnnotator {
     private static final String USER_PROMPT_TEMPLATE = """
         Language: %s
 
-        Code solution:
+        Code solution. %s
         ```
         %s
         ```
@@ -144,7 +144,8 @@ public class ContextAnnotator {
         }
 
         try {
-            String userPrompt = String.format(USER_PROMPT_TEMPLATE, language, solution);
+            String userPrompt = String
+                .format(USER_PROMPT_TEMPLATE, language, NumberedCode.EXPLANATION, NumberedCode.of(solution));
 
             String response = aiModelClient.generateJson(SYSTEM_PROMPT, userPrompt, "context_lines", SCHEMA);
             log.debug("ContextAnnotator LLM response: {}", response);
