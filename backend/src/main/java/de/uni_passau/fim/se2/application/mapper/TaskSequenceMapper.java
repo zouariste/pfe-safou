@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import de.uni_passau.fim.se2.domain.entities.SolveContract;
 import de.uni_passau.fim.se2.domain.entities.TaskDTO;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
+import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -74,7 +75,7 @@ public final class TaskSequenceMapper {
                 || statements.size() != NUMBER_OF_TASKS
         ) {
             log.error("Invalid number of statements in GPT response");
-            throw new IllegalArgumentException(INVALID_NUM_STATEMENTS);
+            throw new GenerationException(INVALID_NUM_STATEMENTS);
         }
 
         List<TaskDTO> tasks = new ArrayList<>();
@@ -134,7 +135,7 @@ public final class TaskSequenceMapper {
         }
         else {
             log.error("Missing required fields in GPT response");
-            throw new IllegalArgumentException(
+            throw new GenerationException(
                 "GPT response missing required field: either 'tasks' (new schema) or 'problem_statements' (legacy)."
             );
         }
@@ -156,7 +157,7 @@ public final class TaskSequenceMapper {
                 "Invalid number of tasks in GPT response: expected={}, got={}", tierCount,
                 tasksNode != null ? tasksNode.size() : 0
             );
-            throw new IllegalArgumentException("GPT response must contain exactly " + tierCount + " tasks.");
+            throw new GenerationException("GPT response must contain exactly " + tierCount + " tasks.");
         }
 
         List<TaskDTO> tasks = new ArrayList<>(tierCount);
@@ -164,21 +165,21 @@ public final class TaskSequenceMapper {
             JsonNode t = tasksNode.get(i);
             if (t == null || !t.isObject()) {
                 log.error("Invalid task object at index {}", i);
-                throw new IllegalArgumentException(TASKS_INDEX_PREFIX + i + "] must be an object.");
+                throw new GenerationException(TASKS_INDEX_PREFIX + i + "] must be an object.");
             }
 
             // tier
             int tier = t.has("tier") && t.get("tier").isInt() ? t.get("tier").asInt() : (i + 1);
             if (tier < 1 || tier > tierCount) {
                 log.error("Invalid tier {} for task {} (tierCount={})", tier, i, tierCount);
-                throw new IllegalArgumentException(TASKS_INDEX_PREFIX + i + "].tier must be 1.." + tierCount + ".");
+                throw new GenerationException(TASKS_INDEX_PREFIX + i + "].tier must be 1.." + tierCount + ".");
             }
 
             // statement
             JsonNode statementNode = t.get("statement");
             if (statementNode == null || !statementNode.isTextual() || statementNode.asText().isBlank()) {
                 log.error("Invalid statement for task {}", i);
-                throw new IllegalArgumentException(TASKS_INDEX_PREFIX + i + "].statement must be a non-empty string.");
+                throw new GenerationException(TASKS_INDEX_PREFIX + i + "].statement must be a non-empty string.");
             }
             String statement = statementNode.asText().trim();
 
@@ -186,35 +187,35 @@ public final class TaskSequenceMapper {
             JsonNode c = t.get("contract");
             if (c == null || !c.isObject()) {
                 log.error("Invalid contract for task {}", i);
-                throw new IllegalArgumentException(TASKS_INDEX_PREFIX + i + "].contract must be an object.");
+                throw new GenerationException(TASKS_INDEX_PREFIX + i + "].contract must be an object.");
             }
 
             String cLanguage = requireText(c, "language", i);
-            String cTaskStatement = requireText(c, "taskStatement", i);
             String cFunctionSignature = requireText(c, "functionSignature", i);
             String cPurposeBehavior = requireText(c, "purposeBehavior", i);
             String cPrePostConditions = requireText(c, "prePostConditions", i);
 
-            // statement == contract.taskStatement
+            // The prompt asks for contract.taskStatement to repeat the statement verbatim, but no
+            // schema can hold two fields equal, and models other than GPT often reword it. The
+            // statement is what the student sees, so the contract the solver works from uses it too.
+            String cTaskStatement = c.path("taskStatement").asText("").trim();
             if (!statement.equals(cTaskStatement)) {
-                log.error("Statement mismatch for task {}", i);
-                throw new IllegalArgumentException(
-                    TASKS_INDEX_PREFIX + i + "]: statement must equal contract.taskStatement."
-                );
+                log.debug("contract.taskStatement of task {} differs from its statement; using the statement", i);
+                cTaskStatement = statement;
             }
 
             // examples
             JsonNode exArr = c.get("examples");
             if (exArr == null || !exArr.isArray() || exArr.size() < 1 || exArr.size() > 2) {
                 log.error("Invalid examples for task {}", i);
-                throw new IllegalArgumentException(TASKS_INDEX_PREFIX + i + "].contract.examples must have 1–2 items.");
+                throw new GenerationException(TASKS_INDEX_PREFIX + i + "].contract.examples must have 1–2 items.");
             }
             List<SolveContract.ExamplePair> examples = new ArrayList<>(exArr.size());
             for (int j = 0; j < exArr.size(); j++) {
                 JsonNode ex = exArr.get(j);
                 if (ex == null || !ex.isObject()) {
                     log.error("Invalid example object for task {} example {}", i, j);
-                    throw new IllegalArgumentException(
+                    throw new GenerationException(
                         TASKS_INDEX_PREFIX + i + "].contract.examples[" + j + "] must be an object."
                     );
                 }
@@ -281,7 +282,7 @@ public final class TaskSequenceMapper {
         JsonNode statementsNode = json.get("problem_statements");
         if (statementsNode == null || !statementsNode.isArray() || statementsNode.size() != NUMBER_OF_TASKS) {
             log.error("Invalid number of statements in legacy GPT response");
-            throw new IllegalArgumentException(INVALID_NUM_STATEMENTS);
+            throw new GenerationException(INVALID_NUM_STATEMENTS);
         }
 
         List<TaskDTO> tasks = new ArrayList<>(NUMBER_OF_TASKS);
@@ -325,14 +326,14 @@ public final class TaskSequenceMapper {
         JsonNode n = obj.get(field);
         if (n == null || !n.isTextual()) {
             log.error("Missing or invalid field {} for task {}", field, taskIdx);
-            throw new IllegalArgumentException(
+            throw new GenerationException(
                 TASKS_INDEX_PREFIX + taskIdx + "].contract." + field + " must be a string."
             );
         }
         String s = n.asText().trim();
         if (s.isEmpty()) {
             log.error("Empty field {} for task {}", field, taskIdx);
-            throw new IllegalArgumentException(
+            throw new GenerationException(
                 TASKS_INDEX_PREFIX + taskIdx + "].contract." + field + " must not be blank."
             );
         }
@@ -343,7 +344,7 @@ public final class TaskSequenceMapper {
         JsonNode n = obj.get(field);
         if (n == null || !n.isTextual()) {
             log.error("Missing or invalid field {} for task {} example {}", field, taskIdx, exIdx);
-            throw new IllegalArgumentException(
+            throw new GenerationException(
                 TASKS_INDEX_PREFIX + taskIdx + "].contract.examples[" + exIdx + "]." + field + " must be a string."
             );
         }
