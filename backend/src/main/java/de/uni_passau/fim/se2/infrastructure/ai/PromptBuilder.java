@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import de.uni_passau.fim.se2.application.service.JsonSchemas;
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
 import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
 import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
@@ -81,6 +82,51 @@ public class PromptBuilder {
     private static final String ENGLISH = "en";
     private static final String RATIONALE = "rationale";
     private static final String DISTRACTOR_PLAN = "distractorPlan";
+
+    /**
+     * The split plan's answer. Spelled out as a schema rather than left to {@code json_object}: only GPT reliably kept
+     * to the shape the prompt shows, and an answer with another shape silently lost the split.
+     */
+    static final JsonNode SPLIT_PLAN_SCHEMA = JsonSchemas.parse("""
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["splits"],
+          "properties": {
+            "splits": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["lineIndex", "fragments", "prefix", "suffix"],
+                "properties": {
+                  "lineIndex": {"type": "integer"},
+                  "fragments": {"type": "array", "items": {"type": "string"}},
+                  "prefix": {"type": "string"},
+                  "suffix": {"type": "string"}
+                }
+              }
+            }
+          }
+        }
+        """);
+
+    /** The split distractor's answer; an empty {@code text} declines. */
+    static final JsonNode SPLIT_DISTRACTOR_SCHEMA = JsonSchemas.parse("""
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fragmentIndex", "text", "type"],
+          "properties": {
+            "fragmentIndex": {"type": "integer"},
+            "text": {"type": "string"},
+            "type": {
+              "type": "string",
+              "enum": ["OFF_BY_ONE", "LOGIC_FLIP", "VARIABLE_MISMATCH", "BOUNDARY_IDENTITY", "WRONG_SHAPE"]
+            }
+          }
+        }
+        """);
 
     /**
      * Object mapper used for constructing prompts.
@@ -1279,12 +1325,19 @@ public class PromptBuilder {
         messages.addObject().put(ROLE, ROLE_SYSTEM).put(CONTENT, systemPrompt);
         messages.addObject().put(ROLE, ROLE_USER).put(CONTENT, userPrompt);
 
+        json.set(RESPONSE_FORMAT, jsonSchemaFormat(schemaName, schema));
+        return json;
+    }
+
+    /** A strict {@code response_format} holding the answer to the given schema. */
+    private ObjectNode jsonSchemaFormat(final String schemaName, final JsonNode schema) {
         ObjectNode jsonSchema = mapper.createObjectNode();
         jsonSchema.put(NAME, schemaName);
         jsonSchema.put(STRICT, true);
         jsonSchema.set(SCHEMA, schema);
-        json.putObject(RESPONSE_FORMAT).put(TYPE, JSON_SCHEMA).set(JSON_SCHEMA, jsonSchema);
-        return json;
+        ObjectNode format = mapper.createObjectNode().put(TYPE, JSON_SCHEMA);
+        format.set(JSON_SCHEMA, jsonSchema);
+        return format;
     }
 
     /**
@@ -1442,7 +1495,7 @@ public class PromptBuilder {
         messages.add(mapper.createObjectNode().put(ROLE, ROLE_USER).put(CONTENT, userPrompt));
 
         json.set(MESSAGES, messages);
-        json.set(RESPONSE_FORMAT, mapper.createObjectNode().put(TYPE, "json_object"));
+        json.set(RESPONSE_FORMAT, jsonSchemaFormat("split_plan_response", SPLIT_PLAN_SCHEMA));
         return json;
     }
 
@@ -1486,7 +1539,8 @@ public class PromptBuilder {
             1. Either kind must be genuinely WRONG (changes behaviour), not a cosmetic re-spelling of a correct fragment.
             2. Difficulty guide: lower tiers suit WRONG_SHAPE (easier, obvious); higher tiers suit a \
                FITTING distractor (harder). Guidance only — pick whatever is most instructive here.
-            3. If nothing instructive applies, decline by returning {"text": ""}.
+            3. If nothing instructive applies, decline by returning an empty "text" (with fragmentIndex -1 and \
+               type WRONG_SHAPE).
             4. Output JSON only — no #distractor/#swap/#group, no markdown.""";
 
         messages.add(mapper.createObjectNode().put(ROLE, ROLE_SYSTEM).put(CONTENT, systemPrompt));
@@ -1505,7 +1559,7 @@ public class PromptBuilder {
             Fragments (0-based; each is one slot):
             %s
             Return ONLY: {"fragmentIndex":<0-based int, or -1 for WRONG_SHAPE>,"text":"<wrong chip>","type":"<TYPE>"}
-            Decline with {"text": ""} if nothing instructive applies.""".formatted(
+            Decline with an empty "text" if nothing instructive applies.""".formatted(
             language, taskStatement, tierLevel,
             prefix == null ? "" : prefix, suffix == null ? "" : suffix, fragList.toString()
         );
@@ -1513,7 +1567,7 @@ public class PromptBuilder {
         messages.add(mapper.createObjectNode().put(ROLE, ROLE_USER).put(CONTENT, userPrompt));
 
         json.set(MESSAGES, messages);
-        json.set(RESPONSE_FORMAT, mapper.createObjectNode().put(TYPE, "json_object"));
+        json.set(RESPONSE_FORMAT, jsonSchemaFormat("split_distractor_response", SPLIT_DISTRACTOR_SCHEMA));
         return json;
     }
 
