@@ -1090,7 +1090,12 @@ public class PromptBuilder {
             + "No markdown/backticks, no explanations, no extra keys, no text outside JSON.\n\n"
             + "Rules:\n"
             + "- Put the entire solution as the string value of \"code\" (escape as needed).\n"
-            + "- Single file; use only the standard library.\n"
+            // Same rule as in buildSolveRequest: "single file" alone gets a whole program from models
+            // other than GPT-4.1, and this solution becomes the reference snippet concepts are read from.
+            + "- Write only the function or method that solves the task, preceded by the imports it needs. "
+            + "No enclosing class, no main method, no `if __name__ == \"__main__\":` block, and no example "
+            + "calls, tests or prints of results, unless the task explicitly asks for a complete program.\n"
+            + "- Use only the standard library, and import only what the solution uses.\n"
             + "- No file/network I/O unless the task explicitly requires it.\n"
             + "- Obey the specified language.\n"
             + "- Prefer clear, minimal, idiomatic code.";

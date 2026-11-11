@@ -33,6 +33,7 @@ import org.springframework.beans.factory.annotation.Value;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 
 import de.uni_passau.fim.se2.application.service.CodeSanitizerService;
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
@@ -215,7 +216,11 @@ public class OpenAiClient extends AbstractAiClient {
         JsonNode parsed = parseResponse(response);
         JsonNode codeNode = validateAndGetField(parsed, CODE);
         validateTextField(codeNode, CODE);
-        return codeNode;
+        // This solution becomes the sequence's reference snippet and the code concepts are read
+        // from, so a class wrapper, main method or example calls the model added despite the
+        // prompt would show up as concepts the teacher never asked for.
+        String code = sanitizer.removeScaffolding(sanitize(codeNode.asText(), language), language);
+        return TextNode.valueOf(code);
     }
 
     /**
