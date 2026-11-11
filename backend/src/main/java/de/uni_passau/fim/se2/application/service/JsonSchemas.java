@@ -25,7 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * Turns the JSON schemas the services ask the LLM to answer in into {@link JsonNode}s.
  */
-final class JsonSchemas {
+public final class JsonSchemas {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -39,7 +39,7 @@ final class JsonSchemas {
      * @return the parsed schema
      * @throws IllegalArgumentException if the text is not valid JSON, which is a programming error
      */
-    static JsonNode parse(String json) {
+    public static JsonNode parse(String json) {
         try {
             return MAPPER.readTree(json);
         }

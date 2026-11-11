@@ -26,12 +26,38 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import de.uni_passau.fim.se2.application.service.JsonSchemas;
 import de.uni_passau.fim.se2.domain.interfaces.AiModelClient;
 
 @Service
 public class HintExplainer {
 
     private static final Logger log = LoggerFactory.getLogger(HintExplainer.class);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /**
+     * The answer's shape. Its own schema: the task-description request this used before forces {"task": "<text>"}, and
+     * a model that sees only that field name may write a task description into it.
+     */
+    static final JsonNode SCHEMA = JsonSchemas.parse("""
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["explanation"],
+          "properties": {
+            "explanation": {"type": "string"}
+          }
+        }
+        """);
+
+    private static final String SYSTEM_PROMPT = """
+        You are a programming tutor giving a student a hint on a Parsons puzzle.
+        Answer with a JSON object whose "explanation" field holds the explanation for the student,
+        written as the user message asks, and nothing else.""";
+
     private final AiModelClient aiModelClient;
 
     public HintExplainer(AiModelClient aiModelClient) {
@@ -213,16 +239,27 @@ public class HintExplainer {
             );
             log.debug("LLM prompt:\n{}", prompt);
 
-            String response = aiModelClient.generateTaskDescription(studentCode, prompt.toString());
+            String response = aiModelClient.generateJson(
+                SYSTEM_PROMPT, prompt.toString(), "hint_explanation", SCHEMA
+            );
             log.info("LLM response: {}", response);
-            return response;
+            String explanation = response == null ? "" : MAPPER.readTree(response).path("explanation").asText("");
+            if (explanation.isBlank()) {
+                log.warn("LLM explanation was empty: {}", response);
+                return fallback(locale);
+            }
+            return explanation.strip();
 
         }
         catch (IOException | InterruptedException | RuntimeException e) {
             log.error("LLM explanation failed", e);
-            return locale == HintLocale.EN
-                ? "The explanation could not be generated. Take a closer look at the highlighted blocks."
-                : "Erklärung konnte nicht generiert werden. Schau dir die markierten Blöcke genauer an.";
+            return fallback(locale);
         }
+    }
+
+    private static String fallback(HintLocale locale) {
+        return locale == HintLocale.EN
+            ? "The explanation could not be generated. Take a closer look at the highlighted blocks."
+            : "Erklärung konnte nicht generiert werden. Schau dir die markierten Blöcke genauer an.";
     }
 }
