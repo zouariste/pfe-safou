@@ -334,18 +334,7 @@ public class TaskGeneratorService {
                 // pipeline, which on a slow self-hosted model takes minutes, and the next result may be
                 // too long as well. The sequence is saved with a warning and the teacher decides whether
                 // to keep it, discard it, or try again.
-                List<LocLimitWarning.TaskLoc> tooLong = SequenceValidator.tasksOverLocLimit(seq, effectiveMaxLoc);
-                if (tooLong.isEmpty()) {
-                    log.info("Generation successful on attempt {}", attempt);
-                }
-                else {
-                    log.warn(
-                        "Generated on attempt {} with tasks over the {}-line limit: {}; leaving the decision"
-                            + " to the teacher",
-                        attempt, effectiveMaxLoc, tooLong
-                    );
-                    seq.setLocWarning(new LocLimitWarning(effectiveMaxLoc, tooLong));
-                }
+                warnAboutTooLongTasks(seq, effectiveMaxLoc, attempt);
 
                 seq.setOwnerId(ownerId);
                 handlePersistence(seq);
@@ -389,6 +378,21 @@ public class TaskGeneratorService {
         }
 
         throw new IllegalStateException("Task generation failed after " + maxAttempts + " attempts");
+    }
+
+    /** Attaches a warning to the sequence if any of its tasks is over the line limit. */
+    private static void warnAboutTooLongTasks(TieredTaskSequenceDTO seq, int maxLoc, int attempt) {
+        List<LocLimitWarning.TaskLoc> tooLong = SequenceValidator.tasksOverLocLimit(seq, maxLoc);
+        if (tooLong.isEmpty()) {
+            log.info("Generation successful on attempt {}", attempt);
+        }
+        else {
+            log.warn(
+                "Generated on attempt {} with tasks over the {}-line limit: {}; leaving the decision to the teacher",
+                attempt, maxLoc, tooLong
+            );
+            seq.setLocWarning(new LocLimitWarning(maxLoc, tooLong));
+        }
     }
 
     private void handlePersistence(TieredTaskSequenceDTO enrichedSequence) {
