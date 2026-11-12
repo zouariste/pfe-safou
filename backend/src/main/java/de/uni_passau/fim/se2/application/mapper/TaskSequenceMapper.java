@@ -144,7 +144,6 @@ public final class TaskSequenceMapper {
         }
     }
 
-    @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
     private static TieredTaskSequenceDTO mapFromContracts(
         final JsonNode json,
         final List<String> concepts,
@@ -165,98 +164,7 @@ public final class TaskSequenceMapper {
 
         List<TaskDTO> tasks = new ArrayList<>(tierCount);
         for (int i = 0; i < tierCount; i++) {
-            JsonNode t = tasksNode.get(i);
-            if (t == null || !t.isObject()) {
-                log.error("Invalid task object at index {}", i);
-                throw new GenerationException(TASKS_INDEX_PREFIX + i + "] must be an object.");
-            }
-
-            // tier
-            int tier = t.has("tier") && t.get("tier").isInt() ? t.get("tier").asInt() : (i + 1);
-            if (tier < 1 || tier > tierCount) {
-                log.error("Invalid tier {} for task {} (tierCount={})", tier, i, tierCount);
-                throw new GenerationException(TASKS_INDEX_PREFIX + i + "].tier must be 1.." + tierCount + ".");
-            }
-
-            // statement
-            JsonNode statementNode = t.get("statement");
-            if (statementNode == null || !statementNode.isTextual() || statementNode.asText().isBlank()) {
-                log.error("Invalid statement for task {}", i);
-                throw new GenerationException(TASKS_INDEX_PREFIX + i + "].statement must be a non-empty string.");
-            }
-            String statement = statementNode.asText().trim();
-
-            // contract
-            JsonNode c = t.get("contract");
-            if (c == null || !c.isObject()) {
-                log.error("Invalid contract for task {}", i);
-                throw new GenerationException(TASKS_INDEX_PREFIX + i + "].contract must be an object.");
-            }
-
-            String cLanguage = requireText(c, "language", i);
-            String cFunctionSignature = requireText(c, "functionSignature", i);
-            String cPurposeBehavior = requireText(c, "purposeBehavior", i);
-            String cPrePostConditions = requireText(c, "prePostConditions", i);
-
-            // The prompt asks for contract.taskStatement to repeat the statement verbatim, but no
-            // schema can hold two fields equal, and models other than GPT often reword it. The
-            // statement is what the student sees, so the contract the solver works from uses it too.
-            String cTaskStatement = c.path("taskStatement").asText("").trim();
-            if (!statement.equals(cTaskStatement)) {
-                log.debug("contract.taskStatement of task {} differs from its statement; using the statement", i);
-                cTaskStatement = statement;
-            }
-
-            // examples
-            JsonNode exArr = c.get("examples");
-            if (exArr == null || !exArr.isArray() || exArr.size() < 1 || exArr.size() > 2) {
-                log.error("Invalid examples for task {}", i);
-                throw new GenerationException(TASKS_INDEX_PREFIX + i + "].contract.examples must have 1–2 items.");
-            }
-            List<SolveContract.ExamplePair> examples = new ArrayList<>(exArr.size());
-            for (int j = 0; j < exArr.size(); j++) {
-                JsonNode ex = exArr.get(j);
-                if (ex == null || !ex.isObject()) {
-                    log.error("Invalid example object for task {} example {}", i, j);
-                    throw new GenerationException(
-                        TASKS_INDEX_PREFIX + i + "].contract.examples[" + j + "] must be an object."
-                    );
-                }
-                String in = requireText(ex, "input", i, j);
-                String out = requireText(ex, "output", i, j);
-                examples.add(new SolveContract.ExamplePair(in, out));
-            }
-
-            // SolveContract bauen
-            log.debug("Building contract for task {}", i);
-            SolveContract contract = SolveContract.builder()
-                .language(cLanguage)
-                .taskStatement(cTaskStatement)
-                .functionSignature(cFunctionSignature)
-                .purposeBehavior(cPurposeBehavior)
-                .prePostConditions(cPrePostConditions)
-                .examples(examples)
-                .build();
-
-            // Optional: extract distractorPlan (AP15)
-            String distractorPlanJson = distractorPlan(t.get("distractorPlan"), i);
-
-            // TaskDTO bauen (solution & metrics werden später befüllt)
-            log.debug("Building TaskDTO for task {}", i);
-            tasks.add(
-                TaskDTO.builder()
-                    .statement(statement)
-                    .contract(contract)
-                    .solution("")
-                    .tierLevel(tier)
-                    .cyclomaticComplexity(0)
-                    .maximalNestingDepth(0)
-                    .methodCallCount(0)
-                    .distinctIdentifierCount(0)
-                    .linesOfCode(0)
-                    .distractorPlan(distractorPlanJson)
-                    .build()
-            );
+            tasks.add(contractTask(tasksNode.get(i), i, tierCount));
         }
 
         log.debug("Building TieredTaskSequenceDTO (tierCount={})", tierCount);
@@ -268,6 +176,102 @@ public final class TaskSequenceMapper {
             .taskDescription(taskDescription)
             .tierCount(tierCount)
             .build();
+    }
+
+    /** The task at index {@code i} of the contracts schema, without its solution and metrics yet. */
+    private static TaskDTO contractTask(JsonNode t, int i, int tierCount) {
+        if (t == null || !t.isObject()) {
+            log.error("Invalid task object at index {}", i);
+            throw new GenerationException(TASKS_INDEX_PREFIX + i + "] must be an object.");
+        }
+        int tier = tier(t, i, tierCount);
+        String statement = statement(t, i);
+        SolveContract contract = contract(t.get("contract"), i, statement);
+
+        // TaskDTO bauen (solution & metrics werden später befüllt)
+        log.debug("Building TaskDTO for task {}", i);
+        return TaskDTO.builder()
+            .statement(statement)
+            .contract(contract)
+            .solution("")
+            .tierLevel(tier)
+            .cyclomaticComplexity(0)
+            .maximalNestingDepth(0)
+            .methodCallCount(0)
+            .distinctIdentifierCount(0)
+            .linesOfCode(0)
+            // Optional: extract distractorPlan (AP15)
+            .distractorPlan(distractorPlan(t.get("distractorPlan"), i))
+            .build();
+    }
+
+    private static int tier(JsonNode t, int i, int tierCount) {
+        int tier = t.has("tier") && t.get("tier").isInt() ? t.get("tier").asInt() : (i + 1);
+        if (tier < 1 || tier > tierCount) {
+            log.error("Invalid tier {} for task {} (tierCount={})", tier, i, tierCount);
+            throw new GenerationException(TASKS_INDEX_PREFIX + i + "].tier must be 1.." + tierCount + ".");
+        }
+        return tier;
+    }
+
+    private static String statement(JsonNode t, int i) {
+        JsonNode statementNode = t.get("statement");
+        if (statementNode == null || !statementNode.isTextual() || statementNode.asText().isBlank()) {
+            log.error("Invalid statement for task {}", i);
+            throw new GenerationException(TASKS_INDEX_PREFIX + i + "].statement must be a non-empty string.");
+        }
+        return statementNode.asText().trim();
+    }
+
+    private static SolveContract contract(JsonNode c, int i, String statement) {
+        if (c == null || !c.isObject()) {
+            log.error("Invalid contract for task {}", i);
+            throw new GenerationException(TASKS_INDEX_PREFIX + i + "].contract must be an object.");
+        }
+
+        String cLanguage = requireText(c, "language", i);
+        String cFunctionSignature = requireText(c, "functionSignature", i);
+        String cPurposeBehavior = requireText(c, "purposeBehavior", i);
+        String cPrePostConditions = requireText(c, "prePostConditions", i);
+
+        // The prompt asks for contract.taskStatement to repeat the statement verbatim, but no
+        // schema can hold two fields equal, and models other than GPT often reword it. The
+        // statement is what the student sees, so the contract the solver works from uses it too.
+        if (!statement.equals(c.path("taskStatement").asText("").trim())) {
+            log.debug("contract.taskStatement of task {} differs from its statement; using the statement", i);
+        }
+
+        // SolveContract bauen
+        log.debug("Building contract for task {}", i);
+        return SolveContract.builder()
+            .language(cLanguage)
+            .taskStatement(statement)
+            .functionSignature(cFunctionSignature)
+            .purposeBehavior(cPurposeBehavior)
+            .prePostConditions(cPrePostConditions)
+            .examples(examples(c.get("examples"), i))
+            .build();
+    }
+
+    private static List<SolveContract.ExamplePair> examples(JsonNode exArr, int i) {
+        if (exArr == null || !exArr.isArray() || exArr.size() < 1 || exArr.size() > 2) {
+            log.error("Invalid examples for task {}", i);
+            throw new GenerationException(TASKS_INDEX_PREFIX + i + "].contract.examples must have 1–2 items.");
+        }
+        List<SolveContract.ExamplePair> examples = new ArrayList<>(exArr.size());
+        for (int j = 0; j < exArr.size(); j++) {
+            JsonNode ex = exArr.get(j);
+            if (ex == null || !ex.isObject()) {
+                log.error("Invalid example object for task {} example {}", i, j);
+                throw new GenerationException(
+                    TASKS_INDEX_PREFIX + i + "].contract.examples[" + j + "] must be an object."
+                );
+            }
+            String in = requireText(ex, "input", i, j);
+            String out = requireText(ex, "output", i, j);
+            examples.add(new SolveContract.ExamplePair(in, out));
+        }
+        return examples;
     }
 
     private static TieredTaskSequenceDTO mapFromLegacyProblemStatements(
