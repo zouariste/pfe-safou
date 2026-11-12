@@ -125,7 +125,7 @@ public class HintExplainer {
      * @param locale                    the language to write the explanation in
      * @return the explanation, or a generic pointer to the highlighted blocks if the LLM call fails
      */
-    @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
+    @SuppressWarnings("checkstyle:MethodLength")
     public String explain(
         List<BlockMapper.BlockFinding> blockFindings, String studentCode,
         String correctSolution, String language,
@@ -134,9 +134,7 @@ public class HintExplainer {
         HintLocale locale
     ) {
         try {
-            // Capitalise language for the prompt (e.g. "java" → "Java", "python" → "Python")
-            String lang = language == null ? "Java"
-                : language.substring(0, 1).toUpperCase(Locale.ROOT) + language.substring(1).toLowerCase(Locale.ROOT);
+            String lang = displayName(language);
 
             StringBuilder prompt = new StringBuilder();
 
@@ -170,67 +168,21 @@ public class HintExplainer {
 
             // Distractors in solution space
             if (!distractorBlockIndices.isEmpty()) {
-                prompt.append("- DISTRAKTOR");
-                if (distractorBlockIndices.size() > 1) {
-                    prompt.append("EN");
-                }
-                prompt.append(" IM LÖSUNGSBEREICH: Block");
-                if (distractorBlockIndices.size() > 1) {
-                    prompt.append("e");
-                }
-                prompt.append(" ");
-                for (int i = 0; i < distractorBlockIndices.size(); i++) {
-                    if (i > 0) {
-                        prompt.append(", ");
-                    }
-                    prompt.append(BlockLabels.of(distractorBlockIndices.get(i)));
-                }
-                prompt.append(" gehör");
-                prompt.append(distractorBlockIndices.size() == 1 ? "t" : "en");
-                prompt.append(" nicht zur Lösung und mus");
-                prompt.append(distractorBlockIndices.size() == 1 ? "s" : "sen");
-                prompt.append(" zurück in den Quellbereich.\n");
+                appendDistractorProblem(prompt, distractorBlockIndices);
             }
 
             // Static analysis findings
-            if (!blockFindings.isEmpty()) {
-                for (BlockMapper.BlockFinding bf : blockFindings) {
-                    AnalysisFinding f = bf.finding();
-                    prompt.append("- Block ").append(BlockLabels.of(bf.blockIndex())).append(": ")
-                        .append(f.message()).append(" [").append(f.ruleId()).append("]\n");
-                }
+            for (BlockMapper.BlockFinding bf : blockFindings) {
+                AnalysisFinding f = bf.finding();
+                prompt.append("- Block ").append(BlockLabels.of(bf.blockIndex())).append(": ")
+                    .append(f.message()).append(" [").append(f.ruleId()).append("]\n");
             }
 
             if (!tooFewBlocks && distractorBlockIndices.isEmpty() && blockFindings.isEmpty()) {
                 prompt.append("- Keine statischen Fehler, aber die Reihenfolge ist noch nicht korrekt.\n");
             }
 
-            // --- Instruction ---
-            // This decides the answer language. The context above stays German
-            // either way: it is input for the model, not output.
-            if (locale == HintLocale.EN) {
-                prompt.append("\nExplain to the student in English what is wrong. ")
-                    // The example has to use a letter. With "Block 3" here the
-                    // model copied the numeric style regardless of the letters
-                    // it was given above, and the answer then disagreed with
-                    // the badge on the block.
-                    .append("Refer to a block by the letter it is given above, never by a number ")
-                    .append("— write \"Block C\", not \"Block 3\". ")
-                    .append("Be direct and concrete. ")
-                    .append("Do not reveal the full solution. ")
-                    .append("No technical rule IDs. ")
-                    .append("Three sentences at most. No opening pleasantry such as \"Sure\" or \"Of course\".");
-            }
-            else {
-                prompt.append("\nErkläre dem Schüler auf Deutsch, was falsch ist. ")
-                    .append("Nenne einen Block immer mit dem Buchstaben, der oben steht, nie mit einer Zahl ")
-                    .append("— schreibe \"Block C\", nicht \"Block 3\". ")
-                    .append("Sei direkt und konkret. ")
-                    .append("Verrate nicht die vollständige Lösung. ")
-                    .append("Keine technischen Rule-IDs. ")
-                    .append("Maximal 3 Sätze. Kein einleitender Satz wie \"Natürlich\" oder \"Gerne\". ")
-                    .append("Schreibe korrektes Deutsch mit Umlauten (ä, ö, ü, ß).");
-            }
+            appendInstruction(prompt, locale);
 
             log.info(
                 "HintExplainer: lang={}, tooFewBlocks={} ({}/{}), distractors={}, findings={}",
@@ -243,7 +195,7 @@ public class HintExplainer {
                 SYSTEM_PROMPT, prompt.toString(), "hint_explanation", SCHEMA
             );
             log.info("LLM response: {}", response);
-            String explanation = response == null ? "" : MAPPER.readTree(response).path("explanation").asText("");
+            String explanation = explanationOf(response);
             if (explanation.isBlank()) {
                 log.warn("LLM explanation was empty: {}", response);
                 return fallback(locale);
@@ -255,6 +207,70 @@ public class HintExplainer {
             log.error("LLM explanation failed", e);
             return fallback(locale);
         }
+    }
+
+    /** Capitalises the language for the prompt (e.g. "java" → "Java", "python" → "Python"). */
+    private static String displayName(String language) {
+        return language == null ? "Java"
+            : language.substring(0, 1).toUpperCase(Locale.ROOT) + language.substring(1).toLowerCase(Locale.ROOT);
+    }
+
+    /** Names the distractor blocks in the solution space, in singular or plural. */
+    private static void appendDistractorProblem(StringBuilder prompt, List<Integer> indices) {
+        prompt.append("- DISTRAKTOR");
+        if (indices.size() > 1) {
+            prompt.append("EN");
+        }
+        prompt.append(" IM LÖSUNGSBEREICH: Block");
+        if (indices.size() > 1) {
+            prompt.append("e");
+        }
+        prompt.append(" ");
+        for (int i = 0; i < indices.size(); i++) {
+            if (i > 0) {
+                prompt.append(", ");
+            }
+            prompt.append(BlockLabels.of(indices.get(i)));
+        }
+        prompt.append(" gehör");
+        prompt.append(indices.size() == 1 ? "t" : "en");
+        prompt.append(" nicht zur Lösung und mus");
+        prompt.append(indices.size() == 1 ? "s" : "sen");
+        prompt.append(" zurück in den Quellbereich.\n");
+    }
+
+    /**
+     * Tells the model how to answer. This decides the answer language; the context above stays German either way: it is
+     * input for the model, not output.
+     */
+    private static void appendInstruction(StringBuilder prompt, HintLocale locale) {
+        if (locale == HintLocale.EN) {
+            prompt.append("\nExplain to the student in English what is wrong. ")
+                // The example has to use a letter. With "Block 3" here the
+                // model copied the numeric style regardless of the letters
+                // it was given above, and the answer then disagreed with
+                // the badge on the block.
+                .append("Refer to a block by the letter it is given above, never by a number ")
+                .append("— write \"Block C\", not \"Block 3\". ")
+                .append("Be direct and concrete. ")
+                .append("Do not reveal the full solution. ")
+                .append("No technical rule IDs. ")
+                .append("Three sentences at most. No opening pleasantry such as \"Sure\" or \"Of course\".");
+        }
+        else {
+            prompt.append("\nErkläre dem Schüler auf Deutsch, was falsch ist. ")
+                .append("Nenne einen Block immer mit dem Buchstaben, der oben steht, nie mit einer Zahl ")
+                .append("— schreibe \"Block C\", nicht \"Block 3\". ")
+                .append("Sei direkt und konkret. ")
+                .append("Verrate nicht die vollständige Lösung. ")
+                .append("Keine technischen Rule-IDs. ")
+                .append("Maximal 3 Sätze. Kein einleitender Satz wie \"Natürlich\" oder \"Gerne\". ")
+                .append("Schreibe korrektes Deutsch mit Umlauten (ä, ö, ü, ß).");
+        }
+    }
+
+    private static String explanationOf(String response) throws IOException {
+        return response == null ? "" : MAPPER.readTree(response).path("explanation").asText("");
     }
 
     private static String fallback(HintLocale locale) {
