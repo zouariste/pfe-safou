@@ -50,6 +50,21 @@ public class ContextAnnotator {
     private final AiModelClient aiModelClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * {"contextLines": [int]}. Its own schema: the task-description request it used before forces {"task": "<text>"},
+     * and only some models put the context JSON inside that string.
+     */
+    static final JsonNode SCHEMA = JsonSchemas.parse("""
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contextLines"],
+          "properties": {
+            "contextLines": {"type": "array", "items": {"type": "integer"}}
+          }
+        }
+        """);
+
     private static final int MAX_PUZZLE_LINES = 20;
 
     private static final String SYSTEM_PROMPT = """
@@ -80,7 +95,7 @@ public class ContextAnnotator {
     private static final String USER_PROMPT_TEMPLATE = """
         Language: %s
 
-        Code solution:
+        Code solution. %s
         ```
         %s
         ```
@@ -129,9 +144,10 @@ public class ContextAnnotator {
         }
 
         try {
-            String userPrompt = String.format(USER_PROMPT_TEMPLATE, language, solution);
+            String userPrompt = String
+                .format(USER_PROMPT_TEMPLATE, language, NumberedCode.EXPLANATION, NumberedCode.of(solution));
 
-            String response = aiModelClient.generateTaskDescription(solution, SYSTEM_PROMPT, userPrompt);
+            String response = aiModelClient.generateJson(SYSTEM_PROMPT, userPrompt, "context_lines", SCHEMA);
             log.debug("ContextAnnotator LLM response: {}", response);
 
             List<Integer> contextLines = parseContextLines(response);
@@ -141,16 +157,14 @@ public class ContextAnnotator {
                 return new ContextResult(solution, null, null);
             }
 
-            // Validate: puzzle portion must be <= MAX_PUZZLE_LINES
-            String[] lines = solution.split(NEWLINE, -1);
-            Set<Integer> contextSet = new HashSet<>(contextLines);
-            long puzzleLineCount = 0;
-            for (int i = 0; i < lines.length; i++) {
-                if (!lines[i].trim().isEmpty() && !contextSet.contains(i + 1)) {
-                    puzzleLineCount++;
-                }
+            ContextResult separated = separateContext(solution, new HashSet<>(contextLines));
+            if (separated == null) {
+                log.warn("Every line was marked as context, skipping context annotation");
+                return new ContextResult(solution, null, null);
             }
 
+            // Validate: puzzle portion must be <= MAX_PUZZLE_LINES
+            long puzzleLineCount = separated.puzzleSolution().lines().filter(l -> !l.isBlank()).count();
             if (puzzleLineCount > MAX_PUZZLE_LINES) {
                 log.warn(
                     "Puzzle portion has {} lines (> {}), skipping context annotation",
@@ -158,8 +172,7 @@ public class ContextAnnotator {
                 );
                 return new ContextResult(solution, null, null);
             }
-
-            return separateContext(solution, contextSet);
+            return separated;
 
         }
         catch (Exception e) {
@@ -198,35 +211,37 @@ public class ContextAnnotator {
     }
 
     /**
-     * Separates solution into contextBefore, puzzleSolution, contextAfter. Context lines form contiguous blocks at
-     * start and/or end. Lines with #swap/#group/#distractor markers are never treated as context.
+     * Separates solution into contextBefore, puzzleSolution, contextAfter. Only context lines above the first puzzle
+     * line go to contextBefore and only those below the last one to contextAfter, since that is where they are shown. A
+     * line marked as context between two puzzle lines stays in the puzzle, in its place: moving it out would reorder
+     * the program. Lines with #swap/#group/#distractor markers are never treated as context.
+     *
+     * @return the separated solution, or null if every non-empty line is context and no puzzle would be left
      */
     private ContextResult separateContext(String solution, Set<Integer> contextLineNumbers) {
         String[] lines = solution.split(NEWLINE, -1);
+        int firstPuzzle = nextPuzzleLine(lines, contextLineNumbers, 0, 1);
+        if (firstPuzzle < 0) {
+            return null;
+        }
+        int lastPuzzle = nextPuzzleLine(lines, contextLineNumbers, lines.length - 1, -1);
+
         List<String> beforeLines = new ArrayList<>();
         List<String> puzzleLines = new ArrayList<>();
         List<String> afterLines = new ArrayList<>();
-        boolean puzzleStarted = false;
-
         for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            boolean isContext = contextLineNumbers.contains(i + 1)
-                && !line.trim().isEmpty()
-                && !hasPuzzleMarker(line);
-
-            if (isContext) {
-                if (!puzzleStarted) {
-                    beforeLines.add(line);
-                }
-                else {
-                    afterLines.add(line);
-                }
+            boolean context = isContext(lines[i], i, contextLineNumbers);
+            if (context && i < firstPuzzle) {
+                beforeLines.add(lines[i]);
+            }
+            else if (context && i > lastPuzzle) {
+                afterLines.add(lines[i]);
             }
             else {
-                if (!line.trim().isEmpty()) {
-                    puzzleStarted = true;
+                if (context) {
+                    log.debug("Line {} was marked as context but lies inside the puzzle; keeping it there", i + 1);
                 }
-                puzzleLines.add(line);
+                puzzleLines.add(lines[i]);
             }
         }
 
@@ -240,6 +255,24 @@ public class ContextAnnotator {
         );
 
         return new ContextResult(puzzle, ctxBefore, ctxAfter);
+    }
+
+    /**
+     * The 0-based index of the first puzzle line (non-empty and not context) from {@code start} in direction
+     * {@code step}, or -1 if there is none.
+     */
+    private static int nextPuzzleLine(String[] lines, Set<Integer> contextLineNumbers, int start, int step) {
+        for (int i = start; i >= 0 && i < lines.length; i += step) {
+            if (!lines[i].isBlank() && !isContext(lines[i], i, contextLineNumbers)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** Whether the line at 0-based {@code index} was marked as context and can be. */
+    private static boolean isContext(String line, int index, Set<Integer> contextLineNumbers) {
+        return contextLineNumbers.contains(index + 1) && !line.isBlank() && !hasPuzzleMarker(line);
     }
 
     /** Swap/group/distractor markers belong to puzzle lines, so such a line is never context. */

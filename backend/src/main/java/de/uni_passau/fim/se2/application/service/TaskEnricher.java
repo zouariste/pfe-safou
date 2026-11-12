@@ -225,46 +225,33 @@ public final class TaskEnricher {
      * Internally parallelizes independent LLM calls (OPT-3): ContextAnnotator and Distractor-Generation both only need
      * {@code sanitizedCode} + {@code complexity}, so they can run concurrently.
      */
-    @SuppressWarnings({ "checkstyle:MethodLength", "checkstyle:NPathComplexity" })
+    @SuppressWarnings("checkstyle:MethodLength")
     private TaskDTO enrichSingleTask(
         TaskDTO task, String lang, UUID sequenceId, int tierCount,
         boolean contextModeEnabled, boolean distractorsEnabled,
         boolean splitEnabled
     ) {
-        // Add task identifier to MDC so parallel log lines remain traceable.
-        String previousMdc = MDC.get("taskId");
-        MDC.put("taskId", task.getId() != null ? task.getId().toString() : "new");
-        if (sequenceId != null) {
-            MDC.put("sequenceId", sequenceId.toString());
-        }
+        String previousMdc = putTaskMdc(task, sequenceId);
 
         try {
             log.debug("Contract: {}", task.getContract());
 
             // AP22: When context mode is enabled, modify the contract to request fuller code.
-            SolveContract solveContract = task.getContract();
-            if (contextModeEnabled) {
-                solveContract = SolveContract.builder()
-                    .language(solveContract.language())
-                    .taskStatement(solveContract.taskStatement())
-                    .functionSignature(solveContract.functionSignature())
-                    .purposeBehavior(
-                        solveContract.purposeBehavior()
-                            + "\n\nCONTEXT MODE: Generate a COMPLETE program, not just a single function. "
-                            + "Include imports, class/module declarations, and a main method or test harness. "
-                            + "The solution should be 25-40 lines total with realistic boilerplate."
-                    )
-                    .prePostConditions(solveContract.prePostConditions())
-                    .examples(solveContract.examples())
-                    .build();
-            }
+            SolveContract solveContract = contextModeEnabled
+                ? contextModeContract(task.getContract())
+                : task.getContract();
 
             // Pass 0: GPT solves the problem (blocking LLM call).
             JsonNode codeNode = client.solveProblem(solveContract);
             String code = codeNode.asText();
 
-            // Pass 1: Sanitize (remove comments) — fast CPU.
-            String sanitizedCode = codeSanitizerService.removeComments(code, lang);
+            // Pass 1: Sanitize (remove comments) — fast CPU. Outside context mode, also drop a class
+            // wrapper, main method or example calls some models add despite the prompt: they don't
+            // belong in the puzzle and would count against the line limit.
+            String uncommented = codeSanitizerService.removeComments(code, lang);
+            String sanitizedCode = contextModeEnabled
+                ? uncommented
+                : codeSanitizerService.removeScaffolding(uncommented, lang);
 
             // Pass 2: AP16 — Annotate interchangeable lines (#group/#swap markers) (LLM).
             String annotatedCode = interchangeableAnnotator.annotate(sanitizedCode, lang);
@@ -294,12 +281,8 @@ public final class TaskEnricher {
 
             ContextAnnotator.ContextResult ctxResult = ctxFut.join();
             GeneratedDistractors generated = distFut.join();
-            String distractors = generated != null && !generated.lines().isEmpty() ? generated.text() : null;
-            // The sequence prompt normally plans every task; if it skipped this one, the
-            // distractor call chose a plan instead, and the task keeps that.
-            String distractorPlan = generated != null && generated.plan() != null
-                ? generated.plan()
-                : task.getDistractorPlan();
+            String distractors = distractorText(generated);
+            String distractorPlan = distractorPlan(generated, task.getDistractorPlan());
 
             String finalPuzzle = annotatedCode;
             String contextBefore = null;
@@ -311,8 +294,7 @@ public final class TaskEnricher {
                 log.debug(
                     "Context separation applied for tier {} task (before={}, after={})",
                     task.getTierLevel(),
-                    contextBefore != null ? contextBefore.split(NEWLINE).length : 0,
-                    contextAfter != null ? contextAfter.split(NEWLINE).length : 0
+                    lineCount(contextBefore), lineCount(contextAfter)
                 );
             }
 
@@ -350,14 +332,65 @@ public final class TaskEnricher {
             throw new GenerationException("Failed to enrich task: " + task.getStatement(), e);
         }
         finally {
-            if (previousMdc != null) {
-                MDC.put("taskId", previousMdc);
-            }
-            else {
-                MDC.remove("taskId");
-            }
-            MDC.remove("sequenceId");
+            restoreTaskMdc(previousMdc);
         }
+    }
+
+    /**
+     * Adds the task (and sequence) to the MDC so parallel log lines remain traceable.
+     *
+     * @return the task id the MDC held before, to restore afterwards
+     */
+    private static String putTaskMdc(TaskDTO task, UUID sequenceId) {
+        String previousMdc = MDC.get("taskId");
+        MDC.put("taskId", task.getId() != null ? task.getId().toString() : "new");
+        if (sequenceId != null) {
+            MDC.put("sequenceId", sequenceId.toString());
+        }
+        return previousMdc;
+    }
+
+    private static void restoreTaskMdc(String previousMdc) {
+        if (previousMdc != null) {
+            MDC.put("taskId", previousMdc);
+        }
+        else {
+            MDC.remove("taskId");
+        }
+        MDC.remove("sequenceId");
+    }
+
+    /** The contract asking for a complete program with its boilerplate, for context mode. */
+    private static SolveContract contextModeContract(SolveContract contract) {
+        return SolveContract.builder()
+            .language(contract.language())
+            .taskStatement(contract.taskStatement())
+            .functionSignature(contract.functionSignature())
+            .purposeBehavior(
+                contract.purposeBehavior()
+                    + "\n\nCONTEXT MODE: Generate a COMPLETE program, not just a single function. "
+                    + "Include imports, class/module declarations, and a main method or test harness. "
+                    + "The solution should be 25-40 lines total with realistic boilerplate."
+            )
+            .prePostConditions(contract.prePostConditions())
+            .examples(contract.examples())
+            .build();
+    }
+
+    private static String distractorText(GeneratedDistractors generated) {
+        return generated != null && !generated.lines().isEmpty() ? generated.text() : null;
+    }
+
+    /**
+     * The sequence prompt normally plans every task; if it skipped this one, the distractor call chose a plan instead,
+     * and the task keeps that.
+     */
+    private static String distractorPlan(GeneratedDistractors generated, String taskPlan) {
+        return generated != null && generated.plan() != null ? generated.plan() : taskPlan;
+    }
+
+    private static int lineCount(String text) {
+        return text != null ? text.split(NEWLINE).length : 0;
     }
 
     /**
@@ -384,18 +417,7 @@ public final class TaskEnricher {
         String distractorPlan, int linesOfCode
     ) {
         try {
-            // Mengen-Heuristik: tier-based count (AP21: extended for 5-tier)
-            int baseCount = switch (tierLevel) {
-                case 1 -> 1;
-                case 2 -> 2;
-                case 3 -> 3;
-                case 4 -> 3;
-                case 5 -> 4;
-                default -> 2;
-            };
-            // Cap at 30% of solution LOC (minimum 1)
-            int maxByLoc = Math.max(1, (int) Math.ceil(linesOfCode * 0.3));
-            int count = Math.min(baseCount + 1, maxByLoc);
+            int count = distractorCount(tierLevel, linesOfCode);
 
             log.debug("Generating {} distractors for tier {} task (LOC={})", count, tierLevel, linesOfCode);
 
@@ -409,15 +431,7 @@ public final class TaskEnricher {
                 return GeneratedDistractors.NONE;
             }
 
-            // Ensure every line ends with #distractor and does NOT contain #swap or #group
-            List<String> validated = distractorLines.stream()
-                .map(String::trim)
-                .filter(line -> !line.isBlank())
-                .filter(line -> !line.contains("#swap") && !line.contains("#group"))
-                .map(line -> line.endsWith("#distractor") ? line : line + " #distractor")
-                .filter(line -> !solutionCode.contains(line.replace(" #distractor", "").trim())) // identity check
-                .toList();
-
+            List<String> validated = validDistractorLines(distractorLines, solutionCode);
             if (validated.isEmpty()) {
                 log.warn("All distractors filtered out for task: {}", taskStatement);
                 return GeneratedDistractors.NONE;
@@ -437,6 +451,41 @@ public final class TaskEnricher {
             );
             return GeneratedDistractors.NONE;
         }
+    }
+
+    /** Mengen-Heuristik: a tier-based count (AP21: extended for 5-tier), capped at 30% of the solution's LOC. */
+    private static int distractorCount(int tierLevel, int linesOfCode) {
+        int baseCount = switch (tierLevel) {
+            case 1 -> 1;
+            case 2 -> 2;
+            case 3 -> 3;
+            case 4 -> 3;
+            case 5 -> 4;
+            default -> 2;
+        };
+        int maxByLoc = Math.max(1, (int) Math.ceil(linesOfCode * 0.3));
+        return Math.min(baseCount + 1, maxByLoc);
+    }
+
+    /**
+     * Turns the model's distractors into lines for the distractors column: each ends with {@code #distractor}, none
+     * carries a {@code #swap} or {@code #group} marker, and none is part of the solution.
+     *
+     * <p>
+     * An entry spanning several lines is split first. The column is read one line per block, so only the entry's last
+     * line would carry the marker, and the others would become lines the student has to place. A line of such an entry
+     * that is part of the solution, such as a closing brace, is dropped like any other.
+     */
+    private static List<String> validDistractorLines(List<String> distractors, String solutionCode) {
+        return distractors.stream()
+            .flatMap(String::lines)
+            .map(line -> line.replaceFirst("\\s*#distractor\\s*$", "").trim())
+            .filter(line -> !line.isBlank())
+            .filter(line -> !line.contains("#swap") && !line.contains("#group"))
+            .filter(line -> !solutionCode.contains(line))
+            .distinct()
+            .map(line -> line + " #distractor")
+            .toList();
     }
 
     /**

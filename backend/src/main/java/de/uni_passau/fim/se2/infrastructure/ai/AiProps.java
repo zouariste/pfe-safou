@@ -39,5 +39,23 @@ public class AiProps {
 
         private OpenAiModel defaultModel = OpenAiModel.GPT_5;
 
+        /**
+         * Base URL of an OpenAI-compatible API, without the {@code /chat/completions} suffix. Point it at a LiteLLM or
+         * vLLM server to use a self-hosted model.
+         */
+        private String baseUrl = "https://api.openai.com/v1";
+
+        /**
+         * Model name sent instead of the one mapped from {@link OpenAiModel}, for servers whose models are not OpenAI's
+         * (e.g. {@code qwen38-27b}). Blank means no override.
+         */
+        private String modelOverride = "";
+
+        /**
+         * {@code reasoning_effort} sent with every request, e.g. {@code none} to stop a self-hosted model from thinking
+         * before it answers, or {@code low}/{@code medium}/{@code high}. Blank omits the field (the server's default).
+         */
+        private String reasoningEffort = "";
+
     }
 }

@@ -14,6 +14,7 @@
             <Field type="de.uni_passau.fim.se2.application.service.SequenceTagService" />
             <Field type="de.uni_passau.fim.se2.application.service.TaskPersistenceService" />
             <Field type="de.uni_passau.fim.se2.domain.interfaces.ClassRepository" />
+            <Field type="de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer" />
             <Field type="de.uni_passau.fim.se2.domain.interfaces.ConceptCurriculumTopicRepository" />
             <Field type="de.uni_passau.fim.se2.domain.interfaces.ConceptRepository" />
             <Field type="de.uni_passau.fim.se2.domain.interfaces.CurriculumCodeExampleRepository" />

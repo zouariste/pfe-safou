@@ -25,6 +25,8 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,7 @@ import org.springframework.beans.factory.annotation.Value;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 
 import de.uni_passau.fim.se2.application.service.CodeSanitizerService;
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
@@ -78,10 +81,7 @@ public class OpenAiClient extends AbstractAiClient {
     private static final String CODE = "code";
     private static final String TASKS = "tasks";
 
-    /**
-     * String representing the API address to OpenAIs API.
-     */
-    private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+    private static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
 
     private static final Double DEFAULT_TEMPERATURE = 1.0;
     private static final Double DEFAULT_TOP_P = null; // null = omit field (API default)
@@ -125,7 +125,28 @@ public class OpenAiClient extends AbstractAiClient {
      */
     private final OpenAiModel defaultModel;
 
+    /**
+     * Full chat-completions endpoint, built from the configured base URL.
+     */
+    private final URI chatCompletionsUri;
+
+    /**
+     * Model name that replaces every {@link OpenAiModel} when set, or null.
+     */
+    private final String modelOverride;
+
+    /**
+     * {@code reasoning_effort} added to every request, or null to leave it to the server.
+     */
+    private final String reasoningEffort;
+
     private static final Logger log = LoggerFactory.getLogger(OpenAiClient.class);
+
+    /** A reasoning model's thoughts in front of the answer, when the server doesn't separate them out. */
+    private static final Pattern THINK_BLOCK = Pattern.compile("^\\s*<think>.*?</think>", Pattern.DOTALL);
+
+    /** An answer wrapped in a Markdown code fence as a whole. */
+    private static final Pattern JSON_FENCE = Pattern.compile("```[\\w-]*\\s*(.*?)\\s*```", Pattern.DOTALL);
 
     /**
      * Primary constructor used by Spring.
@@ -147,6 +168,17 @@ public class OpenAiClient extends AbstractAiClient {
         this.transport = transport;
         this.promptBuilder = promptBuilder;
         this.defaultModel = aiProps.getOpenai().getDefaultModel();
+        this.chatCompletionsUri = chatCompletionsUri(aiProps.getOpenai().getBaseUrl());
+        String override = aiProps.getOpenai().getModelOverride();
+        this.modelOverride = override == null || override.isBlank() ? null : override.strip();
+        String effort = aiProps.getOpenai().getReasoningEffort();
+        this.reasoningEffort = effort == null || effort.isBlank() ? null : effort.strip();
+        if (modelOverride != null || reasoningEffort != null) {
+            log.info(
+                "Using model '{}' (reasoning_effort={}) at {}",
+                modelOverride != null ? modelOverride : defaultModel, reasoningEffort, chatCompletionsUri
+            );
+        }
         this.conceptCatalog = conceptCatalog;
     }
 
@@ -192,7 +224,11 @@ public class OpenAiClient extends AbstractAiClient {
         JsonNode parsed = parseResponse(response);
         JsonNode codeNode = validateAndGetField(parsed, CODE);
         validateTextField(codeNode, CODE);
-        return codeNode;
+        // This solution becomes the sequence's reference snippet and the code concepts are read
+        // from, so a class wrapper, main method or example calls the model added despite the
+        // prompt would show up as concepts the teacher never asked for.
+        String code = sanitizer.removeScaffolding(sanitize(codeNode.asText(), language), language);
+        return TextNode.valueOf(code);
     }
 
     /**
@@ -235,10 +271,13 @@ public class OpenAiClient extends AbstractAiClient {
     HttpResponse<String> sendRequest(final ObjectNode json)
         throws IOException, InterruptedException {
 
+        if (reasoningEffort != null && !json.has("reasoning_effort")) {
+            json.put("reasoning_effort", reasoningEffort);
+        }
         String requestBody = mapper.writerWithDefaultPrettyPrinter()
             .writeValueAsString(json);
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(OPENAI_API_URL))
+            .uri(chatCompletionsUri)
             .header("Content-Type", "application/json")
             .header("Authorization", "Bearer " + apiKey)
             .POST(HttpRequest.BodyPublishers.ofString(requestBody))
@@ -252,14 +291,14 @@ public class OpenAiClient extends AbstractAiClient {
                 log.trace("Sending request (attempt {}): {}", attempt, requestBody);
                 HttpResponse<String> response = transport.sendRequest(request);
 
-                if (response.statusCode() >= STATUS_CODE_200 && response.statusCode() < STATUS_CODE_300) {
+                if (isSuccess(response.statusCode())) {
                     log.trace("Response: {}", response.body());
                     return response;
                 }
 
                 // OPT-5: Exponential backoff with jitter — prevents thundering-herd
                 // when many parallel enrichment threads (OPT-1) all hit 429/503 together.
-                if ((response.statusCode() == 503 || response.statusCode() == 429) && attempt < maxRetries) {
+                if (isRetryable(response.statusCode()) && attempt < maxRetries) {
                     long delay = backoffDelayMs(attempt);
                     log.warn(
                         "OpenAI API returned {} – retrying in {}ms (attempt {}/{})",
@@ -291,10 +330,33 @@ public class OpenAiClient extends AbstractAiClient {
     }
 
     /**
+     * Builds the chat-completions endpoint from a base URL such as {@code https://api.openai.com/v1}.
+     *
+     * @param baseUrl the API base URL, with or without a trailing slash
+     * @return the chat-completions URI
+     */
+    static URI chatCompletionsUri(String baseUrl) {
+        String base = baseUrl == null || baseUrl.isBlank() ? "https://api.openai.com/v1" : baseUrl.strip();
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        return URI.create(base + CHAT_COMPLETIONS_PATH);
+    }
+
+    /**
      * Exponential backoff with jitter (OPT-5). attempt=1 → ~1–2s, attempt=2 → ~2–4s, attempt=3 → ~4–8s (capped at 30s).
      * The jitter prevents parallel enrichment threads (OPT-1) from retrying simultaneously after a shared
      * rate-limit/503 event (thundering-herd).
      */
+    private static boolean isSuccess(int statusCode) {
+        return statusCode >= STATUS_CODE_200 && statusCode < STATUS_CODE_300;
+    }
+
+    /** Overloaded (503) and rate limited (429) are worth another try after a pause. */
+    private static boolean isRetryable(int statusCode) {
+        return statusCode == 503 || statusCode == 429;
+    }
+
     private static long backoffDelayMs(int attempt) {
         double base = Math.pow(2, attempt) * 1000.0;
         double jitter = 0.5 + java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.5);
@@ -315,14 +377,44 @@ public class OpenAiClient extends AbstractAiClient {
     JsonNode parseResponse(final HttpResponse<String> response)
         throws IOException {
         log.trace("Parsing response: {}", response.body());
-        JsonNode content = mapper.readTree(response.body())
-            .path("choices").path(0)
-            .path("message").path("content");
-        if (content.isMissingNode()) {
+        JsonNode choice = mapper.readTree(response.body()).path("choices").path(0);
+        JsonNode message = choice.path("message");
+        if (message.isMissingNode()) {
             log.error("GPT response missing required message structure");
             throw new IOException("GPT response missing required message structure");
         }
-        return mapper.readTree(content.asText());
+        String finishReason = choice.path("finish_reason").asText("");
+        // Checked before the content: a cut-off answer is usually broken JSON, and the parse
+        // error it would cause hides that the model ran out of tokens, typically by reasoning.
+        if ("length".equals(finishReason)) {
+            throw new IOException(
+                "The model's answer was cut off at its token limit"
+                    + (message.hasNonNull("reasoning_content") ? " after reasoning" : "")
+                    + " (finish_reason=length)"
+            );
+        }
+        if (message.hasNonNull("refusal")) {
+            throw new IOException("The model refused to answer: " + message.get("refusal").asText());
+        }
+        String content = message.path("content").asText("");
+        if (content.isBlank()) {
+            throw new IOException("The model's answer was empty (finish_reason=" + finishReason + ")");
+        }
+        return mapper.readTree(answerJson(content));
+    }
+
+    /**
+     * The JSON in an answer's content. With the schema enforced that is the whole content, as from OpenAI. A server
+     * that doesn't enforce it may return a reasoning model's {@code <think>} block before the JSON, or the JSON in a
+     * Markdown fence.
+     *
+     * @param content the message content
+     * @return the content without a leading think block and fence
+     */
+    static String answerJson(String content) {
+        String json = THINK_BLOCK.matcher(content).replaceFirst("").strip();
+        Matcher fence = JSON_FENCE.matcher(json);
+        return fence.matches() ? fence.group(1) : json;
     }
 
     /**
@@ -707,6 +799,15 @@ public class OpenAiClient extends AbstractAiClient {
         return parsed == null ? null : parsed.toString();
     }
 
+    @Override
+    public String generateJson(String systemPrompt, String userPrompt, String schemaName, JsonNode schema)
+        throws IOException, InterruptedException {
+        ObjectNode json = promptBuilder.buildJsonSchemaRequest(systemPrompt, userPrompt, schemaName, schema);
+        attachModel(json, defaultModel);
+        JsonNode parsed = parseResponse(sendRequest(json));
+        return parsed == null ? null : parsed.toString();
+    }
+
     /**
      * AP31: Second pass — generates ONE split-aware fragment distractor. Returns the raw distractor JSON
      * ({@code {"fragmentIndex":..,"text":..,"type":..}}) or {@code null} if the model declines.
@@ -1025,7 +1126,7 @@ public class OpenAiClient extends AbstractAiClient {
      * @param model the {@link OpenAiModel} to be attached
      */
     private void attachModel(ObjectNode json, OpenAiModel model) {
-        String modelString = toApiModel(model);
+        String modelString = modelOverride != null ? modelOverride : toApiModel(model);
         log.trace("Attaching model: {}", modelString);
         json.put("model", modelString);
     }

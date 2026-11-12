@@ -31,6 +31,7 @@ import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
 import de.uni_passau.fim.se2.domain.entities.TieredTaskSequenceDTO;
 import de.uni_passau.fim.se2.domain.exceptions.GenerationException;
 import de.uni_passau.fim.se2.domain.exceptions.UnsupportedLanguageException;
+import de.uni_passau.fim.se2.domain.model.LocLimitWarning;
 import de.uni_passau.fim.se2.domain.strategy.TaskGenerationStrategy;
 import de.uni_passau.fim.se2.infrastructure.ai.openai.OpenAiClient;
 
@@ -329,9 +330,11 @@ public class TaskGeneratorService {
                     targetLanguage, distractorsEnabled, contextModeEnabled, constraints, tierCount, splitEnabled
                 );
 
-                SequenceValidator.validateLocLimit(seq, effectiveMaxLoc);
-
-                log.info("Generation successful on attempt {}", attempt);
+                // Tasks over the line limit are not worth an automatic retry: each one reruns the whole
+                // pipeline, which on a slow self-hosted model takes minutes, and the next result may be
+                // too long as well. The sequence is saved with a warning and the teacher decides whether
+                // to keep it, discard it, or try again.
+                warnAboutTooLongTasks(seq, effectiveMaxLoc, attempt);
 
                 seq.setOwnerId(ownerId);
                 handlePersistence(seq);
@@ -375,6 +378,21 @@ public class TaskGeneratorService {
         }
 
         throw new IllegalStateException("Task generation failed after " + maxAttempts + " attempts");
+    }
+
+    /** Attaches a warning to the sequence if any of its tasks is over the line limit. */
+    private static void warnAboutTooLongTasks(TieredTaskSequenceDTO seq, int maxLoc, int attempt) {
+        List<LocLimitWarning.TaskLoc> tooLong = SequenceValidator.tasksOverLocLimit(seq, maxLoc);
+        if (tooLong.isEmpty()) {
+            log.info("Generation successful on attempt {}", attempt);
+        }
+        else {
+            log.warn(
+                "Generated on attempt {} with tasks over the {}-line limit: {}; leaving the decision to the teacher",
+                attempt, maxLoc, tooLong
+            );
+            seq.setLocWarning(new LocLimitWarning(maxLoc, tooLong));
+        }
     }
 
     private void handlePersistence(TieredTaskSequenceDTO enrichedSequence) {

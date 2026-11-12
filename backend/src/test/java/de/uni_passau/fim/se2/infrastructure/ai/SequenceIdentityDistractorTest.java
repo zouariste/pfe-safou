@@ -18,9 +18,11 @@
  */
 package de.uni_passau.fim.se2.infrastructure.ai;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.params.ParameterizedTest;
@@ -57,5 +59,21 @@ class SequenceIdentityDistractorTest {
         assertTrue(system.contains(DistractorStrategy.taxonomyText()));
         assertTrue(system.contains(DistractorStrategy.tierMappingText(tierCount)));
         assertTrue(user.contains(DistractorStrategy.tierMappingText(tierCount)));
+    }
+
+    @ParameterizedTest(name = "{0} tiers")
+    @CsvSource({ "3", "5" })
+    void sequenceSchemaHoldsThePlanTypeToTheTaxonomy(int tierCount) {
+        ObjectNode request = promptBuilder.buildSequenceRequest(
+            "Sum a list", List.of("loop"), null, "python", "en", true, null, tierCount
+        );
+
+        JsonNode type = request.at(
+            "/response_format/json_schema/schema/properties/tasks/items/properties/distractorPlan/properties/type"
+        );
+        assertEquals(
+            Arrays.stream(DistractorStrategy.Type.values()).map(Enum::name).toList(),
+            type.path("enum").valueStream().map(JsonNode::asText).toList()
+        );
     }
 }

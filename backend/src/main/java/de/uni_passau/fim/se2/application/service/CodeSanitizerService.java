@@ -19,16 +19,37 @@
 package de.uni_passau.fim.se2.application.service;
 
 import java.util.Locale;
+import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 
+import de.uni_passau.fim.se2.domain.interfaces.CodeAnalyzer;
+
 @Service
 public class CodeSanitizerService {
 
+    /** A line holding only a Markdown code fence, optionally naming the language. */
+    private static final Pattern MARKDOWN_FENCE = Pattern
+        .compile("^[ \\t]*```[\\w+#.-]*[ \\t]*(?:\\R|\\z)", Pattern.MULTILINE);
+
+    private final CodeAnalyzer codeAnalyzer;
+
     /**
-     * Strips comments from code, using the comment syntax of the given language. Code in a language without known
-     * comment syntax is returned unchanged.
+     * Creates the sanitizer.
+     *
+     * @param codeAnalyzer parses code to find its comments; when it can't (no tree-sitter natives, or a language
+     *                     tree-sitter isn't set up for), a regular expression per language is used instead
+     */
+    public CodeSanitizerService(CodeAnalyzer codeAnalyzer) {
+        this.codeAnalyzer = codeAnalyzer;
+    }
+
+    /**
+     * Strips comments from code. Uses the syntax tree where possible, which leaves comment markers inside strings alone
+     * and drops lines that held only a comment; otherwise falls back to the comment syntax of the given language, which
+     * cannot tell a string from a comment. Code in a language without known comment syntax is returned unchanged.
      *
      * @param code     the code to clean, or null
      * @param language the programming language of the code
@@ -37,6 +58,15 @@ public class CodeSanitizerService {
     public String removeComments(String code, String language) {
         if (code == null) {
             return "";
+        }
+
+        if (language == null) {
+            return code;
+        }
+
+        Optional<String> parsed = codeAnalyzer.removeComments(code, language);
+        if (parsed.isPresent()) {
+            return parsed.get();
         }
 
         String regex = regexByLanguage(language);
@@ -49,6 +79,48 @@ public class CodeSanitizerService {
             .matcher(code)
             .replaceAll("")
             .trim();
+    }
+
+    /**
+     * Takes the code out of a Markdown code fence. Models are told to put plain code into the answer's {@code code}
+     * field, but some (Qwen without reasoning, for one) write {@code ```python ... ```} there anyway, and the fence
+     * lines would end up as blocks of the puzzle. Anything before the first fence, such as "Here is the code:", goes
+     * with it; so does anything after its closing fence, which is where models put example usage.
+     *
+     * <p>
+     * Only a line holding nothing but a fence counts. No line of Python or Java starts with a backtick, so code without
+     * a fence is returned unchanged.
+     *
+     * @param code the code, or null
+     * @return the code inside the first fence, or the code unchanged if it has none
+     */
+    public static String unwrapMarkdownFence(String code) {
+        if (code == null) {
+            return null;
+        }
+        Matcher m = MARKDOWN_FENCE.matcher(code);
+        if (!m.find()) {
+            return code;
+        }
+        int start = m.end();
+        int end = m.find() ? m.start() : code.length();
+        return code.substring(start, end).strip();
+    }
+
+    /**
+     * Reduces a generated program to the function(s) the task asks for, dropping a class wrapper, a {@code main}
+     * method, example calls and an {@code if __name__ == "__main__":} block. Code that needs none of that, or that
+     * cannot be parsed, is returned unchanged.
+     *
+     * @param code     the code
+     * @param language the programming language of the code
+     * @return the code without program scaffolding
+     */
+    public String removeScaffolding(String code, String language) {
+        if (code == null || language == null) {
+            return code;
+        }
+        return codeAnalyzer.removeScaffolding(code, language).orElse(code);
     }
 
     private String regexByLanguage(String language) {

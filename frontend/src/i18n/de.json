@@ -193,6 +193,11 @@
   },
 
   "home": {
+    "locWarningTitle": "Versuch {{attempt}} von {{max}}: Einige Aufgaben sind zu lang",
+    "locWarningBody": "{{tasks}} überschreiten die Grenze von {{max}} Zeilen. Mit denselben Eingaben erneut versuchen oder die Sequenz ansehen und dort entscheiden, ob sie behalten werden soll.",
+    "locWarningTask": "Stufe {{tier}} ({{lines}} Zeilen)",
+    "locWarningRetry": "Erneut versuchen",
+    "locWarningShow": "Sequenz anzeigen",
     "pageTitle": "CodeOwl – Gestufte Aufgaben generieren",
     "distractorsEnabled": "Distraktoren generieren (Parsons)",
     "title": "Code Owl",
@@ -257,6 +262,11 @@
   },
 
   "sequence": {
+    "locWarningTitle": "Einige Aufgaben sind länger als erlaubt",
+    "locWarningBody": "{{tasks}} überschreiten die Grenze von {{max}} Zeilen. Sequenz trotzdem behalten oder verwerfen?",
+    "locWarningKeep": "Sequenz behalten",
+    "locWarningDiscard": "Sequenz verwerfen",
+    "locWarningDiscardError": "Die Sequenz konnte nicht verworfen werden.",
     "contextSummary": "Kontextmodus: {{contextLines}} Kontextzeilen, {{puzzleLines}} Puzzlezeilen",
     "curatorNoticeTitle": "Diese Sequenz gehört jemand anderem.",
     "curatorNoticeBody": "Du siehst sie, weil sie in einem deiner Arbeitsblätter liegt. Änderungen würden sie auch in den Arbeitsblättern anderer verändern — erstelle dafür eine eigene Kopie.",

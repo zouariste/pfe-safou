@@ -116,6 +116,10 @@ ai:
   defaultProvider: OPENAI
   openai:
     defaultModel: GPT_4_1
+    # Any OpenAI-compatible API (e.g. a LiteLLM proxy); see README.
+    baseUrl: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+    modelOverride: ${OPENAI_MODEL:}
+    reasoningEffort: ${OPENAI_REASONING_EFFORT:}
 
 # === CodeOwl runners (explicit!) ===
 codeowl:

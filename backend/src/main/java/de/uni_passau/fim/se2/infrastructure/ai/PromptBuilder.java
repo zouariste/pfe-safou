@@ -24,10 +24,12 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import de.uni_passau.fim.se2.application.service.JsonSchemas;
 import de.uni_passau.fim.se2.domain.entities.CurriculumCodeExampleDTO;
 import de.uni_passau.fim.se2.domain.entities.CurriculumTopicDTO;
 import de.uni_passau.fim.se2.domain.entities.GenerationConstraints;
@@ -79,6 +81,52 @@ public class PromptBuilder {
     private static final String STRING = "string";
     private static final String ENGLISH = "en";
     private static final String RATIONALE = "rationale";
+    private static final String DISTRACTOR_PLAN = "distractorPlan";
+
+    /**
+     * The split plan's answer. Spelled out as a schema rather than left to {@code json_object}: only GPT reliably kept
+     * to the shape the prompt shows, and an answer with another shape silently lost the split.
+     */
+    static final JsonNode SPLIT_PLAN_SCHEMA = JsonSchemas.parse("""
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["splits"],
+          "properties": {
+            "splits": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["lineIndex", "fragments", "prefix", "suffix"],
+                "properties": {
+                  "lineIndex": {"type": "integer"},
+                  "fragments": {"type": "array", "items": {"type": "string"}},
+                  "prefix": {"type": "string"},
+                  "suffix": {"type": "string"}
+                }
+              }
+            }
+          }
+        }
+        """);
+
+    /** The split distractor's answer; an empty {@code text} declines. */
+    static final JsonNode SPLIT_DISTRACTOR_SCHEMA = JsonSchemas.parse("""
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fragmentIndex", "text", "type"],
+          "properties": {
+            "fragmentIndex": {"type": "integer"},
+            "text": {"type": "string"},
+            "type": {
+              "type": "string",
+              "enum": ["OFF_BY_ONE", "LOGIC_FLIP", "VARIABLE_MISMATCH", "BOUNDARY_IDENTITY", "WRONG_SHAPE"]
+            }
+          }
+        }
+        """);
 
     /**
      * Object mapper used for constructing prompts.
@@ -569,15 +617,8 @@ public class PromptBuilder {
         required.add(TIER).add(STATEMENT).add(CONTRACT);
 
         if (withDistractors) {
-            ObjectNode distractorPlan = mapper.createObjectNode().put(TYPE, OBJECT);
-            ObjectNode dpProps = mapper.createObjectNode();
-            dpProps.set(TYPE, str());
-            dpProps.set(RATIONALE, str());
-            distractorPlan.set(PROPERTIES, dpProps);
-            distractorPlan.putArray(REQUIRED).add(TYPE).add(RATIONALE);
-            distractorPlan.put(ADDITIONAL_PROPERTIES, false);
-            taskProps.set("distractorPlan", distractorPlan);
-            required.add("distractorPlan");
+            taskProps.set(DISTRACTOR_PLAN, distractorPlanSchema());
+            required.add(DISTRACTOR_PLAN);
         }
 
         taskItem.set(PROPERTIES, taskProps);
@@ -741,18 +782,10 @@ public class PromptBuilder {
 
         taskProps.set(CONTRACT, contract);
 
-        // distractorPlan
-        ObjectNode distractorPlan = mapper.createObjectNode().put(TYPE, OBJECT);
-        ObjectNode dpProps = mapper.createObjectNode();
-        dpProps.set(TYPE, str());
-        dpProps.set(RATIONALE, str());
-        distractorPlan.set(PROPERTIES, dpProps);
-        distractorPlan.putArray(REQUIRED).add(TYPE).add(RATIONALE);
-        distractorPlan.put(ADDITIONAL_PROPERTIES, false);
-        taskProps.set("distractorPlan", distractorPlan);
+        taskProps.set(DISTRACTOR_PLAN, distractorPlanSchema());
 
         taskItem.set(PROPERTIES, taskProps);
-        taskItem.putArray(REQUIRED).add(TIER).add(STATEMENT).add(CONTRACT).add("distractorPlan");
+        taskItem.putArray(REQUIRED).add(TIER).add(STATEMENT).add(CONTRACT).add(DISTRACTOR_PLAN);
         taskItem.put(ADDITIONAL_PROPERTIES, false);
 
         tasks.set(ITEMS, taskItem);
@@ -772,6 +805,26 @@ public class PromptBuilder {
     }
 
     /**
+     * The {@code distractorPlan} of a sequence task. Its type is limited to the taxonomy, as in the distractor call's
+     * own plan: the prompt lists the types, but only GPT kept to the exact names without being held to them.
+     */
+    private ObjectNode distractorPlanSchema() {
+        ObjectNode type = str();
+        ArrayNode allowed = type.putArray("enum");
+        for (DistractorStrategy.Type t : DistractorStrategy.Type.values()) {
+            allowed.add(t.name());
+        }
+        ObjectNode props = mapper.createObjectNode();
+        props.set(TYPE, type);
+        props.set(RATIONALE, str());
+        ObjectNode plan = mapper.createObjectNode().put(TYPE, OBJECT);
+        plan.set(PROPERTIES, props);
+        plan.putArray(REQUIRED).add(TYPE).add(RATIONALE);
+        plan.put(ADDITIONAL_PROPERTIES, false);
+        return plan;
+    }
+
+    /**
      * Constructs a GPT request to solve a programming task and return only code.
      *
      * @param contract SolveContract composing the input for the request
@@ -787,7 +840,15 @@ public class PromptBuilder {
             + "No markdown/backticks, no extra keys, no text outside JSON.\n\n"
             + "Rules:\n"
             + "- Put the entire solution as the string value of \"code\" (escape as needed).\n"
-            + "- Single file; use only the standard library.\n"
+            // Without this rule, models other than GPT-4.1 (e.g. Qwen) answer with a whole program. Context
+            // mode asks for a complete program in the spec, hence the exception. Java solutions that need
+            // imports still tend to come back inside a class, since imports before a bare method aren't
+            // valid Java; CodeSanitizerService.removeScaffolding unwraps those.
+            + "- Write only the function or method with the given signature, preceded by the imports it needs "
+            + "(imports go before the function, never inside it). No enclosing class, no main method, "
+            + "no `if __name__ == \"__main__\":` block, and no example calls, tests or prints of results, "
+            + "unless the spec explicitly asks for a complete program.\n"
+            + "- Use only the standard library, and import only what the solution uses.\n"
             + "- No file/network I/O unless shown in the examples.\n"
             + "- Obey the specified language and any provided function signature.\n"
             + "- Implement exactly what the spec and examples require; avoid adding features.\n"
@@ -1081,7 +1142,12 @@ public class PromptBuilder {
             + "No markdown/backticks, no explanations, no extra keys, no text outside JSON.\n\n"
             + "Rules:\n"
             + "- Put the entire solution as the string value of \"code\" (escape as needed).\n"
-            + "- Single file; use only the standard library.\n"
+            // Same rule as in buildSolveRequest: "single file" alone gets a whole program from models
+            // other than GPT-4.1, and this solution becomes the reference snippet concepts are read from.
+            + "- Write only the function or method that solves the task, preceded by the imports it needs. "
+            + "No enclosing class, no main method, no `if __name__ == \"__main__\":` block, and no example "
+            + "calls, tests or prints of results, unless the task explicitly asks for a complete program.\n"
+            + "- Use only the standard library, and import only what the solution uses.\n"
             + "- No file/network I/O unless the task explicitly requires it.\n"
             + "- Obey the specified language.\n"
             + "- Prefer clear, minimal, idiomatic code.";
@@ -1175,7 +1241,7 @@ public class PromptBuilder {
 
             RULES:
             1. Generate distractors highly similar in style and variable naming to the solution.
-            2. Each distractor must be a SINGLE line or a small coherent block (max 2 lines).
+            2. Each distractor must be a SINGLE line of code, with no line breaks inside the string.
             3. Every distractor MUST end with the suffix " #distractor".
             4. Do NOT use #swap or #group markers on distractor lines.
             5. Ensure distractors are functionally incorrect for the given task.
@@ -1240,6 +1306,38 @@ public class PromptBuilder {
         json.set(MESSAGES, messages);
         json.set(RESPONSE_FORMAT, responseFormatDistractors(hasPlan ? null : preferred));
         return json;
+    }
+
+    /**
+     * Builds a request from a system and user prompt whose answer is held to the given JSON schema.
+     *
+     * @param systemPrompt the system prompt
+     * @param userPrompt   the user prompt
+     * @param schemaName   the schema's name, as the API requires one
+     * @param schema       the JSON schema the answer must follow
+     * @return the chat completions request
+     */
+    public ObjectNode buildJsonSchemaRequest(
+        final String systemPrompt, final String userPrompt, final String schemaName, final JsonNode schema
+    ) {
+        ObjectNode json = mapper.createObjectNode();
+        ArrayNode messages = json.putArray(MESSAGES);
+        messages.addObject().put(ROLE, ROLE_SYSTEM).put(CONTENT, systemPrompt);
+        messages.addObject().put(ROLE, ROLE_USER).put(CONTENT, userPrompt);
+
+        json.set(RESPONSE_FORMAT, jsonSchemaFormat(schemaName, schema));
+        return json;
+    }
+
+    /** A strict {@code response_format} holding the answer to the given schema. */
+    private ObjectNode jsonSchemaFormat(final String schemaName, final JsonNode schema) {
+        ObjectNode jsonSchema = mapper.createObjectNode();
+        jsonSchema.put(NAME, schemaName);
+        jsonSchema.put(STRICT, true);
+        jsonSchema.set(SCHEMA, schema);
+        ObjectNode format = mapper.createObjectNode().put(TYPE, JSON_SCHEMA);
+        format.set(JSON_SCHEMA, jsonSchema);
+        return format;
     }
 
     /**
@@ -1397,7 +1495,7 @@ public class PromptBuilder {
         messages.add(mapper.createObjectNode().put(ROLE, ROLE_USER).put(CONTENT, userPrompt));
 
         json.set(MESSAGES, messages);
-        json.set(RESPONSE_FORMAT, mapper.createObjectNode().put(TYPE, "json_object"));
+        json.set(RESPONSE_FORMAT, jsonSchemaFormat("split_plan_response", SPLIT_PLAN_SCHEMA));
         return json;
     }
 
@@ -1441,7 +1539,8 @@ public class PromptBuilder {
             1. Either kind must be genuinely WRONG (changes behaviour), not a cosmetic re-spelling of a correct fragment.
             2. Difficulty guide: lower tiers suit WRONG_SHAPE (easier, obvious); higher tiers suit a \
                FITTING distractor (harder). Guidance only — pick whatever is most instructive here.
-            3. If nothing instructive applies, decline by returning {"text": ""}.
+            3. If nothing instructive applies, decline by returning an empty "text" (with fragmentIndex -1 and \
+               type WRONG_SHAPE).
             4. Output JSON only — no #distractor/#swap/#group, no markdown.""";
 
         messages.add(mapper.createObjectNode().put(ROLE, ROLE_SYSTEM).put(CONTENT, systemPrompt));
@@ -1460,7 +1559,7 @@ public class PromptBuilder {
             Fragments (0-based; each is one slot):
             %s
             Return ONLY: {"fragmentIndex":<0-based int, or -1 for WRONG_SHAPE>,"text":"<wrong chip>","type":"<TYPE>"}
-            Decline with {"text": ""} if nothing instructive applies.""".formatted(
+            Decline with an empty "text" if nothing instructive applies.""".formatted(
             language, taskStatement, tierLevel,
             prefix == null ? "" : prefix, suffix == null ? "" : suffix, fragList.toString()
         );
@@ -1468,7 +1567,7 @@ public class PromptBuilder {
         messages.add(mapper.createObjectNode().put(ROLE, ROLE_USER).put(CONTENT, userPrompt));
 
         json.set(MESSAGES, messages);
-        json.set(RESPONSE_FORMAT, mapper.createObjectNode().put(TYPE, "json_object"));
+        json.set(RESPONSE_FORMAT, jsonSchemaFormat("split_distractor_response", SPLIT_DISTRACTOR_SCHEMA));
         return json;
     }
 

@@ -25,6 +25,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -102,6 +103,42 @@ public class TreeSitterCodeAnalyzer implements CodeAnalyzer {
         catch (RuntimeException e) {
             log.warn("tree-sitter complexity analysis failed for '{}': {}", language, e.getMessage());
             return ComplexityResult.zero();
+        }
+    }
+
+    @Override
+    public Optional<String> removeComments(String code, String language) {
+        if (code == null || !nativesAvailable) {
+            return Optional.empty();
+        }
+        Language tsLang = LanguageRegistry.resolve(language).orElse(null);
+        if (tsLang == null) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(CommentStripper.strip(code, tsLang, "python".equalsIgnoreCase(language)));
+        }
+        catch (RuntimeException e) {
+            log.warn("tree-sitter comment removal failed for '{}': {}", language, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<String> removeScaffolding(String code, String language) {
+        if (code == null || !nativesAvailable) {
+            return Optional.empty();
+        }
+        Language tsLang = LanguageRegistry.resolve(language).orElse(null);
+        if (tsLang == null) {
+            return Optional.empty();
+        }
+        try {
+            return ScaffoldingStripper.strip(code, tsLang, language.toLowerCase(Locale.ROOT));
+        }
+        catch (RuntimeException e) {
+            log.warn("tree-sitter scaffolding removal failed for '{}': {}", language, e.getMessage());
+            return Optional.empty();
         }
     }
 

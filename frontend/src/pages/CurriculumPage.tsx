@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, apiErrorMessage, type ApiError } from "../lib/api";
+import { api, LLM_TIMEOUT_MS, apiErrorMessage, type ApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import type { CurriculumTopic, CurriculumCodeExample } from "../types/models";
@@ -395,7 +395,7 @@ export default function CurriculumPage() {
             if (difficultySlope) payload.difficultySlope = difficultySlope;
             if (additionalContext.trim()) payload.additionalContext = additionalContext.trim();
 
-            const res = await api.post(`/curriculum/topics/${selectedTopic.id}/generate`, payload);
+            const res = await api.post(`/curriculum/topics/${selectedTopic.id}/generate`, payload, { timeout: LLM_TIMEOUT_MS });
             navigate(`/sequence/${res.data.id}`);
         } catch (caught) {
             const e = caught as ApiError;

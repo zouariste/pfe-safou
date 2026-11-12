@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, type ApiError, type ApiErrorBody } from "../lib/api";
+import { api, LLM_TIMEOUT_MS, type ApiError, type ApiErrorBody } from "../lib/api";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useHomePath } from "../hooks/useHomePath.ts";
 import { renderGapLine } from "../lib/gapMarkers";
@@ -165,7 +165,7 @@ export default function ManualTaskCreator() {
             if (generateDistractors) {
                 setGeneratingDistractors(true);
                 try {
-                    await api.post(`/sequence/${data.id}/generate-distractors`);
+                    await api.post(`/sequence/${data.id}/generate-distractors`, undefined, { timeout: LLM_TIMEOUT_MS });
                 } catch {
                     alert(t("manual.distractorsFailed"));
                 }

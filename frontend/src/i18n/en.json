@@ -193,6 +193,11 @@
   },
 
   "home": {
+    "locWarningTitle": "Attempt {{attempt}} of {{max}}: some tasks are too long",
+    "locWarningBody": "{{tasks}} exceed the limit of {{max}} lines. Try again with the same inputs, or look at the sequence and decide there whether to keep it.",
+    "locWarningTask": "tier {{tier}} ({{lines}} lines)",
+    "locWarningRetry": "Try again",
+    "locWarningShow": "Show sequence",
     "pageTitle": "CodeOwl - Generate Tiered Tasks",
     "distractorsEnabled": "Generate distractors (Parsons)",
     "title": "Code Owl",
@@ -257,6 +262,11 @@
   },
 
   "sequence": {
+    "locWarningTitle": "Some tasks are longer than the line limit",
+    "locWarningBody": "{{tasks}} exceed the limit of {{max}} lines. Keep this sequence anyway, or discard it?",
+    "locWarningKeep": "Keep sequence",
+    "locWarningDiscard": "Discard sequence",
+    "locWarningDiscardError": "The sequence could not be discarded.",
     "contextSummary": "Context mode: {{contextLines}} context lines, {{puzzleLines}} puzzle lines",
     "curatorNoticeTitle": "This sequence belongs to someone else.",
     "curatorNoticeBody": "You can see it because it is in one of your worksheets. Editing it would change it in other teachers' worksheets too, so make your own copy first.",

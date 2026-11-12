@@ -19,9 +19,12 @@
 package de.uni_passau.fim.se2.application.service.hints;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 
 import java.util.List;
 
@@ -56,10 +59,10 @@ class HintExplainerTest {
     private String promptFor(HintLocale locale) throws Exception {
         CapturingClient captured = new CapturingClient();
         AiModelClient client = Mockito.mock(AiModelClient.class);
-        Mockito.when(client.generateTaskDescription(anyString(), anyString()))
+        Mockito.when(client.generateJson(anyString(), anyString(), anyString(), any()))
             .thenAnswer(invocation -> {
                 captured.prompt = invocation.getArgument(1);
-                return "explanation";
+                return "{\"explanation\":\"explanation\"}";
             });
 
         new HintExplainer(client).explain(
@@ -116,8 +119,8 @@ class HintExplainerTest {
     @DisplayName("exactly one mocked call is made, and nothing else is touched")
     void talksOnlyToTheMock() throws Exception {
         AiModelClient client = Mockito.mock(AiModelClient.class);
-        Mockito.when(client.generateTaskDescription(anyString(), anyString()))
-            .thenReturn("explanation");
+        Mockito.when(client.generateJson(anyString(), anyString(), anyString(), any()))
+            .thenReturn("{\"explanation\":\"explanation\"}");
 
         new HintExplainer(client).explain(
             List.of(), "code", "solution", "python",
@@ -127,7 +130,7 @@ class HintExplainerTest {
         // Pins that the explainer reaches the model through this one method and
         // nothing else — so the suite can never start making real calls without
         // this failing first.
-        Mockito.verify(client).generateTaskDescription(anyString(), anyString());
+        Mockito.verify(client).generateJson(anyString(), anyString(), anyString(), any());
         Mockito.verifyNoMoreInteractions(client);
     }
 
@@ -154,7 +157,7 @@ class HintExplainerTest {
     @DisplayName("a failing model yields a message in the right language, not an exception")
     void failureIsLocalised() throws Exception {
         AiModelClient failing = Mockito.mock(AiModelClient.class);
-        Mockito.when(failing.generateTaskDescription(anyString(), anyString()))
+        Mockito.when(failing.generateJson(anyString(), anyString(), anyString(), any()))
             .thenThrow(new RuntimeException("upstream down"));
 
         String en = new HintExplainer(failing).explain(
@@ -170,5 +173,35 @@ class HintExplainerTest {
             () -> assertTrue(en.contains("could not be generated"), en),
             () -> assertTrue(de.contains("Erklärung konnte nicht"), de)
         );
+    }
+
+    @Test
+    @DisplayName("the answer is the explanation field, asked for under its own schema")
+    void answerIsExplanationField() throws Exception {
+        AiModelClient client = Mockito.mock(AiModelClient.class);
+        Mockito.when(client.generateJson(anyString(), anyString(), eq("hint_explanation"), eq(HintExplainer.SCHEMA)))
+            .thenReturn("{\"explanation\": \" Block C gehört nicht zur Lösung. \"}");
+
+        String answer = new HintExplainer(client).explain(
+            List.of(), "code", "solution", "python",
+            List.of(), false, 0, 0, HintLocale.DE
+        );
+
+        assertEquals("Block C gehört nicht zur Lösung.", answer);
+    }
+
+    @Test
+    @DisplayName("an empty explanation yields the fallback message, not an empty hint")
+    void emptyExplanationFallsBack() throws Exception {
+        AiModelClient client = Mockito.mock(AiModelClient.class);
+        Mockito.when(client.generateJson(anyString(), anyString(), anyString(), any()))
+            .thenReturn("{\"explanation\": \"  \"}");
+
+        String answer = new HintExplainer(client).explain(
+            List.of(), "code", "solution", "python",
+            List.of(), false, 0, 0, HintLocale.EN
+        );
+
+        assertTrue(answer.contains("could not be generated"), answer);
     }
 }

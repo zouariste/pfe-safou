@@ -64,6 +64,13 @@ export type ApiError<Body = ApiErrorBody> = {
 /** The error bodies the backend sends, GlobalExceptionHandler's ApiErrorResponse among them. */
 export type ApiErrorBody = { error?: string; message?: string; details?: string; code?: string };
 
+/**
+ * Timeout for requests that wait on the LLM (generating sequences or distractors). One generation makes several
+ * model calls, and a self-hosted model that reasons before answering can take minutes, far beyond the default 120 s.
+ * nginx's `proxy_read_timeout` for the API must be at least this long.
+ */
+export const LLM_TIMEOUT_MS = 600_000;
+
 export const api = axios.create({
     baseURL,
     timeout: 120000,
