@@ -30,13 +30,14 @@ RUN sh /tmp/build-treesitter-natives.sh /natives
 FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app
 
-# Prime the dependency cache
+# Prime the dependency cache. -DskipTreesitterNatives: the natives stage above builds
+# the tree-sitter libraries, so Maven must not try to (scripts/ is not even here).
 COPY pom.xml .
-RUN mvn -q -DskipTests dependency:go-offline
+RUN mvn -q -DskipTests -DskipTreesitterNatives dependency:go-offline
 
 # Build the app
 COPY src ./src
-RUN mvn -q -Dmaven.test.skip=true package spring-boot:repackage
+RUN mvn -q -Dmaven.test.skip=true -DskipTreesitterNatives package spring-boot:repackage
 
 # ===== Runtime stage (Debian/Ubuntu JDK – needed for javac at runtime) =====
 FROM eclipse-temurin:25-jdk

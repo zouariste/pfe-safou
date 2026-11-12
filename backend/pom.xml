@@ -212,6 +212,37 @@
     </dependencies>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Builds the tree-sitter native libraries into native/ on the first local build;
+                     the treesitter-natives-* profiles below switch it on only while they are
+                     missing. Without network access or a C compiler the script fails, and the
+                     build goes on with a warning: the backend and its tests also work without
+                     the libraries. -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.7.0</version>
+                    <executions>
+                        <execution>
+                            <id>build-treesitter-natives</id>
+                            <phase>initialize</phase>
+                            <goals>
+                                <goal>exec</goal>
+                            </goals>
+                            <configuration>
+                                <executable>sh</executable>
+                                <arguments>
+                                    <argument>-c</argument>
+                                    <argument>sh scripts/build-treesitter-natives.sh || echo "[WARNING] The tree-sitter native libraries could not be built; code analysis falls back to zero complexity. See README.md."</argument>
+                                </arguments>
+                                <workingDirectory>${project.basedir}</workingDirectory>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -321,6 +352,55 @@
     </build>
 
     <profiles>
+        <!-- Build the tree-sitter native libraries (see exec-maven-plugin above) while native/
+             lacks them. One profile per OS, as the library's file name differs; the conditions
+             of one activation must all hold. Docker and CI build the libraries themselves and
+             pass -DskipTreesitterNatives. On Windows run the script from Git Bash instead, as
+             sh is not necessarily on the PATH there. -->
+        <profile>
+            <id>treesitter-natives-mac</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+                <file>
+                    <missing>${basedir}/native/libtree-sitter.dylib</missing>
+                </file>
+                <property>
+                    <name>!skipTreesitterNatives</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>treesitter-natives-linux</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                </os>
+                <file>
+                    <missing>${basedir}/native/libtree-sitter.so</missing>
+                </file>
+                <property>
+                    <name>!skipTreesitterNatives</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <!-- Keeps SpotBugs out of the normal build; CI runs it with -Pstatic-analysis. -->
         <profile>
             <id>static-analysis</id>
