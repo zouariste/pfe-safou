@@ -202,13 +202,20 @@ take precedence, and `-Dspring-boot.run.profiles=...` picks a different profile.
 > **Code analysis (tree-sitter):** complexity and change metrics use the
 > official [jtreesitter](https://github.com/tree-sitter/java-tree-sitter)
 > bindings, which need the tree-sitter runtime and grammar libraries for your
-> platform. The Docker image builds them itself; for a native run, build them
-> once into `backend/native/` (Linux, macOS, or Windows from Git Bash/MSYS2 with
-> MinGW gcc or zig; the script picks the first of `cc`, `gcc`, `clang` and `zig` on
-> the PATH unless `CC` is set):
+> platform. The Docker image builds them itself. Otherwise the first Maven build
+> (`./mvnw spring-boot:run`, `test`, `package`, …) builds them into
+> `backend/native/` while they are missing there, with
+> `scripts/build-treesitter-natives.sh` on Linux and macOS and
+> `scripts/build-treesitter-natives.ps1` on Windows. Without network access or a C
+> compiler it only warns, and `-DskipTreesitterNatives` skips it. The scripts take
+> the compiler from `CC`, or else the first of `cc`, `gcc`, `clang` and `zig` on the
+> PATH (on Windows MinGW gcc, e.g. from MSYS2, or zig; MSVC is not supported). To
+> rebuild them, for example after the versions in `scripts/treesitter-versions.sh`
+> changed:
 > ```bash
 > cd backend
-> scripts/build-treesitter-natives.sh
+> scripts/build-treesitter-natives.sh                                      # Linux, macOS
+> powershell -ExecutionPolicy Bypass -File scripts\build-treesitter-natives.ps1   # Windows
 > ```
 > The backend looks in `./native` relative to where it starts, or wherever
 > `TREESITTER_NATIVE_DIR` points. Without the libraries it still starts, logs a

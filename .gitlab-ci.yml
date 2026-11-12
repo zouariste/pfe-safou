@@ -57,8 +57,9 @@ backend-build:   # Compiles and packages the Spring Boot jar via the Maven wrapp
     - chmod +x mvnw
   script:
     # Tests are skipped here on purpose: they belong in the test stage, which is where
-    # the database service that the *DatabaseTest classes need is configured.
-    - ./mvnw -B -ntp -Dmaven.repo.local=.m2/repository package -DskipTests
+    # the database service that the *DatabaseTest classes need is configured. The jar does
+    # not contain the tree-sitter libraries, so the build does not build them either.
+    - ./mvnw -B -ntp -Dmaven.repo.local=.m2/repository package -DskipTests -DskipTreesitterNatives
   artifacts:
     paths:
       - backend/target/*.jar
@@ -122,7 +123,8 @@ backend-test:    # Runs the JUnit suite in backend/, database tests included.
     # The executable bit on mvnw is easily lost when the repository is edited
     # from Windows; without this the job dies on a bare permission denied.
     - chmod +x mvnw
-    # The tree-sitter native libraries, without which TreeSitterCodeAnalyzerTest skips.
+    # The tree-sitter native libraries, without which TreeSitterCodeAnalyzerTest skips. Built
+    # here rather than by Maven, which only warns when that fails: this way it fails the job.
     - apt-get update -qq && apt-get install -y -qq --no-install-recommends gcc libc6-dev curl
     - sh scripts/build-treesitter-natives.sh
     # GitLab starts the service and the job together rather than waiting for Postgres to
@@ -185,7 +187,8 @@ frontend-lint:   # ESLint over frontend/; errors fail the job, warnings are only
     paths:
       - backend/.m2/repository/
   variables:
-    MAVEN_CLI_OPTS: "-B -ntp -Dmaven.repo.local=.m2/repository"
+    # The lint jobs need no tree-sitter libraries, so Maven does not build them.
+    MAVEN_CLI_OPTS: "-B -ntp -Dmaven.repo.local=.m2/repository -DskipTreesitterNatives"
   before_script:
     - cd backend
     - chmod +x mvnw   # See backend-build: the executable bit is easily lost from Windows.

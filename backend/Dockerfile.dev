@@ -5,7 +5,7 @@ FROM debian:bookworm-slim AS natives
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc libc6-dev curl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
-COPY scripts/build-treesitter-natives.sh /tmp/
+COPY scripts/build-treesitter-natives.sh scripts/treesitter-versions.sh /tmp/
 RUN sh /tmp/build-treesitter-natives.sh /natives
 
 FROM eclipse-temurin:25-jdk AS build
