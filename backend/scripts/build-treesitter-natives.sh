@@ -24,26 +24,14 @@
 #   scripts/build-treesitter-natives.sh [output-dir]     (default: backend/native)
 #
 # Needs curl, tar and a C compiler ($CC, or else the first of cc, gcc, clang and zig
-# found on the PATH). On Windows run it from Git Bash or MSYS2 with MinGW gcc or zig. The backend finds the libraries in
-# backend/native when started from backend/, or wherever TREESITTER_NATIVE_DIR points.
+# found on the PATH). On Windows use build-treesitter-natives.ps1, or run this one from Git Bash or MSYS2. The versions
+# are in treesitter-versions.sh. The backend finds the libraries in backend/native when started from backend/, or
+# wherever TREESITTER_NATIVE_DIR points.
 
 set -eu
 
-# The runtime must match the jtreesitter version in pom.xml (0.26.x).
-TREE_SITTER_VERSION=v0.26.13
-
-# repository:tag:grammar-dir; the library and symbol names follow the repository name.
-GRAMMARS="
-tree-sitter-java:v0.23.5:.
-tree-sitter-python:v0.25.0:.
-tree-sitter-javascript:v0.25.0:.
-tree-sitter-typescript:v0.23.2:typescript
-tree-sitter-c:v0.24.2:.
-tree-sitter-cpp:v0.23.4:.
-tree-sitter-c-sharp:v0.23.5:.
-tree-sitter-rust:v0.24.2:.
-tree-sitter-go:v0.25.0:.
-"
+# TREE_SITTER_VERSION and GRAMMARS.
+. "$(dirname "$0")/treesitter-versions.sh"
 
 # Without $CC, take the first compiler on the PATH; Git Bash ships none named cc.
 if [ -z "${CC:-}" ]; then

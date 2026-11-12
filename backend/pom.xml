@@ -355,8 +355,7 @@
         <!-- Build the tree-sitter native libraries (see exec-maven-plugin above) while native/
              lacks them. One profile per OS, as the library's file name differs; the conditions
              of one activation must all hold. Docker and CI build the libraries themselves and
-             pass -DskipTreesitterNatives. On Windows run the script from Git Bash instead, as
-             sh is not necessarily on the PATH there. -->
+             pass -DskipTreesitterNatives. -->
         <profile>
             <id>treesitter-natives-mac</id>
             <activation>
@@ -397,6 +396,46 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- Windows has no sh, so the PowerShell version of the script; powershell.exe ships
+             with Windows. Same failure handling: a warning, and the build goes on. -->
+        <profile>
+            <id>treesitter-natives-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+                <file>
+                    <missing>${basedir}/native/tree-sitter.dll</missing>
+                </file>
+                <property>
+                    <name>!skipTreesitterNatives</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>build-treesitter-natives</id>
+                                <configuration combine.self="override">
+                                    <executable>powershell</executable>
+                                    <arguments>
+                                        <argument>-NoProfile</argument>
+                                        <argument>-ExecutionPolicy</argument>
+                                        <argument>Bypass</argument>
+                                        <argument>-Command</argument>
+                                        <argument>try { &amp; .\scripts\build-treesitter-natives.ps1 } catch { Write-Host ('[WARNING] The tree-sitter native libraries could not be built (' + $_ + '); code analysis falls back to zero complexity. See README.md.') }</argument>
+                                    </arguments>
+                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
