@@ -69,6 +69,14 @@ final class ScaffoldingStripper {
     /** Takes the members out of the only class, dropping {@code main}, and keeps the imports. */
     private static Optional<String> unwrapJavaClass(Node program) {
         List<String> imports = new ArrayList<>();
+        return onlyClass(program, imports).flatMap(cls -> unwrapMembers(cls, imports));
+    }
+
+    /**
+     * The program's only class, collecting its imports on the way; empty if there is none, more than one, or anything
+     * else besides a package declaration and comments.
+     */
+    private static Optional<Node> onlyClass(Node program, List<String> imports) {
         Node cls = null;
         for (Node child : program.getNamedChildren()) {
             switch (child.getType()) {
@@ -86,10 +94,10 @@ final class ScaffoldingStripper {
                 }
             }
         }
-        if (cls == null) {
-            return Optional.empty();
-        }
+        return Optional.ofNullable(cls);
+    }
 
+    private static Optional<String> unwrapMembers(Node cls, List<String> imports) {
         List<String> members = new ArrayList<>();
         boolean hasMethod = false;
         for (Node member : cls.getChildByFieldName("body").map(Node::getNamedChildren).orElse(List.of())) {
