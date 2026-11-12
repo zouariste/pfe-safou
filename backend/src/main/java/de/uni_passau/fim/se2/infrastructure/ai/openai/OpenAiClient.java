@@ -291,14 +291,14 @@ public class OpenAiClient extends AbstractAiClient {
                 log.trace("Sending request (attempt {}): {}", attempt, requestBody);
                 HttpResponse<String> response = transport.sendRequest(request);
 
-                if (response.statusCode() >= STATUS_CODE_200 && response.statusCode() < STATUS_CODE_300) {
+                if (isSuccess(response.statusCode())) {
                     log.trace("Response: {}", response.body());
                     return response;
                 }
 
                 // OPT-5: Exponential backoff with jitter — prevents thundering-herd
                 // when many parallel enrichment threads (OPT-1) all hit 429/503 together.
-                if ((response.statusCode() == 503 || response.statusCode() == 429) && attempt < maxRetries) {
+                if (isRetryable(response.statusCode()) && attempt < maxRetries) {
                     long delay = backoffDelayMs(attempt);
                     log.warn(
                         "OpenAI API returned {} – retrying in {}ms (attempt {}/{})",
@@ -348,6 +348,15 @@ public class OpenAiClient extends AbstractAiClient {
      * The jitter prevents parallel enrichment threads (OPT-1) from retrying simultaneously after a shared
      * rate-limit/503 event (thundering-herd).
      */
+    private static boolean isSuccess(int statusCode) {
+        return statusCode >= STATUS_CODE_200 && statusCode < STATUS_CODE_300;
+    }
+
+    /** Overloaded (503) and rate limited (429) are worth another try after a pause. */
+    private static boolean isRetryable(int statusCode) {
+        return statusCode == 503 || statusCode == 429;
+    }
+
     private static long backoffDelayMs(int attempt) {
         double base = Math.pow(2, attempt) * 1000.0;
         double jitter = 0.5 + java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.5);
