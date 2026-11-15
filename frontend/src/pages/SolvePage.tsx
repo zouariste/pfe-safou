@@ -10,6 +10,7 @@ import {useHomePath} from "../hooks/useHomePath.ts";
 import { useLocation } from "react-router-dom";
 import {PersistentLogger} from "../PersistentLogger.ts";
 import { useAuth } from "../context/AuthContext.tsx";
+import { useSolveActivity } from "../context/SolveActivityContext.tsx";
 import { useEventTracker } from "../hooks/useEventTracker.ts";
 import { useTranslation } from "react-i18next";
 import DOMPurify from "dompurify";
@@ -21,6 +22,7 @@ import { applyHintLabels } from "../lib/hintHighlight.ts";
 import { shuffleElementChildren } from "../lib/shuffleSource.ts";
 import { taskName } from "../lib/taskName.ts";
 import TaskStatement from "../components/TaskStatement.tsx";
+import AiCodingActivityPanel from "../components/AiCodingActivityPanel.tsx";
 import type { ParsonsCodeLine, ParsonsLogEntry, ParsonsSplitFragment, ParsonsWidget, ParsonsWidgetConstructor } from "../types/parsons.ts";
 
 declare global {
@@ -150,6 +152,8 @@ export default function SolvePage() {
     // AP18: Completion banner + next task
     const [showCompletionBanner, setShowCompletionBanner] = useState(false);
     const [nextTaskId, setNextTaskId] = useState<string | null>(null);
+
+    const { activityView, setActivityView } = useSolveActivity();
 
     // AP17: Click-to-Move mode toggle
     const [interactionMode, setInteractionMode] = useState<"drag" | "click">(() => {
@@ -1291,6 +1295,12 @@ export default function SolvePage() {
                         </div>
                     </div>
 
+                    {activityView === "aiCode" && (
+                        <AiCodingActivityPanel onBackToParsons={() => setActivityView("parsons")} />
+                    )}
+
+                    {/* Parsons UI stays mounted when hidden so the js-parsons widget is not destroyed. */}
+                    <div className={activityView === "parsons" ? undefined : "d-none"} aria-hidden={activityView !== "parsons"}>
                     {/* AP22: Context mode info banner */}
                     {(contextBefore.length > 0 || contextAfter.length > 0) && (
                         <div className="alert alert-info d-flex align-items-center gap-2 mb-3 py-2" role="alert">
@@ -2113,6 +2123,8 @@ export default function SolvePage() {
                             </details>
                         </div>
                     )}
+
+                    </div>
 
                 </>
             )}

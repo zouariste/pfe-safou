@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useLocation, useNavigate, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, Link, NavLink } from "react-router-dom";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,6 +11,7 @@ import HelpPage from "./pages/HelpPage.tsx";
 import { useMatch } from "react-router-dom";
 import WorksheetPage from "./pages/WorksheetPage.tsx";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { SolveActivityProvider, useSolveActivity } from "./context/SolveActivityContext";
 import LoginPage from "./pages/LoginPage";
 import FimLoginPage from "./pages/FimLoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -30,6 +31,7 @@ import AdminDatabasePage from "./pages/AdminDatabasePage";
 import AdminResearchPage from "./pages/AdminResearchPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ManualTaskCreator from "./pages/ManualTaskCreator";
+import AiCodingActivityPage from "./pages/AiCodingActivityPage.tsx";
 import CurriculumPage from "./pages/CurriculumPage";
 import LibraryPage from "./pages/LibraryPage";
 import MarketplacePage from "./pages/MarketplacePage";
@@ -126,11 +128,50 @@ function LanguageToggle() {
     );
 }
 
+function SolveActivityNavButton() {
+    const { t } = useTranslation();
+    const matchSolve = useMatch("/solve/:taskId");
+    const { activityView, setActivityView } = useSolveActivity();
+    const isAiOnSolve = !!matchSolve && activityView === "aiCode";
+
+    const label = (
+        <>
+            <i className="bi bi-stars me-1" aria-hidden />
+            {t("solve.aiCodeButton")}
+        </>
+    );
+
+    if (matchSolve) {
+        return (
+            <button
+                type="button"
+                className={`btn btn-sm ${isAiOnSolve ? "btn-primary" : "btn-outline-primary"}`}
+                onClick={() => setActivityView(isAiOnSolve ? "parsons" : "aiCode")}
+                title={t("aiCoding.title")}
+                aria-pressed={isAiOnSolve}
+            >
+                {label}
+            </button>
+        );
+    }
+
+    return (
+        <NavLink
+            to="/ai-code"
+            title={t("aiCoding.title")}
+            className={({ isActive }) => `btn btn-sm ${isActive ? "btn-primary" : "btn-outline-primary"}`}
+        >
+            {label}
+        </NavLink>
+    );
+}
+
 function Navbar() {
     const { user, logout, isLoggedIn, isStudent, isAdmin } = useAuth();
     const navigate = useNavigate();
     const { t } = useTranslation();
     const homePath = useHomePath();
+    const matchSolve = useMatch("/solve/:taskId");
 
     return (
         <nav className="navbar navbar-expand-sm navbar-light bg-white border-bottom px-3 py-2">
@@ -186,6 +227,7 @@ function Navbar() {
                                     <i className="bi bi-pencil-square me-1"></i>
                                     {t("nav.manualCreator")}
                                 </Link>
+                                <SolveActivityNavButton />
                                 <Link to="/curriculum" className="btn btn-sm btn-outline-info">
                                     <i className="bi bi-book me-1"></i>
                                     {t("nav.curriculum")}
@@ -201,10 +243,13 @@ function Navbar() {
                             </>
                         )}
                         {isStudent && (
-                            <Link to="/my-classes" className="btn btn-sm btn-outline-secondary">
-                                <i className="bi bi-mortarboard me-1"></i>
-                                {t("nav.myClasses")}
-                            </Link>
+                            <>
+                                <Link to="/my-classes" className="btn btn-sm btn-outline-secondary">
+                                    <i className="bi bi-mortarboard me-1"></i>
+                                    {t("nav.myClasses")}
+                                </Link>
+                                <SolveActivityNavButton />
+                            </>
                         )}
                         <Link to="/profile" className="btn btn-sm btn-outline-secondary">
                             <i className="bi bi-person-circle me-1"></i>
@@ -218,9 +263,12 @@ function Navbar() {
                         </button>
                     </>
                 ) : (
-                    <Link to="/login" className="btn btn-sm btn-outline-primary">
-                        {t("nav.login")}
-                    </Link>
+                    <>
+                        {matchSolve && <SolveActivityNavButton />}
+                        <Link to="/login" className="btn btn-sm btn-outline-primary">
+                            {t("nav.login")}
+                        </Link>
+                    </>
                 )}
             </div>
         </nav>
@@ -318,6 +366,7 @@ export default function App() {
     return (
         <BrowserRouter basename={import.meta.env.BASE_URL}>
             <AuthProvider>
+                <SolveActivityProvider>
                 <div className="d-flex flex-column min-vh-100">
                     <Navbar />
 
@@ -363,6 +412,7 @@ export default function App() {
                                     visitors landing on / are redirected to the login page. */}
                                 <Route path="/" element={<ProtectedRoute staffOnly><HomePage /></ProtectedRoute>} />
                                 <Route path="/manual-create" element={<ProtectedRoute><ManualTaskCreator /></ProtectedRoute>} />
+                                <Route path="/ai-code" element={<ProtectedRoute><AiCodingActivityPage /></ProtectedRoute>} />
                                 <Route path="/curriculum" element={<ProtectedRoute><CurriculumPage /></ProtectedRoute>} />
                                 <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
                                 <Route path="/library/worksheets" element={<ProtectedRoute><MarketplacePage /></ProtectedRoute>} />
@@ -375,6 +425,7 @@ export default function App() {
 
                     <AppFooter />
                 </div>
+                </SolveActivityProvider>
             </AuthProvider>
         </BrowserRouter>
     );

@@ -357,7 +357,28 @@
     "add": "Hinzufügen"
   },
 
+  "aiCoding": {
+    "title": "KI-gestützte Programmieraktivität",
+    "description": "In dieser Aktivität formulierst du eine Programmieraufgabe, sagst das Verhalten voraus, lässt Code per LLM erzeugen, zeigst Verständnis, führst Tests aus und verbesserst deine Arbeit.",
+    "phasesHeading": "Arbeitsphasen",
+    "backToParsons": "Zurück zur Parsons-Aufgabe",
+    "phases": {
+      "specification": "Spezifikation",
+      "prediction": "Vorhersage",
+      "generation": "Code-Generierung",
+      "understanding": "Verständnis",
+      "verification": "Verifikation",
+      "improvement": "Verbesserung"
+    },
+    "specification": {
+      "heading": "Phase 1: Spezifikation",
+      "intro": "Beschreibe die Aufgabe, Randbedingungen und Ein-/Ausgabebeispiele.",
+      "comingSoon": "Interaktiver Spezifikationseditor — folgt in einem späteren Schritt."
+    }
+  },
+
   "solve": {
+    "aiCodeButton": "AI Code",
     "closedBanner": "Die Abgabefrist für dieses Arbeitsblatt ist abgelaufen. Du kannst die Aufgabe ansehen, aber nicht mehr bearbeiten.",
     "closedTooltip": "Abgabefrist abgelaufen",
     "redo": "Aufgabe erneut lösen",

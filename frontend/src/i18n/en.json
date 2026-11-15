@@ -357,7 +357,28 @@
     "add": "Add"
   },
 
+  "aiCoding": {
+    "title": "AI-First Coding Activity",
+    "description": "In this activity you will specify a programming problem, predict program behaviour, generate code with an LLM, demonstrate understanding, run verification tests, and improve your work.",
+    "phasesHeading": "Workflow phases",
+    "backToParsons": "Back to Parsons activity",
+    "phases": {
+      "specification": "Specification",
+      "prediction": "Prediction",
+      "generation": "Code Generation",
+      "understanding": "Understanding",
+      "verification": "Verification",
+      "improvement": "Improvement"
+    },
+    "specification": {
+      "heading": "Phase 1: Specification",
+      "intro": "Describe the problem, constraints, and input/output examples.",
+      "comingSoon": "Interactive specification editor — coming in a later step."
+    }
+  },
+
   "solve": {
+    "aiCodeButton": "AI Code",
     "closedBanner": "The deadline for this worksheet has passed. You can look at the task but no longer work on it.",
     "closedTooltip": "Deadline passed",
     "redo": "Solve again",
