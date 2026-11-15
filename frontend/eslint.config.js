@@ -21,8 +21,11 @@ export default tseslint.config([
       globals: globals.browser,
     },
     rules: {
-      // AuthContext exports its useAuth hook beside the provider, the usual context pattern.
-      'react-refresh/only-export-components': ['error', { allowConstantExport: true, allowExportNames: ['useAuth'] }],
+      // Context modules export their hooks beside the provider, the usual context pattern.
+      'react-refresh/only-export-components': [
+        'error',
+        { allowConstantExport: true, allowExportNames: ['useAuth', 'useSolveActivity'] },
+      ],
     },
   },
 ])
